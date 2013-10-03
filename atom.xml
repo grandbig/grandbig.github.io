@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2013-10-01T00:28:13+09:00</updated>
+  <updated>2013-10-04T01:39:01+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,194 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[cache.manifestのキャッシュがかなり厄介!?]]></title>
+    <link href="http://grandbig.github.io/blog/2013/10/04/html5-cache-dot-manifest/"/>
+    <updated>2013-10-04T00:35:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/10/04/html5-cache-dot-manifest</id>
+    <content type="html"><![CDATA[<h3>cache.manifestで苦労することまとめ</h3>
+
+<p>本日は筆者が日頃から困っているcache.manifestについて紹介したいと思います。<br/>
+『な〜んだWebか〜。ネイティブアプリとは関係ないかな〜』なんて思っていませんか？<br/>
+ネイティブアプリではWebViewを実装することができます。このWebViewにも大いに関わってくるところなので、知って損はないでしょう。</p>
+
+<!--more-->
+
+
+<h4>cache.manifestの基本を簡単に紹介</h4>
+
+<p>cache.manifestを使ったことがあるという方は多いでしょうが、おさらい程度に基本を確認しておきましょう。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># cache.manifestの記載例
+</span><span class='line'>CACHE MANIFEST
+</span><span class='line'>
+</span><span class='line'>#version 1.0
+</span><span class='line'>
+</span><span class='line'>CACHE:
+</span><span class='line'>image1.png
+</span><span class='line'>
+</span><span class='line'>NETWORK:
+</span><span class='line'>base.css
+</span><span class='line'>
+</span><span class='line'>FALLBACK:</span></code></pre></td></tr></table></div></figure>
+
+
+<p>・CACHEはキャッシュしたいファイルを記載します。<br/>
+・NETWORKは毎回サーバに問い合わせたいファイルを記載します。<br/>
+・FALLBACKはキャッシュできなかった場合の代わりのファイルを記載します。
+・キャッシュしたいファイルの設定は変わらないがキャッシュの変更を読み込ませたいというときにversionをアップさせましょう。(なぜ必要か詳しくは例を交えて説明します)</p>
+
+<h4>cache.manifestを試そう</h4>
+
+<p>実際に簡単なhtml, css, cache.manifestを作成してcache.manifestの挙動を確認してみます。</p>
+
+<p>まずはcache.manifestを読み込む設定を書くindex.html</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//index.html
+</span><span class='line'>&lt;!DOCTYPE html&gt;
+</span><span class='line'>&lt;html manifest="cache.manifest"&gt;
+</span><span class='line'>  &lt;head&gt;
+</span><span class='line'>      &lt;meta charset="UTF-8" content="text/css" http-equiv="Content-Style-Type"&gt;
+</span><span class='line'>      &lt;meta content="width=device-width, user-scalable=no, minimum-scale=0.5, maximum-scale=1.0" name="viewport"&gt;
+</span><span class='line'>      &lt;meta name="format-detection" content="telephone=no"&gt;
+</span><span class='line'>      &lt;link href="./base.css" media="all" rel="stylesheet" type="text/css"&gt;
+</span><span class='line'>      &lt;title&gt;Cache-Test&lt;/title&gt;
+</span><span class='line'>  &lt;/head&gt;
+</span><span class='line'>  &lt;body&gt;
+</span><span class='line'>      &lt;div id="word"&gt;Cache Test&lt;/div&gt;
+</span><span class='line'>      &lt;img src="./image1.png" /&gt;
+</span><span class='line'>  &lt;/body&gt;
+</span><span class='line'>&lt;/html&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>次にcache.manifestの変更がわかりやすいようにcssを作成しましょう。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>html, body {
+</span><span class='line'>  position: absolute;
+</span><span class='line'>  width: 100%;
+</span><span class='line'>  height: 100%;
+</span><span class='line'>  padding: 0;
+</span><span class='line'>  margin: 0;
+</span><span class='line'>  background-color: white;
+</span><span class='line'>}
+</span><span class='line'>#word {
+</span><span class='line'>  font-size: 30px;
+</span><span class='line'>  text-align: center;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これをChromeで表示すると
+<img src="http://grandbig.github.io/images/cachetest1.png" alt="Chromeで確認しよう" /><br/>
+このようになっています。</p>
+
+<p>画像はデバッガツールで詳細を見た様子です。cache.manifestで書いたimage1.pngだけでなくcache.manifestの読み込みを書いた<strong>index.html自体もキャッシュ</strong>されています。因みにbase.cssファイルはキャッシュされていないことも確認できます。<br/>
+base.cssは毎回読み込みに行くので変更内容は次回アクセス時に即座に反映されます。<br/>
+重要な事は<strong>cache.manifestを編集していなくても反映される</strong>ということです。</p>
+
+<p>一方でindex.htmlの内容を以下に変えてみたとします。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>...
+</span><span class='line'>&lt;body&gt;
+</span><span class='line'>  &lt;div id="word"&gt;Cache Test&lt;/div&gt;
+</span><span class='line'>  &lt;img src="./image1.png" /&gt;
+</span><span class='line'>  &lt;div&gt;test&lt;/div&gt;
+</span><span class='line'>&lt;/body&gt;
+</span><span class='line'>...
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでブラウザを更新してみましょう。divタグを追加したにも関わらず何も変化がないはずです。<br/>
+CACHEで設定したファイルの変更を知らせるためには必ずcache.manifestに変更を加えて下さい。(この場合はcache.manifestのバージョンを上げれば十分です。)</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># cache.manifestのコメントアウトのバージョンを変更しよう
+</span><span class='line'>CACHE MANIFEST
+</span><span class='line'> 
+</span><span class='line'>#version 1.0.1
+</span><span class='line'> 
+</span><span class='line'>CACHE:
+</span><span class='line'>image1.png
+</span><span class='line'> 
+</span><span class='line'>NETWORK:
+</span><span class='line'>base.css
+</span><span class='line'> 
+</span><span class='line'>FALLBACK:</span></code></pre></td></tr></table></div></figure>
+
+
+<p>さて改めてブラウザを更新しましょう。あれ？まだ何も変わらない！と思うかもしれませんが、よくよくデバッガツールを見てみて下さい。<br/>
+<img src="http://grandbig.github.io/images/cachetest2.png" alt="キャッシュが更新されている" /><br/>
+cache.manifestの更新を読み込んでいます。</p>
+
+<p>ここでもう一度ブラウザを更新しましょう。すると、先ほど追加したdivタグが表示されているはずです。</p>
+
+<p>つまり、cache.manifestの読み込みを書いたindex.html自体を更新するためには2回ブラウザを更新する必要があるということです。<br/>
+これをもし、iPhoneのネイティブアプリをWebViewを用いることで作るとしたらアプリの再起動が2回以上必要になります。ユーザにそれを強いるのはかなりハードルが高いと言えるでしょう。</p>
+
+<p>以上をまとめます。<br/>
+・cache.manifestの読み込みを設定したhtmlファイル(index.htmlなど)は更新することのないファイルとしましょう。<br/>
+・更新が生じる可能性のあるhtmlファイルは(index.htmlに)ロードするようにしましょう！</p>
+
+<p>本日はcache.manifestを用いた場合のキャッシュについて試しました。次回はネイティブ側でキャッシュ設定をした場合、どんな挙動を示すのか追いたいと思います。(cache.manifestと併用させた場合どうなるかも追えればと思います。)</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iPhone実機でSQLiteで作成したDBを参照しよう]]></title>
