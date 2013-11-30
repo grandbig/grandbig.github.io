@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2013-11-21T23:47:46+09:00</updated>
+  <updated>2013-11-30T22:24:07+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,264 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[FMDBを使って簡単にiPhoneのローカルストレージを活用しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2013/11/30/fmdatabase/"/>
+    <updated>2013-11-30T19:22:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/11/30/fmdatabase</id>
+    <content type="html"><![CDATA[<h3>iPhoneのローカルストレージを開発で活用しよう！</h3>
+
+<p>本日はiPhoneのローカルストレージ活用方法について簡単に紹介したいと思います。<br/>
+iPhoneアプリを開発するにあたって、データ保管のためにDBサーバを活用したくなることがあると思います。しかし、個人で開発するにはレンタルサーバを借りるだけでも一苦労&hellip;。毎月お金もかかる&hellip;。そもそも保存したいデータ量も大きくないし&hellip;。なんてことがあるでしょう。そんなときは迷わず、iPhoneのローカルストレージを使いましょう！！</p>
+
+<!--more-->
+
+
+<h4>FMDBを使おう！！</h4>
+
+<p>iPhoneローカルストレージを使うなら、非常に便利な<strong>FMDB</strong>をぜひダウンロードしましょう。<br/>
+FMDBはMITライセンスということもあり、商用でも簡単に導入できます。</p>
+
+<p>では早速、使い方を説明しましょう。<br/>
+1: GitHubより<a href="https://github.com/ccgus/fmdb">FMDB</a>をダウンロードします。<br/>
+2: fmdb-master/src/ 配下のファイルをコピーしてFMDBを利用したいXcodeのプロジェクトフォルダ内に置く<br/>
+※ただし、fmdb.mファイルは不要<br/>
+<img src="http://grandbig.github.io/images/fmdatabase1.png" alt="fmdb.m以外を利用する" /><br/>
+<img src="http://grandbig.github.io/images/fmdatabase2.png" alt="fmdb.m以外をXcodeプロジェクトに追加" /><br/>
+3: libsqlite3.0.dylibフレームワークをXcodeプロジェクトに追加<br/>
+※これがないとエラーが出るので注意<br/>
+<img src="http://grandbig.github.io/images/fmdatabase3.png" alt="libsqlite3.0.dylibフレームワークの追加" /><br/>
+4: FMDBを利用するファイルで<strong>FMDatabase.h</strong>をimportする<br/>
+<img src="http://grandbig.github.io/images/fmdatabase4.png" alt="FMDatabase.hをimportする" /></p>
+
+<p>これでFMDBを利用することができます。</p>
+
+<h4>FMDBを使った具体的な書き方</h4>
+
+<p>次にFMDBを使った具体的な書き方について説明したいと思います。</p>
+
+<p><strong>DB接続の書き方</strong><br/>
+DB接続方法は下記だけです。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@"test.db"]];</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>DBの開閉</strong></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//DBを開く場合
+</span><span class='line'>[db open];
+</span><span class='line'>//DBを閉じる場合
+</span><span class='line'>[db close];</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記がDBを扱う上での基本になります。</p>
+
+<p><strong>tableの作成</strong><br/>
+ここでは上記の基本を含めた一連の流れを書きます。<br/>
+下記ではTEXT型のuid, createtimeを持ったusersという名前のtableを作成しています。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//DBの呼び出し
+</span><span class='line'>NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@"test.db"]];
+</span><span class='line'>
+</span><span class='line'>//tableの作成
+</span><span class='line'>NSString *sql = @"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY,uid TEXT,createtime TEXT);";
+</span><span class='line'>[db open];
+</span><span class='line'>//クエリの実行
+</span><span class='line'>[db executeUpdate:sql];
+</span><span class='line'>[db close];</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以下、説明することは上記で作成したtableを利用しています。</p>
+
+<p><strong>select文の実行</strong><br/>
+下記ではuidを取得する例を書きます。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//DBの呼び出し
+</span><span class='line'>NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@"test.db"]];
+</span><span class='line'>
+</span><span class='line'>//select文の作成
+</span><span class='line'>NSString *select = [[NSString alloc] initWithFormat:@"SELECT * from users"];
+</span><span class='line'>[db open];
+</span><span class='line'>FMResultSet *rs = [db executeQuery:select];
+</span><span class='line'>NSString *uid;
+</span><span class='line'>while([rs next]) {
+</span><span class='line'>  uid = [rs stringForColumnIndex:1];
+</span><span class='line'>}
+</span><span class='line'>[db close];</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>insert文の実行</strong></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//DBの呼び出し
+</span><span class='line'>NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@"test.db"]];
+</span><span class='line'>
+</span><span class='line'>//insert文の作成
+</span><span class='line'>NSString *createtime = @"20131130011728462";
+</span><span class='line'>NSString *uid = @"user01";
+</span><span class='line'>NSString *insert = [[NSString alloc] initWithFormat:@"INSERT INTO users(uid, createtime) VALUES(%@, %@)", uid, createtime];
+</span><span class='line'>[db open];
+</span><span class='line'>[db executeUpdate:insert];
+</span><span class='line'>[db close];</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>update文の実行</strong></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//DBの呼び出し
+</span><span class='line'>NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@"test.db"]];
+</span><span class='line'>
+</span><span class='line'>//update文の作成
+</span><span class='line'>NSString *createtime = @"20131201054830467";
+</span><span class='line'>NSString *uid = @"user02";
+</span><span class='line'>//DBにレコードが１つ追加されていて、そのid=1のレコードを更新しています
+</span><span class='line'>NSString *update = [[NSString alloc] initWithFormat:@"UPDATE users SET uid='%@', createtime='%@' where id=1", uid, createtime];
+</span><span class='line'>[db open];
+</span><span class='line'>[db executeUpdate:update];
+</span><span class='line'>[db close];</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>delete文の実行</strong></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//DBの呼び出し
+</span><span class='line'>NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@"test.db"]];
+</span><span class='line'>
+</span><span class='line'>//delete文の作成
+</span><span class='line'>NSString *delete = [[NSString alloc] initWithFormat:@"DELETE from users where id=1"];
+</span><span class='line'>[db open];
+</span><span class='line'>[db executeUpdate:delete, [NSNumber numberWithInteger:n]];
+</span><span class='line'>[db close];</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>count文の実行</strong></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>//DBの呼び出し
+</span><span class='line'>NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>NSString *dir = [paths objectAtIndex:0];
+</span><span class='line'>FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@"test.db"]];
+</span><span class='line'>
+</span><span class='line'>//count文の作成
+</span><span class='line'>NSString *uid = @"user02";
+</span><span class='line'>NSString *cntquery = [[NSString alloc] initWithFormat:@"select count(*) as count from users where uid=%d", uid];
+</span><span class='line'>[db open];
+</span><span class='line'>FMResultSet *cntrs = [db executeQuery:cntquery];
+</span><span class='line'>if([cntrs next]) {
+</span><span class='line'>  NSString *count = [cntrs intForColumn:@"count"];
+</span><span class='line'>}
+</span><span class='line'>[db close];</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>まとめ</h4>
+
+<p>たったこれだけのことを知っておくだけでiPhoneのローカルストレージを使いこなすことができます。ぜひ使ってみてください！(筆者もめちゃくちゃ使っています。)</p>
+
+<p>参考:<br/>
+<a href="http://akabeko.me/blog/2011/11/ios-sqlite-fmdb/">iOS で SQLite – FMDB の使い方</a><br/>
+<a href="http://obc-fight.blogspot.jp/2012/09/fmdb-basic-how-to-use.html">Objective-Cと戦うブログ</a></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Octopressでアフィリエイト！]]></title>
@@ -2443,46 +2701,6 @@ ViewController.hにNSTimerを宣言</p>
 <p>さ〜て、いかがだったでしょうか？<br/>
 今や簡単に誰でもアプリが作れる時代です。ぜひ、皆さんも作ってみて下さい。<br/>
 余談ですが、iOS7から懐中電灯機能はアプリをインストールするまでもなく搭載されることとなったので、懐中電灯アプリはAppleに申請しても通らないと思います(汗)</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Xcodeを始めてみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2013/09/05/start-xcode/"/>
-    <updated>2013-09-05T23:56:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2013/09/05/start-xcode</id>
-    <content type="html"><![CDATA[<h2>Xcodeとは</h2>
-
-<p>アップルが提供している統合開発環境(IDE)の名称です。<br/>
-『iPhone/iPadアプリを開発したい！』という方、Mac PCを買ったら速攻インストールです！<br/>
-(XcodeはもちろんApp Storeからインストールできます）</p>
-
-<p>この記事時点での最新版は4.6.3ですが、今月中にはXcode5.0が発表されることでしょう。<br/>
-さてさて、早速Xcodeを起動してみましょう。</p>
-
-<h3>プログラミングまでの準備</h3>
-
-<p>Xcodeを起動すると次のウィンドウが表示されます。
-<img src="http://grandbig.github.io/images/xcode1.png" alt="Welcome to Xcode" /></p>
-
-<!--more-->
-
-
-<p>プロジェクトを新規作成する場合は『Create a new Xcode project』を選択しましょう。
-すると次の画面で『Choose a template for your new project』と言われます。
-<img src="http://grandbig.github.io/images/xcode2.png" alt="Choose Project" />
-とは言え、何だか選択肢が多いですね…。ここで選択を失敗すると一気に時間がかかってしまいそうな予感がしますね……。<br/>
-本来は<em>Single View Application</em>の方が初心者向きかもしれないのですが、筆者はあまり慣れておりません(汗)<br/>
-ってことで今回は<em>Empty Application</em>を選択します。(この違いについてはいつの日か説明したいと思います)</p>
-
-<p>すると今度は『Choose options for your new project』と言われます。
-<img src="http://grandbig.github.io/images/xcode3.png" alt="Choose Options" />
-入力するのは『Product Name』, 『Organization Name』,『Company Identifier』の3つです。後から変更も可能なので、ここでは『blog_test』,『筆者の名前』,『jp.co.test』としておきましょう。</p>
-
-<p>はい！新規プロジェクト作成できました〜。
-<img src="http://grandbig.github.io/images/xcode4.png" alt="Choose Options" /></p>
-
-<p>次回はアプリでも作ってみようかな</p>
 ]]></content>
   </entry>
   
