@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2013-11-30T22:24:07+09:00</updated>
+  <updated>2013-12-07T00:42:13+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,328 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[UIWebView内でheaderを固定して滑らかなスクロールを実現しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2013/12/06/header-fixed/"/>
+    <updated>2013-12-06T23:24:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/12/06/header-fixed</id>
+    <content type="html"><![CDATA[<h3>header固定をしたスクロールは案外難しい！！</h3>
+
+<p>本日はUIWebViewを全面に貼り付けた上で、ヘッダーを固定して滑らかなスクロールを実現する方法について書きたいと思います。<br/>
+もし、ヘッダーをネイティブで作成して、中身をWebで作成すれば簡単に実現できます。しかし、ネイティブとWebのハイブリットアプリを目指すとAndroidへの対応が手間となるため一長一短な面があります。今回はあえて全面UIWebViewに拘りたいと思います。</p>
+
+<!--more-->
+
+
+<h4>position: fixedだとうまくいかない！？</h4>
+
+<p>まず、Webでヘッダーを固定することを考えたときに真っ先に思い浮かぶものは<strong>position: fixed</strong>を利用することだと思います。</p>
+
+<p>サンプルHTML</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!DOCTYPE html&gt;
+</span><span class='line'>  &lt;head&gt;
+</span><span class='line'>      &lt;meta charset="UTF-8" content="text/css" http-equiv="Content-Style-Type" /&gt;
+</span><span class='line'>      &lt;meta content="width=device-width, user-scalable=no,minimum-scale=0.5, maximum-scale=1.0" name="viewport" /&gt;
+</span><span class='line'>      &lt;link href="./main.css" media="all" rel="stylesheet" type="text/css" /&gt;
+</span><span class='line'>      &lt;title&gt;サンプル&lt;/title&gt;
+</span><span class='line'>  &lt;/head&gt;
+</span><span class='line'>  &lt;body&gt;
+</span><span class='line'>      &lt;div id="header"&gt;ヘッダー&lt;/div&gt;
+</span><span class='line'>      &lt;div id="mainContents"&gt;
+</span><span class='line'>          &lt;div id="main"&gt;
+</span><span class='line'>              contents
+</span><span class='line'>              &lt;br&gt;
+</span><span class='line'>              contents
+</span><span class='line'>              &lt;br&gt;
+</span><span class='line'>              ...
+</span><span class='line'>              contents
+</span><span class='line'>              &lt;br&gt;
+</span><span class='line'>          &lt;/div&gt;
+</span><span class='line'>      &lt;/div&gt;
+</span><span class='line'>  &lt;/body&gt;
+</span><span class='line'>&lt;/html&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>サンプルCSS</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>html, body {
+</span><span class='line'>  padding: 0;
+</span><span class='line'>  margin: 0;
+</span><span class='line'>  width: 100%;
+</span><span class='line'>  height: 100%;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>#header {
+</span><span class='line'>  position: fixed;
+</span><span class='line'>  top: 0;
+</span><span class='line'>  left: 0;
+</span><span class='line'>  width: 100%;
+</span><span class='line'>  height: 64px;
+</span><span class='line'>  z-index: 2;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>#mainContents {
+</span><span class='line'>  position: relative;
+</span><span class='line'>  top: 64px;
+</span><span class='line'>  width: 100%;
+</span><span class='line'>  height: 100%;
+</span><span class='line'>  -webkit-overflow-scrolling: touch;
+</span><span class='line'>  z-index: 1;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>確かにこの設定であればヘッダーを固定して中身を滑らかにスクロールすることが可能になります。そして、iPhoneのSafariからその画面を見るのであればさして違和感はないでしょう。しかし、これをUIWebView上で見ると画面のバウンドを止められないことに気がつきます。これは結構な違和感です。<br/>
+このバウンドを以下のようにネイティブソース側から止めることを考えました。</p>
+
+<p>ネイティブソース(UIWebViewの設定部分)</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)viewDidLoad {
+</span><span class='line'>  [super viewDidLoad];
+</span><span class='line'>  uiWebView.delegate = self;
+</span><span class='line'>  // バウンドしないように設定
+</span><span class='line'>  [[(UIScrollView *)[uiWebView subviews] objectAtIndex:0] setBounces:NO];
+</span><span class='line'>  ...
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>しかし、これだとCSSで設定した<strong>-webkit-overflow-scrolling: touch</strong>の効果がなくなってしまいます。なので別の方法を考えました。</p>
+
+<h4>position: absoluteを使う！！</h4>
+
+<p>position: fixed;は使いません。position: absolute;を使います。以下、踏まえて書き直します。</p>
+
+<p>サンプルHTML</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!DOCTYPE html&gt;
+</span><span class='line'>  &lt;head&gt;
+</span><span class='line'>      &lt;meta charset="UTF-8" content="text/css" http-equiv="Content-Style-Type" /&gt;
+</span><span class='line'>      &lt;meta content="width=device-width, user-scalable=no,minimum-scale=0.5, maximum-scale=1.0" name="viewport" /&gt;
+</span><span class='line'>      &lt;link href="./main.css" media="all" rel="stylesheet" type="text/css" /&gt;
+</span><span class='line'>      &lt;title&gt;サンプル&lt;/title&gt;
+</span><span class='line'>  &lt;/head&gt;
+</span><span class='line'>  &lt;body&gt;
+</span><span class='line'>      &lt;div id="wrapper"&gt;
+</span><span class='line'>          &lt;div id="header"&gt;ヘッダー&lt;/div&gt;
+</span><span class='line'>          &lt;div id="mainContents"&gt;
+</span><span class='line'>              &lt;div id="main"&gt;
+</span><span class='line'>                  contents
+</span><span class='line'>                  &lt;br&gt;
+</span><span class='line'>                  contents
+</span><span class='line'>                  &lt;br&gt;
+</span><span class='line'>                  ...
+</span><span class='line'>                  contents
+</span><span class='line'>                  &lt;br&gt;
+</span><span class='line'>              &lt;/div&gt;
+</span><span class='line'>          &lt;/div&gt;
+</span><span class='line'>      &lt;/div&gt;
+</span><span class='line'>  &lt;/body&gt;
+</span><span class='line'>&lt;/html&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>サンプルCSS</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>html, body {
+</span><span class='line'>  padding: 0;
+</span><span class='line'>  margin: 0;
+</span><span class='line'>  width: 100%;
+</span><span class='line'>  height: 100%;
+</span><span class='line'>  overflow: hidden;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>#wrapper {
+</span><span class='line'>  position: relative;
+</span><span class='line'>  width: 100%;
+</span><span class='line'>  height: 100%;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>#header {
+</span><span class='line'>  position: absolute;
+</span><span class='line'>  top: 0;
+</span><span class='line'>  left: 0;
+</span><span class='line'>  width: 100%;
+</span><span class='line'>  height: 64px;
+</span><span class='line'>  z-index: 2;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>#mainContents {
+</span><span class='line'>  position: relative;
+</span><span class='line'>  top: 64px;
+</span><span class='line'>  width: 100%;
+</span><span class='line'>  height: 100%;
+</span><span class='line'>  overflow: auto;
+</span><span class='line'>  -webkit-overflow-scrolling: touch;
+</span><span class='line'>  z-index: 1;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>#main {
+</span><span class='line'>  position: relative;
+</span><span class='line'>  padding: 64px 0;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでほとんどの場合、バウンドしなくなります。しかも、滑らかなスクロールを保つこともできます。<br/>
+ただし、ヘッダーをタッチムーブすると&hellip;バウンドしてしまいます！！</p>
+
+<p>う〜ん。これは果たして無理なのか！？と思ったところで思いつきました。<strong>touchイベントを無効化</strong>しましょう！！<br/>
+jQueryを使っている前提で下記を紹介します。</p>
+
+<p>サンプルJS</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>
+</span><span class='line'>jQuery( function($) {
+</span><span class='line'>  
+</span><span class='line'>  $("#header").bind("touchstart", function() {
+</span><span class='line'>      event.preventDefault();
+</span><span class='line'>  });
+</span><span class='line'>  
+</span><span class='line'>  $("#header").bind("touchmove", function() {
+</span><span class='line'>      event.preventDefault();
+</span><span class='line'>  });
+</span><span class='line'>
+</span><span class='line'>  $("#header").bind("touchend", function() {
+</span><span class='line'>      event.preventDefault();
+</span><span class='line'>  });
+</span><span class='line'>
+</span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでバウンドせずに滑らかなスクロールを保つことができました。</p>
+
+<p>と思ったのですが、画面の両端を触っているとバウンドが発生してしまいます&hellip;。要調査ですね&hellip;。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[FMDBを使って簡単にiPhoneのローカルストレージを活用しよう！]]></title>
@@ -2438,269 +2760,6 @@ Development版はプロバイダアプリケーションの初版の開発とテ
 <img src="http://grandbig.github.io/images/iOS6_7_Deltas_set.png" alt="iOS6/7 Deltasに値を設定" /></p>
 
 <p>これでtoolbarの設定は完了です。因みにtoolbarと合わせてWebViewやMapViewを使うときには同じくこれらのパーツも調整する必要がありますのでご注意を。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Let's create an iPhone App]]></title>
-    <link href="http://grandbig.github.io/blog/2013/09/13/lets-create-an-iphone-app/"/>
-    <updated>2013-09-13T23:35:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2013/09/13/lets-create-an-iphone-app</id>
-    <content type="html"><![CDATA[<h3>Flash Lightアプリを作ろう！</h3>
-
-<p>最近iPhoneに実装されたLEDライトの点滅間隔を調べる機会がありました。<br/>
-そこで、そのときに作った、簡単な『Flash Light アプリ』を紹介しましょう！</p>
-
-<!--more-->
-
-
-<h4>ViewControllerを新規追加</h4>
-
-<p>まずは表示に必要なViewControllerを追加しましょう！<br/>
-1: プロジェクトを右クリックして、『New File&hellip;』を選択<br/>
-2: Objective-c Classを選択してNext<br/>
-3: Class 『ViewController』, Subclass of 『UIViewController』を選択してNext<br/>
-4: xcodeprojファイルと同じ場所に保存</p>
-
-<h4>AppDelegateファイルを編集</h4>
-
-<p>次にViewControllerをアプリ起動時に表示できるように設定しましょう。<br/>
-そのためにはAppDelegateファイルを編集する必要があります。では『AppDelegateファイル』とは何でしょうか？<br/>
-AppDelegateファイルとは簡単に言えば、アプリの起動/停止をトリガーとして何かアクションを起こす役目を持っています。<br/>
-これはアプリを開発する上で非常に重要なファイルと言えるでしょう。</p>
-
-<p>AppDelegate.mファイル内でViewControllerを扱うために</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>#import "AppDelegate.h"
-</span><span class='line'>#import "ViewController.h"
-</span><span class='line'>
-</span><span class='line'>@implementation AppDelegate</span></code></pre></td></tr></table></div></figure>
-
-
-<p>とViewControllerをimportしましょう。</p>
-
-<p>では実際にViewControllerをアプリwindowに設定します。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-</span><span class='line'>  // ウィンドウの初期化と生成
-</span><span class='line'>  _window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-</span><span class='line'>  // 背景色を指定(今回は黒色)
-</span><span class='line'>  _window.backgroundColor = [UIColor blackColor];
-</span><span class='line'>  // ウィンドウを表示
-</span><span class='line'>  [_window makeKeyAndVisible];
-</span><span class='line'>
-</span><span class='line'>  // ViewControllerの初期化と生成
-</span><span class='line'>  UIViewController* viewCtl = [[[ViewController alloc] init] autorelease];
-</span><span class='line'>  // ViewControllerをウィンドウに設定
-</span><span class='line'>  _window.rootViewController=viewCtl;
-</span><span class='line'>  return YES;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>ViewController.h/ ViewController.mを編集</h4>
-
-<p>さて、これでViewControllerに実装したものをウィンドウに表示する設定が終わりました。<br/>
-今度はLEDライトの点滅方法を考えるわけですが、そもそもLEDライトってどうやって扱うんでしょうか？</p>
-
-<p>答えは『AVFoundation.framework』を使います！<br/>
-因みにライブラリ追加は以下の手順。<br/>
-1: プロジェクトを選択<br/>
-2: TARGETSを選択<br/>
-3: BuildPhasesを選択<br/>
-4: Link Binary With Librariesを選択<br/>
-5: +を選択して『AVFoundation.framework』を追加<br/>
-<img src="http://grandbig.github.io/images/add_framework.png" alt="AVFoundation.frameworkを追加" /></p>
-
-<p>ただ、安心してはいけません。必ず使うものはimportしましょう！<br/>
-ViewController.hファイルにimport</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>#import &lt;UIKit/UIKit.h&gt;
-</span><span class='line'>// 以下のAVFoundationを追加
-</span><span class='line'>#import &lt;AVFoundation/AVFoundation.h&gt;
-</span><span class='line'>
-</span><span class='line'>@interface ViewController : UIViewController {
-</span><span class='line'>  ...</span></code></pre></td></tr></table></div></figure>
-
-
-<p>いきなり自動点滅は難しいので、まずはスイッチでLEDのON/OFFを切り替えられるようにしてみましょう。<br/>
-ViewController.hを引き続き編集</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>@interface ViewController : UIViewController {
-</span><span class='line'>  // スイッチを定義
-</span><span class='line'>  IBOutlet UISwitch *sw;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>// スイッチのON/OFF切り替え用関数を宣言
-</span><span class='line'>-(IBAction)switchChanged:(id)sender;</span></code></pre></td></tr></table></div></figure>
-
-
-<p>次にViewController.mを編集します。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// スイッチのON/OFF切り替え用関数の処理を定義
-</span><span class='line'>- (IBAction)switchChanged:(id)sender {
-</span><span class='line'>  // 背面カメラを初期化
-</span><span class='line'>  AVCaptureDevice *captureDevice = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
-</span><span class='line'>
-</span><span class='line'>  // スイッチがONのとき
-</span><span class='line'>  if(sw.on) {
-</span><span class='line'>      // LEDの点灯は下記3行
-</span><span class='line'>      [captureDevice lockForConfiguration:NULL];
-</span><span class='line'>      captureDevice.torchMode = AVCaptureTorchModeOn;
-</span><span class='line'>      [captureDevice unlockForConfiguration];
-</span><span class='line'>  // スイッチがOFFのとき
-</span><span class='line'>  } else {
-</span><span class='line'>      // LEDの消灯は下記3行
-</span><span class='line'>      [captureDevice lockForConfiguration:NULL];
-</span><span class='line'>      captureDevice.torchMode = AVCaptureTorchModeOff;
-</span><span class='line'>      [captureDevice unlockForConfiguration];
-</span><span class='line'>  }
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>ViewController.xibファイルを編集</h4>
-
-<p>そしてViewController.xibを編集します。<br/>
-xibの編集はアプリに表示する画面を直接編集することに相当します。</p>
-
-<p>1: 右下リストからSwitchを選択し、ドラッグ&amp;ドロップでViewにスイッチを持ってきます。<br/>
-2: 定義したswとViewに載せたSwitchを結びつけるために、左側メニューにあるPlaceholdersのFile&rsquo;s Ownerを右クリック<br/>
-3: Outletsのswの右端◯からドラッグ&amp;ドロップでView上のスイッチまで持っていきます。<br/>
-4: 同様にswitchChangedも右端◯からドラッグ&amp;ドロップでView上のスイッチに持っていき、Value Changedを選択</p>
-
-<p><img src="http://grandbig.github.io/images/edit_xib.png" alt="スイッチの結びつけ" /></p>
-
-<p>以上で手動でのLEDのON/OFFができました。動作は実機で確認しましょう！(シミュレータはLEDないので…)</p>
-
-<h4>LEDのON/OFFを自動化</h4>
-
-<p>LEDのON/OFFを自動化するためにNSTimerを使いましょう！<br/>
-ViewController.hにNSTimerを宣言</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>@interface ViewController : UIViewController {
-</span><span class='line'>  ...
-</span><span class='line'>  IBOutlet NSTimer *timer;
-</span><span class='line'>  ...
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ViewController.mを編集</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// LEDの現在のON/OFF状態を判別するためにフラグを設定
-</span><span class='line'>static BOOL ledFlag = NO;
-</span><span class='line'>...
-</span><span class='line'>- (void)viewDidLoad {
-</span><span class='line'>  [super viewDidLoad];
-</span><span class='line'>  
-</span><span class='line'>  // timerを設定(1秒ごとに処理を実行)
-</span><span class='line'>  timer = [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(ledChange:)userInfo:nil repeats:YES];
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>// timerで設定した定期間隔ごとに処理される内容を定義
-</span><span class='line'>- (void)ledChange:(NSTimer *)theTimer {
-</span><span class='line'>  AVCaptureDevice *captureDevice = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
-</span><span class='line'>
-</span><span class='line'>  // LEDがOFFだった場合はONにする
-</span><span class='line'>  if(ledFlag == NO) {
-</span><span class='line'>      [captureDevice lockForConfiguration:NULL];
-</span><span class='line'>      captureDevice.torchMode = AVCaptureTorchModeOn;
-</span><span class='line'>      [captureDevice unlockForConfiguration];
-</span><span class='line'>      ledFlag = YES;
-</span><span class='line'>  // LEDがONだった場合はOFFにする
-</span><span class='line'>  } else {
-</span><span class='line'>      [captureDevice lockForConfiguration:NULL];
-</span><span class='line'>      captureDevice.torchMode = AVCaptureTorchModeOff;
-</span><span class='line'>      [captureDevice unlockForConfiguration];
-</span><span class='line'>      ledFlag = NO;
-</span><span class='line'>  }</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これでLEDを1秒ごとに点滅させることができるようになりました。</p>
-
-<p>さ〜て、いかがだったでしょうか？<br/>
-今や簡単に誰でもアプリが作れる時代です。ぜひ、皆さんも作ってみて下さい。<br/>
-余談ですが、iOS7から懐中電灯機能はアプリをインストールするまでもなく搭載されることとなったので、懐中電灯アプリはAppleに申請しても通らないと思います(汗)</p>
 ]]></content>
   </entry>
   
