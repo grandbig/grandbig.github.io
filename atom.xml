@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2013-12-26T01:33:26+09:00</updated>
+  <updated>2014-01-06T23:29:46+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,274 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[node-passbookではまったこと]]></title>
+    <link href="http://grandbig.github.io/blog/2014/01/06/node-passbook/"/>
+    <updated>2014-01-06T22:45:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/01/06/node-passbook</id>
+    <content type="html"><![CDATA[<h3>PassbookのPassを動的生成するためにnode-passbookを使ってみました</h3>
+
+<p>皆様、あけましておめでとうございます。2014年1回目のブログ更新です。<br/>
+今回は<strong>node-passbookではまったこと</strong>について紹介したいと思います。通常、はまらないことかもしれないのですが、筆者は2日半くらい悩みました。</p>
+
+<p>node-passbookは<a href="https://github.com/assaf/node-passbook">Github</a>上で公開されています。</p>
+
+<!--more-->
+
+
+<h4>node-passbookの設定</h4>
+
+<p>今回は、nodeのWebフレームワークであるExpressを使います。Expressの始め方については<a href="http://gihyo.jp/dev/serial/01/nodejs/0003">gihyo.jsさんのページ</a>を参考にしてください。Expressの準備が整っている前提で説明を始めたいと思います。</p>
+
+<p>まずはnode-passbookモジュールをインストールしましょう。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>npm install passbook</span></code></pre></td></tr></table></div></figure>
+
+
+<p>次に、app.jsを編集しましょう。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>var express = require('express');
+</span><span class='line'>var routes = require('./routes');
+</span><span class='line'>var user = require('./routes/user');
+</span><span class='line'>// passbook発行処理を書いたpass.jsをrequire
+</span><span class='line'>var pass = require('./routes/pass');
+</span><span class='line'>
+</span><span class='line'>&lt;省略&gt;
+</span><span class='line'>
+</span><span class='line'>app.get('/', routes.index);
+</span><span class='line'>app.get('/users', user.list);
+</span><span class='line'>// passbookのpassをダウンロードするときのget
+</span><span class='line'>app.get('/download', pass.download);
+</span><span class='line'>// passbookのpassを作成するときのget
+</span><span class='line'>app.get('/create', pass.create);
+</span><span class='line'>
+</span><span class='line'>&lt;省略&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>では、passbook発行処理を書いたpass.jsをroutes配下に作成します。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>var fs = require('fs');
+</span><span class='line'>var path = require('path');
+</span><span class='line'>var createTemplate = require("passbook");
+</span><span class='line'>
+</span><span class='line'>exports.create = function(req, res) {
+</span><span class='line'>  // Passbook作成
+</span><span class='line'>  var template = createTemplate('eventTicket', {
+</span><span class='line'>      'passTypeIdentifier': 'pass.****.****.****',
+</span><span class='line'>      'teamIdentifier': '***********',
+</span><span class='line'>      'organizationName': 'Passbookテスト'
+</span><span class='line'>  });
+</span><span class='line'>  template.keys('./public/keys', 'test12345');
+</span><span class='line'>  var passbook = template.createPass({
+</span><span class='line'>      serialNumber: 'abcdefc',
+</span><span class='line'>      description: 'Passbookテスト用のチケットです。',
+</span><span class='line'>      logoText: '参加チケット',
+</span><span class='line'>      foregroundColor: 'rgb(255, 255, 255)',
+</span><span class='line'>      backgroundColor: 'rgb(60, 65, 76)'
+</span><span class='line'>  });
+</span><span class='line'>  passbook.fields.webServiceURL = "https://example.com/passes";
+</span><span class='line'>  passbook.fields.authenticationToken = "vxwxd7J8AlNNFPS8k0a0FfUFtq0ewzFdc";
+</span><span class='line'>  passbook.fields.relevantDate = "2014-01-25T17:00+09:00";
+</span><span class='line'>  passbook.fields.barcode = {
+</span><span class='line'>      message: "http://google.com",
+</span><span class='line'>      format: "PKBarcodeFormatQR",
+</span><span class='line'>      messageEncoding: "iso-8859-1",
+</span><span class='line'>      altText: "ユーザID"
+</span><span class='line'>  };
+</span><span class='line'>  passbook.primaryFields.add([
+</span><span class='line'>      {
+</span><span class='line'>          "key" : "event",
+</span><span class='line'>          "label" : "イベント",
+</span><span class='line'>          "value" : "Passbookテスト"
+</span><span class='line'>      }
+</span><span class='line'>  ]);
+</span><span class='line'>  passbook.secondaryFields.add([
+</span><span class='line'>      {
+</span><span class='line'>          "key" : "loc",
+</span><span class='line'>          "label" : "場所",
+</span><span class='line'>          "value" : "東京近辺"
+</span><span class='line'>      }
+</span><span class='line'>  ]);
+</span><span class='line'>  passbook.backFields.add([
+</span><span class='line'>      {
+</span><span class='line'>          "key" : "message",
+</span><span class='line'>          "label" : "メッセージ",
+</span><span class='line'>          "value" : "Passbook盛り上げていきましょう！"
+</span><span class='line'>      }
+</span><span class='line'>  ]);
+</span><span class='line'>  passbook.loadImagesFrom("./public/images");
+</span><span class='line'>
+</span><span class='line'>  var pkpassFile = fs.createWriteStream("mypass.pkpass");
+</span><span class='line'>  passbook.on("error", function(error) {
+</span><span class='line'>      console.error(error);
+</span><span class='line'>      process.exit(1);
+</span><span class='line'>  });
+</span><span class='line'>  passbook.pipe(pkpassFile);
+</span><span class='line'>          
+</span><span class='line'>  res.end();
+</span><span class='line'>};
+</span><span class='line'>
+</span><span class='line'>exports.download = function(req, res){
+</span><span class='line'>
+</span><span class='line'>  var file = './mypass.pkpass',
+</span><span class='line'>      filestream = fs.createReadStream(file),
+</span><span class='line'>      filename = path.basename(file),
+</span><span class='line'>      mimetype = 'application/vnd.apple.pkpass';
+</span><span class='line'>  res.setHeader('Content-disposition', 'attachment; filename=' + filename);
+</span><span class='line'>  res.setHeader('Content-type', mimetype); 
+</span><span class='line'>  filestream.on('data', function(chunk) {
+</span><span class='line'>      res.write(chunk);
+</span><span class='line'>  });
+</span><span class='line'>  filestream.on('end', function() {
+</span><span class='line'>      res.end();
+</span><span class='line'>  });
+</span><span class='line'>};
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>さて、これでソースの準備は完了です。<br/>
+次の章では、筆者がはまった点について具体的に説明します。</p>
+
+<h4>証明書ではまりました</h4>
+
+<p>筆者は上記のソースを書き終わった時点で完了だと思ったのですが、iPhoneから落としてもうまくいきませんでした。<br/>
+うまくいかなかったときの現象は下記です。<br/>
+iOS6 ⇒ Pass自体は表示されるものの、追加ボタンを押しても追加されない<br/>
+iOS7 ⇒ Pass自体表示されない</p>
+
+<p>また、XcodeのOrganizerのコンソールでログを見たところ、<strong>Signature is missing</strong>と表示されてしまいました。<br/>
+悩んだ果てにnode-inspectorでデバッグして1つ1つ処理を確認したところ、<strong>node_modules/passbook/lib/pass.js</strong>の342〜350行目を見て気づきました。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> function signManifest(template, manifest, callback) {
+</span><span class='line'>   var identifier = template.passTypeIdentifier().replace(/^pass./, "");
+</span><span class='line'>   
+</span><span class='line'>   var args = [
+</span><span class='line'>      "smime",
+</span><span class='line'>      "-sign", "-binary",
+</span><span class='line'>      "-signer",    Path.resolve(template.keysPath, identifier + ".pem"),
+</span><span class='line'>      "-certfile",  Path.resolve(template.keysPath, "wwdr.pem"),
+</span><span class='line'>      "-passin",    "pass:" + template.password
+</span><span class='line'>  ];
+</span><span class='line'>
+</span><span class='line'>  &lt;省略&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>そう、pemファイルの名前が間違っていたのです。pemファイルの名前は<strong>passTypeIdentifier</strong>に設定する文字列から<strong>pass.</strong>を削除したものにしなくてはなりませんでした。</p>
+
+<p>やっぱりデバッグは大切ですね。</p>
+
+<p>参考ページ:<br/>
+<a href="http://blog.techfirm.co.jp/2012/10/23/node-js%E3%81%A7passbook%E3%82%B5%E3%83%BC%E3%83%90%E3%82%92%E3%81%A4%E3%81%8F%E3%81%A3%E3%81%A6%E3%81%BF%E3%82%8B1/">node.jsでPassbookサーバをつくってみる</a><br/>
+<a href="http://kataok.hatenablog.com/entry/2012/10/20/102125">Node.jsでPassbookを発行してみる</a></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Passbookを使ってみよう！(超基礎)]]></title>
@@ -2546,275 +2814,6 @@ initWithString, initWithFormatでコンストラクタを生成するように�
 次のサイトを参考にしました。(<a href="http://iphone-app-developer.seesaa.net/article/183323144.html">iPhoneアプリ開発備忘録</a>)</p>
 
 <p>基本中の基本かもしれませんが、一つ一つ理解しながら開発できたので、良い勉強になりました。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Backgroundで位置情報を取得しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2013/09/27/location-nstimer/"/>
-    <updated>2013-09-27T22:54:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2013/09/27/location-nstimer</id>
-    <content type="html"><![CDATA[<h3>アプリがBackground起動のときでも位置情報を取得しよう！</h3>
-
-<p>本日は位置情報を使ったアプリの開発について紹介します。<br/>
-皆さんはiPhoneを使うとき果たして位置情報サービスをONにされてますでしょうか？<br/>
-スマートフォンが多くの人に普及した近年では、その電池使用量の多さから『電池の使用を抑えるためには位置情報サービスをOFFにしましょう！』と言った声が現実にもネットにもあふれんばかりです。確かに位置情報サービスをONにしているとGPSを使うため、通常よりも電池を消費してしまいます。しかしながら、それ以上に非常に便利で役立つお得なアプリがどんどん世の中に出てきています。また、iOS7からiBeaconをサポートするため、その勢いは留まることを知らないでしょう。<br/>
-そう、今後は位置情報サービスをONにすることへの抵抗が下がっていく可能性があるのです。では早速、開発について話を進めていきましょう！</p>
-
-<!--more-->
-
-
-<h4>簡単に位置情報を習得してみよう！</h4>
-
-<p>まず、以前紹介した<a href="http://grandbig.github.io/blog/2013/09/13/lets-create-an-iphone-app/">Let&rsquo;s Create an iPhone App</a>のときと同様に下記状態までプロジェクト作成を進めて下さい。<br/>
-<img src="http://grandbig.github.io/images/locationpractice.png" alt="LocationPractice.xcodeprojを作成" /><br/>
-『Let&rsquo;s Create an iPhone App』のとき作成したようにViewControllerを追加し、今回は<strong>CoreLocation.framework</strong>というライブラリを追加しましょう。</p>
-
-<p>位置情報の取得をするためにはCoreLocation.frameworkの中で定義されている<strong>CLLocationManagerクラス</strong>を利用します。<br/>
-ViewController.mファイル内でCLLocationManagerクラスを使うためにViewController.hファイルで以下を定義しましょう。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ViewController.hファイルの内容
-</span><span class='line'>
-</span><span class='line'>#import &lt;UIKit/UIKit.h&gt;
-</span><span class='line'>// ①CoreLocationのimportを書く
-</span><span class='line'>#import &lt;CoreLocation/CoreLocation.h&gt;
-</span><span class='line'>
-</span><span class='line'>// ②DelegateにCLLocationManagerDelegateを設定
-</span><span class='line'>@interface ViewController : UIViewController &lt;CLLocationManagerDelegate&gt; {
-</span><span class='line'>  // ③メンバ変数を定義
-</span><span class='line'>  IBOutlet CLLocationManager *locationManager;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>①CoreLocation.frameworkをViewController.m内で利用するためにimportする<br/>
-②CLLocationManager関係の処理はCLLocationManagerクラスに任せてしまいたいのでDelegateを設定<br/>
-※深く考えこまずにframwork使うときはDelegateを設定するようにしましょう。<br/>
-③メンバ変数としてCLLocationManagerを定義します。</p>
-
-<p>次にViewController.mファイルを編集します。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ViewController.mファイルの内容
-</span><span class='line'>
-</span><span class='line'>...
-</span><span class='line'>- (void)viewDidLoad {
-</span><span class='line'>  [super viewDidLoad];
-</span><span class='line'>  // ①locationManager初期化
-</span><span class='line'>  locationManager = [[CLLocationManager alloc] init];
-</span><span class='line'>  // ②位置情報サービスのON/OFFで挙動を分岐
-</span><span class='line'>  if ([CLLocationManager locationServicesEnabled]) {
-</span><span class='line'>      // ③locationManagerの各プロパティを設定
-</span><span class='line'>      locationManager.delegate = self;
-</span><span class='line'>      locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters;
-</span><span class='line'>      locationManager.activityType = CLActivityTypeFitness;
-</span><span class='line'>      locationManager.pausesLocationUpdatesAutomatically = NO;
-</span><span class='line'>      locationManager.distanceFilter = 100.0;
-</span><span class='line'>      // ④位置情報の取得開始
-</span><span class='line'>      [locationManager startUpdatingLocation];
-</span><span class='line'>  } else {
-</span><span class='line'>      NSLog(@"Location services not available.");
-</span><span class='line'>  }
-</span><span class='line'>}
-</span><span class='line'>...
-</span><span class='line'>// ⑤位置情報更新時
-</span><span class='line'>- (void)locationManager:(CLLocationManager *)manager
-</span><span class='line'>    didUpdateToLocation:(CLLocation *)newLocation
-</span><span class='line'>             fromLocation:(CLLocation *)oldLocation {
-</span><span class='line'>  // ⑥ログを出力
-</span><span class='line'>  NSLog(@"didUpdateToLocation latitude=%f, longitude=%f, accuracy=%f, time=%@",
-</span><span class='line'>      [newLocation coordinate].latitude,
-</span><span class='line'>      [newLocation coordinate].longitude,
-</span><span class='line'>      newLocation.horizontalAccuracy,
-</span><span class='line'>      newLocation.timestamp);
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>①当然のごとく初期化<br/>
-②位置情報サービスの設定がON/OFFの場合で挙動を分けるために条件分岐を用意<br/>
-③locationManagerの各プロパティを設定しましょう。<br/>
-・desireAccuracy：位置情報の取得精度の設定です。6種類の中から選択します。<br/>
-　kCLLocationAccuracyBestForNavigation：iOS4以降から使用可能です。最高精度。<br/>
-　kCLLocationAccuracyBest：iOS3までの最高精度設定でした。<br/>
-　kCLLocationAccuracyNearestTenMeters：誤差10mの設定<br/>
-　kCLLocationAccuracyHundredMeters：誤差100mの設定<br/>
-　kCLLocationAccuracyKilometer：誤差1kmの設定<br/>
-　kCLLocationAccuracyThreeKilometers：誤差3kmの設定<br/>
-・activityType：ユーザの移動タイプに合わせて位置情報の更新頻度を設定可能です。(iOS6以降から使用可能)<br/>
-　CLActivityTypeFitness：ユーザが歩行移動のときに最適<br/>
-　CLActivityTypeAutomotiveNavigation：ユーザが車で移動するときに最適<br/>
-　CLActivityTypeOtherNavigation：ユーザがボート/電車/飛行機で移動するときに最適<br/>
-　CLActivityTypeOther：その他<br/>
-・pausesLocationUpdatesAutomatically：位置情報が自動的にOFFになる設定(iOS6以降から使用可能)<br/>
-　アプリがBackground起動中に位置情報の更新が15分以上ない場合に自動でGPS起動がOFFになります。NOを設定することで回避できます。<br/>
-・distanceFilter：ここで設定した距離以上移動した場合に位置情報を取得する設定<br/>
-　単位は[m]です。<br/>
-④位置情報の取得を開始します。<br/>
-　停止する場合はstopUpdatingLocationになります。<br/>
-⑤位置情報が更新されたときに実行される関数です。<br/>
-⑥位置情報が正しく取得されていることを確認するためにログを出力しましょう。<br/>
-　latitude, longitude: 緯度, 経度<br/>
-　verticalAccuracy: 海抜高度の精度<br/>
-　horizontalAccuracy：水平精度(マップを見たときの縦横の精度)  <br/>
-　timestamp：位置情報の取得時刻<br/>
-　speed：速度<br/>
-　cource：方角</p>
-
-<p>たったこれだけのことでiPhoneの位置情報を取得することができるようになります。</p>
-
-<h4>NSTimerで定期時間ごとに位置情報を取得してみよう！</h4>
-
-<p>先ほどdidUpdateToLocationを紹介しました。これは位置情報が更新された際に実行されます。逆に言えば、いつ位置情報を使った処理を実行できるかがわからないということになります。もし、5分毎に位置情報を使った処理を実行したいということがあればNSTimerを使う必要があります。<br/>
-それではNSTimerを使って先ほどのソースを書き直してみます。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ViewController.hファイルの内容
-</span><span class='line'>
-</span><span class='line'>#import &lt;UIKit/UIKit.h&gt;
-</span><span class='line'>#import &lt;CoreLocation/CoreLocation.h&gt;
-</span><span class='line'>
-</span><span class='line'>@interface ViewController : UIViewController &lt;CLLocationManagerDelegate&gt; {
-</span><span class='line'>  IBOutlet CLLocationManager *locationManager;
-</span><span class='line'>  // NSTimerを定義
-</span><span class='line'>  IBOutlet NSTimer *timer;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ViewController.mファイルの内容
-</span><span class='line'>...
-</span><span class='line'>- (void)viewDidLoad {
-</span><span class='line'>  [super viewDidLoad];
-</span><span class='line'>  locationManager = [[CLLocationManager alloc] init];
-</span><span class='line'>  if ([CLLocationManager locationServicesEnabled]) {
-</span><span class='line'>      locationManager.delegate = self;
-</span><span class='line'>      locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters;
-</span><span class='line'>      locationManager.activityType = CLActivityTypeFitness;
-</span><span class='line'>      locationManager.pausesLocationUpdatesAutomatically = NO;
-</span><span class='line'>      locationManager.distanceFilter = 100.0;
-</span><span class='line'>      [locationManager startUpdatingLocation];
-</span><span class='line'>      // 5分ごとに繰り返しgetGpsDataを実行するようにタイマーを設定
-</span><span class='line'>      timer = [NSTimer scheduledTimerWithTimeInterval:300 target:self selector:@selector(getGpsData:)userInfo:nil repeats:YES];
-</span><span class='line'>  } else {
-</span><span class='line'>      NSLog(@"Location services not available.");
-</span><span class='line'>  }
-</span><span class='line'>}
-</span><span class='line'>...
-</span><span class='line'>- (void)getGpsData:(NSTimer *)theTimer {
-</span><span class='line'>  CLLocation *location = [locationManager location];
-</span><span class='line'>  CLLocationCoordinate2D coordinate = [location coordinate];// 座標を取得
-</span><span class='line'>  NSString *lat = [NSString alloc] initWithFormat:@"%f", coordinate.latitude];  // 経度を取得
-</span><span class='line'>  NSString *lng = [NSString alloc] initWithFormat:@"%f", coordinate.longitude]; // 緯度を取得
-</span><span class='line'>  NSLog(@"+++++ [デリゲートによらない場合]緯度,经度: %@, %@", lat, lng);
-</span><span class='line'>  [lat release];
-</span><span class='line'>  [lng release];
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Backgroundでも位置情報サービスを使えるように設定しよう！</h4>
-
-<p>せっかくNSTimerを使って、定期間隔ごとに位置情報を利用した処理を実行することができるようになったので、アプリをBackground起動したときにも処理が実行されるように設定していきましょう。<br/>
-①プロジェクトのCapabilityのBackgrounds Modeを設定(Xcode5から設定が必要)<br/>
-プロジェクト > ターゲット > Capability > Background Modeの<strong>Location updates</strong>にチェックを入れる<br/>
-<img src="http://grandbig.github.io/images/locationpractice2.png" alt="Location updatesにチェック" /><br/>
-②plistの編集(どのXcodeのバージョンでも設定が必要)<br/>
-Add Rowで<strong>Required Background Modes</strong>を追加して下さい。次にその値として<strong>App registers for location updates</strong>を選択して下さい。<br/>
-<img src="http://grandbig.github.io/images/locationpractice3.png" alt="Required Background Modesを追加" /></p>
-
-<p>これで端末をPCに繋いでプロジェクトを実行している状態で、ログの出力を確認して下さい。アプリがForeground起動のときでもBackground起動のときでもログが出力されることを確認できるはずです。</p>
-
-<p>ここで重要なことを追記致します。NSTimerを用いてBackgroundで位置情報を定期的に取得できるのは<strong>標準位置情報サービス(startUpdatingLocation)</strong>のときのみです。<strong>大幅変更位置情報サービス(startMonitoringSignificantLocationChanges)</strong>ではできません。これは忘れがちなので注意が必要です。</p>
-
-<p>因みに、Foreground, Backgroundと聞き慣れないかもしれないので説明しておくと<br/>
-・Foreground起動：端末にアプリの起動画面が表示されている状態<br/>
-・Background起動：端末にアプリの画面は表示されていないが、ホームボタン２回押しでアプリのアイコン(iOS6以前)またはアプリの画面(iOS7以降)が確認できる状態<br/>
-ということです。<br/>
-<img src="http://grandbig.github.io/images/ios_bg_app.png" alt="アプリのBackground起動" /></p>
-
-<h4>最後に</h4>
-
-<p>以上、少しは参考になったでしょうか。
-そのうち本日、紹介した機能を使って実際にアプリを開発してみようと思います。では今日はこの辺で。</p>
 ]]></content>
   </entry>
   
