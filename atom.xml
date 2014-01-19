@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-01-06T23:29:46+09:00</updated>
+  <updated>2014-01-19T23:06:41+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,112 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Passbook webServiceURLについて]]></title>
+    <link href="http://grandbig.github.io/blog/2014/01/19/passbook-detail/"/>
+    <updated>2014-01-19T21:30:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/01/19/passbook-detail</id>
+    <content type="html"><![CDATA[<h3>Passbook webServiceURLの設定で躓いたところ</h3>
+
+<p>さて、最近はPassbookばかり触っているので、3回連続でPassbookについてです。筆者が躓いたところをピックアップして記載していきます。<br/>
+具体的には<br/>
+・webServiceURLに指定するURL<br/>
+・Passbookを追加/更新/削除したときに自動で投げてくるパラメータ<br/>
+についてです。</p>
+
+<!--more-->
+
+
+<h4>webServiceURLについて</h4>
+
+<p>PassbookではwebServiceURLを設定するところで躓きました。使いきり&amp;更新や削除などを感知しないパスであれば、何も気にせず適当なURLを設定して構いません。しかし、パスの追加/更新/削除を感知して、ユーザ固有のアクションを起こさせたいという狙いがある場合は、きちんと考えなくてはなりません。</p>
+
+<p>結論から言うと、<strong>http</strong>ではなく<strong>https</strong>から始まるURLを指定しなくてはなりません。また、自己証明書で試した結果、通信ができませんでした&hellip;。これは筆者の設定が悪いのかどうか不明なところなんですが、きちんとした証明書で<strong>https</strong>通信ができるサーバで試した結果、通信できました。ここについてはネット上ではっきりと書かれているサイトがなかったため真実はわからないのですが、少なくとも筆者は自己証明書では失敗したということをお伝えします。</p>
+
+<p>因みに筆者は今回、Windows AzureでWebサイトを作成して活用しました。Webサイトではhttpでもhttpsでもアクセスできるように設定されているとのことで非常に使い勝手が良かったです。</p>
+
+<p>また、Apple iOS Developerであれば、開発者だけができる設定でwebServiceURLにhttpのURLを設定しても通信することができます。次の章で説明する内容を実際に見たい場合は余分なお金のかからないhttpサーバで試してみると良いでしょう。設定は下記のようにできます。<br/>
+<img src="http://grandbig.github.io/images/httpAllow.png" alt="設定からhttpを許可する" /></p>
+
+<h4>Passbookを追加/更新/削除したときに自動で投げてくるパラメータ</h4>
+
+<p>続いて、Passbookをユーザが受け取ってからwebServiceURLに指定したサーバに投げてくるパラメータについて説明します。パラメータが送られるパターンは下記です。<br/>
+・Passbookを受け取って<strong>追加</strong>ボタンを押したとき<br/>
+・Passbookを手動/自動で<strong>更新</strong>したとき<br/>
+・Passbookを<strong>削除</strong>したとき</p>
+
+<p>それぞれについて具体的に説明します。</p>
+
+<h5>Passbookを受け取って追加ボタンを押したとき</h5>
+
+<p>追加ボタンを押した瞬間に自動的にPOSTで通信されます。<br/>
+その際、投げられるURLは</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/webServiceURLで指定したURL/v1/devices/デバイスライブラリID/registrations/パスタイプID/シリアルナンバー</span></code></pre></td></tr></table></div></figure>
+
+
+<p>となります。
+このURLもしくはreq.paramsから<strong>デバイスライブラリID</strong>, <strong>パスタイプID</strong>, <strong>シリアルナンバー</strong>を取得することができます。また、req.headersに<strong>authorization</strong>の値が入っています。</p>
+
+<p>デバイスライブラリIDはデバイスによって異なり、さらに新規パス取得の際には毎回異なる値です。パスタイプIDは開発者が発行するPassbookの証明書の.passを外した部分のことです。シリアルナンバーはパス毎に発行すべきものです。例えば、忘年会のチケットを配布する場合、そのチケットでは同じシリアルナンバーを使います。(ユーザごとにユニークな値をふるべきではありません。)authorizationはユーザ毎にユニークな値を持たせた方が使い勝手が良いと思われます。また、MD5などで暗号化した方がセキュリティ的には良いでしょう。</p>
+
+<h5>Passbookを手動/自動で更新したとき</h5>
+
+<p>Passbookアプリでパスの裏面を上から下にスクロールして手動で更新したときなどではGETで通信されます。<br/>
+その際に投げられるURLは</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/webServiceURLで指定したURL/v1/passes/パスタイプID/シリアルナンバー</span></code></pre></td></tr></table></div></figure>
+
+
+<p>となります。
+更新の場合は<strong>パスタイプID</strong>, <strong>シリアルナンバー</strong>, <strong>authorization</strong>を取得することができます。<br/>
+また、更新処理のときにはログ用にPOSTで</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/webServiceURL/v1/log</span></code></pre></td></tr></table></div></figure>
+
+
+<p>が投げられます。<br/>
+これを用いてログをDBに格納するのも良いでしょう。</p>
+
+<h5>Passbookを削除したとき</h5>
+
+<p>最後はパスを削除した場合です。このときはDELETEで通信されます。<br/>
+その際、投げられるURLは</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/webServiceURLで指定したURL/v1/devices/デバイスライブラリID/registrations/パスタイプID/シリアルナンバー</span></code></pre></td></tr></table></div></figure>
+
+
+<p>となります。</p>
+
+<p>因みに筆者の場合は、Node.jsでExpressモジュールを使用しているので、下記のように書いています。<br/>
+webServiceURLで末尾に/sendParamというパスをつけた場合です。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// Passbookを受け取って追加ボタンを押したとき
+</span><span class='line'>app.post('/sendParam/v1/devices/:deviceLibraryID/registrations/:passTypeID/:serialNumber', pass.createData);
+</span><span class='line'>// Passbookを手動/自動で更新したとき
+</span><span class='line'>app.get('/sendParam/v1/passes/:passTypeID/:serialNumber', pass.updateData);
+</span><span class='line'>// ログ用
+</span><span class='line'>app.post('/sendParam/v1/log', pass.logData);
+</span><span class='line'>// Passbookを削除したとき
+</span><span class='line'>app.delete('/sendParam/v1/devices/:deviceLibraryID/registrations/:passTypeID/:serialNumber', pass.deleteData);</span></code></pre></td></tr></table></div></figure>
+
+
+<p>大体Passbookのことはわかってきたのですが、まだまだ躓くところも多く勉強です。本日はここまで。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[node-passbookではまったこと]]></title>
@@ -2430,390 +2536,6 @@ cache.manifestの更新を読み込んでいます。</p>
 DBは<strong>AppData/Documents/直下</strong>にあります。これを先ほど紹介したLitaで開けば実機の指定アプリが作成したDBを参照することができます。</p>
 
 <p>筆者は上記の方法でDB内データを確かめながら進めていますが、とても便利です。むしろ今まで知らなかったので何となくDBうまくいってそうだなと思いながらやっていましたが、きちんと確認すべきですね&hellip;。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Mapに好きな画像を配置しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2013/09/28/put-annotation/"/>
-    <updated>2013-09-28T18:27:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2013/09/28/put-annotation</id>
-    <content type="html"><![CDATA[<h3>Mapにピンではなく、自分の好きな画像を配置したい！！</h3>
-
-<p>さて、筆者は思った以上にハマってしまいました。マップを表示して、よく見る赤ピンを配置するまでは余裕だったのですが、如何せんその先が上手くいかず時間がかかってしまいました。ネット上でいろいろとヒントをもらいましたが、なかなかわかりづらかったのでブログにメモしておきます。</p>
-
-<!--more-->
-
-
-<h4>Mapを表示しよう</h4>
-
-<p>iOS6以降から実装されたApple独自のMapを嫌う人もいるかもしれませんが、実装は最も簡単です。(iOS5以前であればGoogleのMapが表示されます。)<br/>
-まず、AnnotationPracticeという名前でプロジェクトを作成します。<br/>
-例によって<a href="http://grandbig.github.io/blog/2013/09/13/lets-create-an-iphone-app/">Let&rsquo;s Create an iPhone App</a>のときと同様にViewControllerの追加まで進めます。そして、今回はMapを表示するので、<strong>MapKit.framework</strong>をライブラリに追加します。<br/>
-<img src="http://grandbig.github.io/images/annotationpractice1.png" alt="AnnotationPractice.xcodeprojを作成" /></p>
-
-<p>AppDelegate.mファイルでViewController.xibに設定している画面を表示できるよう設定することを忘れずに。(リマインドとして下記に書いておきます。)</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// AppDelegate.mファイルに下記を書くこと
-</span><span class='line'>#import "AppDelegate.h"
-</span><span class='line'>#import "ViewController.h"
-</span><span class='line'>
-</span><span class='line'>@implementation AppDelegate
-</span><span class='line'>
-</span><span class='line'>- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
-</span><span class='line'>{
-</span><span class='line'>  self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen] bounds];
-</span><span class='line'>  self.window.backgroundColor = [UIColor whiteColor];
-</span><span class='line'>  [self.window makeKeyAndVisible];
-</span><span class='line'>  UIViewController *viewCtl = [[ViewController alloc] init];
-</span><span class='line'>  self.window.rootViewController = viewCtl;
-</span><span class='line'>                                  
-</span><span class='line'>  return YES;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>さて、次にViewController.hファイルを下記のようにします。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ViewController.hファイルの内容
-</span><span class='line'>#import &lt;UIKit/UIKit.h&gt;
-</span><span class='line'>#import &lt;MapKit/MapKit.h&gt;
-</span><span class='line'>
-</span><span class='line'>@interface ViewController : UIViewController &lt;MKMapViewDelegate&gt; {
-</span><span class='line'>      IBOutlet MKMapView *mapView;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>@end</span></code></pre></td></tr></table></div></figure>
-
-
-<p>また、ViewController.xibでMapを貼り付けて、そのMapとViewController.hで定義したmapViewを結びつけます。<br/>
-<img src="http://grandbig.github.io/images/annotationpractice2.png" alt="Map ViewをViewController.xibに貼り付け" /></p>
-
-<p>さあ、これで端末を繋いで実行すればマップが下のように表示されます。
-<img src="http://grandbig.github.io/images/annotationpractice3.png" alt="Mapが表示されます" /></p>
-
-<h4>赤いピンを配置しよう</h4>
-
-<p>画像を配置したいのですが、ここはぐっと我慢してまずはデフォルトの赤ピンを配置してみることにします。</p>
-
-<p>新たにCustomAnnotationクラスを作成します。<br/>
-＜手順＞<br/>
-①プロジェクトを右クリックして<strong>New File&hellip;</strong><br/>
-②Subclass ofで<strong>NSObject</strong>を選択<br/>
-③ClassをCustomAnnotationとする(クラス名なので好きな名前でOK)</p>
-
-<p>追加できたら、早速CustomAnnotation.hとCustomAnnotation.mの両ファイルを編集しましょう。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// CustomAnnotation.hファイル
-</span><span class='line'>#import &lt;Foundation/Foundation.h&gt;
-</span><span class='line'>#import &lt;MapKit/MapKit.h&gt;
-</span><span class='line'>
-</span><span class='line'>@interface CustomAnnotation : NSObject &lt;MKAnnotation&gt; {
-</span><span class='line'>  CLLocationCoordinate2D coordinate;
-</span><span class='line'>  IBOutlet NSString *annotationTitle;
-</span><span class='line'>  IBOutlet NSString *annotationSubtitle;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>@property (nonatomic, readonly) CLLocationCoordinate2D coordinate;
-</span><span class='line'>- (id)initWithLocationCoordinate:(CLLocationCoordinate2D) _coordinate
-</span><span class='line'>                           title:(NSString *)_annotationTitle subtitle:(NSString *)_annotationannSubtitle;
-</span><span class='line'>- (NSString *)title;
-</span><span class='line'>- (NSString *)subtitle;
-</span><span class='line'>
-</span><span class='line'>@end</span></code></pre></td></tr></table></div></figure>
-
-
-<p>CLLocationCoordinate2Dの型ではIBOutletを指定できないので、少々面倒ですが、CustomAnnotation.hに@propertyを書き、CustomAnnotation.mファイルに@synthesizeを書きます。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// CustomAnnotation.mファイル
-</span><span class='line'>#import "CustomAnnotation.h"
-</span><span class='line'>
-</span><span class='line'>@implementation CustomAnnotation
-</span><span class='line'>@synthesize coordinate;
-</span><span class='line'>
-</span><span class='line'>- (NSString *)title {
-</span><span class='line'>      return annotationTitle;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>- (NSString *)subtitle {
-</span><span class='line'>      return annotationSubtitle;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>- (id)initWithLocationCoordinate:(CLLocationCoordinate2D) _coordinate
-</span><span class='line'>                           title:(NSString *)_annotationTitle subtitle:(NSString *)_annotationSubtitle {
-</span><span class='line'>  coordinate = _coordinate;
-</span><span class='line'>  self-&gt;annotationTitle = _annotationTitle;
-</span><span class='line'>  self-&gt;annotationSubtitle = _annotationSubtitle;
-</span><span class='line'>  return self;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>@end</span></code></pre></td></tr></table></div></figure>
-
-
-<p>initWithLocationCoordinate関数を定義して初期化時に位置(緯度・経度), 吹き出しのタイトル, 吹き出しのサブタイトルを設定したannotationを返すようにします。</p>
-
-<p>そしてViewController.mファイルを下記のように編集して、赤いピンを配置します。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>#import "ViewController.h"
-</span><span class='line'>// ①CustomAnnotation.hファイルをimport
-</span><span class='line'>#import "CustomAnnotation.h"
-</span><span class='line'>
-</span><span class='line'>@interface ViewController ()
-</span><span class='line'>
-</span><span class='line'>@end
-</span><span class='line'>
-</span><span class='line'>@implementation ViewController
-</span><span class='line'>
-</span><span class='line'>- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
-</span><span class='line'>{
-</span><span class='line'>  self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
-</span><span class='line'>  if (self) {
-</span><span class='line'>      // Custom initialization
-</span><span class='line'>  }
-</span><span class='line'>  return self;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>- (void)viewDidLoad
-</span><span class='line'>{
-</span><span class='line'>  [super viewDidLoad];
-</span><span class='line'>
-</span><span class='line'>  // ②CustomAnnotationクラスの初期化(インスタンス化)
-</span><span class='line'>  CustomAnnotation *ann1 = [[CustomAnnotation alloc] initWithLocationCoordinate:CLLocationCoordinate2DMake(35.685623, 139.763153) title:@"TEST" subtitle:@"test"];
-</span><span class='line'>  // ③ついでにユーザの現在地を表示するように設定
-</span><span class='line'>  [mapView setShowsUserLocation:YES];
-</span><span class='line'>  // ④annotationをマップに追加
-</span><span class='line'>  [mapView addAnnotation:ann1];
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>- (void)didReceiveMemoryWarning
-</span><span class='line'>{
-</span><span class='line'>  [super didReceiveMemoryWarning];
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>@end</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これでプロジェクトを実行してみましょう。以下のようになるはず。<br/>
-<img src="http://grandbig.github.io/images/annotationpractice4.png" alt="Mapに赤いピンを配置" /></p>
-
-<h4>Mapに好きな画像を配置しよう</h4>
-
-<p>よし、これでやっと画像配置の段階に移れそうです。<br/>
-赤いピンを好きな画像に置き換えるためにはMKAnnotationViewクラスを使います。まずはViewController.mファイルのviewDidLoad関数内に1行追加します。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)viewDidLoad
-</span><span class='line'>{
-</span><span class='line'>  [super viewDidLoad];
-</span><span class='line'>
-</span><span class='line'>  CustomAnnotation *ann1 = [[CustomAnnotation alloc] initWithLocationCoordinate:CLLocationCoordinate2DMake(35.685623, 139.763153) title:@"大手町駅" subtitle:@"千代田線"];
-</span><span class='line'>  // 下記１行を追加
-</span><span class='line'>  [mapView setDelegate:self];
-</span><span class='line'>  [mapView setShowsUserLocation:YES];
-</span><span class='line'>  [mapView addAnnotation:ann1];
-</span><span class='line'>}
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これを追加することでaddAnnotationを実行した後にviewForAnnotation関数内の処理を実行するようになります。viewForAnnotation関数で実行したい処理を書きます。(もちろんViewController.mファイルに記述します。)</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ViewController.mファイル内にviewForAnnotation関数を記述
-</span><span class='line'>-(MKAnnotationView*)mapView:(MKMapView*)_mapView viewForAnnotation:(id &lt;MKAnnotation&gt;)annotation {
-</span><span class='line'>  // ①ユーザの現在地はデフォルトの青丸マークを使いたいのでreturn: nil
-</span><span class='line'>  if (annotation == mapView.userLocation) {
-</span><span class='line'>      return nil;
-</span><span class='line'>  } else {
-</span><span class='line'>      MKAnnotationView *annotationView;
-</span><span class='line'>      // ②再利用可能なannotationがあるかどうかを判断するための識別子を定義
-</span><span class='line'>      NSString* identifier = @"Pin";
-</span><span class='line'>      // ③dequeueReusableAnnotationViewWithIdentifierで"Pin"という識別子の使いまわせるannotationがあるかチェック
-</span><span class='line'>      annotationView = (MKAnnotationView*)[mapView dequeueReusableAnnotationViewWithIdentifier:identifier];
-</span><span class='line'>      // ④使い回しができるannotationがない場合、annotationの初期化
-</span><span class='line'>      if(annotationView == nil) {
-</span><span class='line'>          annotationView = [[MKAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:identifier];
-</span><span class='line'>      }
-</span><span class='line'>      // ⑤好きな画像をannotationとして設定
-</span><span class='line'>      annotationView.image = [UIImage imageNamed:@"foot_30.png"];
-</span><span class='line'>      annotationView.annotation = annotation;
-</span><span class='line'>      return annotationView;
-</span><span class='line'>  }
-</span><span class='line'>}
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これでプロジェクトを実行すると、めでたく自分で設定した画像が表示されます。<br/>
-<img src="http://grandbig.github.io/images/annotationpractice5.png" alt="足あと画像がMapに表示" /></p>
-
-<h4>吹き出しをつける</h4>
-
-<p>画像をタップしたときに吹き出しを出すようにしましょう。<br/>
-viewForAnnotation関数内で設定を追加します。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>annotationView.image = [UIImage imageNamed:@"foot_30.png"];
-</span><span class='line'>// ここに追加
-</span><span class='line'>annotationView.canShowCallout = YES;
-</span><span class='line'>annotationView.annotation = annotation;</span></code></pre></td></tr></table></div></figure>
-
-
-<p>今回の例ではtitleにTEST, subtitleにtestとしましたが、例えば何らかの取得した値を表示したいということもあるでしょう。その場合、数値, 日付などをNSString型に変換した上で設定する必要があります。ここで結構ハマりました(汗)<br/>
-何にハマったかというとNSStringの初期化です。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// 失敗例(メモリリークが発生する例)
-</span><span class='line'>NSString *str1 = [NSString stringWithString:@"test"];
-</span><span class='line'>NSString *str2 = [NSString stringWithFormat:@"test:%f",123];
-</span><span class='line'>
-</span><span class='line'>// 成功例
-</span><span class='line'>NSString *str1 = [NSString initWithString:@"test"];
-</span><span class='line'>NSString *str2 = [NSString initWithFormat:@"test:%f",123];</span></code></pre></td></tr></table></div></figure>
-
-
-<p>stringWithString, stringWithFormatを使用した場合、簡易コンストラクタで生成され、releaseタイミングがNSStringに委ねられるとのことです。なので、アプリ起動時に画像をタップするときにはメモリが解放されてしまっているためにメモリリークエラーを引き起こすものと思われます。<br/>
-initWithString, initWithFormatでコンストラクタを生成するようにした方が良さそうです。<br/>
-次のサイトを参考にしました。(<a href="http://iphone-app-developer.seesaa.net/article/183323144.html">iPhoneアプリ開発備忘録</a>)</p>
-
-<p>基本中の基本かもしれませんが、一つ一つ理解しながら開発できたので、良い勉強になりました。</p>
 ]]></content>
   </entry>
   
