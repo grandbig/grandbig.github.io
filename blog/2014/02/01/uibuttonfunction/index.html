@@ -5,12 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Google Maps SDK for iOSをiOS6対応させようとしてハマったこと - Takahiro Octopress Blog</title>
+  <title>UIButtonのaddTargetについて - Takahiro Octopress Blog</title>
   <meta name="author" content="Takahiro">
 
   
-  <meta name="description" content="iOS6からGoogle Maps SDKが使いたい！！ さて、最近取り組んでいるGoogle Maps SDKについて書きます。前回ご紹介させて頂いたときはiOS7からの対応として書かせて頂きました。
-今日はiOS6から対応するアプリを開発する上でハマったことについて説明します。 &hellip;">
+  <meta name="description" content="UIButtonをタップしたときの処理を書くときの注意点 今日は簡単なメモを書きます。ネイティブアプリを開発するときに、レイアウトをこりたいと思うことがあります。そんなときにひっかかってしまったことを書きます。(まさか今更こんなことにひっかかるとは&hellip;と思いました笑) &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -21,7 +20,7 @@
   <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
 
   
-  <link rel="canonical" href="http://grandbig.github.io/blog/2014/01/27/googlemapssdk2">
+  <link rel="canonical" href="http://grandbig.github.io/blog/2014/02/01/uibuttonfunction">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
@@ -83,7 +82,7 @@
   
   <header>
     
-      <h1 class="entry-title">Google Maps SDK for iOSをiOS6対応させようとしてハマったこと</h1>
+      <h1 class="entry-title">UIButtonのaddTargetについて</h1>
     
     
       <p class="meta">
@@ -99,50 +98,52 @@
   
 
 
-<time datetime="2014-01-27T23:50:00+09:00" pubdate data-updated="true">Jan 27<span>th</span>, 2014</time>
+<time datetime="2014-02-01T22:04:00+09:00" pubdate data-updated="true">Feb 1<span>st</span>, 2014</time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><h3>iOS6からGoogle Maps SDKが使いたい！！</h3>
+<div class="entry-content"><h3>UIButtonをタップしたときの処理を書くときの注意点</h3>
 
-<p>さて、最近取り組んでいるGoogle Maps SDKについて書きます。前回ご紹介させて頂いたときはiOS7からの対応として書かせて頂きました。<br/>
-今日はiOS6から対応するアプリを開発する上でハマったことについて説明します。</p>
+<p>今日は簡単なメモを書きます。ネイティブアプリを開発するときに、レイアウトをこりたいと思うことがあります。そんなときにひっかかってしまったことを書きます。(まさか今更こんなことにひっかかるとは&hellip;と思いました笑)</p>
 
-<p>Xcode5でiOS6から対応に変更するとき、<strong>Deployment Target</strong>を6.0に変更すると思います。そのままClearn ⇒ Buildをしてみると下図のようなおびただしい数のエラーが&hellip;<br/>
-<img src="/images/googlemapssdk_howtouse1.png" alt="iOS6でビルドするとエラーがたくさん出る" /></p>
+<p>UIButtonは下記のように作成します。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>UIButton *btn = [UIButton buttonWithType: UIButtonTypeRoudedRect];
+</span><span class='line'>btn.frame = CGRectMake(0, 0, 100, 30);
+</span><span class='line'>[btn setTitle:@"ボタン" forState:UIControlStateNormal];
+</span><span class='line'>[btn addTarget:self action:@selector(test:) forControlEvents:UIControlEventTouchDown];</span></code></pre></td></tr></table></div></figure>
+
 
 <!--more-->
 
 
-<p>なぜ、Deployment Targetを変えただけでこんなにもエラーが？と思ったので、エラー内容を見てみると&hellip;<br/>
-<strong>Undefined symbols for architecture armv7</strong>と書いてあります。<br/>
-これだけで調べてもよくわかりませんでした。(原因がわかってからよくよく見てみると様々なサイトでヒントを教えてくれていたとわかるのですが&hellip;)</p>
+<p>で、このボタンをUILabelに配置するために</p>
 
-<p>もう少し、詳しく見てみると<strong>Google Maps</strong>がひっかかっていることがわかりました。で、再度検索し続けると<br/>
-<strong>ライブラリが足りない</strong><br/>
-という可能性にたどり着きました。<br/>
-さ、<a href="https://developers.google.com/maps/documentation/ios/start?hl=ja">Google Maps SDK 公式ページ</a>を見てみましょう。<br/>
-自分で作成したXcodeプロジェクトに追加してあるライブラリと公式ページに書いてある追加すべきライブラリを比較すると下記の違いに気づきました。(作成したXcodeプロジェクトにはデフォルトで追加されているライブラリも含まれています。)<br/>
-<img src="/images/googlemapssdk_howtouse2.png" alt="ライブラリが違う" /></p>
-
-<p>結果、ライブラリが異なるという単純な理由だったわけですが、気づくのに時間がかかりました。<br/>
-iOS7では動いてしまうという部分も混乱を招く原因だったと思います。</p>
-
-<p>ま、英語を嫌がらずに公式ページを読んだ方が時間はかかりませんってことですね&hellip;。<br/>
-今日はここまで。</p>
-
-<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 300, 50)];
+</span><span class='line'>[label addSubview: btn];</span></code></pre></td></tr></table></div></figure>
 
 
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+<p>と書いたところ、addTargetで設定したタップイベントが実行されませんでした。<br/>
+これを</p>
 
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> UIView *uv = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 50)];
+</span><span class='line'>[uv addSubview: btn];</span></code></pre></td></tr></table></div></figure>
 
+
+<p>と<strong>UIView</strong>に変えたところ、うまくいきました。</p>
+
+<p>ま、UILabelをあえて使う必要もないので、UIViewで良いでしょう。</p>
 </div>
 
 
@@ -165,7 +166,7 @@ iOS7では動いてしまうという部分も混乱を招く原因だったと�
   
 
 
-<time datetime="2014-01-27T23:50:00+09:00" pubdate data-updated="true">Jan 27<span>th</span>, 2014</time>
+<time datetime="2014-02-01T22:04:00+09:00" pubdate data-updated="true">Feb 1<span>st</span>, 2014</time>
       
 
 
@@ -173,7 +174,7 @@ iOS7では動いてしまうという部分も混乱を招く原因だったと�
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2014/01/27/googlemapssdk2/" data-via="" data-counturl="http://grandbig.github.io/blog/2014/01/27/googlemapssdk2/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2014/02/01/uibuttonfunction/" data-via="" data-counturl="http://grandbig.github.io/blog/2014/02/01/uibuttonfunction/" >Tweet</a>
   
   
   
@@ -182,10 +183,8 @@ iOS7では動いてしまうという部分も混乱を招く原因だったと�
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2014/01/26/googlemapsdk/" title="Previous Post: iOSでMapにGIFアニメーションの画像を表示したい">&laquo; iOSでMapにGIFアニメーションの画像を表示したい</a>
+        <a class="basic-alignment left" href="/blog/2014/01/27/googlemapssdk2/" title="Previous Post: Google Maps SDK for iOSをiOS6対応させようとしてハマったこと">&laquo; Google Maps SDK for iOSをiOS6対応させようとしてハマったこと</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2014/02/01/uibuttonfunction/" title="Next Post: UIButtonのaddTargetについて">UIButtonのaddTargetについて &raquo;</a>
       
     </p>
   </footer>
