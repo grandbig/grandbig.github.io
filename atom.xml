@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-02-04T23:58:19+09:00</updated>
+  <updated>2014-02-09T19:42:33+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,121 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Xcode5でAuto Layoutを使おう]]></title>
+    <link href="http://grandbig.github.io/blog/2014/02/09/xcode5-autolayout/"/>
+    <updated>2014-02-09T17:25:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/02/09/xcode5-autolayout</id>
+    <content type="html"><![CDATA[<h3>Auto Layoutで『iOS6・iOS7』と『3.5-inch・4-inch』対応</h3>
+
+<p>さて、これまで<strong>iOS6/7 deltas</strong>を利用した方法や<strong>全てコードで書く</strong>方法について説明してきました。これとは別に本日は<strong>Auto Layout</strong>を利用した方法について説明します。<br/>
+先にこれらの方法の違いについて紹介します。<br/>
+・iOS6/7 deltasを利用する方法<br/>
+  XIBやStoryboardを利用した上でiOS5以前から対応する場合<br/>
+・全てコードで書く方法<br/>
+  XIBやStoryboardなどのGUIを利用せずに、全OS・全ディスプレイに対応する場合<br/>
+・Auto Layoutを利用する方法<br/>
+  XIBやStoryboardを利用した上でiOS6以降から対応する場合</p>
+
+<p>求められている仕様や開発者の技量、プロジェクトの運用から最適な方法を選択する必要があります。<br/>
+とは言え、個人的には<strong>全てコードで書く</strong>方法が最も自由がきくと思っているので、これに慣れていると他の手法は案外シンドイです。</p>
+
+<!--more-->
+
+
+<h4>Auto LayoutでUINavigationBarを調整しよう</h4>
+
+<p>以前、iOS6/7 deltasを利用する方法で説明したことをAuto Layoutで説明します。皆様、ご存知の通りiOS6以前とiOS7以降とではステータスバーの20px分をナビゲーションバーの高さを考慮しなくてはなりません。<br/>
+<img src="http://grandbig.github.io/images/ios6_7_difference.png" alt="iOS6とiOS7でナビゲーションバーの高さが異なる" /></p>
+
+<p>早速、詳しく説明していきます。<br/>
+まず、プロジェクトを作成し終わったら、XIBファイルを表示してください。そしてUINavigationBarを設置します。このUINavigationBarの高さをiOSのバージョンごとに変化させたいので、下記手順でAuto LayoutのConstraintを追加します。<br/>
+1: 右下のバーの左から2番目をクリックしてConstraintsのウィンドウを表示<br/>
+2: 高さを変更したいのでHeightにチェックを入れる<br/>
+3: Add ConstraintボタンをクリックしてConstraintを追加する<br/>
+<img src="http://grandbig.github.io/images/autolayout1.png" alt="Constraintを追加する" /></p>
+
+<p>これでConstraintsが追加されたのでViewController.hと関連づける。<br/>
+1: Constraints > Heightを右クリックしてViewController.hへドラッグ&amp;ドロップ<br/>
+2: ウィンドウが表示されるので、名前をつけてConnectをクリックする<br/>
+<img src="http://grandbig.github.io/images/autolayout2.png" alt="ViewController.hに関連づける" /><br/>
+<img src="http://grandbig.github.io/images/autolayout3.png" alt="名前をつけてConnect" /></p>
+
+<p>次にViewController.mファイルを開きましょう。<br/>
+以下のように編集してください。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)viewDidLoad
+</span><span class='line'>{
+</span><span class='line'>  [super viewDidLoad];
+</span><span class='line'>  // iOS7の場合は64pxにする
+</span><span class='line'>  if (floor(NSFoundationVersionNumber) &gt; NSFoundationVersionNumber_iOS_6_1) {
+</span><span class='line'>      self.nvBarHeight.constant = 64;
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以上の手順をすることで下記のようにiOS6とiOS7でUINavigationBarを正しく表示することができます。<br/>
+<img src="http://grandbig.github.io/images/autolayout4.png" alt="UINavigationBarの表示" /></p>
+
+<h4>Auto LayoutでUIViewを中央に配置しよう</h4>
+
+<p>次に主にディスプレイサイズで困るであろう中央配置の方法について説明します。<br/>
+まずは、何も考えずに普通にUIViewを追加してみましょう。そしてViewを3.5-inch Full Screenと4-inch Full Screenとで表示を変更して見てみましょう。すると、下記のようにUIViewの高さが変わってしまうことがわかると思います。<br/>
+<img src="http://grandbig.github.io/images/autolayout5.png" alt="4-inchの場合" /><br/>
+<img src="http://grandbig.github.io/images/autolayout6.png" alt="3.5-inchの場合" /><br/>
+こんなはずでは&hellip;なんて絶句してしまうかもしれません。が、ご安心ください。これは先ほど説明したHeightのConstraintsを追加することで対応できます。先ほどと同様に下記の手順でHeightのConstraintを追加してみてください。</p>
+
+<p>1: 追加したUIViewを選択した状態で右下のバーの左から2番目をクリックしてConstraintのウィンドウを表示<br/>
+2: 高さを保持したいのでHeightにチェックを入れます。高さが希望の値になっていることを確認してください。<br/>
+3: Add ConstraintボタンをクリックしてConstraintsを追加する</p>
+
+<p>これで先ほどと同様にViewのinchを変更させてみてください。追加したUIViewの高さが保持されていることがわかると思います。</p>
+
+<p>はい。本題です。<br/>
+UIViewをディスプレイのCenterに表示させたい場合は下記手順を実行してください。</p>
+
+<p>1: 追加したUIViewを選択した状態で右下のバーの左から1番目をクリックしてConstraintのウィンドウを表示<br/>
+2: Vertical方向に常にディスプレイの中央に表示させたいので、Vertical Center in Containerにチェックを入れます。<br/>
+3: Add ConstraintボタンをクリックしてConstraintsを追加する<br/>
+<img src="http://grandbig.github.io/images/autolayout7.png" alt="Vertical Center in Containerを追加" /></p>
+
+<p>これでUIViewを高さを保持した状態で3.5-inch/4-inchでもディスプレイの中央に表示することができます。</p>
+
+<h4>Auto Layoutでマージンを調整しよう</h4>
+
+<p>そして、Auto Layoutを用いたマージンの調整方法についても説明しましょう。<br/>
+先ほど、ディスプレイの中央に表示したい場合を説明したと思いますが、3.5-inchで見るとUINavigationBarに近すぎると感じることがあるかもしれません。<br/>
+であるならば、3.5-inchでも4-inchでもUINavigationBarから一定の距離を保持した方が見栄えが良いと思うこともあると思います。<br/>
+さて、その方法について説明します。</p>
+
+<p>1: 追加したUIViewを選択した状態で右下のバーの左から2番目をクリックしてConstraintのウィンドウを表示<br/>
+2: 上部との距離を変更します。(初期状態は点線表記になっていますが、赤の実線になるように値を変更してください)<br/>
+3: Add ConstraintボタンをクリックしてConstraintsを追加する<br/>
+<img src="http://grandbig.github.io/images/autolayout8.png" alt="上部マージンを追加" /></p>
+
+<p>これで3.5-inch/4-inchにディスプレイが変更されたとしてもUINavigationBarとUIViewとの距離は一定に保たれます。</p>
+
+<h4>最後に</h4>
+
+<p>いかがだったでしょうか？<br/>
+筆者的には完全に手探りな状態で始めたので、わからないことだらけだったのですが、なんとなく理解できてきました。<br/>
+現在はiPhone4S以前を利用しているユーザは(日本では？)少なくなってきたと思うのですが、iPadがiPhoneの3.5-inchと同じ比率ですので、Universalアプリを開発するのであれば対応せざるを得ません。<br/>
+また、iOS6ユーザはまだまだいると思いますので、仕様として要求される可能性は十分あります。細かい修正が常に要求されるとは思いますが、忍耐強くiOS8, 9, 10&hellip;とリリースされるのを待ちましょう笑<br/>
+次回リリースされるiPhoneやiPadまたはリリースされるかもしれない新デバイスがどんなディスプレイの比率になるかもわからないので、今後こういった対応は常に要求されるんでしょうね(汗)</p>
+
+<p>ということでまた次回！<br/>
+筆者も継続して勉強します。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSアプリを相対表示で作りたい！！]]></title>
@@ -2084,254 +2199,6 @@ iPhoneアプリを申請するにあたってiTunes Connectで今、自分のア
 
 <p>さあ、これで怖いものなんてないはず！じゃんじゃんiOS7対応していきましょう！！！<br/>
 あ〜早くMarvericksのダウンロード終わらないかな笑</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS7の新機能『UIDynamicAnimator』を使って簡単なアクションゲームを開発しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2013/10/19/create-action-game/"/>
-    <updated>2013-10-19T16:23:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2013/10/19/create-action-game</id>
-    <content type="html"><![CDATA[<h3>UIDynamicAnimator, UIGravityBehavior, UICollisionBehaviorなど新機能がiOS7に！！</h3>
-
-<p>今回はiOS7で新しく加わった新機能を使って簡単なアクションゲームを開発してみたいと思います。iOS7では物理法則に基づいたアニメーションを実装できるように<strong>UIDynamicAnimator, UIGravityBehavior, UICollisionBehavior, UIPushBehavior, UIAttachmentBehavior, UISnapBehavior, UIDynamicItemBehavior</strong>が追加されました。<br/>
-前々からアクションゲームを開発してみたいと思っていた筆者はこれを使わない手はないということで早速使ってみることにしました。</p>
-
-<!--more-->
-
-
-<h4>基本説明</h4>
-
-<p>・UIDynamicAnimator<br/>
-アプリに物理アニメーションを実装するためのコアとなるクラスです。アプリのViewに物理現象を発生させられる世界を設定するようなイメージですかね&hellip;。<br/>
-・UIGravityBehavior<br/>
-重力現象を設定したいときに使います。重力の強さや方向を設定することができます。<br/>
-・UICollisionBehavior<br/>
-物同士の衝突現象を設定したいときに使います。<br/>
-・UIPuchBehavior<br/>
-名前の通り押したような現象を設定したいときに使います。瞬間的に力を加えたり、継続的に力を加えたりできます。<br/>
-・UIAttachmentBehavior<br/>
-付着、接続などの現象を設定したいときに使います。<br/>
-・UISnapBehavior<br/>
-指定した点に吸い付けられるような設定をしたいときに使います。<br/>
-・UIDynamicItemBehavior<br/>
-指定したものの物理的特性を設定するために使います。</p>
-
-<h4>開発</h4>
-
-<p>では、早速、開発してみましょう。DynamicPractice.xcodeprojを作成します。いつも通りの手順ですが、以下におさらい。<br/>
-1: 「Empty Application」を選択してDynamicPracticeという名前をつけたプロジェクトを生成<br/>
-2: UIViewControllerを追加<br/>
-3: AppDelegate.mファイルでrootViewControllerに先ほど追加したUIViewControllerを設定</p>
-
-<p>さて、物理現象の実装に移りましょう。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ViewController.hファイル
-</span><span class='line'>@interface ViewController : UIViewController {
-</span><span class='line'>  // ①
-</span><span class='line'>  IBOutlet UIDynamicAnimator *animator;
-</span><span class='line'>  IBOutlet UIGravityBehavior *gravity;
-</span><span class='line'>  IBOutlet UICollisionBehavior *collision;
-</span><span class='line'>  IBOutlet UIPushBehavior *push;
-</span><span class='line'>  // ②
-</span><span class='line'>  IBOutlet UIImageView *img;
-</span><span class='line'>  IBOutlet UIButton *jButton, *rButton, *lButton;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>// ③
-</span><span class='line'>- (IBAction)JumpAction:(id)sender;
-</span><span class='line'>- (IBAction)RightMoveAction:(id)sender;
-</span><span class='line'>- (IBAction)LeftMoveAction:(id)sender;
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>① 今回利用する物理現象を定義<br/>
-② アクションをさせる画像を設定, ジャンプと左右移動をするためのボタンの定義, 移動/停止の判断フラグを設定<br/>
-③ ジャンプ, 左右移動時の処理をする関数を定義</p>
-
-<p>続いて上記の定義をDynamicPractice.xibに置く各ボタンと関係させます。(といってもボタンだけですが…)<br/>
-<img src="http://grandbig.github.io/images/xcode_dynamic1.png" alt="簡単にこんな画面を用意" /></p>
-
-<p>最後に具体的な各処理の実装をします。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ViewController.mファイル
-</span><span class='line'>- (void)viewDidLoad {
-</span><span class='line'>  [super viewDidLoad];
-</span><span class='line'>
-</span><span class='line'>  // ①
-</span><span class='line'>  animator = [UIDynamicAnimator alloc] initWithReferenceView:self.view];]
-</span><span class='line'>  
-</span><span class='line'>  img = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"***********.png"]];
-</span><span class='line'>  img.center = CGPointMake(100.0, 100.0);
-</span><span class='line'>  [self.view addSubview:img];
-</span><span class='line'>
-</span><span class='line'>  // ②
-</span><span class='line'>  collision = [UICollisionBehavior alloc] initWithItems:@[img]];
-</span><span class='line'>  collision.translatesReferenceBoundsIntoBoundary = YES;
-</span><span class='line'>
-</span><span class='line'>  // ③
-</span><span class='line'>  gravity = [[UIGravityBehavior alloc] initWithItems:@[img]];
-</span><span class='line'>  gravity.magnitude = 1.0f;
-</span><span class='line'>  gravity.gravityDirection = CGVectorMake(0.0f, 1.0f);
-</span><span class='line'>
-</span><span class='line'>  // ④
-</span><span class='line'>  push = [[UIPushBehavior alloc] initWithItems:nil mode:UIPushBehaviorModeContinuous];
-</span><span class='line'>
-</span><span class='line'>  // ⑤
-</span><span class='line'>  [animator addBehavior:gravity];
-</span><span class='line'>  [animator addBehavior:collision];
-</span><span class='line'>  [animator addBehavior:push];
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>① self.viewに物理現象の世界を加えられるように設定<br/>
-② 衝突現象をimgに設定。translatesReferenceBoundsIntoBoundaryでNOにするとimgがそのまま落ちていって悲しいことになります。<br/>
-③ 重力現象をimgに設定。強さと方向を設定します。初めは上からimgが降ってくる想定なので、X方向は0.0fでY方向に1.0fと設定します。<br/>
-④ 横移動で使うためにインスタンス化だけ先にしておきます。まだ使いたくないのでinitWithItemsにはnilを設定しています。<br/>
-⑤ gravity, collision, pushをanimatorに追加します。</p>
-
-<p>これでViewController読み込まれたら初期物理現象が設定されます。続いて各ボタンの処理を書きます。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ViewController.mファイル
-</span><span class='line'>// ①
-</span><span class='line'>- (IBAction)JumpAction:(id)sender {
-</span><span class='line'>  gravity.magnitude = 1.0f;
-</span><span class='line'>  gravity.gravityDirection = CGVectorMake(0.0f, -1.0f);
-</span><span class='line'>  [gravity addItem:img];
-</span><span class='line'>
-</span><span class='line'>  [self performSelector:@selector(changeGravity) withObject:nil afterDelay:0.2];
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>// ②
-</span><span class='line'>- (void)changeGravity {
-</span><span class='line'>  gravity.magnitude = 1.0f;
-</span><span class='line'>  gravity.gravityDirection = CGVectorMake(0.0f, 1.0f);
-</span><span class='line'>  [gravity addItem:img];
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>// ③
-</span><span class='line'>- (IBAction)RightMoveAction:(id)sender {
-</span><span class='line'>  push.magnitude = 0.05f;
-</span><span class='line'>  push.pushDirection = CGVectorMake(1.0f, 0.0f);
-</span><span class='line'>  [push addItem:img];
-</span><span class='line'>
-</span><span class='line'>  [self performSelector:@selector(stopPush) withObject:nil afterDelay:0.2];
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>// ④
-</span><span class='line'>- (IBAction)LeftMoveAction:(id)sender {
-</span><span class='line'>  push.magnitude = 0.05f;
-</span><span class='line'>  push.pushDirection = CGVectorMake(-1.0f, 0.0f);
-</span><span class='line'>  [push addItem:img];
-</span><span class='line'>
-</span><span class='line'>  [self performSelector:@selector(stopPush) withObject:nil afterDelay:0.2];
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>// ⑤
-</span><span class='line'>- (void)stopPush {
-</span><span class='line'>  [push removeItem:img];
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>① これはJumpボタンをクリックしたときの処理です。重力を上向きに加えます。ただし、このまま放置すると天井まで登り続けるので、筆者は0.2秒後に通常重力をかけるようにしました。<br/>
-② ①実行後の0.2秒後に通常重量(下向きに重力)をかけるようにする処理です。<br/>
-③ 右移動の処理です。右向きに力を加えるために、インスタンス化だけしておいたpushに強さと方向を設定します。これも①同様、ずっと力をかけ続けると右端から動けなくなるので0.2秒後にストップ処理を実行するようにしました。<br/>
-④ ③と同じく左移動の処理です。<br/>
-⑤ ストップさせるためにpushの力を加えるItemからimgを外しています。</p>
-
-<p>以上で、ジャンプ、左右移動が可能な簡単なアクションゲームを開発することができます。</p>
-
-<p>因みに筆者がテストで作った画面はこんな感じです。<br/>
-<img src="http://grandbig.github.io/images/xcode_dynamic2.png" alt="簡易アクションゲーム" /></p>
-
-<p>さてさて、せっかくなのでうまくこういった機能を使ってもっと面白いものを開発したいものです。</p>
-
-<p>参考:
-<a href="http://dev.classmethod.jp/references/ios7-uidynamic-2/">iOS7 UI Dynamics</a><br/>
-<a href="http://www.slideshare.net/techblogyahoo/5-ios7-workshopmakeupui">魅せるUIの作り方</a></p>
 ]]></content>
   </entry>
   
