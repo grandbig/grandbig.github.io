@@ -5,12 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>iOSアプリを相対表示で作りたい！！ - Takahiro Octopress Blog</title>
+  <title>MKMapViewの初期中心点をユーザの現在地に設定する方法 - Takahiro Octopress Blog</title>
   <meta name="author" content="Takahiro">
 
   
-  <meta name="description" content="iOSアプリでpixel表示を使わない？ さて、皆さんはiPhoneとiPadに対応、iOS6とiOS7に対応を仕様として求められたときにどうやって作るのが最も簡単だと思いますか？
-Storyboardを使う方法, 空プロジェクトからnib/xibを使う方法, &hellip;">
+  <meta name="description" content="MKMapViewの中心位置について考えた 本日はMKMapViewの初期表示について説明します。MKMapViewを扱うときにはユーザの位置情報を用いることが多いと思います。そのほとんどの場合、マップを初期表示したときにユーザの現在地を中心にしたいのではないかと思います。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -21,7 +20,7 @@ Storyboardを使う方法, 空プロジェクトからnib/xibを使う方法, &h
   <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
 
   
-  <link rel="canonical" href="http://grandbig.github.io/blog/2014/02/04/ios-developapp-relative">
+  <link rel="canonical" href="http://grandbig.github.io/blog/2014/02/16/userlocationandmap">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
@@ -83,7 +82,7 @@ Storyboardを使う方法, 空プロジェクトからnib/xibを使う方法, &h
   
   <header>
     
-      <h1 class="entry-title">iOSアプリを相対表示で作りたい！！</h1>
+      <h1 class="entry-title">MKMapViewの初期中心点をユーザの現在地に設定する方法</h1>
     
     
       <p class="meta">
@@ -99,72 +98,24 @@ Storyboardを使う方法, 空プロジェクトからnib/xibを使う方法, &h
   
 
 
-<time datetime="2014-02-04T22:52:00+09:00" pubdate data-updated="true">Feb 4<span>th</span>, 2014</time>
+<time datetime="2014-02-16T21:16:00+09:00" pubdate data-updated="true">Feb 16<span>th</span>, 2014</time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><h3>iOSアプリでpixel表示を使わない？</h3>
+<div class="entry-content"><h3>MKMapViewの中心位置について考えた</h3>
 
-<p>さて、皆さんは<strong>iPhoneとiPadに対応</strong>、<strong>iOS6とiOS7に対応</strong>を仕様として求められたときにどうやって作るのが最も簡単だと思いますか？<br/>
-Storyboardを使う方法, 空プロジェクトからnib/xibを使う方法, ただひたすらにコードを書く方法など人によって様々かと思います。筆者は最近、<strong>ただひたすらにコードを書く方法</strong>を取っています。理由は結局, iPhone/iPadの対応やiOS6/iOS7の対応のためにそこだけコードを書いて対応したりすることが生じるためです。それならばいっそのこと、0からコードを書いた方が勉強にもなるし、気持ちが良いのです。<br/>
-しかし、周りからのは『コードで書くとデバッグしないとイメージが湧かないんだよなぁ』とか、『pixel指定で作るとか面倒くさくね〜？』なんて言われたりするんですよね(汗)<br/>
-この両方に通ずることは<strong>相対表示で画面の構造が作れれば良いのに</strong>なんてことなんじゃないかと勝手に思いました。<br/>
-なので、本日は開発者がpixel指定を意図せずiOSアプリの画面を作成できるような関数を定義してみたいと思います。</p>
+<p>本日はMKMapViewの初期表示について説明します。MKMapViewを扱うときにはユーザの位置情報を用いることが多いと思います。そのほとんどの場合、マップを初期表示したときにユーザの現在地を中心にしたいのではないかと思います。しかしながらiPhoneで位置情報を取得するとき、アプリを起動して即座に現在地を特定することはできません。では、『どうするのか？』について失敗談を交えつつ紹介させて頂きます。</p>
 
 <!--more-->
 
 
-<h4>関数の定義</h4>
+<p>まずは失敗例から紹介します。<br/>
+筆者は<strong>ユーザの現在地をマップの中心位置に設定する</strong>ということに意識が向きすぎたせいか当初は下記の手段を取っていました。</p>
 
-<p>さて、早速定義します。<br/>
-横幅や縦幅を指定したパーセンテージの長さに変換したい場合は</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// 横幅の相対変換
-</span><span class='line'>- (float) relativeWidth:(CGRect)frame
-</span><span class='line'>              percent:(int)percent
-</span><span class='line'>{
-</span><span class='line'>  // 引数のframeから横幅を取得
-</span><span class='line'>  float parentWidth = frame.size.width;
-</span><span class='line'>  float childWidth = parentWidth * percent / 100;
-</span><span class='line'>
-</span><span class='line'>  return childWidth;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>で良いでしょう。<br/>
-横幅, 縦幅にとらわれたくなければ</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>- (float) relativeLength:(float)length
-</span><span class='line'>               percent:(int)percent
-</span><span class='line'>{
-</span><span class='line'>  float childLength = length * percent / 100;
-</span><span class='line'>
-</span><span class='line'>  return childLength;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>とすれば良いでしょう。<br/>
-横幅, 縦幅を同時に変換したければ</p>
+<p>下記はViewController.h</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -174,36 +125,61 @@ Storyboardを使う方法, 空プロジェクトからnib/xibを使う方法, �
 <span class='line-number'>6</span>
 <span class='line-number'>7</span>
 <span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>- (CGRect) relativeFrame:(CGRect)frame
-</span><span class='line'>          percentWidth:(int)percentWidth
-</span><span class='line'>         percentHeight:(int)percentHeight
-</span><span class='line'>{
-</span><span class='line'>  float parentWidth = frame.size.width;
-</span><span class='line'>  float parentHeight = frame.size.height;
+</pre></td><td class='code'><pre><code class=''><span class='line'>#import &lt;UIKit/UIKit.h&gt;
+</span><span class='line'>#import &lt;CoreLocation/CoreLocation.h&gt;
+</span><span class='line'>#import &lt;MapKit/MapKit.h&gt;
 </span><span class='line'>
-</span><span class='line'>  float childWidth = parentWidth * percentWidth / 100;
-</span><span class='line'>  float childHeight = parentHeight * percentHeight / 100;
+</span><span class='line'>@interface ViewController : UIViewController &lt;MKMapViewDelegate, CLLocationManagerDelegate&gt;
 </span><span class='line'>
-</span><span class='line'>  CGRect rect;
-</span><span class='line'>  rect.size.width = childWidth;
-</span><span class='line'>  rect.size.height = childHeight;
-</span><span class='line'>
-</span><span class='line'>  return rect;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>@property (strong, nonatomic) IBOutlet CLLocationManager *locationManager;
+</span><span class='line'>@property (weak, nonatomic) IBOutlet MKMapView *map;</span></code></pre></td></tr></table></div></figure>
 
 
-<p>とできると思います。</p>
+<p>下記はViewController.m</p>
 
-<p>これでHTML, CSSでいうところの<strong>position: relative</strong>で<strong>width: 30%; height: 20%;</strong>のような形を取ることができます。<br/>
-動作確認してないけど、たぶん行けるでしょう&hellip;。</p>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// ユーザの位置を取得
+</span><span class='line'>CLLocation *location = [locationManager location];
+</span><span class='line'>CLLocationCoordinate2D uCoordinate = [location coordinate];
+</span><span class='line'>// マップの中心位置を設定
+</span><span class='line'>MKCoordinateRegion region = MKCoordinateRegionMake(uCoordinate, MKCoordinateSpanMake(0.05, 0.05));</span></code></pre></td></tr></table></div></figure>
+
+
+<p>しかし、これではアプリ起動直後に真っ青な画面が表示されてしまうことでしょう。その理由はiPhone側で位置情報を取得する前にマップを表示しようとしてしまっているためです。結果、ユーザの現在地はlatitude, longitude共に0として返ってきます。<br/>
+ここで筆者はマップに現在地のピンを表示することは割りと早くできていることに気づきました。であれば何かマップからユーザ情報が取得できるのではないかと。<br/>
+で考えたのが下記。(ViewController.mのみ修正)</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// ユーザの位置を取得
+</span><span class='line'>CLLocation *userLocation = self.map.userLocation.location;
+</span><span class='line'>CLLocationCoordinate2D uCoordinate = CLLocationCoordinate2DMake(userLocation.coordinate.latitude, userLocation.coordinate.longitude);
+</span><span class='line'>// マップの中心位置を設定
+</span><span class='line'>MKCoordinateRegion region = MKCoordinateRegionMake(uCoordinate, MKCoordinateSpanMake(0.05, 0.05));</span></code></pre></td></tr></table></div></figure>
+
+
+<p>しかし、これまたアプリ起動後に真っ青な画面が表示されてしまいました&hellip;。う〜む、なかなかうまくいかない。</p>
+
+<p>で、結局、下記で解決。(ViewController.mのみ修正)</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// マップにユーザの現在地を表示
+</span><span class='line'>self.map.showsUserLocation = YES;
+</span><span class='line'>// マップの中心地がユーザの現在地を追従するように設定
+</span><span class='line'>[self.map setUserTrackingMode:MKUserTrackingModeFollow];</span></code></pre></td></tr></table></div></figure>
+
+
+<p>位置情報が取れ次第(ユーザの現在地が特定でき次第)、マップの中心地が移動するのでアプリ起動後に割りとすぐ理想の結果が得られます。(因みにマップを動かせば、追従モードはOFFとなります。)</p>
 </div>
 
 
@@ -226,7 +202,7 @@ Storyboardを使う方法, 空プロジェクトからnib/xibを使う方法, �
   
 
 
-<time datetime="2014-02-04T22:52:00+09:00" pubdate data-updated="true">Feb 4<span>th</span>, 2014</time>
+<time datetime="2014-02-16T21:16:00+09:00" pubdate data-updated="true">Feb 16<span>th</span>, 2014</time>
       
 
 
@@ -234,7 +210,7 @@ Storyboardを使う方法, 空プロジェクトからnib/xibを使う方法, �
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2014/02/04/ios-developapp-relative/" data-via="" data-counturl="http://grandbig.github.io/blog/2014/02/04/ios-developapp-relative/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2014/02/16/userlocationandmap/" data-via="" data-counturl="http://grandbig.github.io/blog/2014/02/16/userlocationandmap/" >Tweet</a>
   
   
   
@@ -243,10 +219,8 @@ Storyboardを使う方法, 空プロジェクトからnib/xibを使う方法, �
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2014/02/01/uibuttonfunction/" title="Previous Post: UIButtonのaddTargetについて">&laquo; UIButtonのaddTargetについて</a>
+        <a class="basic-alignment left" href="/blog/2014/02/09/xcode5-autolayout/" title="Previous Post: Xcode5でAuto Layoutを使おう">&laquo; Xcode5でAuto Layoutを使おう</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2014/02/09/xcode5-autolayout/" title="Next Post: Xcode5でAuto Layoutを使おう">Xcode5でAuto Layoutを使おう &raquo;</a>
       
     </p>
   </footer>
