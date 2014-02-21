@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-02-16T22:05:14+09:00</updated>
+  <updated>2014-02-22T01:43:50+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,240 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Silent Remote Notificationを試そう！]]></title>
+    <link href="http://grandbig.github.io/blog/2014/02/22/silentremotenotification/"/>
+    <updated>2014-02-22T00:06:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/02/22/silentremotenotification</id>
+    <content type="html"><![CDATA[<h3>iOS7で新たに追加されたSilent Remote Notificationを使ってみよう！！</h3>
+
+<p>本日はiOS7から新たに追加された<strong>Silent Remote Notification</strong>について紹介します。<br/>
+iOS6までで利用できたRemote Notificationと何が違うのかと言いますと、<strong>ユーザ端末のロック画面に表示させることなく</strong>通知することができるんです。<br/>
+つまり、<br/>
+Remote Notification: ユーザに何かを気づかせるためにプッシュする<br/>
+Silent Remote Notification: ユーザに気づかせることなくプッシュする<br/>
+ということです。</p>
+
+<p>これを見ると、『Silent Remote Notificationって使い道あるの？？』なんて思ってしまいそうですよね。これが意外とありそうなんです。<br/>
+例えば、<br/>
+・ユーザに気づかれずにアプリ内の情報を最新に更新する<br/>
+・ユーザに気づかれずにアプリ内のユーザ情報を取得する<br/>
+ことなどが考えられます。<br/>
+後者はユーザ視点からすると気になるかもしれませんが、『アプリの有用性をユーザに最大限に感じてもらうための方法』と考えて頂ければとても大切なことであると伝わるでしょうか。</p>
+
+<p>そんな様々な使い道がありそうなSilent Remote Notificationについて早速説明していきます。</p>
+
+<!--more-->
+
+
+<h4>ネイティブソースとXcode5の設定について</h4>
+
+<p>まずは、ネイティブソースとXcode5の設定から説明します。Xcode5でプロジェクトを作成したら、TARGETS > Capabilities > Background Modes > Remote notificationsにチェックを入れます。<br/>
+<img src="http://grandbig.github.io/images/xcode-silent-notifications1.png" alt="Xcode5での設定方法" /><br/>
+続いてはネイティブソースでプッシュの受取り口を作りましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// AppDelegate.hファイル</span>
+</span><span class='line'><span class="err">@</span><span class="n">interfase</span> <span class="n">AppDelegate</span> <span class="o">:</span> <span class="n">NSObject</span><span class="o">&lt;</span><span class="n">UIApplicationDelegate</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">token</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// AppDelegate.mファイル</span>
+</span><span class='line'><span class="c1">// ①トークン値の取得</span>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">application</span><span class="o">:</span><span class="p">(</span><span class="n">UIApplication</span> <span class="o">*</span><span class="p">)</span><span class="n">application</span> <span class="n">didRegisterForRemoteNotificationsWithDeviceToken</span><span class="o">:</span><span class="p">(</span><span class="n">NSData</span> <span class="o">*</span><span class="p">)</span><span class="n">devToken</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="c1">//デバイストークンから&#39;&lt;&#39;,&#39;&gt;&#39;,&#39; &#39;を削除して変数に保存</span>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">deviceToken</span> <span class="o">=</span> <span class="p">[[[[</span><span class="n">devToken</span> <span class="n">description</span><span class="p">]</span> <span class="n">stringByReplacingOccurrencesOfString</span><span class="o">:</span><span class="err">@</span><span class="s">&quot;&lt;&quot;</span><span class="n">withString</span><span class="o">:</span><span class="err">@</span><span class="s">&quot;] </span>
+</span><span class='line'>                          <span class="nl">stringByReplacingOccurrencesOfString:</span><span class="err">@</span><span class="s">&quot;&gt;&quot;</span> <span class="n">withString</span><span class="o">:</span><span class="err">@</span><span class="s">&quot;&quot;</span><span class="p">]</span>
+</span><span class='line'>                          <span class="n">stringByReplacingOccurrencesOfString</span><span class="o">:</span> <span class="err">@</span><span class="s">&quot; &quot;</span> <span class="n">withString</span><span class="o">:</span> <span class="err">@</span><span class="s">&quot;&quot;</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="err">@</span><span class="s">&quot;deviceToken: %@&quot;</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">deviceToken</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ②通常のRemote Notificationが届いたときに通る処理</span>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">application</span><span class="o">:</span><span class="p">(</span><span class="n">UIApplication</span> <span class="o">*</span><span class="p">)</span><span class="n">application</span> <span class="n">didReceiveRemoteNotification</span><span class="o">:</span><span class="p">(</span><span class="n">NSDictionary</span> <span class="o">*</span><span class="p">)</span><span class="n">userInfo</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ③Silent Remote Notificationが届いたときに通る処理</span>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">application</span><span class="o">:</span><span class="p">(</span><span class="n">UIApplication</span> <span class="o">*</span><span class="p">)</span><span class="n">application</span>
+</span><span class='line'> <span class="nl">didReceiveRemoteNotification:</span><span class="p">(</span><span class="n">NSDictionary</span> <span class="o">*</span><span class="p">)</span><span class="n">userInfo</span>
+</span><span class='line'>  <span class="nl">fetchCompletionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">UIBackgroundFetchResult</span><span class="p">))</span><span class="n">completionHandler</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>プッシュ通知を受け取ったとき、上記に書いたdidReceiveRemoteNotification処理が実行されます。コメントアウトにも書いていますが、③がSilent Remote Notificationが届いたときに通る処理です。<br/>
+ただし、Silent Remote NotificationはiOS7以上でないと対応していないのでiOS6の場合は通常のRemote Notification, Silent Remote Notificationに関わらず②のdidReceiveRemoteNotificationを通りますので、ご注意ください。<br/>
+あとは③に実行させたい処理を書けば、Silent Remote Notificationの実装は完了です。</p>
+
+<h4>動作確認用に簡単にプッシュ通知を送る処理を書こう</h4>
+
+<p>さて、ネイティブ側の実装はできましたが、本当にこれで送れるのか確認したいですよね？Node.jsのnode-apnモジュールを使えば驚くほど簡単に用意することができます。<br/>
+より簡単に作成するためにExpressモジュールを使って説明します。Expressモジュールの用意については<a href="https://gihyo.jp/dev/serial/01/nodejs/0003">第3回 Express.jsを使ったWebアプリケーションを構築</a>を参照ください。</p>
+
+<p>それではpushtestという名前のWebアプリの雛形を作成しましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>express -t ejs pushtest
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>次にpushtest配下で</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>npm install
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>を実行して必要なモジュールをインストールしましょう。さらに、node-apnモジュールもインストールしましょう。また後ほど利用するquerystringモジュールもインストールしておきましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>npm install apn
+</span><span class='line'>npm install qs
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでモジュールが揃ったので、app.jsを編集しましょう。<br/>
+pushtest/routes/apns.jsを作成しておきます。(デフォルトで作成されるindex.jsかuser.jsをコピーしてファイル名を変更すればOKです)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='js'><span class='line'><span class="kd">var</span> <span class="nx">express</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;express&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">routes</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./routes&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">user</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./routes/user&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">apns</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./routes/apns&#39;</span><span class="p">);</span><span class="c1">// apns.jsの読み込みを追加</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">http</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;http&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">path</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">var</span> <span class="nx">app</span> <span class="o">=</span> <span class="nx">express</span><span class="p">();</span>
+</span><span class='line'><span class="p">...</span>
+</span><span class='line'><span class="nx">app</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;/apns&#39;</span><span class="p">,</span> <span class="nx">apns</span><span class="p">.</span><span class="nx">push</span><span class="p">);</span><span class="c1">// GETリクエストを想定</span>
+</span><span class='line'><span class="p">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>そしてお待ちかねのプッシュメイン処理をapns.jsに書いていきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='js'><span class='line'><span class="kd">var</span> <span class="nx">apns</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;apn&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">qs</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;qs&#39;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">exports</span><span class="p">.</span><span class="nx">push</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">){</span>
+</span><span class='line'>  <span class="c1">// ① GETパラメータからトークンを取得</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">arr</span> <span class="o">=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">url</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">&quot;?&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">obj</span> <span class="o">=</span> <span class="nx">qs</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">arr</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">token</span> <span class="o">=</span> <span class="nx">obj</span><span class="p">.</span><span class="nx">token</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// ② プッシュ通知の設定</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>      <span class="s2">&quot;cert&quot;</span><span class="o">:</span> <span class="s2">&quot;./keys/cert.pem&quot;</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;key&quot;</span><span class="o">:</span> <span class="s2">&quot;./keys/key.pem&quot;</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;gateway&quot;</span><span class="o">:</span> <span class="s2">&quot;gateway.sandbox.push.apple.com&quot;</span>
+</span><span class='line'>  <span class="p">};</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">myDevice</span> <span class="o">=</span> <span class="nx">apns</span><span class="p">.</span><span class="nx">Device</span><span class="p">(</span><span class="nx">token</span><span class="p">);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">apnConnection</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">apns</span><span class="p">.</span><span class="nx">Connection</span><span class="p">(</span><span class="nx">options</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">note</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">apns</span><span class="p">.</span><span class="nx">Notification</span><span class="p">();</span>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">newsstandAvailable</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">apnConnection</span><span class="p">.</span><span class="nx">pushNotification</span><span class="p">(</span><span class="nx">note</span><span class="p">,</span> <span class="nx">myDevice</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">res</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="s2">&quot;respond with a resource&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>先ほどインストールしたqsはGETパラメータをオブジェクト化してくれる便りなモジュールです。詳しくは<a href="http://nodejs.org/api/querystring.html">Node.js Manual&amp;Documents</a>を参照してください。<br/>
+まず、①のようにトークン値を取得します。<br/>
+次に②のようにプッシュ通知を送るための設定を書きます。<a href="https://github.com/argon/node-apn">GitHubで公開されているReference</a>をほぼそのまま書くだけなので簡単です。<br/>
+注意しておきたいのはSilent Remote Notificationの場合は<strong>note.newsstandAvailable=1</strong>を設定する必要があります。逆にbadge, alert, soundは不要です。これらを入れてもプッシュ通知ができないわけではないのですが、冒頭に述べた<strong>ユーザに気づかれずに</strong>という要件を満たせなくなります。</p>
+
+<p>因みに, optionsで設定しているcertとkeyは証明書の保存場所です。上記ソースで設定している場所はapp.jsと同じ階層にkeyフォルダがあることを指します。また、gatewayにはsandboxをつけることを忘れずに。(商用の場合はsandboxは不要です。develop用ではsandboxを設定するんです。)<br/>
+証明書(cert.pemとkey.pem)の作成は多くのサイトで説明されているのでここでは割愛します。</p>
+
+<p>ここまで準備ができたら、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>node app.js
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>でWeb&amp;APサーバをローカルに起動しましょう。<br/>
+そして、『localhost:3000?token=トークン値』をブラウザのアドレス部分に打って、Silent Remote Notificationを送りましょう!!<br/>
+トークン値はネイティブソース内のdidRegisterForRemoteNotificationsWithDeviceToken関数でLogとして出力しているはずなので、コピーしましょう。</p>
+
+<p>届きましたでしょうか？</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[MKMapViewの初期中心点をユーザの現在地に設定する方法]]></title>
@@ -2191,39 +2425,6 @@ iPhoneアプリを申請するにあたってiTunes Connectで今、自分のア
 物理法則をアプリの世界に作って、その物理法則を受ける世界に入れてあげるアイテムとしてballを追加しているというイメージなんですよね&hellip;。</p>
 
 <p>iOS7で対応する以前から物理法則をアプリに再現しているゲームは多々あったと思います。その中でこのクラスがどういった役割を果たしていくのか個人的に気になるところです。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iPhone専用アプリをiPadで見るとToolBarが出ない！！]]></title>
-    <link href="http://grandbig.github.io/blog/2013/10/24/iphone-slash-ipad-toolbar-support/"/>
-    <updated>2013-10-24T23:24:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2013/10/24/iphone-slash-ipad-toolbar-support</id>
-    <content type="html"><![CDATA[<h3>iPhone専用アプリでiPad対応</h3>
-
-<p>筆者はiPhone専用アプリばかりに目を向けていたので、正直iPadの対応は忘れていました。しかし、いざiPhoneアプリをiPadで起動してみると『あれっ！？ToolBarが出ない(汗)』<br/>
-これはマズイ&hellip;。格好悪い&hellip;。<br/>
-どうにか方法を探ろう！！ということでネットで調べました。これが全くもって出てこないんですよね！<br/>
-これ困っている人いないんですかね&hellip;。今日はその方法について説明します。</p>
-
-<!--more-->
-
-
-<h4>Xcode5での方法</h4>
-
-<p>さくっと説明します。ToolBarPracticeというプロジェクトを作ります。<br/>
-<img src="http://grandbig.github.io/images/xcode_toolbar_ipad1.png" alt="DevicesはiPhone" /></p>
-
-<p>ここで気をつけなくてはならないのは、xibファイルの<strong>Simulated Metrics</strong>です。ここのSizeがデフォルト<strong>Retina 4-inch Full Screen</strong>になっています。このまま開発を進めるとiPadで見たときにToolBarが迷子になります。なので, ViewのDrawingの<strong>Autoresize Subviews</strong>のチェックを外します。この設定はパーツを置いた後でも大丈夫です。とりあえず、何も考えずに開発を進めた後、iPadで見たときにToolBarが表示されないというときでも、チェックを外すだけで対応できます。<br/>
-<img src="http://grandbig.github.io/images/xcode_toolbar_ipad2.png" alt="Simulated Metricsの設定" /></p>
-
-<p>因みにiOS6とiOS7の対応は別途必要です。詳しくは<a href="http://grandbig.github.io/blog/2013/09/22/xcode5-toolbar/">iOS6とiOS7の両方で使えるようにtoolbarを調整する方法</a>を参照ください。</p>
-
-<p>これで各実機でデバッグすれば、以下のようになります。<br/>
-<img src="http://grandbig.github.io/images/xcode_toolbar_ipad3.png" alt="各実機でデバッグ" /></p>
-
-<p>いかがだったでしょうか？<br/>
-筆者はこれを見つけるのに苦労しましたが、知ってしまえば簡単ですね。さ〜て申請したアプリも修正しなきゃな&hellip;。</p>
 ]]></content>
   </entry>
   
