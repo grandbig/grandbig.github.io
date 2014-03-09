@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-03-07T23:56:52+09:00</updated>
+  <updated>2014-03-09T22:47:24+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,207 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Universalアプリ開発における縦横対応について]]></title>
+    <link href="http://grandbig.github.io/blog/2014/03/09/devicerotate/"/>
+    <updated>2014-03-09T21:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/03/09/devicerotate</id>
+    <content type="html"><![CDATA[<h3>iPhoneは縦のみ対応/iPadは縦横対応させたい！！</h3>
+
+<p>さて、久々に基本的なところで躓いてしまったのでメモしておきます。iPhone/iPadの両方に対応したUniversalなアプリを開発するときに、縦横対応を考える必要があります。iPhoneであれば基本的には縦もしくは横どちらかに固定すれば十分です。一方でiPadは縦をメインとして使うユーザと横をメインとして使うユーザの両方がターゲットとなります。では、iPhone/iPadで固定/非固定を分けて開発するためにはどうしたら良いのでしょうか？</p>
+
+<p>今回はその答えを始めに紹介し、続いて筆者が躓いたことによって得た情報を紹介したいと思います。</p>
+
+<!--more-->
+
+
+<p>では、始めにiPhone/iPadで固定/非固定を分けて開発する方法を紹介しましょう。<br/>
+Xcode5上で<strong>TARGETS > Deployment Info</strong>を見て下さい。iPhoneとiPadの文字が並んで表示されている部分があると思います。(恐らく、iPhoneが青字になっていることでしょう。)<br/>
+この下に<strong>Device Orientation</strong>と書かれており、<strong>Portrait, Upside Down, Landscape Left, Landscape Right</strong>の4つのチェックボックスがあります。<br/>
+iPhoneは縦のみ, iPadは全方向OKにしたい場合は、iPhone選択時に<strong>Portraitのみにチェック</strong>, iPad選択時に<strong>4つ全てにチェック</strong>を入れましょう。<br/>
+<img src="http://grandbig.github.io/images/devicerotate1.png" alt="Xcode5で各デバイスの設定をしましょう" /></p>
+
+<p>これで設定完了です。非常に簡単ですね！<br/>
+筆者はソースコードでどうにかしようと取り組んでいたため、時間がかかってしまいました笑。<br/>
+ただ、逆に言えばソースコードでも設定は可能なんです。そこについて紹介しましょう。</p>
+
+<p>まず、筆者は下記のようにAppDelegate.mファイルにソースを書きました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">application:</span><span class="p">(</span><span class="n">UIApplication</span> <span class="o">*</span><span class="p">)</span><span class="nv">application</span> <span class="nf">didFinishLaunchingWithOptions:</span><span class="p">(</span><span class="n">NSDictionary</span> <span class="o">*</span><span class="p">)</span><span class="nv">launchOptions</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">window</span> <span class="o">=</span> <span class="p">[[</span><span class="n">UIWindow</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFrame:</span><span class="p">[[</span><span class="n">UIScreen</span> <span class="n">mainScreen</span><span class="p">]</span> <span class="n">bounds</span><span class="p">]];</span>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">window</span><span class="p">.</span><span class="n">backgroundColor</span> <span class="o">=</span> <span class="p">[</span><span class="n">UIColor</span> <span class="n">whiteColor</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// UIViewController型のViewControllerを生成</span>
+</span><span class='line'>  <span class="n">ViewController</span> <span class="o">*</span><span class="n">vc</span> <span class="o">=</span> <span class="p">[[</span><span class="n">ViewController</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">vc</span> <span class="o">=</span> <span class="p">(</span><span class="n">ViewController</span> <span class="o">*</span><span class="p">)[[</span><span class="n">NavigationController</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithRootViewController:</span><span class="n">vc</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">window</span><span class="p">.</span><span class="n">rootViewController</span> <span class="o">=</span> <span class="n">vc</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">window</span> <span class="n">makeKeyAndVisible</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">YES</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>objective-c
+NavigationControllerをrootViewControllerに指定しています。そのNavigationControllerに自身で作成したViewControllerを加えています。<br/>
+さて、続いてViewController.mのソースを書いていきます。Objective-Cでは端末が回転したときに<strong>supportedInterfaceOrientations</strong>と<strong>shouldAutorotate</strong>の2つが呼び出されます。<br/>
+supportedInterfaceOrientationsは回転を許可する端末の方向を指定し, shouldAutorotateは端末が回転したときに自動で回転するかどうかを指定します。<br/>
+例えば、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">supportedInterfaceOrientations</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">UIInterfaceOrientationMaskPortrait</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">shouldAutorotate</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">interfaceorientation</span> <span class="o">==</span> <span class="n">UIInterfaceOrientationPortrait</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">YES</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">NO</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>と書くと、supportedInterfaceOrientationsではPortrait方向のみ回転を許可し、shouldAutorotateではPortrait方向のみ自動で回転するようになっています。この両関数の指定がずれた場合はエラーが発生します。<br/>
+上記のように書いておけば、冒頭で説明したXcode5のDevice Orientationの4つ全てにチェックを入れていたとしても、回転することはありません。<br/>
+のはずでしたが、まだこの状態では回転してしまいます&hellip;。なぜなんでしょうか？<br/>
+それはrootViewControllerにNavigationControllerを設定しまったためだそうです。これを回避するためには、NavigationControllerに設定してあるtopViewControllerの値を返すようにCustomNavigationControllerを作成する必要があります。<br/>
+では、UINavigationControllerを継承したCustomNavigationControllerを作成しましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// CustomNavigationController.h</span>
+</span><span class='line'><span class="cp">#import &lt;UIKit/UIKit.h&gt;</span>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">CustomNavigationController</span> : <span class="nc">UINavigationController</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#import &quot;CustomNavigationController.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">CustomNavigationController</span> <span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">CustomNavigationController</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nf">initWithNibName:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">nibNameOrNil</span> <span class="nf">bundle:</span><span class="p">(</span><span class="n">NSBundle</span> <span class="o">*</span><span class="p">)</span><span class="nv">nibBundleOrNil</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">self</span> <span class="o">=</span> <span class="p">[</span><span class="n">super</span> <span class="nl">initWithNibName:</span><span class="n">nibNameOrNil</span> <span class="nl">bundle:</span><span class="n">nibBundleOrNil</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">self</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// Custom initialization</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">self</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">supper</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">didReceiveMemoryWarning</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">didReceiveMemoryWarning</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 新たに加えるソースは下記4行のみです。</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">supportedInterfaceOrientations</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">topViewController</span><span class="p">.</span><span class="n">supportedInterfaceOrientations</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ここまで書ければ、後はAppDelegate.mファイルでNavigationControllerとしていたところをCustomNavigationControllerに変更すればOKです。<br/>
+今度こそ、端末の回転を抑制することができていますよね？</p>
+
+<p>今回は初歩的な話でしたが(いつもか&hellip;笑)、基本は非常に重要であり、知っていないと思わぬところで時間をくってしまいます。<br/>
+様々な書籍でObjective-Cの基本的な書き方, Xcodeの基本的な使い方が紹介されていると思いますが、筆者のおすすめは下記。<br/>
+<strong>WEB DB PRESS</strong>で初めてiOS7について基本的なところを説明してくれています。初心者には役に立つこと間違いないでしょう。<strong>Software Design Plus iOSアプリ エンジニア養成読本</strong>はまだ未発売ですが、iOSアプリのエンジニアとして生き残るための方法が書いてあるとのことなので、今から楽しみにしています。といったところで本日はここまで。</p>
+
+<iframe src="http://rcm-fe.amazon-adsystem.com/e/cm?t=grandbig7-22&o=9&p=8&l=as1&asins=4774162876&ref=qf_sp_asin_til&fc1=000000&IS2=1&lt1=_blank&m=amazon&lc1=0000FF&bc1=000000&bg1=FFFFFF&f=ifr" style="width:120px;height:240px;" scrolling="no" marginwidth="0" marginheight="0" frameborder="0"></iframe>
+
+
+<iframe src="http://rcm-fe.amazon-adsystem.com/e/cm?t=grandbig7-22&o=9&p=8&l=as1&asins=4774163856&ref=qf_sp_asin_til&fc1=000000&IS2=1&lt1=_blank&m=amazon&lc1=0000FF&bc1=000000&bg1=FFFFFF&f=ifr" style="width:120px;height:240px;" scrolling="no" marginwidth="0" marginheight="0" frameborder="0"></iframe>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[NSUserDefaultsで手軽にデータを端末保存しよう！]]></title>
@@ -2204,75 +2405,6 @@ iPhoneでの位置情報取得に興味のある方はぜひ御覧ください�
 
 <p>今後は、まだまだ現状のアプリで不便なところも多々あるので、バージョンアップに取り組んでいきたいと思っています。もっと便利にオリジナリティを出していきたいという構想はあります。<br/>
 もし、iPhoneでの位置情報の取得精度について悩まれている方がいましたら、本アプリを参考にして頂けると幸いです。なお、本アプリには全く広告はついていない&amp;無料アプリですので、筆者にはお金は一銭も入りません笑。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iPhoneアプリを申請しました(2)]]></title>
-    <link href="http://grandbig.github.io/blog/2013/11/02/submit-ios-app2/"/>
-    <updated>2013-11-02T22:05:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2013/11/02/submit-ios-app2</id>
-    <content type="html"><![CDATA[<h3>iPhoneアプリをApp Storeで公開するまでの話</h3>
-
-<p>本日、私が個人的に開発したiPhoneアプリがApp Storeで公開されました。<br/>
-それまでの流れと苦労(さほどしなかったが&hellip;)を記憶に留めるために書いておこうかと思います。ついでに私が公開したアプリも紹介します笑<br/>
-これ→<a href="https://itunes.apple.com/us/app/zu-ji-ji/id725412788?l=ja&amp;ls=1&amp;mt=8">足跡計</a><br/>
-App Storeで検索するときは<strong>足跡計, 足跡</strong>を入力して下さい。下記アイコンのアプリが出てくるはずです。<br/>
-<img src="http://grandbig.github.io/images/ashiatokei_icon.png" alt="足跡計のアイコン" /></p>
-
-<!--more-->
-
-
-<h4>Keynoteを使ったホームアイコン&amp;スプラッシュ画面の作成について補足</h4>
-
-<p>前回、iPhoneアプリを申請したときにブログで書かせて頂いたKeynoteを用いた『ホームアイコン&amp;スプラッシュ画面』について補足しておきたいと思います。<br/>
-前回のブログ記事: <a href="http://grandbig.github.io/blog/2013/10/14/submit-ios-app/">iPhoneアプリを申請しました</a></p>
-
-<p>1: Keynoteでホームアイコンを作成<br/>
-Keynoteでホームアイコンを作成するときは、iPhoenアプリ申請に必要な最大サイズで作りましょう。最大サイズは1024×1024です。その他、必要な画像サイズについては多くのサイトで紹介さえているので、そちらをご覧ください→<a href="http://dev.classmethod.jp/references/ios-device-icon-file-list-2013-9/">アイコンファイル早見表</a></p>
-
-<p>因みにKeynoteで作成した画像は<strong>ToyViewer</strong>を使って画像として抽出しました。多少、サイズがずれてしまったりするので調整が必要ですが、非常に簡単に画像が作成できるのでオススメです。<br/>
-2: スプラッシュ画面を作成<br/>
-スプラッシュ画面は最大サイズが640×1136となっています。OSをMarvericksにしてからKeynoteを最新バージョンにすることができます。最新(青色)のKeynoteを使うとスライドサイズを非常に簡単に変更することができます。
-<img src="http://grandbig.github.io/images/create_icon_by_keynote1.png" alt="Keynoteのスライドサイズを変更" /></p>
-
-<h4>iPhone申請時のステータスについて</h4>
-
-<p>さ〜てここからが本日の本題です。まずはiPhone申請時のステータスについてご紹介します。<br/>
-iPhoneアプリを申請するにあたってiTunes Connectで今、自分のアプリがどんな状態にあるのか確認することができます。それを見て、ウキウキワクワクするわけです。<br/>
-いろいろとあるようですが、私が実際に体験したステータスについて紹介します。<br/>
-・Waiting For Review: 『これからレビューするんで待ってて下さい。』ということ。この時点で1〜2週間待ちます。(Reject後の再申請では1週間ほど待ちました)  <br/>
-・In Review: 『今、レビュー中です』ということ。<br/>
-・Rejected: 『審査が通らず、アプリが棄却されました』ということ。最も凹むステータスです。<br/>
-・Processing for App Store: 『審査が通りました。』ということ。ただし、この時点ではApp Storeには公開されていません。<br/>
-・Ready For Sale: 『App Storeに公開されています。』ということ。</p>
-
-<p>結構、ハマることなのかもしれませんが、<strong>Processing for App Store</strong>にステータスがなった後、すぐには<strong>Ready For Sale</strong>にならないようです。私の場合、数時間経っても変わらなかったのでiTunes Connect > View Details > MetaData and Uploadsを編集しました。すると即座に<strong>Ready For Sale</strong>に変更されました。そして数分後(少なくとも1時間以内)にはApp Storeで公開されました。また、数時間してApp StoreからKeywords検索できるようになりました。</p>
-
-<h4>Rejectについて</h4>
-
-<p>私は今回、申請したアプリで１度リジェクトされました。リジェクト判定されるとその理由が説明されるわけですが、そのときは<br/>
-<img src="http://grandbig.github.io/images/iphone_app_reject_contents.png" alt="リジェクト内容" /><br/>
-といった内容でした。<br/>
-簡単に言うと<strong>アプリの使い方のビデオを作成して、リンクを教えよ！</strong>ってことです。</p>
-
-<p>これは全く予想していなかったリジェクト内容でした。しかし、ネット上では同じリジェクトを受けてる人は結構いるようですね&hellip;。YouTubeなどとにかく見れるところにアップすれば良いようなので、ビデオ作成をすることにしました。</p>
-
-<p>初めはiPhone2台持ちで外出して撮影を実行したのですが、明らかに不審者がられる &amp; 動画がぶれぶれ &amp; iPhoneでの動画はあまりキレイじゃなかった といった理由から断念しました。<br/>
-そこで、キャプチャをとって説明書きを入れていく形で動画を撮影しました。そう、動画として撮影する必要はなかったのです。</p>
-
-<p><a href="http://www.youtube.com/watch?v=r2nHW-imRv4">作成した動画はこちらです</a><br/>
-慣れない英語で説明を書いているので間違っている部分が多々あると思いますが、ご愛嬌で&hellip;。<br/>
-このリンクはiTunes Connect内の該当アプリのReview Notesに書きました。ついでにこういうアプリなんだぞ！と説明を書いておきました。<br/>
-今回は上記対応で1週間後にめでたくアプリの申請を通過することができました。</p>
-
-<h4>アプリ申請の総括</h4>
-
-<p>個人で開発して申請したアプリだったので、結構時間がかかるのかなと予想していましたが、法人 or 個人は関係ないようですね。初めにアプリをアップロードした日付が10/13だったので大体3週間程度で申請許可がおりました。(動画の作成を早めていればもう少し早くできたと思います。)
-今後はバージョンアップも視野に入れているので、その際にどの程度時間がかかるものなのか調べてみたいと思います。</p>
-
-<p>最後に、今回、私が開発したアプリは実は開発者支援を意識したアプリであって、通常の消費者が使う用途はほとんどありません。簡単に言うと本アプリは『iPhoneで位置情報を使おうという開発者に<strong>精度と電池消耗率との兼ね合いを考えることを支援するツール</strong>』となっています。いざ、位置情報を使おう！と思ったときに参考になればと思います。<br/>
-まぁ、App Storeからでは埋もれて探すことなどできないかもしれませんが笑。</p>
 ]]></content>
   </entry>
   
