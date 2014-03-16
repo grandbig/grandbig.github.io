@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-03-13T00:31:17+09:00</updated>
+  <updated>2014-03-16T23:34:49+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,113 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Xcode5でDebug gaugesを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2014/03/16/xcode5debug/"/>
+    <updated>2014-03-16T21:56:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/03/16/xcode5debug</id>
+    <content type="html"><![CDATA[<h3>Xcode5のデバッグ機能を使ってCPUとスレッドを調べよう</h3>
+
+<p>最近、アプリを開発する上で、その操作が<strong>どのくらいCPUを消費するのか</strong>, <strong>マルチスレッドを有効に使えているのか</strong>を厳しく見る必要が出てきました。それまでCPUやスレッドもそこまで気にしたことはなかったのですが、Xcode5からはInstrumentを起動しなくとも、簡易的に確認できるということで試しにやってみました。</p>
+
+<!--more-->
+
+
+<h4>Xcode5でDebug gaugesを使ってみる</h4>
+
+<p>まずは、本当に簡単な何もしない画面を作成して、様子を見てみました。<br/>
+<img src="http://grandbig.github.io/images/xcode_debug1.png" alt="何もしない画面の様子" /></p>
+
+<p>4つスレッドがあります。そして、画面の描画に使われているであろうスレッドがThread1であることがわかると思います。他は全く使ってないですね。<br/>
+また、本試験ではiPhone5(iOS7.1)を利用しているため、マルチコアなので、CPUのメータが最大200%であることが示されています。<br/>
+しばらく見ていると、4つあったスレッドが2つに減ります。<br/>
+<img src="http://grandbig.github.io/images/xcode_debug2.png" alt="スレッドが2つになる" /></p>
+
+<p>続いて、for分で10000回ループしてひたすらログを出力するボタンを作成して、様子を見てみました。<br/>
+<img src="http://grandbig.github.io/images/xcode_debug3.png" alt="for分で10000回ループ" /></p>
+
+<p>さて、スレッドを別に作成して実行してみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">dispatch_queue_t</span> <span class="n">gQueue</span> <span class="o">=</span> <span class="n">dispatch_get_global_queue</span><span class="p">(</span><span class="n">DISPATCH_QUEUE_PRIORITY_DEFAULT</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">dispatch_async</span><span class="p">(</span><span class="n">gQueue</span><span class="p">,</span> <span class="o">^</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">for</span><span class="p">(</span><span class="n">NSInteger</span> <span class="n">j</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="mi">10000</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%d回目のループ&quot;</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">});</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>その結果が下図。<br/>
+<img src="http://grandbig.github.io/images/xcode_debug4.png" alt="別スレッドで実行" /><br/>
+これを見るとメインスレッドとは別のスレッドで実行されていることがわかります。基本的に描画はメインスレッドでしか実行がされないので、その他の処理はメインスレッドとは別スレッドで行うのが良さそうですね。</p>
+
+<p>実際にやってみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">dispatch_queue_t</span> <span class="n">gQueue</span> <span class="o">=</span> <span class="n">dispatch_get_global_queue</span><span class="p">(</span><span class="n">DISPATCH_QUEUE_PRIORITY_DEFAULT</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">dispatch_async</span><span class="p">(</span><span class="n">gQueue</span><span class="p">,</span> <span class="o">^</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">for</span><span class="p">(</span><span class="n">NSInteger</span> <span class="n">j</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="mi">10000</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%d回目のループ&quot;</span><span class="p">,</span> <span class="n">j</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">dispatch_async</span><span class="p">(</span><span class="n">dispatch_get_main_queue</span><span class="p">(),</span> <span class="o">^</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;メインのループ&quot;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">});</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">});</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img src="http://grandbig.github.io/images/xcode_debug5.png" alt="マルチスレッドでの実行" /><br/>
+メインスレッドと別スレッドで各10000回ログを出力する処理を実行しているため、同じ時間帯にリソースを使っていることがわかりますね。</p>
+
+<h3>マップを描画してDebug gaugesを見てみる</h3>
+
+<p>アプリを開発するときにマップを利用すると様々な操作でメインスレッドを利用していることがわかります。まずはマップを起動してみましょう。<br/>
+<img src="http://grandbig.github.io/images/xcode_debug6.png" alt="マップを起動してみる" /><br/>
+起動直後から大量のスレッドが作成されていることがわかります。描画はメインスレッドでやるものの、様々な計算は別スレッドでやっているということなんでしょうか&hellip;。<br/>
+起動してからしばらく放置しておくとスレッドがどんどん減っていきます。<br/>
+しかし、マップを拡大・縮小するとスレッドが大量に作成されます。また、CPUも激しく消費することがわかります。(余裕で140〜150%まで上がったりしますね&hellip;)</p>
+
+<p>これらはユーザの操作によって引き起こされる現象なので、極端な話、触らなければCPUの消費はされません。<br/>
+では、下記のようにしてみたらどうなるでしょうか？</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">mapViewDidFinishLoadingMap:</span><span class="p">(</span><span class="n">MKMapView</span> <span class="o">*</span><span class="p">)</span><span class="nv">mapView</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">map</span> <span class="nl">setUserTrackingMode:</span><span class="n">MKUserTrackingModeFollowWithHeading</span> <span class="nl">animated:</span><span class="n">YES</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img src="http://grandbig.github.io/images/xcode_debug7.png" alt="ユーザの方向にマップが回転する" /><br/>
+ユーザの動きを検知して自動で回転するので、CPUを使い続けます。</p>
+
+<h3>まとめ</h3>
+
+<p>アプリを開発する上で、端末のリソースをどのようにうまく使っていくのかは非常に重要です。マップを使うアプリを作成するときは特に注意が必要ですね。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[UIImageを任意の角度で回転させる方法について]]></title>
@@ -2351,82 +2458,6 @@ DB接続方法は下記だけです。</p>
 
 <p>※うまく計測できない場合は再度、両端末でアプリを起動し直してください。<br/>
 ※途中、計測がうまくいかなくなったときは-1.000000[m]と表示されますが、そのまま使って頂くと計測が再開されます。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iBeaconを使ったアプリについて考えてみた]]></title>
-    <link href="http://grandbig.github.io/blog/2013/11/09/ios7-ibeacon-app/"/>
-    <updated>2013-11-09T23:13:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2013/11/09/ios7-ibeacon-app</id>
-    <content type="html"><![CDATA[<h3>iOS7から新たに導入されたiBeaconについて</h3>
-
-<p>本日は多くのディベロッパーが期待を寄せているiBeaconについてブログを書こうと思います。</p>
-
-<p>さて、皆さんは<strong>iBeacon</strong>という言葉をご存知だろうか？IT関連、それもスマートフォン向けサービスを生業としている方であれば既知のことかもしれません。ですが、街中でiPhone片手にLINEを使っている多くのユーザは知らないのではないだろうか？<br/>
-今回は次世代サービスとして多くの期待を一身に背負う<strong>iBeacon</strong>に迫ってみた。<br/>
-と情熱大陸のオープニング曲が頭から離れないせいか、いつもと違う出だしになってしまいました笑。<br/>
-(頭のなかで情熱大陸のオープニング曲を鳴らした状態で冒頭から読んで頂けるとしっくりくるかな&hellip;)</p>
-
-<!--more-->
-
-
-<h4>iBeaconとは</h4>
-
-<p>iBeaconとはiOS7から実装された領域観測機能です。これまで領域観測するためには主にiPhone端末のGPSやWiFi, ネットワークから算出された位置情報を使うしかありませんでした。この場合の問題点としては下記２点が上げられます。<br/>
-・最大精度が5〜10m(高精度を要求すると、それだけ電池消耗が激しい)<br/>
-・屋外での使用(それもビルなどの乱立していない開けた場所でないと検知できない)</p>
-
-<p>このことから、これまで領域観測と言ってもかなりアバウトなものであり、利用用途は限定的でありました。<br/>
-それがiBeaconの登場により、領域観測のサービスを一歩前進させることとなる可能性があります。</p>
-
-<p>iBeaconはBluetooth Low Energy(BLE)を利用して、<strong>Beacon</strong>の存在を検知することができます。(<strong>Beacon</strong>とはBluetoothを利用して発する信号だと思ってください。)この<strong>Beacon</strong>を検知することで、それを発している機器と自身との距離を計測することができます。</p>
-
-<p>iBeaconはiPhone4S, iPad第3世代以降の端末で利用が可能です。(それ以外はiOS7以上にバージョンアップしたとしても利用できません。)</p>
-
-<h4>iBeaconを用いたサンプルについて</h4>
-
-<p>割りと多くのサイトで解説がされているため、本ブログでは割愛します。<a href="http://dev.classmethod.jp/references/ios7-ibeacon-api/">新たな領域観測サービス iBeacon を使ってみる</a>が初めてiBeaconを使ったプログラミングをしようとされる方にはたいへん参考になると思います。</p>
-
-<p>筆者もこのサイトを参考に<strong>『Beacon検知アプリ』</strong>と<strong>『Beacon送出アプリ』</strong>を開発しました。<br/>
-私がサンプルとして作成したアプリは<strong>Beacon検知アプリ</strong>で検知した情報を表示するというものです。<br/>
-<img src="http://grandbig.github.io/images/iBeacon_sample.png" alt="iBeaconサンプルアプリ" /></p>
-
-<p>私が何度か計測した感覚では<br/>
-・Range Immidiate: 〜0.2mくらい<br/>
-・Range Near: 0.2〜2.0mくらい
-・Range Far: 2.0m〜<br/>
-といった判定でした。<br/>
-ただし、数値は非常に不安定で障害物の有無によっても多少異なるようなので『超至近距離』と『近距離』の判別は結構難しいなぁと思いました。</p>
-
-<h4>iBeaconでできることについて</h4>
-
-<p>サンプルアプリを作成して試したものの、１つ壁にぶつかりました。それはiPhoneやiPadでは<strong>Beacon送出デバイスとしては制限がある</strong>ということです。具体的にはBeacon送出するためにはアプリをフォアグラウンドで起動しっぱなしにする必要があります。これはかなり高額なBeacon送出デバイスになってしまいます&hellip;。<br/>
-因みに<strong>Beacon検知アプリはバックグラウンドでの検知も可能</strong>です。</p>
-
-<p>よって個人・法人に関係なくiBeaconを利用したアプリを世に出すためには下記２つのいずれかの方法を用いることになりそうです。<br/>
-・アプリを起動した状態で何かをする<br/>
-・Beacon送出デバイスを別に用意する(iPhone, iPadなどのデバイスはBeacon送出デバイスとしては使わない)</p>
-
-<p>別デバイスの利用を考えたときに<strong>Estimo Beacons</strong>というものを見つけました。現在、販売はされていない？ようですが、非常に楽しみなデバイスです。これからBeacon送出デバイスのスタンダードになるのか注目です。</p>
-
-<p>下記、公式サイトでBeaconサービスのサンプル動画が見れます。<br/>
-<a href="http://estimote.com/">estimoホームページ</a></p>
-
-<p>う〜ん。何かiBeaconを使った面白いアプリは作れないだろうか&hellip;。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<!-- 広告１ -->
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
 ]]></content>
   </entry>
   
