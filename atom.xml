@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-04-11T23:30:08+09:00</updated>
+  <updated>2014-04-13T00:16:45+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,362 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[噂のiOS7.1でiBeaconを試してみよう！！]]></title>
+    <link href="http://grandbig.github.io/blog/2014/04/12/io7-dot-1-de-ibeacon/"/>
+    <updated>2014-04-12T23:41:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/04/12/io7-dot-1-de-ibeacon</id>
+    <content type="html"><![CDATA[<h3>iOS7.1ならアプリのBackground起動も必要なし！？</h3>
+
+<p>さて、本日は最近いろいろなところで取り上げられているiOS7.1でのiBeaconについて実際に試してみました。<br/>
+iOS7から導入されたiBeaconですが、これまではアプリをBackgroundで起動していなければBeaconを検知することができませんでした。しかし、iOS7.1からアプリをBackgroundで起動していなくてもBeaconを検知できるようになったとビッグニュースになりました。でも、本当にそうなんでしょうか？と疑問に思った筆者はSampleアプリで試してみました。</p>
+
+<!--more-->
+
+
+<p>下記がソースです。<br/>
+まずはBeacon機器としてiPadを用いるためにPeripheralソースから書きます。<br/>
+とりあえずProject作成の手順は<br/>
+1: BeaconPeripheralという名称で新規Project作成<br/>
+2: UIViewControllerを追加(ViewControllerという名称で作成しました)<br/>
+3: CoreBluetoothとCoreLocationライブラリを追加<br/>
+として下さい。</p>
+
+<p>ViewController.hのソース</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#import &lt;UIKit/UIKit.h&gt;</span>
+</span><span class='line'><span class="cp">#import &lt;CoreBluetooth/CoreBluetooth.h&gt;</span>
+</span><span class='line'><span class="cp">#import &lt;CoreLocation/CoreLocation.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> : <span class="nc">UIViewController</span><span class="o">&lt;</span><span class="n">CBPeripheralManagerDelegate</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ViewController.mのソース</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">CBPeripheralManager</span> <span class="o">*</span><span class="n">peripheralManager</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">NSUUID</span> <span class="o">*</span><span class="n">proximityUUID</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 省略</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'>          
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="s">@&quot;Peipheral&quot;</span><span class="p">;</span>
+</span><span class='line'>                  
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">proximityUUID</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSUUID</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithUUIDString:</span><span class="s">@&quot;8D4DB809-032F-4771-96F3-99BD5C25F924&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">peripheralManager</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CBPeripheralManager</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithDelegate:</span><span class="n">self</span> <span class="nl">queue:</span><span class="nb">nil</span> <span class="nl">options:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">peripheralManager</span><span class="p">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">CBPeripheralManagerStatePoweredOn</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span> <span class="n">startAdvertising</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">startAdvertising</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">CLBeaconRegion</span> <span class="o">*</span><span class="n">beaconRegion</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CLBeaconRegion</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithProximityUUID:</span> <span class="n">self</span><span class="p">.</span><span class="n">proximityUUID</span>
+</span><span class='line'>                                                                         <span class="nl">major:</span><span class="mi">1</span>
+</span><span class='line'>                                                                         <span class="nl">minor:</span><span class="mi">2</span>
+</span><span class='line'>                                                                    <span class="nl">identifier:</span><span class="s">@&quot;com.test.ibeaconSample&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSDictionary</span> <span class="o">*</span><span class="n">beaconPeripheralData</span> <span class="o">=</span> <span class="p">[</span><span class="n">beaconRegion</span> <span class="nl">peripheralDataWithMeasuredPower:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">peripheralManager</span> <span class="nl">startAdvertising:</span><span class="n">beaconPeripheralData</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>次に、Beaconを検知するCentralのソースを書きます。<br/>
+Projectの作成手順はPeripheralとほぼ同じで、<br/>
+1: BeaconCentralという名称で新規Project作成<br/>
+2: UIViewControllerを追加(ViewControllerという名称で作成しました)<br/>
+3: CoreLocationライブラリを追加<br/>
+として下さい。</p>
+
+<p>ViewController.hのソース</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#import &lt;UIKit/UIKit.h&gt;</span>
+</span><span class='line'><span class="cp">#import &lt;CoreLocation/CoreLocation.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> : <span class="nc">UIViewController</span><span class="o">&lt;</span><span class="n">CLLocationManagerDelegate</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ViewController.mのソース</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">CLLocationManager</span> <span class="o">*</span><span class="n">locationManager</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">NSUUID</span> <span class="o">*</span><span class="n">proximityUUID</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">CLBeaconRegion</span> <span class="o">*</span><span class="n">beaconRegion</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">CLBeacon</span> <span class="o">*</span><span class="n">nearestBeacon</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// initWithNibNameは省略</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">if</span> <span class="p">([</span><span class="n">CLLocationManager</span> <span class="nl">isMonitoringAvailableForClass:</span><span class="p">[</span><span class="n">CLCircularRegion</span> <span class="n">class</span><span class="p">]])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="o">=</span> <span class="p">[</span><span class="n">CLLocationManager</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];]</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">proximityUUID</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSUUID</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithUUIDString:</span><span class="s">@&quot;8D4DB809-032F-4771-96F3-99BD5C25F924&quot;</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">beaconRegion</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CLBeaconRegion</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithProximityUUID:</span> <span class="n">self</span><span class="p">.</span><span class="n">proximityUUID</span> <span class="nl">identifier:</span><span class="s">@&quot;com.test.ibeaconSample&quot;</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">startMonitoringForRegion:</span> <span class="n">self</span><span class="p">.</span><span class="n">beaconRegion</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;お使いの端末ではiBeaconを利用できません。&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 領域計測が開始した場合</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didStartMonitoringForRegion:</span><span class="p">(</span><span class="n">CLRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="s">@&quot;Start Monitoring Region&quot;</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 指定した領域に入った場合</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didEnterRegion:</span><span class="p">(</span><span class="n">CLRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="s">@&quot;Enter Region&quot;</span><span class="p">];</span>
+</span><span class='line'>      
+</span><span class='line'>  <span class="k">if</span> <span class="p">([</span><span class="n">region</span> <span class="nl">isMemberOfClass:</span><span class="p">[</span><span class="n">CLBeaconRegion</span> <span class="n">class</span><span class="p">]]</span> <span class="o">&amp;&amp;</span> <span class="p">[</span><span class="n">CLLocationManager</span> <span class="n">isRangingAvailable</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">startRangingBeaconsInRegion:</span><span class="p">(</span><span class="n">CLBeaconRegion</span> <span class="o">*</span><span class="p">)</span><span class="n">region</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 指定した領域から出た場合</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didExitRegion:</span><span class="p">(</span><span class="n">CLRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="s">@&quot;Exit Region&quot;</span><span class="p">];</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">if</span> <span class="p">([</span><span class="n">region</span> <span class="nl">isMemberOfClass:</span><span class="p">[</span><span class="n">CLBeaconRegion</span> <span class="n">class</span><span class="p">]]</span> <span class="o">&amp;&amp;</span> <span class="p">[</span><span class="n">CLLocationManager</span> <span class="n">isRangingAvailable</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">stopRangingBeaconsInRegion:</span><span class="p">(</span><span class="n">CLBeaconRegion</span> <span class="o">*</span><span class="p">)</span><span class="n">region</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Beacon信号を検出した場合</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didRangeBeacons:</span><span class="p">(</span><span class="n">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nv">beacons</span> <span class="nf">inRegion:</span><span class="p">(</span><span class="n">CLBeaconRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">beacons</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">nearestBeacon</span> <span class="o">=</span> <span class="n">beacons</span><span class="p">.</span><span class="n">firstObject</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">NSString</span> <span class="o">*</span><span class="n">rangeMessage</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">switch</span> <span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">nearestBeacon</span><span class="p">.</span><span class="n">proximity</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">case</span> <span class="nl">CLProximityImmediate:</span>
+</span><span class='line'>              <span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Immediate&quot;</span><span class="p">;</span>
+</span><span class='line'>              <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>          <span class="k">case</span> <span class="nl">CLProximityNear:</span>
+</span><span class='line'>              <span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Near&quot;</span><span class="p">;</span>
+</span><span class='line'>              <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>          <span class="k">case</span> <span class="nl">CLProximityFar:</span>
+</span><span class='line'>              <span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Far&quot;</span><span class="p">;</span>
+</span><span class='line'>              <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>          <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>              <span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Unknown&quot;</span><span class="p">;</span>
+</span><span class='line'>              <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">NSString</span> <span class="o">*</span><span class="n">msg</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;%f [m]&quot;</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">nearestBeacon</span><span class="p">.</span><span class="n">accuracy</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="n">msg</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 領域観測に失敗した場合</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">monitoringDidFailForRegion:</span><span class="p">(</span><span class="n">CLRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span> <span class="nf">withError:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="s">@&quot;Exit Region&quot;</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ローカルプッシュの処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">sendLocalNotificationForMessage:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">message</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">UILocalNotification</span> <span class="o">*</span><span class="n">localNotification</span> <span class="o">=</span> <span class="p">[</span><span class="n">UILocalNotification</span> <span class="n">new</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">localNotification</span><span class="p">.</span><span class="n">alertBody</span> <span class="o">=</span> <span class="n">message</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">localNotification</span><span class="p">.</span><span class="n">fireDate</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSDate</span> <span class="n">date</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">localNotification</span><span class="p">.</span><span class="n">soundName</span> <span class="o">=</span> <span class="n">UILocalNotificationDefaultSoundName</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">[[</span><span class="n">UIApplication</span> <span class="n">sharedApplication</span><span class="p">]</span> <span class="nl">scheduleLocalNotification:</span><span class="n">localNotification</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでソースは完了です。<br/>
+まずはアプリをBackgroundで起動させているときの動作を見てみてください。<br/>
+動作確認時には必ずCentralを先に起動する必要があります。約5秒後にPeripheralを起動して下さい。Centralの方にローカルプッシュが届くはずです。</p>
+
+<p>続いて、Centralのアプリを停止してください。Background起動も切ります。するとしばらくして<strong>Exit Region</strong>というメッセージでローカルプッシュが届くと思います。その後、<strong>Start Monitoring Region</strong>というメッセージでローカルプッシュが届き、計測が始まることがわかるはずです。</p>
+
+<p>確かにアプリをBackgroundで起動していなくても動作をするようです。因みに、このときアプリがBackground起動しているのか確認したのですが、してないんですね〜。というかホームボタン2回タップでBackground起動しているアプリが見れるはずなのに、そこに出てないんですね〜。う〜ん。どういうことなんでしょうか？？</p>
+
+<p>まぁ、何はともあれ、iOS7.1からiBeaconの扱いが劇的に変わるってことは間違いないようです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[FMDBを使ったDB接続を関数化しよう！！]]></title>
@@ -2146,328 +2502,6 @@ apacheを再起動することをお忘れなく。<br/>
 これはiPhoneの傾きを検知して表示されているキューブを角度を変えて見ることができるという単純なものです。入門記事を読んで頂ければわかるのですが、コードはJavaScriptで少し書いただけです。(あとは基本的にドラッグ&amp;ドロップ)</p>
 
 <p>今はまだ、どこに何があるのかわからないような状態ですが、使いこなすことができれば非常に簡単にゲームを作ることができそうです。今後、少しずつ触ってみようと思います。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[UIWebView内でheaderを固定して滑らかなスクロールを実現しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2013/12/06/header-fixed/"/>
-    <updated>2013-12-06T23:24:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2013/12/06/header-fixed</id>
-    <content type="html"><![CDATA[<h3>header固定をしたスクロールは案外難しい！！</h3>
-
-<p>本日はUIWebViewを全面に貼り付けた上で、ヘッダーを固定して滑らかなスクロールを実現する方法について書きたいと思います。<br/>
-もし、ヘッダーをネイティブで作成して、中身をWebで作成すれば簡単に実現できます。しかし、ネイティブとWebのハイブリットアプリを目指すとAndroidへの対応が手間となるため一長一短な面があります。今回はあえて全面UIWebViewに拘りたいと思います。</p>
-
-<!--more-->
-
-
-<h4>position: fixedだとうまくいかない！？</h4>
-
-<p>まず、Webでヘッダーを固定することを考えたときに真っ先に思い浮かぶものは<strong>position: fixed</strong>を利用することだと思います。</p>
-
-<p>サンプルHTML</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!DOCTYPE html&gt;
-</span><span class='line'>  &lt;head&gt;
-</span><span class='line'>      &lt;meta charset="UTF-8" content="text/css" http-equiv="Content-Style-Type" /&gt;
-</span><span class='line'>      &lt;meta content="width=device-width, user-scalable=no,minimum-scale=0.5, maximum-scale=1.0" name="viewport" /&gt;
-</span><span class='line'>      &lt;link href="./main.css" media="all" rel="stylesheet" type="text/css" /&gt;
-</span><span class='line'>      &lt;title&gt;サンプル&lt;/title&gt;
-</span><span class='line'>  &lt;/head&gt;
-</span><span class='line'>  &lt;body&gt;
-</span><span class='line'>      &lt;div id="header"&gt;ヘッダー&lt;/div&gt;
-</span><span class='line'>      &lt;div id="mainContents"&gt;
-</span><span class='line'>          &lt;div id="main"&gt;
-</span><span class='line'>              contents
-</span><span class='line'>              &lt;br&gt;
-</span><span class='line'>              contents
-</span><span class='line'>              &lt;br&gt;
-</span><span class='line'>              ...
-</span><span class='line'>              contents
-</span><span class='line'>              &lt;br&gt;
-</span><span class='line'>          &lt;/div&gt;
-</span><span class='line'>      &lt;/div&gt;
-</span><span class='line'>  &lt;/body&gt;
-</span><span class='line'>&lt;/html&gt;</span></code></pre></td></tr></table></div></figure>
-
-
-<p>サンプルCSS</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>html, body {
-</span><span class='line'>  padding: 0;
-</span><span class='line'>  margin: 0;
-</span><span class='line'>  width: 100%;
-</span><span class='line'>  height: 100%;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>#header {
-</span><span class='line'>  position: fixed;
-</span><span class='line'>  top: 0;
-</span><span class='line'>  left: 0;
-</span><span class='line'>  width: 100%;
-</span><span class='line'>  height: 64px;
-</span><span class='line'>  z-index: 2;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>#mainContents {
-</span><span class='line'>  position: relative;
-</span><span class='line'>  top: 64px;
-</span><span class='line'>  width: 100%;
-</span><span class='line'>  height: 100%;
-</span><span class='line'>  -webkit-overflow-scrolling: touch;
-</span><span class='line'>  z-index: 1;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>確かにこの設定であればヘッダーを固定して中身を滑らかにスクロールすることが可能になります。そして、iPhoneのSafariからその画面を見るのであればさして違和感はないでしょう。しかし、これをUIWebView上で見ると画面のバウンドを止められないことに気がつきます。これは結構な違和感です。<br/>
-このバウンドを以下のようにネイティブソース側から止めることを考えました。</p>
-
-<p>ネイティブソース(UIWebViewの設定部分)</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)viewDidLoad {
-</span><span class='line'>  [super viewDidLoad];
-</span><span class='line'>  uiWebView.delegate = self;
-</span><span class='line'>  // バウンドしないように設定
-</span><span class='line'>  [[(UIScrollView *)[uiWebView subviews] objectAtIndex:0] setBounces:NO];
-</span><span class='line'>  ...
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>しかし、これだとCSSで設定した<strong>-webkit-overflow-scrolling: touch</strong>の効果がなくなってしまいます。なので別の方法を考えました。</p>
-
-<h4>position: absoluteを使う！！</h4>
-
-<p>position: fixed;は使いません。position: absolute;を使います。以下、踏まえて書き直します。</p>
-
-<p>サンプルHTML</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!DOCTYPE html&gt;
-</span><span class='line'>  &lt;head&gt;
-</span><span class='line'>      &lt;meta charset="UTF-8" content="text/css" http-equiv="Content-Style-Type" /&gt;
-</span><span class='line'>      &lt;meta content="width=device-width, user-scalable=no,minimum-scale=0.5, maximum-scale=1.0" name="viewport" /&gt;
-</span><span class='line'>      &lt;link href="./main.css" media="all" rel="stylesheet" type="text/css" /&gt;
-</span><span class='line'>      &lt;title&gt;サンプル&lt;/title&gt;
-</span><span class='line'>  &lt;/head&gt;
-</span><span class='line'>  &lt;body&gt;
-</span><span class='line'>      &lt;div id="wrapper"&gt;
-</span><span class='line'>          &lt;div id="header"&gt;ヘッダー&lt;/div&gt;
-</span><span class='line'>          &lt;div id="mainContents"&gt;
-</span><span class='line'>              &lt;div id="main"&gt;
-</span><span class='line'>                  contents
-</span><span class='line'>                  &lt;br&gt;
-</span><span class='line'>                  contents
-</span><span class='line'>                  &lt;br&gt;
-</span><span class='line'>                  ...
-</span><span class='line'>                  contents
-</span><span class='line'>                  &lt;br&gt;
-</span><span class='line'>              &lt;/div&gt;
-</span><span class='line'>          &lt;/div&gt;
-</span><span class='line'>      &lt;/div&gt;
-</span><span class='line'>  &lt;/body&gt;
-</span><span class='line'>&lt;/html&gt;</span></code></pre></td></tr></table></div></figure>
-
-
-<p>サンプルCSS</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>html, body {
-</span><span class='line'>  padding: 0;
-</span><span class='line'>  margin: 0;
-</span><span class='line'>  width: 100%;
-</span><span class='line'>  height: 100%;
-</span><span class='line'>  overflow: hidden;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>#wrapper {
-</span><span class='line'>  position: relative;
-</span><span class='line'>  width: 100%;
-</span><span class='line'>  height: 100%;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>#header {
-</span><span class='line'>  position: absolute;
-</span><span class='line'>  top: 0;
-</span><span class='line'>  left: 0;
-</span><span class='line'>  width: 100%;
-</span><span class='line'>  height: 64px;
-</span><span class='line'>  z-index: 2;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>#mainContents {
-</span><span class='line'>  position: relative;
-</span><span class='line'>  top: 64px;
-</span><span class='line'>  width: 100%;
-</span><span class='line'>  height: 100%;
-</span><span class='line'>  overflow: auto;
-</span><span class='line'>  -webkit-overflow-scrolling: touch;
-</span><span class='line'>  z-index: 1;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>#main {
-</span><span class='line'>  position: relative;
-</span><span class='line'>  padding: 64px 0;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これでほとんどの場合、バウンドしなくなります。しかも、滑らかなスクロールを保つこともできます。<br/>
-ただし、ヘッダーをタッチムーブすると&hellip;バウンドしてしまいます！！</p>
-
-<p>う〜ん。これは果たして無理なのか！？と思ったところで思いつきました。<strong>touchイベントを無効化</strong>しましょう！！<br/>
-jQueryを使っている前提で下記を紹介します。</p>
-
-<p>サンプルJS</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>
-</span><span class='line'>jQuery( function($) {
-</span><span class='line'>  
-</span><span class='line'>  $("#header").bind("touchstart", function() {
-</span><span class='line'>      event.preventDefault();
-</span><span class='line'>  });
-</span><span class='line'>  
-</span><span class='line'>  $("#header").bind("touchmove", function() {
-</span><span class='line'>      event.preventDefault();
-</span><span class='line'>  });
-</span><span class='line'>
-</span><span class='line'>  $("#header").bind("touchend", function() {
-</span><span class='line'>      event.preventDefault();
-</span><span class='line'>  });
-</span><span class='line'>
-</span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これでバウンドせずに滑らかなスクロールを保つことができました。</p>
-
-<p>と思ったのですが、画面の両端を触っているとバウンドが発生してしまいます&hellip;。要調査ですね&hellip;。</p>
 ]]></content>
   </entry>
   
