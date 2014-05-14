@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-05-10T01:12:08+09:00</updated>
+  <updated>2014-05-15T00:07:07+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,95 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Background fetch completionHandlerの実行タイミングについて]]></title>
+    <link href="http://grandbig.github.io/blog/2014/05/13/backgroundfetch1/"/>
+    <updated>2014-05-13T22:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/05/13/backgroundfetch1</id>
+    <content type="html"><![CDATA[<h3>Background Fetchで気をつけること</h3>
+
+<p>本日はBackground fetchについて書きたいと思います。時間の都合上、何回かに分けて書く予定です笑<br/>
+Background fetchは既に皆さんもご存知の通りiOS7から加わった新機能です。通常、アプリをBackground起動にしたとき、アプリ内処理に許される時間は5秒間です。iOS6まではBackground起動中に継続して処理可能な機能は決まっていました。(位置情報の取得, 音楽の再生, 電話の3つ)<br/>
+従って、これまでは<strong>beginBackgroundTaskWithExpirationHandler</strong>と<strong>setKeepAliveTimeout</strong>を用いて最大10分間の処理を継続して実行していました。(しかし、iOS7ではこの方法ができないらしいです。)<br/>
+これに対してBackground fetchは30秒の制限はあるものの、OSが実行すべきと思ったタイミングで複数回実行されます。継続して実行する必要はないものの、どこかのタイミングで実行しておきたいというときには有効に使うことができるでしょう。</p>
+
+<!--more-->
+
+
+<p>まず、『Background fetchの利用を許可するまでの手順』などの基本的な部分についてはいろいろなサイトで説明されているので、例えば<a href="http://blog.yug1224.com/2013/09/29/backgroundfetch/">こちら</a>のサイトなどを参考にして下さい。<br/>
+では早速、本日のお題である<strong>completionHandlerの実行タイミング</strong>の説明です。これはBackground fetchの処理が終了したことをiOSに知らせるために必ず書く必要があります。もし、書かなかった場合はデバッグ時に<br/>
+<strong>Warning: Application delegate received call to -application:performFetchWithCompletionHandler: but the completion handler was never called.</strong><br/>
+というWarningメッセージが表示されます。<br/>
+また、処理が終了したことをiOSが判断できないため、<br/>
+<strong>permittedBackgroundDuration: 30.000000 reason: backgroundContentFetching owner pid:33 preventSuspend  preventThrottleDownUI  preventIdleSleep  preventSuspendOnSleep</strong><br/>
+とアプリ起動中にエラーを出すことになります。(これはOrganizerのDebug Logsから確認することができます。)</p>
+
+<p>そして重要なのは<strong>completionHandlerは処理の最後に書く</strong>ということです。<br/>
+しかも<strong>一本筋のフローの中での最後</strong>という意味です。<br/>
+例えば、<br/>
+AppDelegate.mファイル</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">application:</span><span class="p">(</span><span class="n">UIApplication</span> <span class="o">*</span><span class="p">)</span><span class="nv">application</span> <span class="nf">performFetchWithCompletionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">UIBackgroundFetchResult</span><span class="p">))</span><span class="nv">completionHandler</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="n">testMethod</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">completionHandler</span><span class="p">(</span><span class="n">UIBackgroundFetchResultNewData</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">testMethod</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">dispatch_queue_t</span> <span class="n">globalQueue</span> <span class="o">=</span> <span class="n">dispatch_get_global_queue</span><span class="p">(</span><span class="n">DISPATCH_QUEUE_PRIORITY_DEFAULT</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">dispatch_async</span><span class="p">(</span><span class="n">globalQueue</span><span class="p">,</span> <span class="o">^</span><span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;別スレッド処理の開始&quot;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">NSThread</span> <span class="nl">sleepForTimeInterval:</span><span class="mf">5.0f</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;別スレッド処理の終了&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このような処理があったとします。<br/>
+この場合、デバッグしてみるとわかるのですが、testMethodの最後の<strong>NSLog(@&ldquo;別スレッド処理の終了&rdquo;);</strong>は実行されません。<br/>
+これは先にcompletionHandler(UIBackgroundFetchResultNewData);が実行されてしまうためです。</p>
+
+<p>そういった意味で<strong>一本筋のフローの中での最後にcompletionHandlerの処理を書く</strong>ということです。</p>
+
+<p>このようにBackground fetchの実行タイミングは非常に重要になります。<br/>
+といったところで本日はここまで。</p>
+
+<p>参考:<br/>
+<a href="http://qiita.com/griffin_stewie/items/8371c09059b3ba7bb202">Background fetchを試してみた</a><br/>
+<a href="http://miyano-harikyu.jp/sola/devlog/2013/11/21/post-108/">iOSでバックグラウンドタスク</a><br/>
+<a href="http://wonderpla.net/blog/engineer/BackgroundFetch/">iOS7のバックグラウンド処理〜Background Fetch</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iPhoneアプリを申請しました(3)]]></title>
@@ -2177,112 +2266,6 @@ nvmを使う方法もあるのですが、筆者は簡単に設定ができるno
 
 
 <p>以上。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Passbook webServiceURLについて]]></title>
-    <link href="http://grandbig.github.io/blog/2014/01/19/passbook-detail/"/>
-    <updated>2014-01-19T21:30:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/01/19/passbook-detail</id>
-    <content type="html"><![CDATA[<h3>Passbook webServiceURLの設定で躓いたところ</h3>
-
-<p>さて、最近はPassbookばかり触っているので、3回連続でPassbookについてです。筆者が躓いたところをピックアップして記載していきます。<br/>
-具体的には<br/>
-・webServiceURLに指定するURL<br/>
-・Passbookを追加/更新/削除したときに自動で投げてくるパラメータ<br/>
-についてです。</p>
-
-<!--more-->
-
-
-<h4>webServiceURLについて</h4>
-
-<p>PassbookではwebServiceURLを設定するところで躓きました。使いきり&amp;更新や削除などを感知しないパスであれば、何も気にせず適当なURLを設定して構いません。しかし、パスの追加/更新/削除を感知して、ユーザ固有のアクションを起こさせたいという狙いがある場合は、きちんと考えなくてはなりません。</p>
-
-<p>結論から言うと、<strong>http</strong>ではなく<strong>https</strong>から始まるURLを指定しなくてはなりません。また、自己証明書で試した結果、通信ができませんでした&hellip;。これは筆者の設定が悪いのかどうか不明なところなんですが、きちんとした証明書で<strong>https</strong>通信ができるサーバで試した結果、通信できました。ここについてはネット上ではっきりと書かれているサイトがなかったため真実はわからないのですが、少なくとも筆者は自己証明書では失敗したということをお伝えします。</p>
-
-<p>因みに筆者は今回、Windows AzureでWebサイトを作成して活用しました。Webサイトではhttpでもhttpsでもアクセスできるように設定されているとのことで非常に使い勝手が良かったです。</p>
-
-<p>また、Apple iOS Developerであれば、開発者だけができる設定でwebServiceURLにhttpのURLを設定しても通信することができます。次の章で説明する内容を実際に見たい場合は余分なお金のかからないhttpサーバで試してみると良いでしょう。設定は下記のようにできます。<br/>
-<img src="http://grandbig.github.io/images/httpAllow.png" alt="設定からhttpを許可する" /></p>
-
-<h4>Passbookを追加/更新/削除したときに自動で投げてくるパラメータ</h4>
-
-<p>続いて、Passbookをユーザが受け取ってからwebServiceURLに指定したサーバに投げてくるパラメータについて説明します。パラメータが送られるパターンは下記です。<br/>
-・Passbookを受け取って<strong>追加</strong>ボタンを押したとき<br/>
-・Passbookを手動/自動で<strong>更新</strong>したとき<br/>
-・Passbookを<strong>削除</strong>したとき</p>
-
-<p>それぞれについて具体的に説明します。</p>
-
-<h5>Passbookを受け取って追加ボタンを押したとき</h5>
-
-<p>追加ボタンを押した瞬間に自動的にPOSTで通信されます。<br/>
-その際、投げられるURLは</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/webServiceURLで指定したURL/v1/devices/デバイスライブラリID/registrations/パスタイプID/シリアルナンバー</span></code></pre></td></tr></table></div></figure>
-
-
-<p>となります。
-このURLもしくはreq.paramsから<strong>デバイスライブラリID</strong>, <strong>パスタイプID</strong>, <strong>シリアルナンバー</strong>を取得することができます。また、req.headersに<strong>authorization</strong>の値が入っています。</p>
-
-<p>デバイスライブラリIDはデバイスによって異なり、さらに新規パス取得の際には毎回異なる値です。パスタイプIDは開発者が発行するPassbookの証明書の.passを外した部分のことです。シリアルナンバーはパス毎に発行すべきものです。例えば、忘年会のチケットを配布する場合、そのチケットでは同じシリアルナンバーを使います。(ユーザごとにユニークな値をふるべきではありません。)authorizationはユーザ毎にユニークな値を持たせた方が使い勝手が良いと思われます。また、MD5などで暗号化した方がセキュリティ的には良いでしょう。</p>
-
-<h5>Passbookを手動/自動で更新したとき</h5>
-
-<p>Passbookアプリでパスの裏面を上から下にスクロールして手動で更新したときなどではGETで通信されます。<br/>
-その際に投げられるURLは</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/webServiceURLで指定したURL/v1/passes/パスタイプID/シリアルナンバー</span></code></pre></td></tr></table></div></figure>
-
-
-<p>となります。
-更新の場合は<strong>パスタイプID</strong>, <strong>シリアルナンバー</strong>, <strong>authorization</strong>を取得することができます。<br/>
-また、更新処理のときにはログ用にPOSTで</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/webServiceURL/v1/log</span></code></pre></td></tr></table></div></figure>
-
-
-<p>が投げられます。<br/>
-これを用いてログをDBに格納するのも良いでしょう。</p>
-
-<h5>Passbookを削除したとき</h5>
-
-<p>最後はパスを削除した場合です。このときはDELETEで通信されます。<br/>
-その際、投げられるURLは</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/webServiceURLで指定したURL/v1/devices/デバイスライブラリID/registrations/パスタイプID/シリアルナンバー</span></code></pre></td></tr></table></div></figure>
-
-
-<p>となります。</p>
-
-<p>因みに筆者の場合は、Node.jsでExpressモジュールを使用しているので、下記のように書いています。<br/>
-webServiceURLで末尾に/sendParamというパスをつけた場合です。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// Passbookを受け取って追加ボタンを押したとき
-</span><span class='line'>app.post('/sendParam/v1/devices/:deviceLibraryID/registrations/:passTypeID/:serialNumber', pass.createData);
-</span><span class='line'>// Passbookを手動/自動で更新したとき
-</span><span class='line'>app.get('/sendParam/v1/passes/:passTypeID/:serialNumber', pass.updateData);
-</span><span class='line'>// ログ用
-</span><span class='line'>app.post('/sendParam/v1/log', pass.logData);
-</span><span class='line'>// Passbookを削除したとき
-</span><span class='line'>app.delete('/sendParam/v1/devices/:deviceLibraryID/registrations/:passTypeID/:serialNumber', pass.deleteData);</span></code></pre></td></tr></table></div></figure>
-
-
-<p>大体Passbookのことはわかってきたのですが、まだまだ躓くところも多く勉強です。本日はここまで。</p>
 ]]></content>
   </entry>
   
