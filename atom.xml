@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-05-15T00:07:07+09:00</updated>
+  <updated>2014-05-18T22:49:20+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,84 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Background FetchとBackground Transferについて]]></title>
+    <link href="http://grandbig.github.io/blog/2014/05/18/backgroundfetch2/"/>
+    <updated>2014-05-18T21:43:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/05/18/backgroundfetch2</id>
+    <content type="html"><![CDATA[<h3>Background FetchとBackground Transferの違いについて</h3>
+
+<p>今回はBackground FetchとBackground Transferについて筆者が混同していたことについて書こうと思います。Background Fetchのできることや使いどころは<a href="http://grandbig.github.io/blog/2014/05/13/backgroundfetch1/">前回</a>書きましたので、そちらをご覧下さい。<br/>
+もともと筆者がBackground Transferに着目した理由はBackground Fetchでは不可能な長い時間の処理を実現させたいからでした。Background Transferでは見事にその想いを実現できる！！っと思っていました。<br/>
+しかし、どうやら根本的に理解が間違っていたようなのです&hellip;。</p>
+
+<!--more-->
+
+
+<p>Background Transferは<strong>時間制限なし</strong>, <strong>アプリケーションの状態によらない転送が可能な設定がある</strong>という特徴があります。そして設定可能なタスクは<br/>
+・NSURLSessionDataTask: Background起動時には使えないのでちょっとした通信に利用<br/>
+・NSURLSessionDownloadTask: 大容量のダウンロード処理だけでなく、処理時間が長い可能性のある通信でも利用可能<br/>
+・NSURLSessionUploadTask: 大容量のアップロード処理で利用<br/>
+の3つがあります。</p>
+
+<p>筆者はBackground Fetchの30秒制限では実行不可能な長めの処理をBackground Transferで実行しようとしたのですが、これがなかなかうまくいかないんですね。<strong>1回の実行</strong>であれば、Background Transferで問題ありません。ただ、<strong>繰り返し処理を実行</strong>したいのであればBackground Transferは向いていません。というかそういった処理は組めないようなんです&hellip;。</p>
+
+<p>Background fetchとBackground Transferを組み合わせた場合、下記のような処理になるでしょう。<br/>
+AppDelegate.mファイル内のコード</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">application:</span><span class="p">(</span><span class="n">UIApplication</span> <span class="o">*</span><span class="p">)</span><span class="nv">application</span> <span class="nf">performFetchWithCompletionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">UIBackgroundFetchResult</span><span class="p">))</span><span class="nv">completionHandler</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSURLRequest</span><span class="o">*</span> <span class="n">request</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURLRequest</span> <span class="nl">requestWithURL:</span><span class="p">[</span><span class="n">NSURL</span> <span class="nl">URLWithString:</span><span class="s">@&quot;http://localhost:3000&quot;</span><span class="p">]];</span>
+</span><span class='line'>  <span class="n">NSURLSessionDownloadTask</span><span class="o">*</span> <span class="n">downloadTask</span> <span class="o">=</span> <span class="p">[</span><span class="n">session</span> <span class="nl">downloadTaskWithRequest:</span><span class="n">request</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">downloadTask</span> <span class="n">resume</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">completionHandler</span><span class="p">(</span><span class="n">UIBackgroundFetchResultNewData</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">URLSession:</span><span class="p">(</span><span class="n">NSURLSession</span> <span class="o">*</span><span class="p">)</span><span class="nv">session</span> <span class="nf">downloadTask:</span><span class="p">(</span><span class="n">NSURLSessionDownloadTask</span> <span class="o">*</span><span class="p">)</span><span class="nv">downloadTask</span> <span class="nf">didFinishDownloadingToURL:</span><span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="p">)</span><span class="nv">location</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 通信結果を受け取った後に処理を書くメソッド</span>
+</span><span class='line'>  
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これを実行すると、completionHandlerでBackground fetch内での処理が終了したと見なされ、didFinishDownloadingToURLを通過しませんでした。<br/>
+よって、アプリがBackground起動のときにOSが判断したちょうど良いタイミングで実行してくれるBackground Fetchではやはり長い処理を実行することはできないと言えます。<br/>
+確かにBackground Transferで検索して出てくるサンプルは大体、ボタンを押した後に実行される感じだったんですよね&hellip;。</p>
+
+<p>もしかしたら方法があるかもしれませんが、今のところ手詰まりな感じです。ってことで今日はここまで。</p>
+
+<p>参考:<br/>
+<a href="http://www.gaprot.jp/pickup/ios7/vol1/">第 1 回・iOS7でバックグラウンド実行＆通信をしてみよう！</a><br/>
+<a href="http://mediaprobe.co.jp/blog/clips/2014/01/09/ios-7-2/">iOS 7のための開発ノウハウ #2：大容量ファイルのバックグラウンド転送</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Background fetch completionHandlerの実行タイミングについて]]></title>
@@ -2204,68 +2282,6 @@ iOS7では動いてしまうという部分も混乱を招く原因だったと�
 
 <p>標準提供のMapKitを利用しているアプリでGIFアニメーションをマップ上に表示しているアプリもあるので、やり方はあるのと思います。
 ただ、Google Maps SDKはとても使いやすそうなので、こっち使おうかな。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[nodebrewで複数のnodeをインストールしよう]]></title>
-    <link href="http://grandbig.github.io/blog/2014/01/19/howtonodebrew/"/>
-    <updated>2014-01-19T23:14:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/01/19/howtonodebrew</id>
-    <content type="html"><![CDATA[<h3>nodebrewでnodeをインストール</h3>
-
-<p>最近はNode.jsがかなりメジャーになってきた気がします。しかし、Node.jsは未だにバージョンが1.0に届いていないので、開発途中に最新バージョンが出てくることも十分あり得ます。そのたびにアンインストールをするわけにもいかないので複数のバージョンのNode.jsをインストールできるようにしておくと便利です。<br/>
-nvmを使う方法もあるのですが、筆者は簡単に設定ができるnodebrewを活用しています。</p>
-
-<!--more-->
-
-
-<h4>設定手順</h4>
-
-<p>早速、設定手順を説明します。<br/>
-1. nodebrewをインストール</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>curl -L git.io/nodebrew | perl - setup</span></code></pre></td></tr></table></div></figure>
-
-
-<p>2. .bash_profileにパスを追加</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>export PATH=$HOME/.nodebrew/current/bin:$PATH</span></code></pre></td></tr></table></div></figure>
-
-
-<p>3. .bash_profileを再読み込み</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>source ~/.bash_profile</span></code></pre></td></tr></table></div></figure>
-
-
-<p>4. nodeのインストール</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nodebrew install-binary v0.10.24</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ただし、v0.8.6以前はバイナリからインストールできないので、下記のようにインストールする必要があります。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nodebrew install v0.6.12</span></code></pre></td></tr></table></div></figure>
-
-
-<p>5. インストールされたnodeのバージョンを確認</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nodebrew ls</span></code></pre></td></tr></table></div></figure>
-
-
-<p>6. 利用したいnodeを指定</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nodebrew use v0.10.24</span></code></pre></td></tr></table></div></figure>
-
-
-<p>以上。</p>
 ]]></content>
   </entry>
   
