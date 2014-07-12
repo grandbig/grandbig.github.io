@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-07-12T21:27:29+09:00</updated>
+  <updated>2014-07-13T02:06:47+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,288 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOSでGoogle OAuth認証がしたい]]></title>
+    <link href="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/"/>
+    <updated>2014-07-13T00:17:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2</id>
+    <content type="html"><![CDATA[<h3>iOSネイティブアプリにGoogle OAuth認証機能を実装する方法</h3>
+
+<p>Google OAuth認証はWebアプリであれば多くの情報が載っているのですが、なぜかiOSネイティブアプリになると情報が全然見つからない&hellip;。<br/>
+ということでその方法をまとめてみることにした。</p>
+
+<p>まず、ネット上で検索してみるとiOSでOAuth認証をするためのライブラリは幾つか作られているようでした。<br/>
+その中でも、Googleが提供している<strong>gtm-oauth2</strong>がよく使われているらしい。<br/>
+ま、Googleが提供しているのであれば、安心して使えるだろうということで、ここでは<strong>gtm-oauth2</strong>を使った方法で説明します。</p>
+
+<!--more-->
+
+
+<h4>設定編</h4>
+
+<p>開発に入る前に<a href="https://console.developers.google.com/project">Google Console</a>で設定する必要があります。<br/>
+1: OAuthのClientIDを作成する<br/>
+左メニューからAPIS &amp; AUTH > Credentialsを選択します。<br/>
+OAuthと書かれた下に<strong>Create new Client ID</strong>というボタンがあります。これをクリックするとポップアップが出てきます。このポップアップの中で必要な選択と入力は下記画像のようになります。<br/>
+<img src="http://grandbig.github.io/images/goauth5.png" alt="Create new Client ID" /><br/>
+すると、下記画像のように<strong>CLIENT ID</strong>と<strong>CLIENT SECRET</strong>が表示されます。<br/>
+<img src="http://grandbig.github.io/images/goauth6.png" alt="Client ID &amp; Client Secret" /></p>
+
+<p>2: Consent Screenを設定する<br/>
+次にConsent Screenを設定します。これを設定しないとErrorが発生してしまいます。<br/>
+左メニューからAPIS &amp; AUTH > Consent Screenを選択します。<br/>
+下記画像のように<strong>EMAIL ADDRESS</strong>と<strong>PRODUCT NAME</strong>の２箇所を入力してSaveボタンをクリックしましょう。<br/>
+<img src="http://grandbig.github.io/images/goauth7.png" alt="Consent Screenの設定" /></p>
+
+<p>3: 利用するAPIを設定する<br/>
+最後に利用したいAPIの設定をONにしておきましょう。<br/>
+左メニューからAPIS &amp; AUTH > APIsを選択します。<br/>
+下記画像のように利用したいAPIのSTATUSをONにしましょう。<br/>
+<img src="http://grandbig.github.io/images/goauth8.png" alt="APIをONにする" /></p>
+
+<p>これで設定は完了です。<br/>
+続いて開発の説明に入ります。</p>
+
+<h4>開発編</h4>
+
+<p>1: GoogleからソースをGET<br/>
+早速、Googleが配布しているソースをもらいに行きます。<br/>
+<a href="https://code.google.com/p/gtm-oauth2/source/checkout">Googleのgtm-oauth2サイト</a>でも書かれているようにsvnを使って、ソースを落とします。<br/>
+ソースを保存する場所を決めたら、その配下で下記コマンドを実行。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>svn checkout http://gtm-oauth2.googlecode.com/svn/trunk/ gtm-oauth2-read-only</span></code></pre></td></tr></table></div></figure>
+
+
+<p>もしかしたら、途中でRejectかtemporaryかpermanentか聞かれるかもしれません。筆者はtemporaryにしました。<br/>
+ソースを落とした後は<a href="https://code.google.com/p/gtm-oauth2/wiki/Introduction">公式ドキュメント</a>に書かれている通り、進めていきます。</p>
+
+<p>2: ダウンロードしたソースを自身のXcodeプロジェクトに追加<br/>
+OAuth認証機能を実装したいXcodeプロジェクトを作成します。ここにOAuthに必要なソースを追加します。<br/>
+必要なソースは<br/>
+・GTMOAuth2Authentication.h/m<br/>
+・GTMOAuth2SignIn.h/m<br/>
+・GTMHTTPFetcher.h/m<br/>
+・GTMOAuth2ViewControllerTouch.h/m<br/>
+・GTMOAuth2ViewTouch.xib<br/>
+です。<br/>
+格納場所は下記画像を見てください。<br/>
+<img src="http://grandbig.github.io/images/goauth1.png" alt="必要なソースの格納場所" /></p>
+
+<p>ほとんどの人がXcode5.1.1でプロジェクトを作ると思うのですが、デフォルトARC対応プロジェクトとなっていると思います。<br/>
+そのため、<strong>コンパイルオプション</strong>と<strong>Other Linker Flags</strong>を設定する必要があります。<br/>
+<img src="http://grandbig.github.io/images/goauth2.png" alt="コンパイルオプションの設定" /><br/>
+<img src="http://grandbig.github.io/images/goauth3.png" alt="Other Linker Flagsの設定" /></p>
+
+<p>3: Googleからダウンロードしたソースを使うために必要なFrameworkをプロジェクトに追加する<br/>
+Security.frameworkとSystemConfiguration.frameworkを追加します。<br/>
+<img src="http://grandbig.github.io/images/goauth4.png" alt="必要なframeworkを追加" /></p>
+
+<p>4: ソースを書く<br/>
+OAuth認証機能を実装するUIViewControllerをプロジェクトに追加しましょう。ここでは名前をViewControllerとします。<br/>
+ViewController.mファイルのソース</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#import "ViewController.h"
+</span><span class='line'>#import "GTMOAuth2Authentication.h"
+</span><span class='line'>#import "GTMOAuth2ViewControllerTouch.h"
+</span><span class='line'>
+</span><span class='line'>@interface ViewController ()
+</span><span class='line'>
+</span><span class='line'>@property (nonatomic, retain) GTMOAuth2Authentication *auth;
+</span><span class='line'>
+</span><span class='line'>-(void) startLogin;
+</span><span class='line'>
+</span><span class='line'>@end
+</span><span class='line'>static NSString *const kKeychainItemName = @"GOAuthTest";
+</span><span class='line'>static NSString *const scope = @"https://www.googleapis.com/auth/calendar";// Calendar APIを利用する場合のscope
+</span><span class='line'>static NSString *const clientId = @"xxxxxxxx.apps.googleusercontent.com";// 発行されたClient IDを設定
+</span><span class='line'>static NSString *const clientSecret = @"xxxxxxxx";// 発行されたClient Secretを設定
+</span><span class='line'>static NSString *const hasLoggedIn = @"hasLoggedInKey";// NSUserDefaultに保存するための文字列
+</span><span class='line'>
+</span><span class='line'>&lt;省略&gt;
+</span><span class='line'>
+</span><span class='line'>- (void)viewDidAppear:(BOOL)animated
+</span><span class='line'>{
+</span><span class='line'>  // アプリ起動してOAuth認証動作を開始する
+</span><span class='line'>  [self startLogin];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// OAuth認証の開始
+</span><span class='line'>- (void)startLogin
+</span><span class='line'>{
+</span><span class='line'>  // 既に認証をしたかどうか確認
+</span><span class='line'>  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+</span><span class='line'>  BOOL hasLoggedin = [defaults boolForKey:hasLoggedIn];
+</span><span class='line'>
+</span><span class='line'>  if(hasLoggedin == YES) {
+</span><span class='line'>      // 認証したことがある場合
+</span><span class='line'>      self.auth = [GTMOAuth2ViewControllerTouch authForGoogleFromKeychainForName:kKeychainItemName
+</span><span class='line'>                                                                        clientID:clientId
+</span><span class='line'>                                                                    clientSecret:clientSecret];
+</span><span class='line'>      // アクセストークンの取得
+</span><span class='line'>      [self authorizeRequest];
+</span><span class='line'>  } else {
+</span><span class='line'>      // 認証したことがない場合
+</span><span class='line'>      GTMOAuth2ViewControllerTouch *gvc = [[GTMOAuth2ViewControllerTouch alloc] initWithScope:scope
+</span><span class='line'>                                                                                     clientID:clientId
+</span><span class='line'>                                                                                 clientSecret:clientSecret
+</span><span class='line'>                                                                             keychainItemName:kKeychainItemName
+</span><span class='line'>                                                                                     delegate:self
+</span><span class='line'>                                                                             finishedSelector:@selector(viewController:finishedWithAuth:error:)
+</span><span class='line'>      ];
+</span><span class='line'>      // 認証画面の表示
+</span><span class='line'>      [self presentViewController:gvc animated:YES completion:nil];
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// 認証後に実行する処理
+</span><span class='line'>- (void)viewController:(GTMOAuth2ViewControllerTouch *)viewController
+</span><span class='line'>    finishedWithAuth:(GTMOAuth2Authentication *)auth
+</span><span class='line'>               error:(NSError *)error
+</span><span class='line'>{
+</span><span class='line'>  if(error != nil) {
+</span><span class='line'>      // 認証失敗
+</span><span class='line'>  } else {
+</span><span class='line'>      // 認証成功
+</span><span class='line'>      self.auth = auth;
+</span><span class='line'>      NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+</span><span class='line'>      [defaults setBool:YES forKey:hasLoggedIn];
+</span><span class='line'>      [defaults synchronize];
+</span><span class='line'>
+</span><span class='line'>      // アクセストークンの取得
+</span><span class='line'>      [self authorizeRequest];
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  // 認証画面を閉じる
+</span><span class='line'>  [viewController dismissViewControllerAnimated:YES completion:nil];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// アクセストークンの取得処理
+</span><span class='line'>- (void)authorizeRequest
+</span><span class='line'>{
+</span><span class='line'>  NSLog(@"%@", self.auth);
+</span><span class='line'>  NSMutableURLRequest *req = [NSMutableURLRequest alloc] initWithURL:self.auth.tokenURL];
+</span><span class='line'>  [self.auth authorizeRequest:req completionHandler:^(NSError *error) {
+</span><span class='line'>      NSLog(@"%@", self.auth);
+</span><span class='line'>  }];
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<ol>
+<li>実機で動作を確認<br/>
+ソースが書けたら、実際にアプリを起動して見てみましょう。<br/>
+認証画面が表示されます。<br/>
+<img src="http://grandbig.github.io/images/goauth9.png" alt="認証画面" /></li>
+</ol>
+
+
+<p>メールアドレスとパスワードを入力すると、認証の許可画面が表示されます。<br/>
+<img src="http://grandbig.github.io/images/goauth10.png" alt="許可画面" /><br/>
+許可をすると、開発者の作成する画面に戻ります。</p>
+
+<p>さて、いかがだったでしょうか？<br/>
+今回はGoogle APIの利用まで書いていませんが、OAuthができてしまえば、そんなに難しくはないでしょう。たぶん笑</p>
+
+<p>参考:<br/>
+・<a href="http://kernhack.hatenablog.com/entry/2013/11/24/164828">gtm-oauth2でOAuth認証してgoogleのAPIを使う</a><br/>
+・<a href="http://stackoverflow.com/questions/18677244/error-invalid-client-no-application-name">invalid_client no application name &ndash; Stack Overflow</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[OS X Serverを使ってみよう]]></title>
@@ -2263,112 +2545,6 @@ UIViewをディスプレイのCenterに表示させたい場合は下記手順�
 
 <p>ということでまた次回！<br/>
 筆者も継続して勉強します。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOSアプリを相対表示で作りたい！！]]></title>
-    <link href="http://grandbig.github.io/blog/2014/02/04/ios-developapp-relative/"/>
-    <updated>2014-02-04T22:52:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/02/04/ios-developapp-relative</id>
-    <content type="html"><![CDATA[<h3>iOSアプリでpixel表示を使わない？</h3>
-
-<p>さて、皆さんは<strong>iPhoneとiPadに対応</strong>、<strong>iOS6とiOS7に対応</strong>を仕様として求められたときにどうやって作るのが最も簡単だと思いますか？<br/>
-Storyboardを使う方法, 空プロジェクトからnib/xibを使う方法, ただひたすらにコードを書く方法など人によって様々かと思います。筆者は最近、<strong>ただひたすらにコードを書く方法</strong>を取っています。理由は結局, iPhone/iPadの対応やiOS6/iOS7の対応のためにそこだけコードを書いて対応したりすることが生じるためです。それならばいっそのこと、0からコードを書いた方が勉強にもなるし、気持ちが良いのです。<br/>
-しかし、周りからのは『コードで書くとデバッグしないとイメージが湧かないんだよなぁ』とか、『pixel指定で作るとか面倒くさくね〜？』なんて言われたりするんですよね(汗)<br/>
-この両方に通ずることは<strong>相対表示で画面の構造が作れれば良いのに</strong>なんてことなんじゃないかと勝手に思いました。<br/>
-なので、本日は開発者がpixel指定を意図せずiOSアプリの画面を作成できるような関数を定義してみたいと思います。</p>
-
-<!--more-->
-
-
-<h4>関数の定義</h4>
-
-<p>さて、早速定義します。<br/>
-横幅や縦幅を指定したパーセンテージの長さに変換したい場合は</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// 横幅の相対変換
-</span><span class='line'>- (float) relativeWidth:(CGRect)frame
-</span><span class='line'>              percent:(int)percent
-</span><span class='line'>{
-</span><span class='line'>  // 引数のframeから横幅を取得
-</span><span class='line'>  float parentWidth = frame.size.width;
-</span><span class='line'>  float childWidth = parentWidth * percent / 100;
-</span><span class='line'>
-</span><span class='line'>  return childWidth;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>で良いでしょう。<br/>
-横幅, 縦幅にとらわれたくなければ</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>- (float) relativeLength:(float)length
-</span><span class='line'>               percent:(int)percent
-</span><span class='line'>{
-</span><span class='line'>  float childLength = length * percent / 100;
-</span><span class='line'>
-</span><span class='line'>  return childLength;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>とすれば良いでしょう。<br/>
-横幅, 縦幅を同時に変換したければ</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>- (CGRect) relativeFrame:(CGRect)frame
-</span><span class='line'>          percentWidth:(int)percentWidth
-</span><span class='line'>         percentHeight:(int)percentHeight
-</span><span class='line'>{
-</span><span class='line'>  float parentWidth = frame.size.width;
-</span><span class='line'>  float parentHeight = frame.size.height;
-</span><span class='line'>
-</span><span class='line'>  float childWidth = parentWidth * percentWidth / 100;
-</span><span class='line'>  float childHeight = parentHeight * percentHeight / 100;
-</span><span class='line'>
-</span><span class='line'>  CGRect rect;
-</span><span class='line'>  rect.size.width = childWidth;
-</span><span class='line'>  rect.size.height = childHeight;
-</span><span class='line'>
-</span><span class='line'>  return rect;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>とできると思います。</p>
-
-<p>これでHTML, CSSでいうところの<strong>position: relative</strong>で<strong>width: 30%; height: 20%;</strong>のような形を取ることができます。<br/>
-動作確認してないけど、たぶん行けるでしょう&hellip;。</p>
 ]]></content>
   </entry>
   
