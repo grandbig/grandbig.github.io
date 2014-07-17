@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-07-13T02:06:47+09:00</updated>
+  <updated>2014-07-18T00:33:26+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,346 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOSでGoogle OAuth認証がしたい〜OAuth2Clientを使う〜]]></title>
+    <link href="http://grandbig.github.io/blog/2014/07/17/ios-google-oauth2-2/"/>
+    <updated>2014-07-17T00:08:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/07/17/ios-google-oauth2-2</id>
+    <content type="html"><![CDATA[<h3>OAuth2Clientを利用したOAuth認証をやってみる</h3>
+
+<p>前回は<strong>gtm-oauth2</strong>ライブラリを利用したOAuth認証について説明しました。<br/>
+このライブラリは非常に使いやすく、WebViewの実装もやってくれるので楽です。<br/>
+ただ、１つだけ気になるのが、『このアプリが次のリクエストを許可しています』画面で<strong>承認するボタン</strong>を押した後に下記のような画面が出てしまうことです。<br/>
+<img src="http://grandbig.github.io/images/goauth2-1.png" alt="気になる画面" /><br/>
+これは格好悪いですね&hellip;。できれば、この画面を出したくない&hellip;。<br/>
+そもそもこの画面が表示される理由は、redirectURIに<strong>urn:ietf:wg:oauth:2.0:oob</strong>を設定した場合だそうです。<br/>
+詳しくは<a href="http://d.hatena.ne.jp/iad_otomamay/20130213/1360753743">山本大＠クロノスの日記 &ndash; GoogleAPI利用のためにOAuth2.0を使う</a>を確認してください。<br/>
+gtm-oauth2ではredirectURIを開発者側で設定することなく、ライブラリが自動でやってくれるため、どうにもできないんですね&hellip;。<br/>
+ま、ドメインのあるアドレスも持ってないですけど&hellip;。</p>
+
+<p>そこで、<strong>OAuth2Client</strong>を使ってみることにしました。</p>
+
+<!--more-->
+
+
+<h4>OAuth2Clientを使おう！！</h4>
+
+<p>CocoaPodsを使った導入方法から説明します。(CocoaPodsインストールしている前提です。)<br/>
+1: .xcodeprojファイルと同じ階層にPodfileを作成します。<br/>
+2: Podfileの中身は『pod &lsquo;NXOAuth2Client&rsquo;, &lsquo;~>1.2.2&#8217;』の１行のみです。<br/>
+3: pod install<br/>
+4: 作成された.xcworkspaceファイルを開く</p>
+
+<p>たったこれだけのことでOAuth2Clientを使う準備が整いました。</p>
+
+<p>では、続けて、画面を追加していきましょう。<br/>
+今回は下記2つのUIViewControllerを追加しました。<br/>
+・OAuth認証用の画面<br/>
+・OAuth認証後に表示するメイン画面<br/>
+<img src="http://grandbig.github.io/images/goauth2-2.png" alt="画面構成" /></p>
+
+<p>OAuth認証後に表示するメイン画面はアプリの用途によって異なると思うので、割愛して、OAuth認証用の画面について説明します。</p>
+
+<p>LoginViewController.mファイル</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#import "LoginViewController.h"
+</span><span class='line'>#import "NXOAuth2.h"
+</span><span class='line'>
+</span><span class='line'>// OAuthのConfigureに必要な値の設定
+</span><span class='line'>static NSString *const clientId = @"Google Consoleで登録したクライアントID";
+</span><span class='line'>static NSString *const clientSecret = @"Google Consoleで登録したクライアントシークレット";
+</span><span class='line'>static NSString *const redirectURI = @"urn:ietf:wg:oauth:2.0:oob";
+</span><span class='line'>static NSString *const authorizationURL = @"https://accounts.google.com/o/oauth2/auth";
+</span><span class='line'>static NSString *const tokenURL = @"https://accounts.google.com/o/oauth2/token";
+</span><span class='line'>static NSString *const scope = @"https://www.googleapis.com/auth/userinfo.profile";
+</span><span class='line'>static NSString *const accountType = @"Google API";
+</span><span class='line'>static NSString *const keyChainGroup = @"Google";
+</span><span class='line'>static NSString *const successPagePrefix = @"Success";
+</span><span class='line'>
+</span><span class='line'>@interface LoginViewController () &lt;UIWebViewDelegate&gt;
+</span><span class='line'>@property (weak, nonatomic) IBOutlet UIWebView *loginWebView;
+</span><span class='line'>
+</span><span class='line'>@end
+</span><span class='line'>
+</span><span class='line'>&lt;省略&gt;
+</span><span class='line'>
+</span><span class='line'>- (void)viewDidLoad
+</span><span class='line'>{
+</span><span class='line'>  [super viewDidLoad];
+</span><span class='line'>
+</span><span class='line'>  // WebViewのDelegate Protocolを利用するために設定
+</span><span class='line'>  self.loginWebView.delegate = self;
+</span><span class='line'>
+</span><span class='line'>  // OAuth認証の処理
+</span><span class='line'>  [self setupOAuth2AccountStore];
+</span><span class='line'>  [self requestOAuth2Access];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>- (void)setupOAuth2AccountStore
+</span><span class='line'>{
+</span><span class='line'>  // OAuth認証のための準備。各パラメータ値を設定
+</span><span class='line'>  [[NXOAuth2AccountStore sharedStore] setClientID:clientId
+</span><span class='line'>                                          secret:clientSecret
+</span><span class='line'>                                           scope:[NSSet setWithObject:scope]
+</span><span class='line'>                                authorizationURL:[NSURL URLWithString:authorizationURL]
+</span><span class='line'>                                        tokenURL:[NSURL URLWithString:tokenURL]
+</span><span class='line'>                                     redirectURL:[NSURL URLWithString:redirectURI]
+</span><span class='line'>                                   keyChainGroup:keyChainGroup
+</span><span class='line'>                                  forAccountType:accountType];
+</span><span class='line'>  
+</span><span class='line'>  // OAuth認証が成功したときに受け取るNotification
+</span><span class='line'>  [[NSNotificationCenter defaultCenter] addObserverForName:NXOAuth2AccountStoreAccountsDidChangeNotification
+</span><span class='line'>                                                    object:[NXOAuth2AccountStore sharedStore]
+</span><span class='line'>                                                     queue:nil
+</span><span class='line'>                                                usingBlock:^(NSNotification *aNotification){
+</span><span class='line'>                                                    if (aNotification.userInfo) {
+</span><span class='line'>                                                      NSLog(@"Success!! We have an access token.");
+</span><span class='line'>                                                      [self requestOAuth2ProtectedDetails];
+</span><span class='line'>                                                    } else {
+</span><span class='line'>                                                      NSLog(@"Success!! We lost an access token.");
+</span><span class='line'>                                                    }
+</span><span class='line'>                                                }];
+</span><span class='line'>
+</span><span class='line'>  // OAuth認証に失敗したときに受け取るNotification
+</span><span class='line'>  [[NSNotificationCenter defaultCenter] addObserverForName:NXOAuth2AccountStoreDidFailToRequestAccessNotification
+</span><span class='line'>                                                    object:[NXOAuth2AccountStore sharedStore]
+</span><span class='line'>                                                     queue:nil
+</span><span class='line'>                                                usingBlock:^(NSNotification *aNotification){
+</span><span class='line'>                                                    NSError *error = [aNotification.userInfo objectForKey:NXOAuth2AccountStoreErrorKey];
+</span><span class='line'>                                                    NSLog(@"error: %@", error.localizedDescription);
+</span><span class='line'>                                                }];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// Googleログイン画面をUIWebViewに表示する処理
+</span><span class='line'>- (void)requestOAuth2Access
+</span><span class='line'>{
+</span><span class='line'>  [[NXOAuth2AccountStore sharedStore] requestAccessToAccountWithType:accountType
+</span><span class='line'>                                 withPreparedAuthorizationURLHandler:^(NSURL *preparedURL){
+</span><span class='line'>                                     [self.loginWebView loadRequest:[NSURLRequest requestWithURL:preparedURL]];
+</span><span class='line'>                                 }];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// アクセストークンやリフレッシュトークンを取得するための処理
+</span><span class='line'>- (void)handleOAuth2AccessResult:(NSString *)accessResult
+</span><span class='line'>{
+</span><span class='line'>  BOOL success = [accessResult rangeOfString:successPagePrefix options:NSCaseInsensitiveSearch].location != NSNotFound;
+</span><span class='line'>
+</span><span class='line'>  if(success) {
+</span><span class='line'>      // OAuth認証に成功した場合
+</span><span class='line'>      NSString * arguments = accessResult;
+</span><span class='line'>      if ([arguments hasPrefix:successPagePrefix]) {
+</span><span class='line'>          arguments = [arguments substringFromIndex:successPagePrefix.length + 1];
+</span><span class='line'>      }
+</span><span class='line'>
+</span><span class='line'>      NSString *redirectURL = [NSString stringWithFormat:@"%@?%@", redirectURI, arguments];
+</span><span class='line'>
+</span><span class='line'>      [NXOAuth2AccountStore sharedStore] handleRedirectURL:[NSURL URLWithString:redirectURL]];]
+</span><span class='line'>  } else {
+</span><span class='line'>      // OAuth認証に失敗した場合
+</span><span class='line'>      // 再度、Googleログインページに遷移させる
+</span><span class='line'>      [self requestOAuth2Access];
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// OAuth認証後にユーザ情報取得のAPIを投げる処理
+</span><span class='line'>- (void)requestOAuth2ProtectedDetails
+</span><span class='line'>{
+</span><span class='line'>  NXOAuth2AccountStore *store = [NXOAuth2AccountStore sharedStore];
+</span><span class='line'>  NSArray *accounts = [store accountsWithAccountType:accountType];
+</span><span class='line'>
+</span><span class='line'>  [NXOAuth2Request performMethod:@"GET"
+</span><span class='line'>                      onResource:[NSURL URLWithString:@"https://www.googleapis.com/oauth2/v1/userinfo"]
+</span><span class='line'>                 usingParameters:nil
+</span><span class='line'>                     withAccount:accounts[0]
+</span><span class='line'>             sendProgressHandler:^(unsigned long long bytesSend, unsigned long long bytesTotal) {
+</span><span class='line'>             }
+</span><span class='line'>                 responseHandler:^(NSURLResponse *response, NSData *responseData, NSError *error){
+</span><span class='line'>                     if (responseData) {
+</span><span class='line'>                         NSError *error;
+</span><span class='line'>                         NSDictionary *userInfo = [NSJSONSerialization JSONObjectWithData:responseData options:NSJSONReadingMutableContainers error:&error];
+</span><span class='line'>                         NSLog(@"%@", userInfo);
+</span><span class='line'>                     }
+</span><span class='line'>                     if(error) {
+</span><span class='line'>                         NSLog(@"%@", error.localizedDescription);
+</span><span class='line'>                     }
+</span><span class='line'>                 }];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>#pragma mark - UIWebViewDelegate
+</span><span class='line'>// ページが読み終わった後に処理
+</span><span class='line'>- (void)webViewDidFinishLoad:(UIWebView *)webView
+</span><span class='line'>{
+</span><span class='line'>  if ([webView.request.URL.absoluteString rangeOfString:authorizationURL options:NSCaseInsensitiveSearch].location != NSNotFound) {
+</span><span class='line'>      self.loginWebView.hidden = NO;
+</span><span class='line'>  } else {
+</span><span class='line'>      self.loginWebView.hidden = YES;
+</span><span class='line'>
+</span><span class='line'>      NSString *pageTitle = [webView stringByEvaluatingJavaScriptFromString:@"document.title"];
+</span><span class='line'>      NSLog(@"pageTitle: %@", pageTitle);
+</span><span class='line'>
+</span><span class='line'>      [self handleOAuth2AccessResult:pageTitle];
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>重要なことはwebViewDidFinishLoadの中で見せたくない画面を隠せるように実装していることです。<br/>
+これがgtm-oauth2ライブラリではできなかったことですね。</p>
+
+<p>Googleだけでなく、twitter, facebookなどのOAuth認証でも利用できますので、ぜひお試しあれ！！</p>
+
+<p>参考<br/>
+・<a href="http://www.idmworks.com/blog/entry/getting-started-with-oauth2client-on-ios">IDMWORKS : BLOG</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSでGoogle OAuth認証がしたい]]></title>
@@ -2430,121 +2770,6 @@ pushtest/routes/apns.jsを作成しておきます。(デフォルトで作成�
 
 
 <p>位置情報が取れ次第(ユーザの現在地が特定でき次第)、マップの中心地が移動するのでアプリ起動後に割りとすぐ理想の結果が得られます。(因みにマップを動かせば、追従モードはOFFとなります。)</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Xcode5でAuto Layoutを使おう]]></title>
-    <link href="http://grandbig.github.io/blog/2014/02/09/xcode5-autolayout/"/>
-    <updated>2014-02-09T17:25:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/02/09/xcode5-autolayout</id>
-    <content type="html"><![CDATA[<h3>Auto Layoutで『iOS6・iOS7』と『3.5-inch・4-inch』対応</h3>
-
-<p>さて、これまで<strong>iOS6/7 deltas</strong>を利用した方法や<strong>全てコードで書く</strong>方法について説明してきました。これとは別に本日は<strong>Auto Layout</strong>を利用した方法について説明します。<br/>
-先にこれらの方法の違いについて紹介します。<br/>
-・iOS6/7 deltasを利用する方法<br/>
-  XIBやStoryboardを利用した上でiOS5以前から対応する場合<br/>
-・全てコードで書く方法<br/>
-  XIBやStoryboardなどのGUIを利用せずに、全OS・全ディスプレイに対応する場合<br/>
-・Auto Layoutを利用する方法<br/>
-  XIBやStoryboardを利用した上でiOS6以降から対応する場合</p>
-
-<p>求められている仕様や開発者の技量、プロジェクトの運用から最適な方法を選択する必要があります。<br/>
-とは言え、個人的には<strong>全てコードで書く</strong>方法が最も自由がきくと思っているので、これに慣れていると他の手法は案外シンドイです。</p>
-
-<!--more-->
-
-
-<h4>Auto LayoutでUINavigationBarを調整しよう</h4>
-
-<p>以前、iOS6/7 deltasを利用する方法で説明したことをAuto Layoutで説明します。皆様、ご存知の通りiOS6以前とiOS7以降とではステータスバーの20px分をナビゲーションバーの高さを考慮しなくてはなりません。<br/>
-<img src="http://grandbig.github.io/images/ios6_7_difference.png" alt="iOS6とiOS7でナビゲーションバーの高さが異なる" /></p>
-
-<p>早速、詳しく説明していきます。<br/>
-まず、プロジェクトを作成し終わったら、XIBファイルを表示してください。そしてUINavigationBarを設置します。このUINavigationBarの高さをiOSのバージョンごとに変化させたいので、下記手順でAuto LayoutのConstraintを追加します。<br/>
-1: 右下のバーの左から2番目をクリックしてConstraintsのウィンドウを表示<br/>
-2: 高さを変更したいのでHeightにチェックを入れる<br/>
-3: Add ConstraintボタンをクリックしてConstraintを追加する<br/>
-<img src="http://grandbig.github.io/images/autolayout1.png" alt="Constraintを追加する" /></p>
-
-<p>これでConstraintsが追加されたのでViewController.hと関連づける。<br/>
-1: Constraints > Heightを右クリックしてViewController.hへドラッグ&amp;ドロップ<br/>
-2: ウィンドウが表示されるので、名前をつけてConnectをクリックする<br/>
-<img src="http://grandbig.github.io/images/autolayout2.png" alt="ViewController.hに関連づける" /><br/>
-<img src="http://grandbig.github.io/images/autolayout3.png" alt="名前をつけてConnect" /></p>
-
-<p>次にViewController.mファイルを開きましょう。<br/>
-以下のように編集してください。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>- (void)viewDidLoad
-</span><span class='line'>{
-</span><span class='line'>  [super viewDidLoad];
-</span><span class='line'>  // iOS7の場合は64pxにする
-</span><span class='line'>  if (floor(NSFoundationVersionNumber) &gt; NSFoundationVersionNumber_iOS_6_1) {
-</span><span class='line'>      self.nvBarHeight.constant = 64;
-</span><span class='line'>  }
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>以上の手順をすることで下記のようにiOS6とiOS7でUINavigationBarを正しく表示することができます。<br/>
-<img src="http://grandbig.github.io/images/autolayout4.png" alt="UINavigationBarの表示" /></p>
-
-<h4>Auto LayoutでUIViewを中央に配置しよう</h4>
-
-<p>次に主にディスプレイサイズで困るであろう中央配置の方法について説明します。<br/>
-まずは、何も考えずに普通にUIViewを追加してみましょう。そしてViewを3.5-inch Full Screenと4-inch Full Screenとで表示を変更して見てみましょう。すると、下記のようにUIViewの高さが変わってしまうことがわかると思います。<br/>
-<img src="http://grandbig.github.io/images/autolayout5.png" alt="4-inchの場合" /><br/>
-<img src="http://grandbig.github.io/images/autolayout6.png" alt="3.5-inchの場合" /><br/>
-こんなはずでは&hellip;なんて絶句してしまうかもしれません。が、ご安心ください。これは先ほど説明したHeightのConstraintsを追加することで対応できます。先ほどと同様に下記の手順でHeightのConstraintを追加してみてください。</p>
-
-<p>1: 追加したUIViewを選択した状態で右下のバーの左から2番目をクリックしてConstraintのウィンドウを表示<br/>
-2: 高さを保持したいのでHeightにチェックを入れます。高さが希望の値になっていることを確認してください。<br/>
-3: Add ConstraintボタンをクリックしてConstraintsを追加する</p>
-
-<p>これで先ほどと同様にViewのinchを変更させてみてください。追加したUIViewの高さが保持されていることがわかると思います。</p>
-
-<p>はい。本題です。<br/>
-UIViewをディスプレイのCenterに表示させたい場合は下記手順を実行してください。</p>
-
-<p>1: 追加したUIViewを選択した状態で右下のバーの左から1番目をクリックしてConstraintのウィンドウを表示<br/>
-2: Vertical方向に常にディスプレイの中央に表示させたいので、Vertical Center in Containerにチェックを入れます。<br/>
-3: Add ConstraintボタンをクリックしてConstraintsを追加する<br/>
-<img src="http://grandbig.github.io/images/autolayout7.png" alt="Vertical Center in Containerを追加" /></p>
-
-<p>これでUIViewを高さを保持した状態で3.5-inch/4-inchでもディスプレイの中央に表示することができます。</p>
-
-<h4>Auto Layoutでマージンを調整しよう</h4>
-
-<p>そして、Auto Layoutを用いたマージンの調整方法についても説明しましょう。<br/>
-先ほど、ディスプレイの中央に表示したい場合を説明したと思いますが、3.5-inchで見るとUINavigationBarに近すぎると感じることがあるかもしれません。<br/>
-であるならば、3.5-inchでも4-inchでもUINavigationBarから一定の距離を保持した方が見栄えが良いと思うこともあると思います。<br/>
-さて、その方法について説明します。</p>
-
-<p>1: 追加したUIViewを選択した状態で右下のバーの左から2番目をクリックしてConstraintのウィンドウを表示<br/>
-2: 上部との距離を変更します。(初期状態は点線表記になっていますが、赤の実線になるように値を変更してください)<br/>
-3: Add ConstraintボタンをクリックしてConstraintsを追加する<br/>
-<img src="http://grandbig.github.io/images/autolayout8.png" alt="上部マージンを追加" /></p>
-
-<p>これで3.5-inch/4-inchにディスプレイが変更されたとしてもUINavigationBarとUIViewとの距離は一定に保たれます。</p>
-
-<h4>最後に</h4>
-
-<p>いかがだったでしょうか？<br/>
-筆者的には完全に手探りな状態で始めたので、わからないことだらけだったのですが、なんとなく理解できてきました。<br/>
-現在はiPhone4S以前を利用しているユーザは(日本では？)少なくなってきたと思うのですが、iPadがiPhoneの3.5-inchと同じ比率ですので、Universalアプリを開発するのであれば対応せざるを得ません。<br/>
-また、iOS6ユーザはまだまだいると思いますので、仕様として要求される可能性は十分あります。細かい修正が常に要求されるとは思いますが、忍耐強くiOS8, 9, 10&hellip;とリリースされるのを待ちましょう笑<br/>
-次回リリースされるiPhoneやiPadまたはリリースされるかもしれない新デバイスがどんなディスプレイの比率になるかもわからないので、今後こういった対応は常に要求されるんでしょうね(汗)</p>
-
-<p>ということでまた次回！<br/>
-筆者も継続して勉強します。</p>
 ]]></content>
   </entry>
   
