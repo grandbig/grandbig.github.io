@@ -281,6 +281,18 @@ gtm-oauth2ではredirectURIを開発者側で設定することなく、ライ�
 <span class='line-number'>136</span>
 <span class='line-number'>137</span>
 <span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>#import "LoginViewController.h"
 </span><span class='line'>#import "NXOAuth2.h"
 </span><span class='line'>
@@ -294,6 +306,7 @@ gtm-oauth2ではredirectURIを開発者側で設定することなく、ライ�
 </span><span class='line'>static NSString *const accountType = @"Google API";
 </span><span class='line'>static NSString *const keyChainGroup = @"Google";
 </span><span class='line'>static NSString *const successPagePrefix = @"Success";
+</span><span class='line'>static NSString *const hasLoggedIn = @"hasLoggedIn";
 </span><span class='line'>
 </span><span class='line'>@interface LoginViewController () &lt;UIWebViewDelegate&gt;
 </span><span class='line'>@property (weak, nonatomic) IBOutlet UIWebView *loginWebView;
@@ -310,8 +323,17 @@ gtm-oauth2ではredirectURIを開発者側で設定することなく、ライ�
 </span><span class='line'>  self.loginWebView.delegate = self;
 </span><span class='line'>
 </span><span class='line'>  // OAuth認証の処理
-</span><span class='line'>  [self setupOAuth2AccountStore];
-</span><span class='line'>  [self requestOAuth2Access];
+</span><span class='line'>  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+</span><span class='line'>  BOOL flag = [defaults boolForKey:hasLoggedIn];
+</span><span class='line'>
+</span><span class='line'>  if(!flag) {
+</span><span class='line'>      // 一度もOAuth認証を通っていない場合
+</span><span class='line'>      [self setupOAuth2AccountStore];
+</span><span class='line'>      [self requestOAuth2Access];
+</span><span class='line'>  } else {
+</span><span class='line'>      // 一度はOAuth認証を通した場合
+</span><span class='line'>      [self requestOAuth2ProtectedDetails];
+</span><span class='line'>  }
 </span><span class='line'>}
 </span><span class='line'>
 </span><span class='line'>- (void)setupOAuth2AccountStore
@@ -333,6 +355,8 @@ gtm-oauth2ではredirectURIを開発者側で設定することなく、ライ�
 </span><span class='line'>                                                usingBlock:^(NSNotification *aNotification){
 </span><span class='line'>                                                    if (aNotification.userInfo) {
 </span><span class='line'>                                                      NSLog(@"Success!! We have an access token.");
+</span><span class='line'>                                                      NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+</span><span class='line'>                                                      [defaults setBool:YES forKey:hasLoggedIn];
 </span><span class='line'>                                                      [self requestOAuth2ProtectedDetails];
 </span><span class='line'>                                                    } else {
 </span><span class='line'>                                                      NSLog(@"Success!! We lost an access token.");
@@ -364,7 +388,7 @@ gtm-oauth2ではredirectURIを開発者側で設定することなく、ライ�
 </span><span class='line'>  BOOL success = [accessResult rangeOfString:successPagePrefix options:NSCaseInsensitiveSearch].location != NSNotFound;
 </span><span class='line'>
 </span><span class='line'>  if(success) {
-</span><span class='line'>      // OAuth認証に成功した場合
+</span><span class='line'>      // OAuth認証の画面で承認するを選択した場合
 </span><span class='line'>      NSString * arguments = accessResult;
 </span><span class='line'>      if ([arguments hasPrefix:successPagePrefix]) {
 </span><span class='line'>          arguments = [arguments substringFromIndex:successPagePrefix.length + 1];
@@ -374,7 +398,7 @@ gtm-oauth2ではredirectURIを開発者側で設定することなく、ライ�
 </span><span class='line'>
 </span><span class='line'>      [NXOAuth2AccountStore sharedStore] handleRedirectURL:[NSURL URLWithString:redirectURL]];]
 </span><span class='line'>  } else {
-</span><span class='line'>      // OAuth認証に失敗した場合
+</span><span class='line'>      // OAuth認証の画面で承認しなかった場合
 </span><span class='line'>      // 再度、Googleログインページに遷移させる
 </span><span class='line'>      [self requestOAuth2Access];
 </span><span class='line'>  }
@@ -422,7 +446,8 @@ gtm-oauth2ではredirectURIを開発者側で設定することなく、ライ�
 
 
 <p>重要なことはwebViewDidFinishLoadの中で見せたくない画面を隠せるように実装していることです。<br/>
-これがgtm-oauth2ライブラリではできなかったことですね。</p>
+これがgtm-oauth2ライブラリではできなかったことですね。<br/>
+また、gtm-oauth2ライブラリと同じく、OAuth2Clientライブラリも「アクセストークンが期限切れになった場合にリフレッシュトークンを投げることで新しいアクセストークンを取得する処理」を実装しています。そのため、自身で実装するよりも工数を削減することができます。</p>
 
 <p>Googleだけでなく、twitter, facebookなどのOAuth認証でも利用できますので、ぜひお試しあれ！！</p>
 
