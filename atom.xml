@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-07-23T01:03:16+09:00</updated>
+  <updated>2014-08-02T00:38:40+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,72 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS7とNSTimerと位置情報の取得について]]></title>
+    <link href="http://grandbig.github.io/blog/2014/08/02/didupdatetolocation3/"/>
+    <updated>2014-08-02T00:19:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/08/02/didupdatetolocation3</id>
+    <content type="html"><![CDATA[<h3>iOS7で定期間隔での位置情報取得</h3>
+
+<p>本日は一言メモ程度に書きます。<br/>
+<a href="http://grandbig.github.io/blog/2013/09/27/location-nstimer/">Backgroundで位置情報を取得しよう！</a>で紹介した<strong>NSTimerで定期時間ごとに位置情報を取得してみよう！</strong>の部分についてiOS7での注意しなければいけないことがありました。</p>
+
+<p>Background起動で位置情報の取得を可能な設定にしておくと、NSTimerが永続的に動くことについては以前お伝えしました。<br/>
+このNSTimerで設定した定期間隔ごとに下記のように位置情報の取得ができました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">CLLocation</span> <span class="o">*</span><span class="n">location</span> <span class="o">=</span> <span class="p">[</span><span class="n">locationManager</span> <span class="n">location</span><span class="p">];</span>
+</span><span class='line'><span class="n">CLLocationCoordinate2D</span> <span class="n">coordinate</span> <span class="o">=</span> <span class="p">[</span><span class="n">location</span> <span class="n">coordinate</span><span class="p">];</span><span class="c1">// 座標を取得</span>
+</span><span class='line'><span class="n">NSString</span> <span class="o">*</span><span class="n">lat</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;%f&quot;</span><span class="p">,</span> <span class="n">coordinate</span><span class="p">.</span><span class="n">latitude</span><span class="p">];</span>  <span class="c1">// 経度を取得</span>
+</span><span class='line'><span class="n">NSString</span> <span class="o">*</span><span class="n">lng</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;%f&quot;</span><span class="p">,</span> <span class="n">coordinate</span><span class="p">.</span><span class="n">longitude</span><span class="p">];</span> <span class="c1">// 緯度を取得</span>
+</span><span class='line'><span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;+++++ [デリゲートによらない場合]緯度,经度: %@, %@&quot;</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">lng</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>しかし、iOS7ではある記述をしないとうまくいかないことがわかりました。</p>
+
+<!--more-->
+
+
+<p>それは<strong>didUpdateLocationsメソッド</strong>です。<br/>
+つまり、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span>
+</span><span class='line'>   <span class="nf">didUpdateLocations:</span><span class="p">(</span><span class="n">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nv">locations</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>の記述が必要なんです。<br/>
+これがなかったとしても、NSTimer自体は動くので、処理は定期的に実行されます。<br/>
+が、<strong>位置情報の値が全く更新されません</strong>。<br/>
+iPhoneを持って移動したとしても、１回目に取得した位置情報の値から変化がないのです。</p>
+
+<p>もし、<strong>NSTimerを使った定期間隔での位置情報の取得をiOS7で行う</strong>のであれば、このことには十分に注意してください。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSでGoogle OAuth認証がしたい〜OAuth2Clientを使う〜]]></title>
@@ -1903,7 +1969,7 @@ Projectの作成手順はPeripheralとほぼ同じで、<br/>
 <span class='line-number'>9</span>
 <span class='line-number'>10</span>
 </pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span>
-</span><span class='line'>  <span class="nf">adidUpdateLocations:</span><span class="p">(</span><span class="n">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nv">locations</span>
+</span><span class='line'>   <span class="nf">didUpdateLocations:</span><span class="p">(</span><span class="n">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nv">locations</span>
 </span><span class='line'><span class="p">{</span>
 </span><span class='line'>  <span class="n">CLLocation</span> <span class="o">*</span><span class="n">currentLocation</span> <span class="o">=</span> <span class="n">locations</span><span class="p">.</span><span class="n">lastObject</span><span class="p">;</span>
 </span><span class='line'>  <span class="n">NSInteger</span> <span class="n">cnt</span> <span class="o">=</span> <span class="p">[</span><span class="n">locations</span> <span class="n">count</span><span class="p">];</span>
@@ -2712,89 +2778,6 @@ pushtest/routes/apns.jsを作成しておきます。(デフォルトで作成�
 トークン値はネイティブソース内のdidRegisterForRemoteNotificationsWithDeviceToken関数でLogとして出力しているはずなので、コピーしましょう。</p>
 
 <p>届きましたでしょうか？</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[MKMapViewの初期中心点をユーザの現在地に設定する方法]]></title>
-    <link href="http://grandbig.github.io/blog/2014/02/16/userlocationandmap/"/>
-    <updated>2014-02-16T21:16:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/02/16/userlocationandmap</id>
-    <content type="html"><![CDATA[<h3>MKMapViewの中心位置について考えた</h3>
-
-<p>本日はMKMapViewの初期表示について説明します。MKMapViewを扱うときにはユーザの位置情報を用いることが多いと思います。そのほとんどの場合、マップを初期表示したときにユーザの現在地を中心にしたいのではないかと思います。しかしながらiPhoneで位置情報を取得するとき、アプリを起動して即座に現在地を特定することはできません。では、『どうするのか？』について失敗談を交えつつ紹介させて頂きます。</p>
-
-<!--more-->
-
-
-<p>まずは失敗例から紹介します。<br/>
-筆者は<strong>ユーザの現在地をマップの中心位置に設定する</strong>ということに意識が向きすぎたせいか当初は下記の手段を取っていました。</p>
-
-<p>下記はViewController.h</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>#import &lt;UIKit/UIKit.h&gt;
-</span><span class='line'>#import &lt;CoreLocation/CoreLocation.h&gt;
-</span><span class='line'>#import &lt;MapKit/MapKit.h&gt;
-</span><span class='line'>
-</span><span class='line'>@interface ViewController : UIViewController &lt;MKMapViewDelegate, CLLocationManagerDelegate&gt;
-</span><span class='line'>
-</span><span class='line'>@property (strong, nonatomic) IBOutlet CLLocationManager *locationManager;
-</span><span class='line'>@property (weak, nonatomic) IBOutlet MKMapView *map;</span></code></pre></td></tr></table></div></figure>
-
-
-<p>下記はViewController.m</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ユーザの位置を取得
-</span><span class='line'>CLLocation *location = [locationManager location];
-</span><span class='line'>CLLocationCoordinate2D uCoordinate = [location coordinate];
-</span><span class='line'>// マップの中心位置を設定
-</span><span class='line'>MKCoordinateRegion region = MKCoordinateRegionMake(uCoordinate, MKCoordinateSpanMake(0.05, 0.05));</span></code></pre></td></tr></table></div></figure>
-
-
-<p>しかし、これではアプリ起動直後に真っ青な画面が表示されてしまうことでしょう。その理由はiPhone側で位置情報を取得する前にマップを表示しようとしてしまっているためです。結果、ユーザの現在地はlatitude, longitude共に0として返ってきます。<br/>
-ここで筆者はマップに現在地のピンを表示することは割りと早くできていることに気づきました。であれば何かマップからユーザ情報が取得できるのではないかと。<br/>
-で考えたのが下記。(ViewController.mのみ修正)</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// ユーザの位置を取得
-</span><span class='line'>CLLocation *userLocation = self.map.userLocation.location;
-</span><span class='line'>CLLocationCoordinate2D uCoordinate = CLLocationCoordinate2DMake(userLocation.coordinate.latitude, userLocation.coordinate.longitude);
-</span><span class='line'>// マップの中心位置を設定
-</span><span class='line'>MKCoordinateRegion region = MKCoordinateRegionMake(uCoordinate, MKCoordinateSpanMake(0.05, 0.05));</span></code></pre></td></tr></table></div></figure>
-
-
-<p>しかし、これまたアプリ起動後に真っ青な画面が表示されてしまいました&hellip;。う〜む、なかなかうまくいかない。</p>
-
-<p>で、結局、下記で解決。(ViewController.mのみ修正)</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// マップにユーザの現在地を表示
-</span><span class='line'>self.map.showsUserLocation = YES;
-</span><span class='line'>// マップの中心地がユーザの現在地を追従するように設定
-</span><span class='line'>[self.map setUserTrackingMode:MKUserTrackingModeFollow];</span></code></pre></td></tr></table></div></figure>
-
-
-<p>位置情報が取れ次第(ユーザの現在地が特定でき次第)、マップの中心地が移動するのでアプリ起動後に割りとすぐ理想の結果が得られます。(因みにマップを動かせば、追従モードはOFFとなります。)</p>
 ]]></content>
   </entry>
   
