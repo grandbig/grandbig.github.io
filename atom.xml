@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2014-12-07T19:52:59+09:00</updated>
+  <updated>2015-01-11T01:41:34+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,254 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[CLVisitとCMPedometerをフィールド検証してみた！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/01/10/visit-and-step2/"/>
+    <updated>2015-01-10T22:30:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/01/10/visit-and-step2</id>
+    <content type="html"><![CDATA[<h4>CLVisitとCMPedometerのフィールド検証</h4>
+
+<p>2015年初更新です。<br/>
+2014年の年末から2015年の年始にかけて海外に行く機会があったため、
+以前、本ブログにも掲載したCLVisitとCMPedometerについてフィールド検証をしてみました。<br/>
+<a href="http://grandbig.github.io/blog/2014/11/30/visit-and-step/">iOS8.1でCLVisitとCMPedometerを試してみた！</a>を参照ください。<br/>
+(思いつきで、出発前夜にアプリを急造しました)</p>
+
+<p>CLVisitは大幅変更位置情報サービスと同様に極力バッテリを消費しない仕組みで作られていることと思います。<br/>
+これが『旅行の思い出を残したいというユーザの想いとマッチするのでは？』と考えたこともあり、現実的にどこまで使えるものなのか検証してみました。</p>
+
+<!-- more -->
+
+
+<h5>アプリの機能</h5>
+
+<p>検証に利用したアプリの機能は下記です。</p>
+
+<ul>
+<li>CLVisitで取得した結果を端末内部のDBに保存</li>
+<li>CMPedometerで取得した結果を端末内部のDBに保存</li>
+<li>CLVisitでデータを取得できたタイミングで、結果をローカルプッシュ</li>
+<li>CMPedometerでデータを取得したタイミングで、結果をローカルプッシュ</li>
+</ul>
+
+
+<h5>ソースコード</h5>
+
+<p>ソースは<a href="https://github.com/grandbig/VisitTheWorld">GitHub</a>にアップしています。</p>
+
+<p>CLVisitとCMPedometerの部分のみピックアップすると下記のように実装しています。<br/>
+まずはCLVisitの処理は下記です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.m</span>
+</span><span class='line'><span class="c1">// CLVisitの処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didVisit:</span><span class="p">(</span><span class="n">CLVisit</span> <span class="o">*</span><span class="p">)</span><span class="nv">visit</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 値の取得</span>
+</span><span class='line'>  <span class="kt">float</span> <span class="n">lat</span> <span class="o">=</span> <span class="n">visit</span><span class="p">.</span><span class="n">coordinate</span><span class="p">.</span><span class="n">latitude</span><span class="p">;</span>                              <span class="c1">// 緯度</span>
+</span><span class='line'>  <span class="kt">float</span> <span class="n">lng</span> <span class="o">=</span> <span class="n">visit</span><span class="p">.</span><span class="n">coordinate</span><span class="p">.</span><span class="n">longitude</span><span class="p">;</span>                             <span class="c1">// 経度</span>
+</span><span class='line'>  <span class="kt">float</span> <span class="n">hacc</span> <span class="o">=</span> <span class="n">visit</span><span class="p">.</span><span class="n">horizontalAccuracy</span><span class="p">;</span>                              <span class="c1">// 水平精度</span>
+</span><span class='line'>  <span class="n">NSDate</span> <span class="o">*</span><span class="n">arrivalDate</span> <span class="o">=</span> <span class="n">visit</span><span class="p">.</span><span class="n">arrivalDate</span><span class="p">;</span>                            <span class="c1">// 到着日時(NSDate型)</span>
+</span><span class='line'>  <span class="n">NSDate</span> <span class="o">*</span><span class="n">departureDate</span> <span class="o">=</span> <span class="n">visit</span><span class="p">.</span><span class="n">departureDate</span><span class="p">;</span>                        <span class="c1">// 出発日時(NSDate型)</span>
+</span><span class='line'>  <span class="kt">double</span> <span class="n">arrivalUnixTime</span> <span class="o">=</span> <span class="p">[</span><span class="n">arrivalDate</span> <span class="n">timeIntervalSince1970</span><span class="p">];</span>       <span class="c1">// 到着日時(timestamp)</span>
+</span><span class='line'>  <span class="kt">double</span> <span class="n">departureUnixTime</span> <span class="o">=</span> <span class="p">[</span><span class="n">departureDate</span> <span class="n">timeIntervalSince1970</span><span class="p">];</span>   <span class="c1">// 出発日時(timestamp)</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c1">// NSDate型の日時をNSString型に変換</span>
+</span><span class='line'>  <span class="n">NSDateFormatter</span> <span class="o">*</span><span class="n">outputFormatter</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSDateFormatter</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">outputFormatter</span> <span class="nl">setDateFormat:</span><span class="s">@&quot;yyyy-MM-dd HH:mm:ss&quot;</span><span class="p">];</span>
+</span><span class='line'>          
+</span><span class='line'>  <span class="n">NSString</span><span class="o">*</span> <span class="n">arrivalDateString</span> <span class="o">=</span> <span class="p">[</span><span class="n">outputFormatter</span> <span class="nl">stringFromDate:</span><span class="n">arrivalDate</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSString</span><span class="o">*</span> <span class="n">departureDateString</span> <span class="o">=</span> <span class="p">[[</span><span class="n">outputFormatter</span> <span class="nl">stringFromDate:</span><span class="n">departureDate</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// データの挿入</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="nl">insertPlaceData:</span><span class="n">lat</span> <span class="nl">longitude:</span><span class="n">lng</span> <span class="nl">horizontalAccuracy:</span><span class="n">hacc</span> <span class="nl">arrivalDate:</span><span class="n">arrivalDateString</span> <span class="nl">departureDate:</span><span class="n">departureDateString</span> <span class="nl">arrivalDateUT:</span><span class="n">arrivalUnixTime</span> <span class="nl">departureDateUT:</span><span class="n">departureUnixTime</span><span class="p">];</span>
+</span><span class='line'>  <span class="c1">// ローカルプッシュ</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">message</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;lat: %f, lng: %f, hacc: %f, 到着日時: %@, 出発日時: %@&quot;</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">lng</span><span class="p">,</span> <span class="n">hacc</span><span class="p">,</span> <span class="n">arrivalDateString</span><span class="p">,</span> <span class="n">departureDateString</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="n">message</span> <span class="nl">soundFlag:</span><span class="n">NO</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>次にCMPedometerの処理を下記です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// VisitController.m</span>
+</span><span class='line'><span class="c1">// CMPedometerの処理</span>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> 歩数の計測開始処理</span>
+</span><span class='line'><span class="cm">*/</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">startPedometer</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">pmp</span> <span class="o">=</span> <span class="p">[</span><span class="n">CMPedometer</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];]</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">pmp</span> <span class="nl">startPedometerUpdatesFromDate:</span><span class="p">[</span><span class="n">NSDate</span> <span class="n">date</span><span class="p">]</span>
+</span><span class='line'>                              <span class="nl">withHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">CMPedometerData</span> <span class="o">*</span><span class="n">pedometerData</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>                                  <span class="n">dispatch_async</span><span class="p">(</span><span class="n">dispatch_get_main_queue</span><span class="p">(),</span> <span class="o">^</span><span class="p">{</span>
+</span><span class='line'>                                      <span class="c1">// step数の取得</span>
+</span><span class='line'>                                      <span class="n">NSNumber</span> <span class="o">*</span><span class="n">step</span> <span class="o">=</span> <span class="n">pedometerData</span><span class="p">.</span><span class="n">numberOfSteps</span><span class="p">;</span>
+</span><span class='line'>                                      <span class="n">NSInteger</span> <span class="n">stepInt</span> <span class="o">=</span> <span class="p">[</span><span class="n">step</span> <span class="n">integerValue</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>                                      <span class="c1">// 距離</span>
+</span><span class='line'>                                      <span class="n">NSNumber</span> <span class="o">*</span><span class="n">distance</span> <span class="o">=</span> <span class="n">pedometerData</span><span class="p">.</span><span class="n">distance</span><span class="p">;</span>
+</span><span class='line'>                                      <span class="n">NSInteger</span> <span class="n">distanceInt</span> <span class="o">=</span> <span class="p">[</span><span class="n">distance</span> <span class="n">integerValue</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>                                      <span class="c1">// 開始日時, 終了日時のUnixTimeを取得</span>
+</span><span class='line'>                                      <span class="kt">double</span> <span class="n">startDateUnixTime</span> <span class="o">=</span> <span class="p">[</span><span class="n">pedometerData</span><span class="p">.</span><span class="n">startDate</span> <span class="n">timeIntervalSince1970</span><span class="p">];</span>
+</span><span class='line'>                                      <span class="kt">double</span> <span class="n">endDateUnixTime</span> <span class="o">=</span> <span class="p">[</span><span class="n">pedometerData</span><span class="p">.</span><span class="n">endDate</span> <span class="n">timeIntervalSince1970</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>                                      <span class="c1">// 日時取得のためにFormatを設定</span>
+</span><span class='line'>                                      <span class="n">NSDateFormatter</span> <span class="o">*</span><span class="n">outputFormatter</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSDateFormatter</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
+</span><span class='line'>                                      <span class="p">[</span><span class="n">outputFormatter</span> <span class="nl">setDateFormat:</span><span class="s">@&quot;yyyy-MM-dd HH:mm:ss&quot;</span><span class="p">];</span>
+</span><span class='line'>                                      <span class="c1">// 開始日時, 終了日時のNSString型を取得</span>
+</span><span class='line'>                                      <span class="n">NSString</span><span class="o">*</span> <span class="n">startDateString</span> <span class="o">=</span> <span class="p">[</span><span class="n">outputFormatter</span> <span class="nl">stringFromDate:</span><span class="n">pedometerData</span><span class="p">.</span><span class="n">startDate</span><span class="p">];</span>
+</span><span class='line'>                                      <span class="n">NSString</span> <span class="o">*</span><span class="n">endDateString</span> <span class="o">=</span> <span class="p">[</span><span class="n">outputFormatter</span> <span class="nl">stringFromDate:</span><span class="n">pedometerData</span><span class="p">.</span><span class="n">endDate</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>                                      <span class="c1">// 階段の昇降</span>
+</span><span class='line'>                                      <span class="n">NSNumber</span> <span class="o">*</span><span class="n">floorsAscended</span> <span class="o">=</span> <span class="n">pedometerData</span><span class="p">.</span><span class="n">floorsAscended</span><span class="p">;</span>
+</span><span class='line'>                                      <span class="n">NSNumber</span> <span class="o">*</span><span class="n">floorsDescended</span> <span class="o">=</span> <span class="n">pedometerData</span><span class="p">.</span><span class="n">floorsDescended</span><span class="p">;</span>
+</span><span class='line'>                                      <span class="n">NSInteger</span> <span class="n">floorsAscendedInt</span> <span class="o">=</span> <span class="p">[</span><span class="n">floorsAscended</span> <span class="n">integerValue</span><span class="p">];</span>
+</span><span class='line'>                                      <span class="n">NSInteger</span> <span class="n">floorsDescendedInt</span> <span class="o">=</span> <span class="p">[</span><span class="n">floorsDescended</span> <span class="n">integerValue</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>                                      <span class="c1">// データの挿入</span>
+</span><span class='line'>                                      <span class="p">[</span><span class="n">self</span> <span class="nl">insertMotionData:</span><span class="n">stepInt</span> <span class="nl">distance:</span><span class="n">distanceInt</span> <span class="nl">startDate:</span><span class="n">startDateString</span> <span class="nl">endDate:</span><span class="n">endDateString</span> <span class="nl">startDateUT:</span><span class="n">startDateUnixTime</span> <span class="nl">endDateUT:</span><span class="n">endDateUnixTime</span> <span class="nl">floorsAscended:</span><span class="n">floorsAscendedInt</span> <span class="nl">floorsDescended:</span><span class="n">floorsDescendedInt</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>                                      <span class="c1">// ローカルプッシュ通知</span>
+</span><span class='line'>                                      <span class="n">NSString</span> <span class="o">*</span><span class="n">message</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;Step Count Result</span><span class="se">\n\n</span><span class="s">歩数: %@</span><span class="se">\n</span><span class="s">距離: %@[m]</span><span class="se">\n</span><span class="s">開始時間: %@</span><span class="se">\n</span><span class="s">終了時間: %@</span><span class="se">\n</span><span class="s">上った回数: %@</span><span class="se">\n</span><span class="s">下りた回数: %@&quot;</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">startDateString</span><span class="p">,</span> <span class="n">endDateString</span><span class="p">,</span> <span class="n">floorsAscended</span><span class="p">,</span> <span class="n">floorsDescended</span><span class="p">];</span>
+</span><span class='line'>                                      <span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="n">message</span> <span class="nl">soundFlag:</span><span class="n">NO</span><span class="p">];]</span>
+</span><span class='line'>                                  <span class="p">});</span>
+</span><span class='line'>                              <span class="p">}];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>結果</h5>
+
+<p>では、結果を見てみましょう。<br/>
+まずは、CLVisitの結果です。</p>
+
+<p><img src="http://grandbig.github.io/images/visit_test1.png" alt="CLVisitの結果" /></p>
+
+<ul>
+<li>取得期間: 2014/12/28 14:30 〜 2015/01/03 20:00</li>
+<li>取得数: 117点 (オランダ: 66点, ベルギー: 49点, ルクセンブルク: 2点)</li>
+<li>精度: 0〜50[m]: 34点, 50〜100[m]: 76点, 100[m]〜: 7点</li>
+<li>到着日時と出発日時が正しく取れた: 58点, 到着日時のみ正しく取れた: 0点, 出発日時のみ正しく取れた: 59点
+
+<ul>
+<li>CLVisitでは到着日時が正しく取れない場合は <strong>0001-01-01 01:00:00</strong> (月日や日時が異なる値になる場合もある)となり、出発日時が正しく取れない場合は <strong>4001-01-01 01:00:00</strong>  (同じく、月日や日時が異なる値になる場合もある)となる。</li>
+</ul>
+</li>
+<li>10分程度の滞在時間でも取得できる</li>
+<li>歩き続けている間は取得できない(歩行速度程度の遅い速度でも移動していると取得できない)</li>
+<li>数 [m] 〜 数十 [m]の距離間でも取得できる</li>
+</ul>
+
+
+<p>次に、CMPedometerの結果です。</p>
+
+<ul>
+<li>取得期間: 2014/12/28 16:02:07 〜 2015/01/03 12:07:45</li>
+<li>取得数: 1120点</li>
+<li>ステップ数: 57998</li>
+<li>移動距離: 38623 [m]</li>
+<li>階段を上がった回数: 36, 階段を下りた回数: 49</li>
+<li>計測を開始してから明示的に終了するまで取り続けることができなかった(2度 起動し直した)</li>
+<li>歩行時と電車乗車時の区別はできていなかった</li>
+</ul>
+
+
+<h5>今後の展望</h5>
+
+<p>海外旅行の思い出として軌跡を残すことを考えたアプリは既にたくさんあります。<br/>
+主にiPhoneで写真を撮影したタイミングで緯度・経度を取得してプロットするというものが多いことと思います。<br/>
+CLVisitはこれに対する補助機能としての役割を多少期待できるかもしれません。<br/>
+とは言え、『滞在 = 写真を撮る』と考えると同じ地点にプロットが集まるのかもしれませんが&hellip;。<br/>
+CMPedometerは歩行時のみであることを保証できないため、iPhoneの移動が停止/歩行/走行/電車などを区別するためにCMMotionActivityを合わせて利用したいと思いました。<br/>
+それにより、万歩計としての精度を高めることができるかもしれません。<br/>
+(う〜ん。今回、実装しておけば良かった&hellip;)</p>
+
+<p>と言ったところで、本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Xcode6 Storyboardで多言語対応してみた]]></title>
@@ -4642,79 +4890,6 @@ ViewController.mファイルのソース</p>
 <p>参考:<br/>
 ・<a href="http://kernhack.hatenablog.com/entry/2013/11/24/164828">gtm-oauth2でOAuth認証してgoogleのAPIを使う</a><br/>
 ・<a href="http://stackoverflow.com/questions/18677244/error-invalid-client-no-application-name">invalid_client no application name &ndash; Stack Overflow</a></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[OS X Serverを使ってみよう]]></title>
-    <link href="http://grandbig.github.io/blog/2014/07/12/osx-server/"/>
-    <updated>2014-07-12T19:51:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/07/12/osx-server</id>
-    <content type="html"><![CDATA[<h3>初めてOSX Serverを使ってみた</h3>
-
-<p>本日は少し、趣向を変えてみます。<br/>
-筆者はこれまでWeb共有をSitesフォルダを作成してApacheの設定書いてApacheを再起動して&hellip;という定番のあれをやっていました。<br/>
-しかし、<strong>iOS Developer契約をしている開発者であればOS X Serverを無料で利用できる</strong>と聞いたので、実際に使ってみたくなったのです。<br/>
-あまり、ハマる人はいないかもしれないのですが、<strong>定番のWeb共有からOS X Serverに乗り換えたい</strong>という人のために手順をまとめたいと思います。</p>
-
-<!--more-->
-
-
-<h4>OS X Serverをインストールしよう</h4>
-
-<p>まずは、OS X Serverのインストールから説明したいと思います。通常の手順でApp Storeからダウンロードしようとするとお金がかかるのでご注意を。<br/>
-1: Apple Developer サイトにログイン<br/>
-<a href="https://developer.apple.com/devcenter/ios/index.action">iOS Dev Center</a>の下の方を見てください。OS X Serverが見つかるはずです。<br/>
-<img src="http://grandbig.github.io/images/osx_server1.png" alt="iOS Dev Center" /><br/>
-OS X Serverの欄の右側にボタンが見えると思いますので、クリックしてApp Storeアプリを起動しましょう。そこで、無料でダウンロードができます。</p>
-
-<p>2: OS X Serverをインストール<br/>
-流れに沿ってインストールしましょう。一応、流れは下記に画像として貼っておきます。<br/>
-<img src="http://grandbig.github.io/images/osx_server3.png" alt="続けるをクリック" /><br/>
-<img src="http://grandbig.github.io/images/osx_server4.png" alt="同意する" /><br/>
-<img src="http://grandbig.github.io/images/osx_server5.png" alt="そのまま待つ" /><br/>
-インストールが完了すると、２つの画面が表示されます。<br/>
-<img src="http://grandbig.github.io/images/osx_server6.png" alt="チュートリアル画面" /><br/>
-<img src="http://grandbig.github.io/images/osx_server7.png" alt="OS X Server画面" /></p>
-
-<p>さて、ここまでは難なく進めると思います。<br/>
-冒頭でも述べましたように筆者は定番のWeb共有をやっていましたので、ブラウザで<a href="http://localhost">http://localhost</a>を見たときに下記のような画面が表示されていました。<br/>
-<img src="http://grandbig.github.io/images/osx_server2.png" alt="定番のWeb共有での画面" /><br/>
-しかし、上記の手順2まで終了したタイミングで<a href="http://localhost">http://localhost</a>を見てみると&hellip;<br/>
-<img src="http://grandbig.github.io/images/osx_server8.png" alt="ページが見つかりません" /><br/>
-「何かおかしい&hellip;!?」てなことになっています。</p>
-
-<p>案ずるなかれ、OS X ServerでWebサイトの設定をすれば良いのです！！<br/>
-3: OS X Server画面で左メニューからWebサイトの項目を選択<br/>
-<img src="http://grandbig.github.io/images/osx_server9.png" alt="Webサイト設定画面" /><br/>
-左上のスイッチが切になっているので、入にしましょう。<br/>
-<img src="http://grandbig.github.io/images/osx_server10.png" alt="スイッチを入にする" /><br/>
-さあ、改めて<a href="http://localhost">http://localhost</a>を見てみましょう！！<br/>
-OS X Serverのデフォルトページが表示されるようになったはずです。<br/>
-<img src="http://grandbig.github.io/images/osx_server11.png" alt="OS X Serverのデフォルトページ" /></p>
-
-<p>とは言え、Sitesフォルダに入れていたものが見えなくなっとる&hellip;てなことになりますよね？？<br/>
-一体、OS X Serverはどこのパスを見ているのか！？<br/>
-これはWebサイトの設定画面から確認できます。下記画像のように<strong>サーバ Webサイト</strong>をダブルクリックしましょう。<br/>
-<img src="http://grandbig.github.io/images/osx_server12.png" alt="OS X Server Webサイトの設定画面からパスを調べる" /><br/>
-<strong>サーバWebサイト</strong>というタイトルの画面に変わると思います。下記画像を見てもわかるように、赤枠で囲った部分にパスを見ることができます。<br/>
-<img src="http://grandbig.github.io/images/osx_server13.png" alt="OS X Server Webサイトの設定画面からパスを調べる" /></p>
-
-<p>このパスにこれまでの方法で見ていたファイルを突っ込めば問題なく見れるようになります。<br/>
-元々の場所から変えたくないという人はサイトファイルの保存場所を変えれば良いと思います。</p>
-
-<p>ということで、OS X Serverの基本的な設定が完了したと思います。Webサイトの共有だけでなく、様々な機能をOS X Serverは持っていますので、これからどんどん試していきたいと思います。<br/>
-本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
