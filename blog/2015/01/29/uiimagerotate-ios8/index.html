@@ -5,11 +5,12 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>UIButtonのaddTargetについて - Takahiro Octopress Blog</title>
+  <title>iOS8で端末の向きに合わせて画像を回転させる方法について - Takahiro Octopress Blog</title>
   <meta name="author" content="Takahiro">
 
   
-  <meta name="description" content="UIButtonをタップしたときの処理を書くときの注意点 今日は簡単なメモを書きます。ネイティブアプリを開発するときに、レイアウトをこりたいと思うことがあります。そんなときにひっかかってしまったことを書きます。(まさか今更こんなことにひっかかるとは&hellip;と思いました笑) &hellip;">
+  <meta name="description" content="端末の向きに合わせて画像を回転させよう！ iOS7.xまではwillRotateToInterfaceOrientationやdidRotateFromInterfaceOrientationを用いて端末の向きが変わるときに、UIImageViewを回転させるといったことをやっていました。
+しかし &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +21,7 @@
   <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
 
   
-  <link rel="canonical" href="http://grandbig.github.io/blog/2014/02/01/uibuttonfunction">
+  <link rel="canonical" href="http://grandbig.github.io/blog/2015/01/29/uiimagerotate-ios8">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
@@ -81,7 +82,7 @@
   
   <header>
     
-      <h1 class="entry-title">UIButtonのaddTargetについて</h1>
+      <h1 class="entry-title">iOS8で端末の向きに合わせて画像を回転させる方法について</h1>
     
     
       <p class="meta">
@@ -97,52 +98,80 @@
   
 
 
-<time datetime="2014-02-01T22:04:00+09:00" pubdate data-updated="true">Feb 1<span>st</span>, 2014</time>
+<time datetime="2015-01-29T00:24:00+09:00" pubdate data-updated="true">Jan 29<span>th</span>, 2015</time>
         
       </p>
     
   </header>
 
 
-<div class="entry-content"><h3>UIButtonをタップしたときの処理を書くときの注意点</h3>
+<div class="entry-content"><h4>端末の向きに合わせて画像を回転させよう！</h4>
 
-<p>今日は簡単なメモを書きます。ネイティブアプリを開発するときに、レイアウトをこりたいと思うことがあります。そんなときにひっかかってしまったことを書きます。(まさか今更こんなことにひっかかるとは&hellip;と思いました笑)</p>
+<p>iOS7.xまでは<strong>willRotateToInterfaceOrientation</strong>や<strong>didRotateFromInterfaceOrientation</strong>を用いて端末の向きが変わるときに、UIImageViewを回転させるといったことをやっていました。<br/>
+しかし、iOS8ではこれら2つのメソッドがdeprecatedになってしまいました。<br/>
+では、iOS8ではどうやって端末の向きに合わせてUIImageViewを回転させれば良いのでしょうか？</p>
 
-<p>UIButtonは下記のように作成します。</p>
+<p>ここではAutoLayoutを利用した方法を説明します。</p>
 
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>UIButton *btn = [UIButton buttonWithType: UIButtonTypeRoudedRect];
-</span><span class='line'>btn.frame = CGRectMake(0, 0, 100, 30);
-</span><span class='line'>[btn setTitle:@"ボタン" forState:UIControlStateNormal];
-</span><span class='line'>[btn addTarget:self action:@selector(test:) forControlEvents:UIControlEventTouchDown];</span></code></pre></td></tr></table></div></figure>
+<!-- more -->
 
 
-<!--more-->
+<p>まず、前提として<strong>『アプリの中央に配置した正方形の画像を端末の向きに合わせて回転させる』</strong>とします。<br/>
+では早速手順を説明します。</p>
+
+<p>1: StoryboardにUIImageViewを配置しましょう。<br/>
+<img src="/images/rotate_image_ios8_1.png" alt="UIImageViewを配置" /></p>
+
+<p>2: UIImageViewに画像をセットしましょう。<br/>
+<img src="/images/rotate_image_ios8_2.png" alt="UIImageViewに画像をセット" /></p>
+
+<p>3: AutoLayoutを設定しましょう。<br/>
+設定するAutoLayoutは、下記5点です。</p>
+
+<ul>
+<li>Aspect Ratio</li>
+<li>Center X Alignment</li>
+<li>Center Y Alignment</li>
+<li>Horizontal Space</li>
+<li>Vertical Space</li>
+</ul>
 
 
-<p>で、このボタンをUILabelに配置するために</p>
+<p>Horizontal Space, Vertical Space, Aspect Ratioの設定は下記のようにできます。<br/>
+<img src="/images/rotate_image_ios8_3.png" alt="AutoLayoutの設定" /></p>
 
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 300, 50)];
-</span><span class='line'>[label addSubview: btn];</span></code></pre></td></tr></table></div></figure>
+<p>ここで、Horizontal Space, Vertical Spaceは<strong>Equal</strong>ではなく<strong>Greater</strong>設定をします。<br/>
+設定は下図のようにHorizontal SpaceまたはVertical Spaceを選択して、右メニューのRelationを変更します。<br/>
+<img src="/images/rotate_image_ios8_5.png" alt="AutoLayoutの設定" /></p>
+
+<p>Center X Alignment, Center Y Alignmentの設定は下記のようにできます。<br/>
+<img src="/images/rotate_image_ios8_4.png" alt="AutoLayoutの設定" /></p>
+
+<p>全ての設定が終われば、下図のようになるでしょう。<br/>
+<img src="/images/rotate_image_ios8_6.png" alt="AutoLayoutの設定" /></p>
+
+<p>実際にアプリを起動して端末を回転させてみると、<br/>
+端末がPortraitの場合は、<br/>
+<img src="/images/rotate_image_ios8_7.png" alt="端末がPortraitの場合" /></p>
+
+<p>端末がLandscapeの場合は、<br/>
+<img src="/images/rotate_image_ios8_8.png" alt="端末がLandscapeの場合" /><br/>
+となりました。</p>
+
+<p>う〜ん、だいぶ楽になりましたね。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
 
-<p>と書いたところ、addTargetで設定したタップイベントが実行されませんでした。<br/>
-これを</p>
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
 
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> UIView *uv = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 50)];
-</span><span class='line'>[uv addSubview: btn];</span></code></pre></td></tr></table></div></figure>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
 
 
-<p>と<strong>UIView</strong>に変えたところ、うまくいきました。</p>
 
-<p>ま、UILabelをあえて使う必要もないので、UIViewで良いでしょう。</p>
 </div>
 
 
@@ -165,7 +194,7 @@
   
 
 
-<time datetime="2014-02-01T22:04:00+09:00" pubdate data-updated="true">Feb 1<span>st</span>, 2014</time>
+<time datetime="2015-01-29T00:24:00+09:00" pubdate data-updated="true">Jan 29<span>th</span>, 2015</time>
       
 
 
@@ -173,7 +202,7 @@
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2014/02/01/uibuttonfunction/" data-via="" data-counturl="http://grandbig.github.io/blog/2014/02/01/uibuttonfunction/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2015/01/29/uiimagerotate-ios8/" data-via="" data-counturl="http://grandbig.github.io/blog/2015/01/29/uiimagerotate-ios8/" >Tweet</a>
   
   
   
@@ -182,10 +211,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2014/01/27/googlemapssdk2/" title="Previous Post: Google Maps SDK for iOSをiOS6対応させようとしてハマったこと">&laquo; Google Maps SDK for iOSをiOS6対応させようとしてハマったこと</a>
+        <a class="basic-alignment left" href="/blog/2015/01/14/ios-google-oauth2-2/" title="Previous Post: gtm-oauth2を使ってGoogle APIをiOSで叩きたい！">&laquo; gtm-oauth2を使ってGoogle APIをiOSで叩きたい！</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2014/02/04/ios-developapp-relative/" title="Next Post: iOSアプリを相対表示で作りたい！！">iOSアプリを相対表示で作りたい！！ &raquo;</a>
       
     </p>
   </footer>
