@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios8 | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ios8/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-02-08T16:49:39+09:00</updated>
+  <updated>2015-02-08T16:54:06+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -540,6 +540,157 @@ if(soundFlag) {
   </entry>
   
   <entry>
+    <title type="html"><![CDATA[iOS8からのLocalNotification]]></title>
+    <link href="http://grandbig.github.io/blog/2014/11/09/localnotification-ios8/"/>
+    <updated>2014-11-09T17:05:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/11/09/localnotification-ios8</id>
+    <content type="html"><![CDATA[<h4>LocalNotificationでAction</h4>
+
+<p>今日はiOS8から追加されたLocalNotificationの新機能についてお話します。<br/>
+これまでのLocalNotificationは</p>
+
+<ul>
+<li>通知が通知エリアに表示される</li>
+<li>通知をタップすることでアプリを起動</li>
+</ul>
+
+
+<p>くらいの機能しかありませんでした。</p>
+
+<p>しかし、iOS8からは届いた通知に対して、ユーザが答えることができるようになりました。</p>
+
+<!-- more -->
+
+
+<p>例えば、下記のような感じですね。</p>
+
+<p><img src="/images/localnotification_1.png" alt="バナー表示" /><br/>
+<img src="/images/localnotification_2.png" alt="ダイアログ表示" /></p>
+
+<p>これまでLocalNotificationを使ってきた人であれば、実に簡単に実装ができます。<br/>
+それでは、実際にソースを見て行きましょう。</p>
+
+<p>```objective-c
+// AppDelegate.m
+&ndash; (BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions {</p>
+
+<pre><code>if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)]) {
+    [self registerUserNotificationSettings];
+}
+
+return YES;
+</code></pre>
+
+<p>}</p>
+
+<p>&lt;省略></p>
+
+<p>// アプリがBackground起動になったときに処理
+&ndash; (void)applicationDidEnterBackground:(UIApplication *)application {</p>
+
+<pre><code>// LocalNotificationの送信
+[self sendLocalNotificationForMessage:@"TEST"];
+</code></pre>
+
+<p>}</p>
+
+<p>&lt;省略></p>
+
+<p>// LocalNotificationでアクションを実行したときの処理
+&ndash; (void) application:(UIApplication <em>)application handleActionWithIdentifier:(NSString </em>)identifier forLocalNotification:(UILocalNotification *)notification completionHandler:(void (^)())completionHandler
+{</p>
+
+<pre><code>if ([identifier isEqualToString:@"ACCEPT"]) {
+    NSLog(@"Accepted");
+} else if([identifier isEqualToString:@"MAYBE"]) {
+    NSLog(@"Maybe");
+} else if([identifier isEqualToString:@"DECLINE"]) {
+    NSLog(@"Declined");
+}
+
+if(completionHandler) {
+    completionHandler();
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// Notificationの設定
+&ndash; (void)registerUserNotificationSettings
+{</p>
+
+<pre><code>// Actionの生成
+UIMutableUserNotificationAction *acceptAction = [[UIMutableUserNotificationAction alloc] init];
+acceptAction.identifier = @"ACCEPT";
+acceptAction.title = @"Accept";
+acceptAction.activationMode = UIUserNotificationActivationModeBackground;
+acceptAction.authenticationRequired = NO;
+acceptAction.destructive = NO;
+
+// Actionの生成
+UIMutableUserNotificationAction *acceptAction = [[UIMutableUserNotificationAction alloc] init];
+acceptAction.identifier = @"MAYBE";
+acceptAction.title = @"Maybe";
+acceptAction.activationMode = UIUserNotificationActivationModeBackground;
+acceptAction.authenticationRequired = NO;
+acceptAction.destructive = NO;
+
+// Actionの生成
+UIMutableUserNotificationAction *acceptAction = [[UIMutableUserNotificationAction alloc] init];
+acceptAction.identifier = @"DECLINE";
+acceptAction.title = @"Decline";
+acceptAction.activationMode = UIUserNotificationActivationModeBackground;
+acceptAction.authenticationRequired = NO;
+acceptAction.destructive = YES;
+
+// Categoryの作成
+UIMutableUserNotificationCategory *inviteCategory = [UIMutableUserNotificationCategory alloc] init];
+inviteCategory.identifier = @"INVITE_CATEGORY"; // CategoryのIDを設定
+[inviteCategory setActions:@[acceptAction, maybeAction, declineAction] forContext:UIUserNotificationActionContextDefault]; // ダイアログ表示
+[inviteCategory setActions:@[acceptAction, declineAction] forContext:UIUserNotificationActionContextMinimal]; // バナー表示
+
+NSSet *categories = [NSSet setWithObjects:inviteCategory, nil];
+UIUserNotificationSettings *notificationSettings = [UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|UIUserNotificationTypeBadge|UIUserNotificationTypeSound categories:categories];
+[[UIApplication sharedApplication] registerUserNotificationSettings:notificationSettings];
+</code></pre>
+
+<p>}</p>
+
+<p>// LocalNotificationを送信
+&ndash; (void)sendLocalNotificationForMessage:(NSString *)message
+{</p>
+
+<pre><code>UILocalNotification *localNotification = [UILocalNotification new];
+localNotification.alertBody = message;
+localNotification.fireDate = [NSDate date];
+localNotification.timeZone = [NSTimeZone localTimeZone];
+localNotification.soundName = UILocalNotificationDefaultSoundName;
+localNotification.category = @"INVITE_CATEGORY"; // Action表示させたいCategoryの設定
+[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>簡単に書けますね。<br/>
+ぱっと見た感じは、予めAction項目を作成しておく必要があるので、用途は限定的になりそうな気がしますね。<br/>
+と言っても、これまでよりユーザ操作のハンドリングの幅が広がるので、嬉しい限りですが&hellip;。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
     <title type="html"><![CDATA[端末のバッテリ残量を取得(iOS8)]]></title>
     <link href="http://grandbig.github.io/blog/2014/11/08/ios8-battery/"/>
     <updated>2014-11-08T16:45:00+09:00</updated>
@@ -608,237 +759,6 @@ iOS8.xであれば、『0.310000』のように1%刻みで値が返ってくる�
 これで少しは正確にバッテリ情報を取得できるようになりましたね。</p>
 
 <p>今日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS8でiBeaconを試してみよう！！]]></title>
-    <link href="http://grandbig.github.io/blog/2014/09/22/ios8-de-ibeacon/"/>
-    <updated>2014-09-22T21:52:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/09/22/ios8-de-ibeacon</id>
-    <content type="html"><![CDATA[<h3>iOS8になって気をつけるべきところについて</h3>
-
-<p>本日はiOS8端末でiBeaconを利用するときの注意点について書きたいと思います。<br/>
-iOS8ではユーザの位置情報に関する許可の選択肢が増えました。それは、<strong>『許可しない』/『このAppの使用中のみ許可』/『常に許可』</strong>の3つです。(これまでは単純にON/OFFに切替のみでした。)もちろん、ユーザの選択肢が増えたということは開発者側でも新たな対応が必要になるということです。</p>
-
-<p><img src="/images/ios8_location_1.png" alt="iOS8端末での位置情報の許可選択画面" /></p>
-
-<!--more-->
-
-
-<p>具体的な対応としては、<strong>ユーザに許可を求めるメソッドを実装する</strong>というものです。</p>
-
-<p>下記にViewController.mファイルのソースを記載します。<br/>
-```objective-c</p>
-
-<h1>import &ldquo;ViewController.h&rdquo;</h1>
-
-<p>@interface ViewController ()</p>
-
-<p>@property (strong, nonatomic) IBOutlet CLLocationManager <em>locationManager;
-@property (strong, nonatomic) IBOutlet NSUUID </em>proximityUUID;
-@property (strong, nonatomic) IBOutlet CLBeaconRegion <em>beaconRegion;
-@property (strong, nonatomic) IBOutlet CLBeacon </em>nearestBeacon;
-@property (strong, nonatomic) IBOutlet NSString *str;</p>
-
-<p>@end</p>
-
-<p>@implementation ViewController</p>
-
-<p>&lt;省略></p>
-
-<ul>
-<li><p>(void)viewDidLoad
-{
-  [super viewDidLoad];</p>
-
-<p>  if ([CLLocationManager isMonitoringAvailableForClass:[CLCircularRegion class]]) {
-      self.locationManager = [[CLLocationManager alloc] init];
-      self.locationManager.delegate = self;</p>
-
-<pre><code>  self.proximityUUID = [[NSUUID alloc] initWithUUIDString:@"8D4DB809-032F-4771-96F3-99BD5C25F924"];
-  self.beaconRegion = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID
-                                                         identifier:@"com.kato.ibeaconSample"];
-
-  if ([self.locationManager respondsToSelector:@selector(requestAlwaysAuthorization)]) {
-      // requestAlwaysAuthorizationメソッドが利用できる場合(iOS8以上の場合)
-      // 位置情報の取得許可を求めるメソッド
-      [self.locationManager requestAlwaysAuthorization];
-  } else {
-      // requestAlwaysAuthorizationメソッドが利用できない場合(iOS8未満の場合)
-      [self.locationManager startMonitoringForRegion: self.beaconRegion];
-  }
-</code></pre>
-
-<p>  } else {
-      // iBeaconが利用できない端末の場合
-      NSLog(@&ldquo;iBeaconを利用できません。&rdquo;);
-  }
-}</p></li>
-</ul>
-
-
-<p>// ユーザの位置情報の許可状態を確認するメソッド
-&ndash; (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
-{</p>
-
-<pre><code>if (status == kCLAuthorizationStatusNotDetermined) {
-    // ユーザが位置情報の使用を許可していない
-} else if(status == kCLAuthorizationStatusAuthorizedAlways) {
-    // ユーザが位置情報の使用を常に許可している場合
-    [self.locationManager startMonitoringForRegion: self.beaconRegion];
-} else if(status == kCLAuthorizationStatusAuthorizedWhenInUse) {
-    // ユーザが位置情報の使用を使用中のみ許可している場合
-    [self.locationManager startMonitoringForRegion: self.beaconRegion];
-}
-</code></pre>
-
-<p>}</p>
-
-<p>// 領域計測が開始した場合
-&ndash; (void)locationManager:(CLLocationManager <em>)manager didStartMonitoringForRegion:(CLRegion </em>)region
-{</p>
-
-<pre><code>[self sendLocalNotificationForMessage:@"Start Monitoring Region"];
-</code></pre>
-
-<p>}</p>
-
-<p>// 指定した領域に入った場合
-&ndash; (void)locationManager:(CLLocationManager <em>)manager didEnterRegion:(CLRegion </em>)region
-{</p>
-
-<pre><code>[self sendLocalNotificationForMessage:@"Enter Region"];
-
-if ([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]) {
-    [self.locationManager startRangingBeaconsInRegion:(CLBeaconRegion *)region];
-}
-</code></pre>
-
-<p>}</p>
-
-<p>// 指定した領域から出た場合
-&ndash; (void)locationManager:(CLLocationManager <em>)manager didExitRegion:(CLRegion </em>)region
-{</p>
-
-<pre><code>[self sendLocalNotificationForMessage:@"Exit Region"];
-
-if ([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]) {
-    [self.locationManager stopRangingBeaconsInRegion:(CLBeaconRegion *)region];
-}
-</code></pre>
-
-<p>}</p>
-
-<p>// 領域内にいるかどうかを確認する処理
-&ndash;(void)locationManager:(CLLocationManager <em>)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion </em>)region{</p>
-
-<pre><code>switch (state) {
-    case CLRegionStateInside:
-        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
-            NSLog(@"Enter %@",region.identifier);
-            //Beacon の範囲内に入った時に行う処理を記述する
-            [self sendLocalNotificationForMessage:@"Already Entering"];
-        }
-        break;
-
-    case CLRegionStateOutside:
-    case CLRegionStateUnknown:
-    default:
-        break;
-}
-</code></pre>
-
-<p>}</p>
-
-<p>// Beacon信号を検出した場合
-&ndash; (void)locationManager:(CLLocationManager <em>)manager didRangeBeacons:(NSArray </em>)beacons inRegion:(CLBeaconRegion *)region
-{</p>
-
-<pre><code>if (beacons.count &gt; 0) {
-    self.nearestBeacon = beacons.firstObject;
-    self.str = [[NSString alloc] initWithFormat:@"%f [m]", self.nearestBeacon.accuracy];
-    NSLog(@"%@", self.str);
-    [self sendLocalNotificationForMessage:self.str];
-}
-</code></pre>
-
-<p>}</p>
-
-<p>// ローカルプッシュ処理
-&ndash; (void)sendLocalNotificationForMessage:(NSString *)message
-{</p>
-
-<pre><code>UILocalNotification *localNotification = [UILocalNotification new];
-localNotification.alertBody = message;
-localNotification.fireDate = [NSDate date];
-localNotification.soundName = UILocalNotificationDefaultSoundName;
-[UIApplication sharedApplication] scheduleLocalNotification:localNotification];]
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>これにより、アプリを起動した際に、ユーザへ位置情報の使用を求めるアラートを表示することができます。<br/>
-<img src="/images/ios8_location_2.png" alt="ユーザへのアラート" /></p>
-
-<p>気をつけたいのが、iOS8からは<strong>Info.plistファイルに位置情報を使用する理由</strong>を記載する必要があります。<br/>
-Info.plistにNSLocationWhenInUseUsageDescriptionまたはNSLocationAlwaysUsageDescriptionを設定する必要があります。<br/>
-ただし、Info.plistでAdd Rowしようとしても、候補に表示されないので、手打ちで設定しましょう。</p>
-
-<h3>iOS8でWhenInUseとAlwaysの挙動の違い</h3>
-
-<p>続いて、iOS8から追加されたWhenInUse(このAppの使用中のみ許可)とAlways(常に許可)でiBeaconの挙動にどういった差が出るか調べてみたいと思います。<br/>
-まずは、Always(常に許可)から説明します。<br/>
-こちらは、領域観測(didEnterRegion/didDetermineState/didExitRegion)と距離計測(didRangeBeacons)の両方を実行できます。<br/>
-※基本的にはiOS7.1.xと同じ挙動と言えます。</p>
-
-<p>一方でWhenInUseを見てみると、距離計測のみが可能でした。<br/>
-領域観測ができないため、startRangingBeaconsInRegionメソッドを実行するタイミングをミスらないように注意が必要です。<br/>
-例えば、<strong>didEnterRegion</strong> Delegateメソッドの中でstartRangingBeaconsInRegionメソッドを実行とすると、WhenInUseではiBeaconを一切検知できないようになってしまいます。<br/>
-アプリをフォアグラウンドに起動したときだけ、iBeaconの機能を利用したいのであれば、確かにWhenInUseで十分だと思います。</p>
-
-<h3>ローカルプッシュの補足</h3>
-
-<p>因みに、筆者は上記の動作を確認するためにローカルプッシュ処理を組み込んだのですが、そこでハマりました。なぜかというと、iOS8ではローカルプッシュがうまくいかなかったからです。<br/>
-いろいろと調べた結果、iOS8からは<strong>ローカルプッシュの設定を記載する</strong>必要があるとのことでした。</p>
-
-<p>以下のようにAppDelegate.mファイルに記載すれば、ローカルプッシュが利用可能になります。<br/>
-```objective-c
-&ndash; (BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions
-{</p>
-
-<pre><code>&lt;省略&gt;
-
-if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)]) {
-    [[UIApplication sharedApplication] registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|UIUserNotificationTypeSound categories:nil]];
-}
-
-return YES;
-</code></pre>
-
-<p>}
-```</p>
-
-<p>一先ず、ここまで。</p>
-
-<p>参考:<br/>
-<a href="http://qiita.com/koogawa/items/6ec24ca3201977e9642b">iOS8から位置情報を取得する方法が変わるよ</a><br/>
-<a href="http://im-sei.tumblr.com/post/91824653043/ios-8">iOS8の位置情報のプライバシー設定に対応する</a><br/>
-<a href="http://qiita.com/caesar_cat/items/08018ab22bea27b55443">iOS8からローカル通知が保存されなくなった？</a></p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
