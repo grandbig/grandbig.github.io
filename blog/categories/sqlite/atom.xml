@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: SQLite | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/sqlite/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-02-08T15:49:21+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[FMDBを使ったDB接続を関数化しよう！！]]></title>
+    <link href="http://grandbig.github.io/blog/2014/04/11/fmdatabase2/"/>
+    <updated>2014-04-11T22:17:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/04/11/fmdatabase2</id>
+    <content type="html"><![CDATA[<h3>FMDBを使ったDB接続を自作関数化</h3>
+
+<p>さて、ブログを更新します。以前、<a href="http://grandbig.github.io/blog/2013/11/30/fmdatabase/">FMDBを使って簡単にiPhoneのローカルストーレジを活用しよう！</a>でObjective-CでSQLiteを扱うためのFMDBライブラリについて説明させて頂きました。<br/>
+そのときは全てをベタ書きしていましたが、毎回書くのは面倒ですよね&hellip;ってことで自作しちゃいましょう！！</p>
+
+<!--more-->
+
+
+<p>まずはおさらいです。DB接続は下記です。<br/>
+<code>objective-c
+NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+NSString *dir = [paths objectAtIndex:0];
+FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@"test.db"]];
+</code>
+これをtableの作成, select, insert, update, delete, countのたびに書くのは面倒なので&hellip;</p>
+
+<p>```objective-c
+&ndash; (id)dbConnect:(NSString *)dbName
+{</p>
+
+<pre><code>NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+NSString *dir = [paths objectAtIndex:0];
+FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:dbName]];
+
+return db;
+</code></pre>
+
+<p>}
+```
+としちゃいましょう。<br/>
+そうすれば、同じmファイル内であればtableの作成, select, insert, update, delete, countは以下のように書けます。</p>
+
+<h4>tableの作成</h4>
+
+<p>```objective-c
+&ndash; (void)createTable:(NSString *)tableName
+{</p>
+
+<pre><code>FMDatabase *db = [self dbConnect:@"test.db"];
+
+// tableの作成
+NSString *sql = [[NSString alloc] initWithFormat:@"create table if not exists %@ (id INTEGER PRIMARY KEY, uid TEXT, createtime TEXT)", tableName];
+
+[db open];
+[db executeUpdate:sql];
+[db close];
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>select文の実行</h4>
+
+<p>```objective-c
+&ndash; (void)selectData:(NSString *)tableName
+{</p>
+
+<pre><code>FMDatabase *db = [self dbConnect:@"test.db"];
+
+// select文
+NSString *sql = [[NSString alloc] initWithFormat:@"select * from %@", tableName];
+
+[db open];
+
+FMResultSet *rs = [db executeQuery:sql];
+while([rs next]) {
+    NSInteger idNum = [[rs stringForColumnIndex:0] intValue];
+    NSString *uid = [rs stringForColumnIndex:1];
+    NSString *createtime = [rs stringForColumnIndex:2];
+    NSLog(@"id: %ld, uid: %@, createtime: %@", (long)idNum, uid, createtime);
+}
+
+[db close];
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>insert文の実行</h4>
+
+<p>```objective-c
+&ndash; (void)insertData:(NSString *)tableName</p>
+
+<pre><code>        userID:(NSString *)uid
+    createtime:(NSString *)createtime
+</code></pre>
+
+<p>{</p>
+
+<pre><code>FMDatabase *db = [self dbConnect:@"test.db"];
+
+// insert文
+NSString *sql = [[NSString alloc] initWithFormat:@"insert into %@ (uid, createtime) values('%@', '%@')", tableName, uid, createtime];
+
+[db open];
+[db executeUpdate:sql];
+[db close];
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>update文の実行</h4>
+
+<p>```objective-c
+&ndash; (void)updateData:(NSString *)tableName</p>
+
+<pre><code>        userID:(NSString *)uid
+    createtime:(NSString *)createtime
+</code></pre>
+
+<p>{</p>
+
+<pre><code>FMDatabase *db = [self dbConnect:@"test.db"];
+
+// update文
+NSString *sql = [[NSString alloc] initWithFormat:@"update %@ set uid='%@', createtime='%@' where id=1", tableName, uid, createtime];
+
+[db open];
+[db executeUpdate:sql];
+[db close];
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>delete文の実行</h4>
+
+<p>```objective-c
+&ndash; (void)deleteData:(NSString *)tableName
+{</p>
+
+<pre><code>FMDatabase *db = [self dbConnect:@"test.db"];
+
+// delete文
+NSString *sql = [[NSString alloc] initWithFormat:@"delete from %@", tableName];
+
+[db open];
+[db executeUpdate:sql];
+[db close];
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>count文の実行</h4>
+
+<p>```objective-c
+&ndash; (NSInteger)countData:(NSString *)tableName
+{</p>
+
+<pre><code>FMDatabase *db = [self dbConnect:@"test.db"];
+
+// count文
+NSString *sql = [[NSString alloc] initWithFormat:@"select count(*) as count from %@", tableName];
+
+[db open];
+FMResultSet *rs = [db executeQuery:sql];
+NSInteger cnt = 0;
+if([rs next]) {
+    cnt = [rs intForColumn:@"count"];
+}
+[db close];
+
+return cnt;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>一度、関数を作ってしまえば、使いやすさがぐんぐん増します！！<br/>
+自身のiOSアプリに最適なSQLiteを扱うメソッドを作ってみてはどうでしょうか？</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[FMDBを使って簡単にiPhoneのローカルストレージを活用しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2013/11/30/fmdatabase/"/>
+    <updated>2013-11-30T19:22:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/11/30/fmdatabase</id>
+    <content type="html"><![CDATA[<h3>iPhoneのローカルストレージを開発で活用しよう！</h3>
+
+<p>本日はiPhoneのローカルストレージ活用方法について簡単に紹介したいと思います。<br/>
+iPhoneアプリを開発するにあたって、データ保管のためにDBサーバを活用したくなることがあると思います。しかし、個人で開発するにはレンタルサーバを借りるだけでも一苦労&hellip;。毎月お金もかかる&hellip;。そもそも保存したいデータ量も大きくないし&hellip;。なんてことがあるでしょう。そんなときは迷わず、iPhoneのローカルストレージを使いましょう！！</p>
+
+<!--more-->
+
+
+<h4>FMDBを使おう！！</h4>
+
+<p>iPhoneローカルストレージを使うなら、非常に便利な<strong>FMDB</strong>をぜひダウンロードしましょう。<br/>
+FMDBはMITライセンスということもあり、商用でも簡単に導入できます。</p>
+
+<p>では早速、使い方を説明しましょう。<br/>
+1: GitHubより<a href="https://github.com/ccgus/fmdb">FMDB</a>をダウンロードします。<br/>
+2: fmdb-master/src/ 配下のファイルをコピーしてFMDBを利用したいXcodeのプロジェクトフォルダ内に置く<br/>
+※ただし、fmdb.mファイルは不要<br/>
+<img src="/images/fmdatabase1.png" alt="fmdb.m以外を利用する" /><br/>
+<img src="/images/fmdatabase2.png" alt="fmdb.m以外をXcodeプロジェクトに追加" /><br/>
+3: libsqlite3.0.dylibフレームワークをXcodeプロジェクトに追加<br/>
+※これがないとエラーが出るので注意<br/>
+<img src="/images/fmdatabase3.png" alt="libsqlite3.0.dylibフレームワークの追加" /><br/>
+4: FMDBを利用するファイルで<strong>FMDatabase.h</strong>をimportする<br/>
+<img src="/images/fmdatabase4.png" alt="FMDatabase.hをimportする" /></p>
+
+<p>これでFMDBを利用することができます。</p>
+
+<h4>FMDBを使った具体的な書き方</h4>
+
+<p>次にFMDBを使った具体的な書き方について説明したいと思います。</p>
+
+<p><strong>DB接続の書き方</strong><br/>
+DB接続方法は下記だけです。
+<code>
+NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+NSString *dir = [paths objectAtIndex:0];
+FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@"test.db"]];
+</code>
+<strong>DBの開閉</strong>
+<code>
+//DBを開く場合
+[db open];
+//DBを閉じる場合
+[db close];
+</code>
+上記がDBを扱う上での基本になります。</p>
+
+<p><strong>tableの作成</strong><br/>
+ここでは上記の基本を含めた一連の流れを書きます。<br/>
+下記ではTEXT型のuid, createtimeを持ったusersという名前のtableを作成しています。<br/>
+```
+//DBの呼び出し
+NSArray <em>paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+NSString </em>dir = [paths objectAtIndex:0];
+FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@&ldquo;test.db&rdquo;]];</p>
+
+<p>//tableの作成
+NSString *sql = @&ldquo;CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY,uid TEXT,createtime TEXT);&rdquo;;
+[db open];
+//クエリの実行
+[db executeUpdate:sql];
+[db close];
+```</p>
+
+<p>以下、説明することは上記で作成したtableを利用しています。</p>
+
+<p><strong>select文の実行</strong><br/>
+下記ではuidを取得する例を書きます。<br/>
+```
+//DBの呼び出し
+NSArray <em>paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+NSString </em>dir = [paths objectAtIndex:0];
+NSString <em>dir = [paths objectAtIndex:0];
+FMDatabase </em>db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@&ldquo;test.db&rdquo;]];</p>
+
+<p>//select文の作成
+NSString <em>select = [[NSString alloc] initWithFormat:@&ldquo;SELECT * from users&rdquo;];
+[db open];
+FMResultSet </em>rs = [db executeQuery:select];
+NSString *uid;
+while([rs next]) {</p>
+
+<pre><code>uid = [rs stringForColumnIndex:1];
+</code></pre>
+
+<p>}
+[db close];
+```</p>
+
+<p><strong>insert文の実行</strong><br/>
+```
+//DBの呼び出し
+NSArray <em>paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+NSString </em>dir = [paths objectAtIndex:0];
+NSString <em>dir = [paths objectAtIndex:0];
+FMDatabase </em>db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@&ldquo;test.db&rdquo;]];</p>
+
+<p>//insert文の作成
+NSString <em>createtime = @&ldquo;20131130011728462&rdquo;;
+NSString </em>uid = @&ldquo;user01&rdquo;;
+NSString *insert = [[NSString alloc] initWithFormat:@&ldquo;INSERT INTO users(uid, createtime) VALUES(&lsquo;%@&rsquo;, &lsquo;%@&rsquo;)&rdquo;, uid, createtime];
+[db open];
+[db executeUpdate:insert];
+[db close];
+```</p>
+
+<p><strong>update文の実行</strong><br/>
+```
+//DBの呼び出し
+NSArray <em>paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+NSString </em>dir = [paths objectAtIndex:0];
+NSString <em>dir = [paths objectAtIndex:0];
+FMDatabase </em>db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@&ldquo;test.db&rdquo;]];</p>
+
+<p>//update文の作成
+NSString <em>createtime = @&ldquo;20131201054830467&rdquo;;
+NSString </em>uid = @&ldquo;user02&rdquo;;
+//DBにレコードが１つ追加されていて、そのid=1のレコードを更新しています
+NSString *update = [[NSString alloc] initWithFormat:@&ldquo;UPDATE users SET uid=&lsquo;%@&rsquo;, createtime=&lsquo;%@&rsquo; where id=1&rdquo;, uid, createtime];
+[db open];
+[db executeUpdate:update];
+[db close];
+```</p>
+
+<p><strong>delete文の実行</strong>
+```
+//DBの呼び出し
+NSArray <em>paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+NSString </em>dir = [paths objectAtIndex:0];
+NSString <em>dir = [paths objectAtIndex:0];
+FMDatabase </em>db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@&ldquo;test.db&rdquo;]];</p>
+
+<p>//delete文の作成
+NSString *delete = [[NSString alloc] initWithFormat:@&ldquo;DELETE from users where id=1&rdquo;];
+[db open];
+[db executeUpdate:delete, [NSNumber numberWithInteger:n]];
+[db close];
+```</p>
+
+<p><strong>count文の実行</strong><br/>
+```
+//DBの呼び出し
+NSArray <em>paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+NSString </em>dir = [paths objectAtIndex:0];
+NSString <em>dir = [paths objectAtIndex:0];
+FMDatabase </em>db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:@&ldquo;test.db&rdquo;]];</p>
+
+<p>//count文の作成
+NSString <em>uid = @&ldquo;user02&rdquo;;
+NSString </em>cntquery = [[NSString alloc] initWithFormat:@&ldquo;select count(<em>) as count from users where uid=%d&rdquo;, uid];
+[db open];
+FMResultSet </em>cntrs = [db executeQuery:cntquery];
+if([cntrs next]) {</p>
+
+<pre><code>NSString *count = [cntrs intForColumn:@"count"];
+</code></pre>
+
+<p>}
+[db close];
+```</p>
+
+<h4>まとめ</h4>
+
+<p>たったこれだけのことを知っておくだけでiPhoneのローカルストレージを使いこなすことができます。ぜひ使ってみてください！(筆者もめちゃくちゃ使っています。)</p>
+
+<p>参考:<br/>
+<a href="http://akabeko.me/blog/2011/11/ios-sqlite-fmdb/">iOS で SQLite – FMDB の使い方</a><br/>
+<a href="http://obc-fight.blogspot.jp/2012/09/fmdb-basic-how-to-use.html">Objective-Cと戦うブログ</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iPhone実機でSQLiteで作成したDBを参照しよう]]></title>
+    <link href="http://grandbig.github.io/blog/2013/09/30/read-iphone-device-db/"/>
+    <updated>2013-09-30T00:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/09/30/read-iphone-device-db</id>
+    <content type="html"><![CDATA[<h3>iPhone実機でのDB参照方法をマスターしよう！</h3>
+
+<p>本日はiPhone実機でのSQLiteで作成したDBの参照方法について説明したいと思います。<br/>
+シミュレータの場合は結構書いてあったのですが、実機では見つかりにくかったり、情報がばらついていたりしたのでメモ程度に書きます。</p>
+
+<!--more-->
+
+
+<h4>Litaをインストール</h4>
+
+<p>LitaとはSQLiteのデータベース管理ツールです。GUIなので操作も参照しやすいですし、もちろんスリーソフトです。<br/>
+<a href="http://www.dehats.com/drupal/?q=node/58">公式ページ</a>からインストールしましょう。インストール方法については多くのページで詳しく書かれているので簡単に紹介する程度にします。</p>
+
+<p>＜Litaインストール手順＞<br/>
+①公式ページにアクセス<br/>
+②Install Nowと書かれているボックスをクリック<br/>
+③他のソフト同様、ドラッグ&amp;ドロップでLitaをApplicationフォルダに持っていく<br/>
+④Launchpadをクリックして、その中のLitaをクリックする<br/>
+⑤案内に沿って進めればインストール完了</p>
+
+<h4>iPhone実機からアプリ内データをダウンロード</h4>
+
+<p>シミュレータであれば、<strong>/Users/ユーザ名/Library/Application Support/iPhone Simulator/使用シミュレータのバージョン/Applications/適当な文字列/Documents/直下</strong>にdbがあります。パスの中で途中、適当な文字列と書きましたが、これは勝手に作成されるフォルダのため、文字列が何になるかはわかりません。参照したいアプリがどのフォルダにあるかは１つ１つ中身を見てappファイル名を見るようにしています。<br/>
+実機の場合はPC上にdbが作られるわけではなく、実機の中に作られるので、実機からデータをダウンロードしてくる必要があります。その手順を説明します。</p>
+
+<p>＜実機からデータをダウンロードする手順＞<br/>
+①Xcodeを起動<br/>
+②Window > Organizerを起動<br/>
+③参照したい端末 > Applications > 該当アプリを選択<br/>
+④フッターからDownloadを選択<br/>
+⑤拡張子がxcappdataのファイルをダウンロードできる</p>
+
+<p><img src="/images/xcode_organizer1.png" alt="XcodeのOrganizerを開いて実機のデータをダウンロード" /></p>
+
+<p>このファイルはパッケージなので、右クリックで「パッケージの内容を表示」を選択することで中身が確認できます。<br/>
+中身はAppDataフォルダとAppDataInfo.plistファイルが入っています。<br/>
+DBは<strong>AppData/Documents/直下</strong>にあります。これを先ほど紹介したLitaで開けば実機の指定アプリが作成したDBを参照することができます。</p>
+
+<p>筆者は上記の方法でDB内データを確かめながら進めていますが、とても便利です。むしろ今まで知らなかったので何となくDBうまくいってそうだなと思いながらやっていましたが、きちんと確認すべきですね&hellip;。</p>
+]]></content>
+  </entry>
+  
+</feed>

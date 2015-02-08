@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: api | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/api/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-02-08T15:49:21+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iPhoneアプリで使おう様々なWeb-API]]></title>
+    <link href="http://grandbig.github.io/blog/2013/10/16/xcode-api/"/>
+    <updated>2013-10-16T22:03:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/10/16/xcode-api</id>
+    <content type="html"><![CDATA[<h3>Web-APIを使ってJSON形式でデータを取得したい！</h3>
+
+<p>iPhoneアプリをいざ作ろう！となったとき◯◯のデータを使って、▼▲なアプリが作れたらな〜なんて思うことはないでしょうか？<br/>
+でもいざ作ろうとすると膨大なデータを自分で作ることもできないし、作り方もわからない…。あ〜作れない〜てなことになるでしょう。そんなときは既にどこかの誰かが作った<strong>API</strong>を使えばいいわけです。世の中にはとても便利なAPIが溢れています(たぶん&hellip;)<br/>
+しかし、気をつけておきたいのはそれが無料なのか、商用フリーなのかということです。</p>
+
+<!--more-->
+
+
+<h4>Web-APIの例</h4>
+
+<p>どのくらい無料&amp;商用フリーで使えるAPIがあるのか探してみました。<br/>
+※商用フリーでもライセンス表記など条件があるかもしれないので十分ご注意下さい。<br/>
+・OpenStreetMap：Map情報の取得<br/>
+　<a href="http://www.openstreetmap.org/">OpenStreetMap公式ページ</a><br/>
+・OpenWeatherMap：天気情報の取得<br/>
+　<a href="http://openweathermap.org/">OpenWeatherMap公式ページ</a><br/>
+・HeartRails Geo API：Map情報の取得<br/>
+　<a href="http://geoapi.heartrails.com/api.html">HeartRails Geo API公式ページ</a><br/>
+・HeartRails Express API：鉄道・路線情報の取得<br/>
+　<a href="http://express.heartrails.com/api.html">HeartRails Express API公式ページ</a><br/>
+・detectFace();：顔認識情報の取得<br/>
+　<a href="http://detectface.com/">detectFace();公式ページ</a></p>
+
+<p>因みに筆者はどれも使ったことがありません&hellip;。Google Maps APIは使ったことがあるって程度です。</p>
+
+<h4>XcodeでJSON形式を扱うためには</h4>
+
+<p>さて、APIを利用すると、xmlまたはjsonのどちらかを指定して下さいといったことがあります。私はjsonを扱うことが多いため(というか、xmlは使ったことがないので&hellip;)ここではjson形式を扱うことについてご紹介致します。<br/>
+恐らく、ほとんどの方々が<strong>SBJson</strong>を利用されているのではないでしょうか？ネットで調べても真っ先に出てくると思います。<br/>
+ライセンスも修正BSDライセンス(New BSD License)なので商用でも非常に使いやすいです。<br/>
+使うための準備としては<br/>
+1: <a href="https://github.com/stig/json-framework/">公式ページ</a>に上がっているのでダウンロード<br/>
+2: json-framework-master/src/main/objc/直下のファイルを全てコピー<br/>
+3: 追加したいXcodeプロジェクトに追加(SBJsonなどフォルダを作って、その配下に置いた方が見やすいでしょう)<br/>
+4: JSONを扱いたいファイルで<strong>#import &ldquo;SBJson.h&rdquo;</strong>と表記<br/>
+となります。<br/>
+<img src="/images/xcode_sbjson_add.png" alt="XcodeにSBJsonを追加" /></p>
+
+<p>準備ができたら後は簡単です。<br/>
+参考までに今回は<strong>OpenWeatherMap API</strong>を利用したサンプルを作成します。</p>
+
+<p>作成するサンプルは日本の東京の天候を取得して、ラベルに表示するというものです。<br/>
+では例によってViewController.m, ViewController.h, ViewController.xibファイルを追加するところまで作成して下さい。<br/>
+で、ViewController.mファイルのViewDidLoad関数に以下を書きます。<br/>
+```
+&ndash; (void)viewDidLoad
+{</p>
+
+<pre><code>[super viewDidLoad];
+// ①
+NSString *url = @"http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp";
+// ②
+NSString *urlEscapeStr = [[NSString  stringWithString:url] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+// ③
+NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:[NSURL URLWithString:urlEscapeStr] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:15];
+// ④
+ NSData *responseData = [NSURLConnection sendSynchronousRequest:request returningResponse:nil error:nil];
+// ⑤
+SBJsonParser* parser = [[SBJsonParser alloc]init];
+// ⑥
+NSDictionary *result = [parser objectWithData:responseData];
+// ⑦
+NSArray *main = [result valueForKeyPath:@"weather.main"];
+NSString *weather = main[0];
+label1.text = weather;
+</code></pre>
+
+<p>```</p>
+
+<p>① OpenWeatherMap APIのリクエストURLをセット<br/>
+② リクエストURLをUTF8でエンコード※stringByAddingPercentEscapesUsingEncodingを使うとAPIでよく使われる<strong>&amp;</strong>はエスケープされません。<br/>
+③ 通信するためにNSMutableURLRequest型のrequestを作成<br/>
+④ 通信<br/>
+⑤ ここからSBJsonを利用します。まずはSBJsonを初期化<br/>
+⑥ JSON形式で来たデータをNSDictionary型に格納<br/>
+⑦ weather.mainの値を抽出してラベルに表示<br/>
+※ label1はViewController.xibでセットしたラベルになります。</p>
+
+<p>その結果がこれ↓<br/>
+<img src="/images/xcode_openweathermap_sample.png" alt="OpenWeatherMapで天気を取得してラベルに表示してみた" /></p>
+
+<p>こんな簡単にAPIを使えるなら、やらない手はないですよね？<br/>
+筆者もAPIを使ったアプリの開発をこれから考えようと思います。<br/>
+ってことで今日は以上です。</p>
+]]></content>
+  </entry>
+  
+</feed>
