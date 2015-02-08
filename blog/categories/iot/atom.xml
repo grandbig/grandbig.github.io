@@ -4,7 +4,7 @@
   <title><![CDATA[Category: IoT | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/iot/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-02-08T16:55:51+09:00</updated>
+  <updated>2015-02-09T01:25:15+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,296 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[REBL600FRを検知するiOSアプリを開発してみた！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/02/08/bl600sample2/"/>
+    <updated>2015-02-08T21:11:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/02/08/bl600sample2</id>
+    <content type="html"><![CDATA[<h4>REBL600FRを検知</h4>
+
+<p>引き続き、REBL600FRを用いて遊んでみたいと思います。<br/>
+前回の<a href="http://grandbig.github.io/blog/2015/02/07/bl600sample/">REBL600FRをiBeaconとして検知してみた！</a>では既存のアプリを拝借してREBL600FRを検知していました。<br/>
+今回はそこを自作してみたいと思います。</p>
+
+<p>そのためにCoreBluetooth.frameworkを使います。<br/>
+まずは、REBL600FRの発信するBLEを検知してみましょう。</p>
+
+<!-- more -->
+
+
+<p>```objective-c
+// ViewController.mファイル</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &lt;CoreBluetooth/CoreBluetooth.h></h1>
+
+<p>@interface ViewController ()&lt;CBCentralManagerDelegate, CBPeripheralDelegate></p>
+
+<p>@property(strong, nonatomic) CBCentralManager <em>cm;
+@property(strong, nonatomic) CBPeripheral </em>connectedPeripheral;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad
+{
+  [super viewDidLoad];</p>
+
+<p>  // 1: CBCentralManagerの初期化
+  self.cm = [CBCentralManager alloc] initWithDelegate:self queue:nil options:nil];]
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning
+{
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<h1>pragma mark &ndash; CBCentralManagerDelegate</h1>
+
+<ul>
+<li>(void)centralManagerDidUpdateState:(CBCentralManager *)central
+{
+  if(central.state == CBCentralManagerStatePoweredOn) {
+      // Centralとして機能可能な場合
+      // 2: Peripheralのスキャンを開始
+      [self.cm scanForPeripheralsWithServices:nil options:nil];
+  }
+}</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>上記ソースの説明をします。<br/>
+1でCBCentralManagerを初期化すると、centralManagerDidUpdateStateメソッドが呼び出されます。<br/>
+そこで、Centralとして機能する(BluetoothがONで正常である)場合に限り、scanForPeripheralsWithServicesメソッドを実行することでPeripheralのスキャンを開始します。</p>
+
+<p>今回は、<code>scanForPeripheralsWithServices</code>の<code>serviceUUIDs</code>と<code>options</code>をnilにしています。<br/>
+もし、あらかじめスキャンしたいBLEのUUIDが決まっているのであれば、</p>
+
+<p><code>objective-c
+NSArray *services = [NSArray arrayWithObjects:[CBUUID UUIDWithString:@"C6D0F826-CCBA-4738-97CE-81491F748039"], nil];
+</code></p>
+
+<p>といったように指定してあげましょう。<br/>
+※ nilの指定は非推奨とされています。</p>
+
+<p>また、optionsには<code>CBCentralManagerScanOptionAllowDuplicatesKey</code>と<code>CBCentralManagerScanOptionSolicitedServiceUUIDsKey</code>を指定可能となっています。<br/>
+<code>CBCentralManagerScanOptionAllowDuplicatesKey</code>を明示的指定しない場合はデフォルトNOと判断されます。<br/>
+YESにした場合、Peripheralからアドバタイズパケットを受信する度にペリフェラル発見通知が実行されます。</p>
+
+<p><code>CBCentralManagerScanOptionSolicitedServiceUUIDsKey</code>にはスキャンしたいUUIDの配列を指定できます。<br/>
+servicesで既に指定しているので、実際のところ何が違うのでしょうか&hellip;。</p>
+
+<p>続いての実装です。</p>
+
+<p>```
+&ndash; (void)centralManagerDidUpdateState:(CBCentralManager *)central
+{</p>
+
+<pre><code>&lt;省略&gt;
+</code></pre>
+
+<p>}</p>
+
+<ul>
+<li>(void)centralManager:(CBCentralManager <em>)central didDiscoverPeripheral:(CBPeripheral </em>)peripheral advertisementData:(NSDictionary <em>)advertisementData RSSI:(NSNumber </em>)RSSI
+{
+  NSLog(@&ldquo;%@&rdquo;, RSSI);
+  NSLog(@&ldquo;%@&rdquo;, advertisementData);
+}</li>
+</ul>
+
+
+<p>```</p>
+
+<p><code>scanForPeripheralsWithServices</code>実行後にPeripheralを発見した場合、<code>didDiscoverPeripheral</code>メソッドが呼び出されます。<br/>
+このメソッドでは、<code>advertisementData</code>と<code>RSSI</code>の値を取得できます。</p>
+
+<p>では、実際に取得できる値を見てみましょう。<br/>
+<code>scanForPeripheralsWithServices</code>が実行された後に、REBL600FRのスイッチをONにします。</p>
+
+<p><img src="/images/REBL600FR_3.jpg" alt="REBL600FRのスイッチをONにしましょう。" /></p>
+
+<p>すると、</p>
+
+<p>```
+RSSI = -94</p>
+
+<p>advertisementData = {</p>
+
+<pre><code>kCBAdvDataChannel = 37,
+kCBAdvDataIsConnectable = 1,
+kCBAdvDataLocalName = "Laird iBeacon"
+</code></pre>
+
+<p>}
+```</p>
+
+<p>と値を取得できました。<br/>
+<code>kCBAdvDataChannel</code>はBLEデバイスの発見と接続に利用するアドバタイズメントチャネルのことで、<code>kCBAdvDataIsConnectable</code>は接続可能なPeripheralかどうか判別する値(1であれば接続可)で、<code>kCBAdvDataLocalName</code>はPeripheralの名前のことです。</p>
+
+<p>Appleの<a href="https://developer.apple.com/library/prerelease/ios/documentation/CoreBluetooth/Reference/CBCentralManagerDelegate_Protocol/index.html#//apple_ref/doc/constant_group/Advertisement_Data_Retrieval_Keys">CBCentralManagerDelegate Protocol Reference</a>を見ると、advertisementDataには他にも取得可能な値が入っていることがあるようです。</p>
+
+<h4>REBL600FRに接続</h4>
+
+<p>次に、先ほど発見することができたREBL600FRに接続してみたいと思います。<br/>
+<code>didDiscoverPeripheral</code>が実行されたときに検知したperipheralに接続するようにしてみます。</p>
+
+<p>```objective-c</p>
+
+<ul>
+<li><p>(void)centralManager:(CBCentralManager <em>)central didDiscoverPeripheral:(CBPeripheral </em>)peripheral advertisementData:(NSDictionary <em>)advertisementData RSSI:(NSNumber </em>)RSSI
+{
+  NSLog(@&ldquo;%@&rdquo;, RSSI);
+  NSLog(@&ldquo;%@&rdquo;, advertisementData);</p>
+
+<p>  self.connectedPeripheral = peripheral;
+  self.connectedPeripheral.delegate = self;</p>
+
+<p>  // Peripheralへの接続処理
+  [self.cm connectPeripheral:self.connectedPeripheral options:nil];
+}
+```</p></li>
+</ul>
+
+
+<p><code>connectPeripheral</code>メソッドで接続したいPeripheralに接続することができます。<br/>
+このとき<code>options</code>には<code>CBConnectPeripheralOptionNotifyOnConnectionKey</code>, <code>CBConnectPeripheralOptionNotifyOnDisconnectionKey</code>, <code>CBConnectPeripheralOptionNotifyOnNotificationKey</code>の3種類のいずれかを指定可能です。<br/>
+それぞれ、Peripheralと接続, Peripherlと切断, PeripheralからNotificationを受信した場合にアラートを表示したい場合に指定します。</p>
+
+<p>接続が確立された場合に<code>centralManager:didConnectPeripheral:</code>メソッドが呼び出されます。<br/>
+この中で、Peripheralが提供するサービスを検索する処理を書いてみましょう。</p>
+
+<p>```objective-c
+// Peripheralと接続できた場合に呼び出される処理
+&ndash; (void)centralManager:(CBCentralManager <em>)central didConnectPeripheral:(CBPeripheral </em>)peripheral
+{</p>
+
+<pre><code>// スキャンの停止
+[self.cm stopScan];
+
+// Peripheralのサービスを検索
+[self.connectedPeripheral discoverServices:nil];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>電池の消耗を防ぐために、接続が確立された後はPeripheralのスキャンを停止します。<br/>
+<code>discoverServices</code>メソッドでPeripheralのサービスを検索します。<br/>
+引数には検索したいサービスのUUIDの配列を指定可能です。<br/>
+nilにした場合は全てのサービスを検索します。こちらもnilの指定は非推奨とされています。</p>
+
+<p>サービスが見つかると、<code>didDiscoverServices:</code>メソッドが呼び出されます。<br/>
+そこでさらに、サービスが持っているキャラクタリスティックを検索します。</p>
+
+<p>```objective-c</p>
+
+<h1>pragma mark &ndash; CBPeripheralDelegate</h1>
+
+<p>// Servicesが見つかったときに呼び出される処理
+&ndash; (void)peripheral:(CBPeripheral <em>)peripheral didDiscoverServices:(NSError </em>)error
+{</p>
+
+<pre><code>NSArray *services = peripheral.services;
+
+for(CBService *service in services) {
+    NSLog(@"Service UUID: %@", service.UUID);
+    // Characteristicsの検索
+    [peripheral discoverCharacteristics:nil forService:service];
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>キャラクタリスティックの検索は<code>discoverCharacteristics:</code>メソッドを使います。<br/>
+例によって、引数の<code>characteristicUUIDs</code>はnilを指定することで、全てのキャラクタリスティックを検索しています。<br/>
+もちろんnilは非推奨とされています。</p>
+
+<p>今回は取得できた全てのサービスに対して、全てのキャラクタリスティックを検索するため、上記のようにfor文を使っています。</p>
+
+<p>キャラクタリスティックが見つかると、<code>didDiscoverCharacteristicsForService:</code>メソッドが呼び出されます。</p>
+
+<p>```objective-c
+&ndash; (void)peripheral:(CBPeripheral <em>)peripheral didDiscoverCharacteristicsForService:(CBService </em>)service error:(NSError *)error
+{</p>
+
+<pre><code>for(CBCharacteristic *characteristic in service.characteristics) {
+    // 値が変わったときに通知を受けたい場合に実行
+    [peripheral setNotifyValue:YES forCharacteristic:characteristic];
+    // キャラクタリステックのvalueを知りたい場合に実行
+    [peripheral readValueForCharacteristic:characteristic];
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p><code>setNotifyValue</code>はキャラクタリステックの値が変わったときに<code>didUpdateNotificationStateForCharacteristic:error:</code>を呼び出すために<code>YES</code>で設定しています。<br/>
+<code>readValueForCharacteristic:</code>メソッドは検索して見つかったキャラクタリステックの値を読むために実行しています。</p>
+
+<p>因みに、<code>CBCharacteristic</code>クラスはプロパティに<code>properties</code>を持っています。<br/>
+これは、そのデータが <strong>Read Only</strong> なのか <strong>Read and Write</strong> なのかを判別するために利用します。<br/>
+REBL600FRの場合、characteristicsをNSLogでログ出力してみると、</p>
+
+<p>```
+// Read Onlyの例
+characteristic: &lt;CBCharacteristic: 0x175744d0 UUID = Manufacturer Name String, Value = (null), Properties = 0x2, Notifying = NO, Broadcasting = NO></p>
+
+<p>// Read and Writeの例
+characteristic: &lt;CBCharacteristic: 0x17572690 UUID = 569A2010-B87F-490C-92CB-11BA5EA5167C, Value = (null), Properties = 0xA, Notifying = NO, Broadcasting = NO>
+```</p>
+
+<p>となりました。<br/>
+<a href="https://developer.apple.com/library/prerelease/ios/documentation/CoreBluetooth/Reference/CBCharacteristic_Class/index.html#//apple_ref/occ/instp/CBCharacteristic/properties">CBCharacteristic Class Reference</a>を見ると、<code>0x2</code>は<code>CBCharacteristicPropertyRead</code>とされていますが、<code>0xA</code>は該当するものが記載されていませんでした。</p>
+
+<p>キャラクタリステックの値の取得が完了すると、<code>didUpdateValueForCharacteristic:error:</code>メソッドが呼ばれます。</p>
+
+<p>```objective-c
+&ndash; (void)peripheral:(CBPeripheral <em>)peripheral didUpdateValueForCharacteristic:(CBCharacteristic </em>)characteristic error:(NSError *)error
+{</p>
+
+<pre><code>NSString *value = [[NSString alloc] initWithData:characteristic.value encoding:NSUTF8StringEncoding];
+NSLog(@"value: %@", value);
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>これで各パラメータの値が確認できました。<br/>
+気をつけたいのは、major, minor, Tx PowerなどはUTF8でエンコードをかけると文字化けしたログを吐くので、どんな値か見たい場合はエンコードせずにNSDataの値のまま見てみましょう。</p>
+
+<p>う〜ん。今回は時間切れですね&hellip;。<br/>
+次回はREBL600FRのパラメータをiPhoneから書き換えることにチャレンジしたいと思います。</p>
+
+<p>といったところで本日はここまで。<br/>
+ソースはパラメータの書き換えが完了したタイミングでGitHubにアップしたいと思います。</p>
+
+<p>参考:<br/>
+<a href="http://qiita.com/rnamiki/items/ea912393c4fb58e7a9b9">CoreBluetoothで出来る事</a><br/>
+<a href="http://qiita.com/miyatay/items/4d4ce4ccd7905ddc0144">Bluetooth Low Energy（BLE）/ iBeaconとは</a><br/>
+<a href="http://reinforce-lab.github.io/blog/2013/01/25/CBCentralManagerClassReference_jp/">Reinforce-Lab&rsquo;s Blog</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[REBL600FRをiBeaconとして検知してみた！]]></title>

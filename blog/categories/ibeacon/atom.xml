@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iBeacon | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ibeacon/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-02-08T16:55:51+09:00</updated>
+  <updated>2015-02-09T01:25:15+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,296 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[REBL600FRを検知するiOSアプリを開発してみた！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/02/08/bl600sample2/"/>
+    <updated>2015-02-08T21:11:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/02/08/bl600sample2</id>
+    <content type="html"><![CDATA[<h4>REBL600FRを検知</h4>
+
+<p>引き続き、REBL600FRを用いて遊んでみたいと思います。<br/>
+前回の<a href="http://grandbig.github.io/blog/2015/02/07/bl600sample/">REBL600FRをiBeaconとして検知してみた！</a>では既存のアプリを拝借してREBL600FRを検知していました。<br/>
+今回はそこを自作してみたいと思います。</p>
+
+<p>そのためにCoreBluetooth.frameworkを使います。<br/>
+まずは、REBL600FRの発信するBLEを検知してみましょう。</p>
+
+<!-- more -->
+
+
+<p>```objective-c
+// ViewController.mファイル</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &lt;CoreBluetooth/CoreBluetooth.h></h1>
+
+<p>@interface ViewController ()&lt;CBCentralManagerDelegate, CBPeripheralDelegate></p>
+
+<p>@property(strong, nonatomic) CBCentralManager <em>cm;
+@property(strong, nonatomic) CBPeripheral </em>connectedPeripheral;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad
+{
+  [super viewDidLoad];</p>
+
+<p>  // 1: CBCentralManagerの初期化
+  self.cm = [CBCentralManager alloc] initWithDelegate:self queue:nil options:nil];]
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning
+{
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<h1>pragma mark &ndash; CBCentralManagerDelegate</h1>
+
+<ul>
+<li>(void)centralManagerDidUpdateState:(CBCentralManager *)central
+{
+  if(central.state == CBCentralManagerStatePoweredOn) {
+      // Centralとして機能可能な場合
+      // 2: Peripheralのスキャンを開始
+      [self.cm scanForPeripheralsWithServices:nil options:nil];
+  }
+}</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>上記ソースの説明をします。<br/>
+1でCBCentralManagerを初期化すると、centralManagerDidUpdateStateメソッドが呼び出されます。<br/>
+そこで、Centralとして機能する(BluetoothがONで正常である)場合に限り、scanForPeripheralsWithServicesメソッドを実行することでPeripheralのスキャンを開始します。</p>
+
+<p>今回は、<code>scanForPeripheralsWithServices</code>の<code>serviceUUIDs</code>と<code>options</code>をnilにしています。<br/>
+もし、あらかじめスキャンしたいBLEのUUIDが決まっているのであれば、</p>
+
+<p><code>objective-c
+NSArray *services = [NSArray arrayWithObjects:[CBUUID UUIDWithString:@"C6D0F826-CCBA-4738-97CE-81491F748039"], nil];
+</code></p>
+
+<p>といったように指定してあげましょう。<br/>
+※ nilの指定は非推奨とされています。</p>
+
+<p>また、optionsには<code>CBCentralManagerScanOptionAllowDuplicatesKey</code>と<code>CBCentralManagerScanOptionSolicitedServiceUUIDsKey</code>を指定可能となっています。<br/>
+<code>CBCentralManagerScanOptionAllowDuplicatesKey</code>を明示的指定しない場合はデフォルトNOと判断されます。<br/>
+YESにした場合、Peripheralからアドバタイズパケットを受信する度にペリフェラル発見通知が実行されます。</p>
+
+<p><code>CBCentralManagerScanOptionSolicitedServiceUUIDsKey</code>にはスキャンしたいUUIDの配列を指定できます。<br/>
+servicesで既に指定しているので、実際のところ何が違うのでしょうか&hellip;。</p>
+
+<p>続いての実装です。</p>
+
+<p>```
+&ndash; (void)centralManagerDidUpdateState:(CBCentralManager *)central
+{</p>
+
+<pre><code>&lt;省略&gt;
+</code></pre>
+
+<p>}</p>
+
+<ul>
+<li>(void)centralManager:(CBCentralManager <em>)central didDiscoverPeripheral:(CBPeripheral </em>)peripheral advertisementData:(NSDictionary <em>)advertisementData RSSI:(NSNumber </em>)RSSI
+{
+  NSLog(@&ldquo;%@&rdquo;, RSSI);
+  NSLog(@&ldquo;%@&rdquo;, advertisementData);
+}</li>
+</ul>
+
+
+<p>```</p>
+
+<p><code>scanForPeripheralsWithServices</code>実行後にPeripheralを発見した場合、<code>didDiscoverPeripheral</code>メソッドが呼び出されます。<br/>
+このメソッドでは、<code>advertisementData</code>と<code>RSSI</code>の値を取得できます。</p>
+
+<p>では、実際に取得できる値を見てみましょう。<br/>
+<code>scanForPeripheralsWithServices</code>が実行された後に、REBL600FRのスイッチをONにします。</p>
+
+<p><img src="/images/REBL600FR_3.jpg" alt="REBL600FRのスイッチをONにしましょう。" /></p>
+
+<p>すると、</p>
+
+<p>```
+RSSI = -94</p>
+
+<p>advertisementData = {</p>
+
+<pre><code>kCBAdvDataChannel = 37,
+kCBAdvDataIsConnectable = 1,
+kCBAdvDataLocalName = "Laird iBeacon"
+</code></pre>
+
+<p>}
+```</p>
+
+<p>と値を取得できました。<br/>
+<code>kCBAdvDataChannel</code>はBLEデバイスの発見と接続に利用するアドバタイズメントチャネルのことで、<code>kCBAdvDataIsConnectable</code>は接続可能なPeripheralかどうか判別する値(1であれば接続可)で、<code>kCBAdvDataLocalName</code>はPeripheralの名前のことです。</p>
+
+<p>Appleの<a href="https://developer.apple.com/library/prerelease/ios/documentation/CoreBluetooth/Reference/CBCentralManagerDelegate_Protocol/index.html#//apple_ref/doc/constant_group/Advertisement_Data_Retrieval_Keys">CBCentralManagerDelegate Protocol Reference</a>を見ると、advertisementDataには他にも取得可能な値が入っていることがあるようです。</p>
+
+<h4>REBL600FRに接続</h4>
+
+<p>次に、先ほど発見することができたREBL600FRに接続してみたいと思います。<br/>
+<code>didDiscoverPeripheral</code>が実行されたときに検知したperipheralに接続するようにしてみます。</p>
+
+<p>```objective-c</p>
+
+<ul>
+<li><p>(void)centralManager:(CBCentralManager <em>)central didDiscoverPeripheral:(CBPeripheral </em>)peripheral advertisementData:(NSDictionary <em>)advertisementData RSSI:(NSNumber </em>)RSSI
+{
+  NSLog(@&ldquo;%@&rdquo;, RSSI);
+  NSLog(@&ldquo;%@&rdquo;, advertisementData);</p>
+
+<p>  self.connectedPeripheral = peripheral;
+  self.connectedPeripheral.delegate = self;</p>
+
+<p>  // Peripheralへの接続処理
+  [self.cm connectPeripheral:self.connectedPeripheral options:nil];
+}
+```</p></li>
+</ul>
+
+
+<p><code>connectPeripheral</code>メソッドで接続したいPeripheralに接続することができます。<br/>
+このとき<code>options</code>には<code>CBConnectPeripheralOptionNotifyOnConnectionKey</code>, <code>CBConnectPeripheralOptionNotifyOnDisconnectionKey</code>, <code>CBConnectPeripheralOptionNotifyOnNotificationKey</code>の3種類のいずれかを指定可能です。<br/>
+それぞれ、Peripheralと接続, Peripherlと切断, PeripheralからNotificationを受信した場合にアラートを表示したい場合に指定します。</p>
+
+<p>接続が確立された場合に<code>centralManager:didConnectPeripheral:</code>メソッドが呼び出されます。<br/>
+この中で、Peripheralが提供するサービスを検索する処理を書いてみましょう。</p>
+
+<p>```objective-c
+// Peripheralと接続できた場合に呼び出される処理
+&ndash; (void)centralManager:(CBCentralManager <em>)central didConnectPeripheral:(CBPeripheral </em>)peripheral
+{</p>
+
+<pre><code>// スキャンの停止
+[self.cm stopScan];
+
+// Peripheralのサービスを検索
+[self.connectedPeripheral discoverServices:nil];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>電池の消耗を防ぐために、接続が確立された後はPeripheralのスキャンを停止します。<br/>
+<code>discoverServices</code>メソッドでPeripheralのサービスを検索します。<br/>
+引数には検索したいサービスのUUIDの配列を指定可能です。<br/>
+nilにした場合は全てのサービスを検索します。こちらもnilの指定は非推奨とされています。</p>
+
+<p>サービスが見つかると、<code>didDiscoverServices:</code>メソッドが呼び出されます。<br/>
+そこでさらに、サービスが持っているキャラクタリスティックを検索します。</p>
+
+<p>```objective-c</p>
+
+<h1>pragma mark &ndash; CBPeripheralDelegate</h1>
+
+<p>// Servicesが見つかったときに呼び出される処理
+&ndash; (void)peripheral:(CBPeripheral <em>)peripheral didDiscoverServices:(NSError </em>)error
+{</p>
+
+<pre><code>NSArray *services = peripheral.services;
+
+for(CBService *service in services) {
+    NSLog(@"Service UUID: %@", service.UUID);
+    // Characteristicsの検索
+    [peripheral discoverCharacteristics:nil forService:service];
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>キャラクタリスティックの検索は<code>discoverCharacteristics:</code>メソッドを使います。<br/>
+例によって、引数の<code>characteristicUUIDs</code>はnilを指定することで、全てのキャラクタリスティックを検索しています。<br/>
+もちろんnilは非推奨とされています。</p>
+
+<p>今回は取得できた全てのサービスに対して、全てのキャラクタリスティックを検索するため、上記のようにfor文を使っています。</p>
+
+<p>キャラクタリスティックが見つかると、<code>didDiscoverCharacteristicsForService:</code>メソッドが呼び出されます。</p>
+
+<p>```objective-c
+&ndash; (void)peripheral:(CBPeripheral <em>)peripheral didDiscoverCharacteristicsForService:(CBService </em>)service error:(NSError *)error
+{</p>
+
+<pre><code>for(CBCharacteristic *characteristic in service.characteristics) {
+    // 値が変わったときに通知を受けたい場合に実行
+    [peripheral setNotifyValue:YES forCharacteristic:characteristic];
+    // キャラクタリステックのvalueを知りたい場合に実行
+    [peripheral readValueForCharacteristic:characteristic];
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p><code>setNotifyValue</code>はキャラクタリステックの値が変わったときに<code>didUpdateNotificationStateForCharacteristic:error:</code>を呼び出すために<code>YES</code>で設定しています。<br/>
+<code>readValueForCharacteristic:</code>メソッドは検索して見つかったキャラクタリステックの値を読むために実行しています。</p>
+
+<p>因みに、<code>CBCharacteristic</code>クラスはプロパティに<code>properties</code>を持っています。<br/>
+これは、そのデータが <strong>Read Only</strong> なのか <strong>Read and Write</strong> なのかを判別するために利用します。<br/>
+REBL600FRの場合、characteristicsをNSLogでログ出力してみると、</p>
+
+<p>```
+// Read Onlyの例
+characteristic: &lt;CBCharacteristic: 0x175744d0 UUID = Manufacturer Name String, Value = (null), Properties = 0x2, Notifying = NO, Broadcasting = NO></p>
+
+<p>// Read and Writeの例
+characteristic: &lt;CBCharacteristic: 0x17572690 UUID = 569A2010-B87F-490C-92CB-11BA5EA5167C, Value = (null), Properties = 0xA, Notifying = NO, Broadcasting = NO>
+```</p>
+
+<p>となりました。<br/>
+<a href="https://developer.apple.com/library/prerelease/ios/documentation/CoreBluetooth/Reference/CBCharacteristic_Class/index.html#//apple_ref/occ/instp/CBCharacteristic/properties">CBCharacteristic Class Reference</a>を見ると、<code>0x2</code>は<code>CBCharacteristicPropertyRead</code>とされていますが、<code>0xA</code>は該当するものが記載されていませんでした。</p>
+
+<p>キャラクタリステックの値の取得が完了すると、<code>didUpdateValueForCharacteristic:error:</code>メソッドが呼ばれます。</p>
+
+<p>```objective-c
+&ndash; (void)peripheral:(CBPeripheral <em>)peripheral didUpdateValueForCharacteristic:(CBCharacteristic </em>)characteristic error:(NSError *)error
+{</p>
+
+<pre><code>NSString *value = [[NSString alloc] initWithData:characteristic.value encoding:NSUTF8StringEncoding];
+NSLog(@"value: %@", value);
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>これで各パラメータの値が確認できました。<br/>
+気をつけたいのは、major, minor, Tx PowerなどはUTF8でエンコードをかけると文字化けしたログを吐くので、どんな値か見たい場合はエンコードせずにNSDataの値のまま見てみましょう。</p>
+
+<p>う〜ん。今回は時間切れですね&hellip;。<br/>
+次回はREBL600FRのパラメータをiPhoneから書き換えることにチャレンジしたいと思います。</p>
+
+<p>といったところで本日はここまで。<br/>
+ソースはパラメータの書き換えが完了したタイミングでGitHubにアップしたいと思います。</p>
+
+<p>参考:<br/>
+<a href="http://qiita.com/rnamiki/items/ea912393c4fb58e7a9b9">CoreBluetoothで出来る事</a><br/>
+<a href="http://qiita.com/miyatay/items/4d4ce4ccd7905ddc0144">Bluetooth Low Energy（BLE）/ iBeaconとは</a><br/>
+<a href="http://reinforce-lab.github.io/blog/2013/01/25/CBCentralManagerClassReference_jp/">Reinforce-Lab&rsquo;s Blog</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[REBL600FRをiBeaconとして検知してみた！]]></title>
@@ -879,253 +1169,6 @@ NSUUID *proximityUUID = [[NSUUID alloc] initWithUUIDString:@"ここにProximity 
 </script>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[噂のiOS7.1でiBeaconを試してみよう！！]]></title>
-    <link href="http://grandbig.github.io/blog/2014/04/12/io7-dot-1-de-ibeacon/"/>
-    <updated>2014-04-12T23:41:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/04/12/io7-dot-1-de-ibeacon</id>
-    <content type="html"><![CDATA[<h3>iOS7.1ならアプリのBackground起動も必要なし！？</h3>
-
-<p>さて、本日は最近いろいろなところで取り上げられているiOS7.1でのiBeaconについて実際に試してみました。<br/>
-iOS7から導入されたiBeaconですが、これまではアプリをBackgroundで起動していなければBeaconを検知することができませんでした。しかし、iOS7.1からアプリをBackgroundで起動していなくてもBeaconを検知できるようになったとビッグニュースになりました。でも、本当にそうなんでしょうか？と疑問に思った筆者はSampleアプリで試してみました。</p>
-
-<!--more-->
-
-
-<p>下記がソースです。<br/>
-まずはBeacon機器としてiPadを用いるためにPeripheralソースから書きます。<br/>
-とりあえずProject作成の手順は<br/>
-1: BeaconPeripheralという名称で新規Project作成<br/>
-2: UIViewControllerを追加(ViewControllerという名称で作成しました)<br/>
-3: CoreBluetoothとCoreLocationライブラリを追加<br/>
-として下さい。</p>
-
-<p>ViewController.hのソース
-```objective-c</p>
-
-<h1>import &lt;UIKit/UIKit.h></h1>
-
-<h1>import &lt;CoreBluetooth/CoreBluetooth.h></h1>
-
-<h1>import &lt;CoreLocation/CoreLocation.h></h1>
-
-<p>@interface ViewController : UIViewController<CBPeripheralManagerDelegate></p>
-
-<p>@end
-<code>
-ViewController.mのソース  
-</code>objective-c</p>
-
-<h1>import &ldquo;ViewController.h&rdquo;</h1>
-
-<p>@interface ViewController ()</p>
-
-<p>@property (strong, nonatomic) IBOutlet CBPeripheralManager <em>peripheralManager;
-@property (strong, nonatomic) IBOutlet NSUUID </em>proximityUUID;</p>
-
-<p>@end</p>
-
-<p>// 省略</p>
-
-<ul>
-<li><p>(void)viewDidLoad
-{
-  [super viewDidLoad];</p>
-
-<p>  self.title = @&ldquo;Peipheral&rdquo;;</p>
-
-<p>  self.proximityUUID = [[NSUUID alloc] initWithUUIDString:@&ldquo;8D4DB809-032F-4771-96F3-99BD5C25F924&rdquo;];
-  self.peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:self queue:nil options:nil];
-  if (self.peripheralManager.state == CBPeripheralManagerStatePoweredOn) {
-      [self startAdvertising];
-  }
-}</p></li>
-<li><p>(void)startAdvertising
-{
-  CLBeaconRegion <em>beaconRegion = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID
-                                                                         major:1
-                                                                         minor:2
-                                                                    identifier:@&ldquo;com.test.ibeaconSample&rdquo;];
-  NSDictionary </em>beaconPeripheralData = [beaconRegion peripheralDataWithMeasuredPower:nil];
-  [self.peripheralManager startAdvertising:beaconPeripheralData];
-}
-```</p></li>
-</ul>
-
-
-<p>次に、Beaconを検知するCentralのソースを書きます。<br/>
-Projectの作成手順はPeripheralとほぼ同じで、<br/>
-1: BeaconCentralという名称で新規Project作成<br/>
-2: UIViewControllerを追加(ViewControllerという名称で作成しました)<br/>
-3: CoreLocationライブラリを追加<br/>
-として下さい。</p>
-
-<p>ViewController.hのソース<br/>
-```objective-c</p>
-
-<h1>import &lt;UIKit/UIKit.h></h1>
-
-<h1>import &lt;CoreLocation/CoreLocation.h></h1>
-
-<p>@interface ViewController : UIViewController<CLLocationManagerDelegate></p>
-
-<p>@end
-```</p>
-
-<p>ViewController.mのソース<br/>
-```objective-c</p>
-
-<h1>import &ldquo;ViewController.h&rdquo;</h1>
-
-<p>@interface ViewController ()</p>
-
-<p>@property (strong, nonatomic) IBOutlet CLLocationManager <em>locationManager;
-@property (strong, nonatomic) IBOutlet NSUUID </em>proximityUUID;
-@property (strong, nonatomic) IBOutlet CLBeaconRegion <em>beaconRegion;
-@property (strong, nonatomic) IBOutlet CLBeacon </em>nearestBeacon;</p>
-
-<p>@end</p>
-
-<p>// initWithNibNameは省略</p>
-
-<ul>
-<li><p>(void)viewDidLoad
-{
-  [super viewDidLoad];</p>
-
-<p>  if ([CLLocationManager isMonitoringAvailableForClass:[CLCircularRegion class]]) {
-      self.locationManager = [CLLocationManager alloc] init];]
-      self.locationManager.delegate = self;</p>
-
-<pre><code>  self.proximityUUID = [[NSUUID alloc] initWithUUIDString:@"8D4DB809-032F-4771-96F3-99BD5C25F924"];
-  self.beaconRegion = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID identifier:@"com.test.ibeaconSample"];
-  [self.locationManager startMonitoringForRegion: self.beaconRegion];
-</code></pre>
-
-<p>  } else {
-      NSLog(@&ldquo;お使いの端末ではiBeaconを利用できません。&rdquo;);
-  }
-}</p></li>
-</ul>
-
-
-<p>// 領域計測が開始した場合
-&ndash; (void)locationManager:(CLLocationManager <em>)manager didStartMonitoringForRegion:(CLRegion </em>)region
-{</p>
-
-<pre><code>[self sendLocalNotificationForMessage:@"Start Monitoring Region"];
-</code></pre>
-
-<p>}</p>
-
-<p>// 指定した領域に入った場合
-&ndash; (void)locationManager:(CLLocationManager <em>)manager didEnterRegion:(CLRegion </em>)region
-{</p>
-
-<pre><code>[self sendLocalNotificationForMessage:@"Enter Region"];
-
-if ([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]) {
-    [self.locationManager startRangingBeaconsInRegion:(CLBeaconRegion *)region];
-}
-</code></pre>
-
-<p>}</p>
-
-<p>// 指定した領域から出た場合
-&ndash; (void)locationManager:(CLLocationManager <em>)manager didExitRegion:(CLRegion </em>)region
-{</p>
-
-<pre><code>[self sendLocalNotificationForMessage:@"Exit Region"];
-
-if ([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]) {
-    [self.locationManager stopRangingBeaconsInRegion:(CLBeaconRegion *)region];
-}
-</code></pre>
-
-<p>}</p>
-
-<p>// Beacon信号を検出した場合
-&ndash; (void)locationManager:(CLLocationManager <em>)manager didRangeBeacons:(NSArray </em>)beacons inRegion:(CLBeaconRegion *)region
-{</p>
-
-<pre><code>if (beacons.count &gt; 0) {
-    self.nearestBeacon = beacons.firstObject;
-    NSString *rangeMessage;
-
-    switch (self.nearestBeacon.proximity) {
-        case CLProximityImmediate:
-            rangeMessage = @"Range Immediate";
-            break;
-        case CLProximityNear:
-            rangeMessage = @"Range Near";
-            break;
-        case CLProximityFar:
-            rangeMessage = @"Range Far";
-            break;
-        default:
-            rangeMessage = @"Range Unknown";
-            break;
-    }
-
-    NSString *msg = [[NSString alloc] initWithFormat:@"%f [m]", self.nearestBeacon.accuracy];
-    [self sendLocalNotificationForMessage:msg];
-}
-</code></pre>
-
-<p>}</p>
-
-<p>// 領域観測に失敗した場合
-&ndash; (void)locationManager:(CLLocationManager <em>)manager monitoringDidFailForRegion:(CLRegion </em>)region withError:(NSError *)error
-{</p>
-
-<pre><code>[self sendLocalNotificationForMessage:@"Exit Region"];
-</code></pre>
-
-<p>}</p>
-
-<p>// ローカルプッシュの処理
-&ndash; (void)sendLocalNotificationForMessage:(NSString *)message
-{</p>
-
-<pre><code>UILocalNotification *localNotification = [UILocalNotification new];
-localNotification.alertBody = message;
-localNotification.fireDate = [NSDate date];
-localNotification.soundName = UILocalNotificationDefaultSoundName;
-[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
-</code></pre>
-
-<p>}
-```</p>
-
-<p>これでソースは完了です。<br/>
-ソースを下記にアップしましたのでダウンロードしたい方はぜひ&hellip;。<br/>
-<a href="https://github.com/grandbig/ibeaconCentralSample">Centralソース</a><br/>
-<a href="https://github.com/grandbig/ibeaconPeripheralSample">Peripheralソース</a><br/>
-まずはアプリをBackgroundで起動させているときの動作を見てみてください。<br/>
-動作確認時には必ずCentralを先に起動する必要があります。約5秒後にPeripheralを起動して下さい。Centralの方にローカルプッシュが届くはずです。</p>
-
-<p>続いて、アプリがBackground起動していない場合を見てみましょう。PeripheralアプリとCentralのアプリの両方を停止状態にします。(先ほどの状態から続けて実験する場合は、必ずCentralアプリ側に<strong>Exit Region</strong>というメッセージでローカルプッシュが届いてからにしてください。)<br/>
-さて、Peripheralアプリを起動しましょう。しばらくするとCentralアプリを起動していないにも関わらず、ローカルプッシュが届くはずです。そして、Beacon間の距離がどんどんローカルプッシュされてくることでしょう。<br/>
-<img src="/images/ibeacon_ios71_1.png" alt="Centralアプリを起動していない状態でローカルプッシュが届く" /><br/>
-その後、Peripheralアプリを停止してみましょう。しばらくするとCentralアプリに<strong>Exit Region</strong>というローカルプッシュが届くはずです。それを最後にローカルプッシュは来なくなります。<br/>
-<img src="/images/ibeacon_ios71_2.png" alt="Beaconの検知終了" /></p>
-
-<p>このように、確かにアプリをBackgroundで起動していなくてもBeaconを検知するようです。因みに、このときアプリがBackground起動しているのか確認したのですが、起動はしてないんですね〜。というかホームボタン2回タップでBackground起動しているアプリが見れるはずなのに、そこに出てないんですね〜。う〜ん。どういうことなんでしょうか？？</p>
-
-<p>まぁ、何はともあれ、iOS7.1からiBeaconの扱いが劇的に変わるってことは間違いないようです。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
 
 ]]></content>
   </entry>
