@@ -1,0 +1,132 @@
+---
+layout: post
+title: "WKWebViewとUIWebViewをシミュレータで比較してみた"
+date: 2014-09-22 00:07
+comments: true
+categories: ios, WKWebView
+---
+
+###WKWebViewを使ってみる
+さて、本日はiOS8 SDKで新たに利用可能となった **WKWebView** を試してみたいと思います。  
+これまでSafariにしか解放されていなかった機能がいろいろと使えるとのことでこれから期待が膨らみます。  
+まずは、WKWebViewをアプリに実装するとことから始めましょう。  
+
+WKWebViewはUIWebViewと異なり、Storyboard上からドラッグ＆ドロップで追加することができません。  
+よって、ソース上から追加する必要があります。  
+
+WKWebViewExampleという名前でプロジェクトを作成しましょう。  
+![WKWebViewExampleプロジェクト](/images/wkwebview1.png)  
+
+<!--more-->
+
+ViewController.mファイルを下記のように実装します。  
+
+```objective-c
+
+#import "ViewController.h"
+#import <WebKit/WebKit.h>	// WebKitをimport
+
+// 表示するWebサイトのURlを設定
+static NSString *const InitialURL = @"http://localhost/testWeb/";
+// Delegateメソッドを利用できるように設定
+@interface ViewController ()<WKNavigationDelegate, WKUIDelegate>
+// WKWebViewを宣言
+@property(nonatomic, strong)IBOutlet WKWebView *webView;
+
+@end
+
+@implementation ViewController
+
+- (void)viewDidLoad {
+	[super viewDidLoad];
+
+	// WKWebViewをインスタンス化
+	self.webView = [WKWebView alloc] initWithFrame:self.view.bounds];
+	self.webView.translatesAutoresizingMaskIntoConstraints = NO;
+	// WKWebViewをViewControllerのViewのsubViewとして追加
+	[self.view addSubview:self.webView];
+	
+	// Delegateの設定
+	self.webView.navigationDelegate = self;
+	self.webView.UIDelegate = self;]
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+	[super viewDidAppear:animated];
+	
+	// Web画面の表示
+	NSURL *url = [NSURL URLWithString:InitialURL];
+	NSURLRequest *request = [NSURLRequest requestWithURL:url];
+	[self.webView loadRequest:request];
+}
+
+```
+
+たったこれだけでWKWebViewを実装することができました。  
+
+###WKWebViewとUIWebViewの性能を比較してみる
+気になっていた本題に入ります。  
+UIWebViewはJavaScriptの実行速度がSafariの約1/4と言われてきました。それが、WKWebViewの出現により、Safariと同等のJavaScript実行速度にまで引き上げられました。  
+という話から実際にWKWebViewとUIWebViewのJavaScript実行速度を比較してみようと思います。  
+今回利用するWebソースは下記です。  
+
+index.html  
+```html
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" content="text/css" http-equiv="Content-Style-Type" />
+		<meta content="width=device-width, user-scalable=no,minimum-scale=0.5, maximum-scale=1.0" name="viewport" />
+		<title>テストサイト</title>
+	</head>
+	<body style="background-color: blue;">
+		<div>テストサイトです。</div>
+
+		<button type="button" id="testBtn" onclick="">テストボタン</button>
+
+		<script src="./js/jquery-2.1.1.min.js"></script>
+		<script src="./js/index.js"></script>
+	</body>
+</html>
+
+```
+
+jQueryは最新のバージョン2.1.1を利用しています。  
+
+index.js  
+```javascript
+$(function() {
+
+	$(document).on("click touchEnd", "#testBtn", function() {
+		//window.alert("test");
+		//$("body").css("background-color", "red");
+		var startTime = new Date().getTime();
+		for(var i=0; i < 5000000; i++) {
+			console.log(i+"回目のログ");
+		}
+		var endTime = new Date().getTime();
+		var diff = endTime - startTime;
+		$("body").append("<div>時間: " + diff + "</div>");
+	});
+
+});
+
+```
+
+これは簡単に言うと、大量のforループを実行し、その処理時間を画面に表示するというものです。  
+結果は下記になりました。  
+※iOS8に対応した実機がないため、シミュレータでのテストになります。  
+
+UIWebView: **5,098.4** [ms]  
+WKWebView: **4,495.6** [ms]  
+
+4倍とまではいかなくても確かに実行速度は向上しているようです。  
+近々、実機でも試してみる予定です。  
+
+今日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
