@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-02-28T22:48:50+09:00</updated>
+  <updated>2015-03-11T15:12:16+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,253 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftでWebSocket!]]></title>
+    <link href="http://grandbig.github.io/blog/2015/03/11/socketio-in-swift/"/>
+    <updated>2015-03-11T14:30:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/03/11/socketio-in-swift</id>
+    <content type="html"><![CDATA[<h4>socket.io公式クライアントソースを使ったサンプルの作成</h4>
+
+<p>先日、公開された<a href="https://github.com/socketio/socket.io-client-swift">socket.io公式のクライアントソース</a>を使って、サンプルを作成したいと思います。<br/>
+公式にも<a href="https://github.com/nuclearace/socket.io-client-swift-example">サンプルコード</a>は公開されているのですが、練習がてら試してみたいと思います。</p>
+
+<p>因みに本件にはサーバ側の説明は特に書いていません。<br/>
+下記、内容を試したい場合は<a href="https://github.com/grandbig/socket.io.web">GitHub: socket.io.web</a>からソースをダウンロードしてお使いください。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>プログラミング前の準備</h5>
+
+<p>まずは、<a href="https://github.com/square/SocketRocket">SocketRocket</a>をダウンロードしてきましょう。<br/>
+READMEに書かれている通り、SocketRocketフォルダごと、自身のフォルダにコピーします。</p>
+
+<p>続いて、下記４つのFrameworkを追加しましょう。</p>
+
+<ul>
+<li>libicucore.dylib</li>
+<li>CFNetwork.framework</li>
+<li>Security.framework</li>
+<li>Foundation.framework</li>
+</ul>
+
+
+<p>本プロジェクトはSwiftがベースであるため、このままだと、Objective-Cのクラスを読み込めません。<br/>
+そこで、 <strong>Bridge-Header</strong> ファイルを作成する必要があります。</p>
+
+<p>作成手順は下記です。</p>
+
+<ol>
+<li>プロジェクトを右クリックでAdd files to &ldquo;プロジェクト名&#8221;を選択</li>
+<li>TARGETS > Build Settings > Swift Compiler &ndash; Code Generation > Objective-C Bridging Header に作成したBridge-Headerファイルを指定</li>
+<li>作成したBridge-Headerファイルに利用したいObjective-Cファイルをimportする</li>
+</ol>
+
+
+<p>そして、socket.io公式のクライアントソースである <strong>SwiftIO</strong> を追加しましょう。</p>
+
+<p>ここまでで準備完了です。<br/>
+下記のようなプロジェクト構成になっていることを確認してください。</p>
+
+<p><img src="http://grandbig.github.io/images/ws_swift_1.png" alt="プロジェクト構成" /></p>
+
+<h5>プログラミング</h5>
+
+<p>さて、ここからは本格的にプログラミングを書いていきます。<br/>
+と言っても、今回作成するサンプルは<a href="http://socket.io/get-started/chat/">socket.io 公式HP > Get Started > Write a chat application</a>を途中まで作成する程度なので、少ししか書きません。</p>
+
+<p>まずは、Storyboardにテキストフィールドとボタンを設置します。</p>
+
+<p><img src="http://grandbig.github.io/images/ws_swift_2.png" alt="Storyboardの様子" /></p>
+
+<p>続いて、StoryboardからViewController.swiftにリンク付けします。<br/>
+その結果、下記の通りになります。<br/>
+(ついでに後々必要となる部分も実装しています。)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">UITextFieldDelegate</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// Storyboardからのリンクづけ</span>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">msgField:</span> <span class="n">UITextField</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// Delegateの設定</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">msgField</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">textFieldShouldReturn</span><span class="p">(</span><span class="nl">textField:</span> <span class="n">UITextField</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// キーボードのreturnを押下するとキーボードが閉じる処理</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">msgField</span><span class="p">.</span><span class="n">resignFirstResponder</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">return</span> <span class="n">true</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">sendMessage</span><span class="p">(</span><span class="nl">sender:</span> <span class="n">AnyObject</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// Storyboardからのリンクづけ</span>
+</span><span class='line'>      <span class="c1">// 後ほど記載</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>さて、これでほぼ大詰めです。<br/>
+WebSocket処理を書いてみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">UITextFieldDelegate</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// Storyboardからのリンクづけ</span>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">msgField:</span> <span class="n">UITextField</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// クライアント側のSocketコネクションの準備</span>
+</span><span class='line'>  <span class="n">let</span> <span class="n">socket</span> <span class="o">=</span> <span class="n">SocketIOClient</span><span class="p">(</span><span class="nl">socketURL:</span> <span class="s">&quot;localhost:3000&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// Delegateの設定</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">msgField</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// コネクションの接続</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">socket</span><span class="p">.</span><span class="n">connection</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">textFieldShouldReturn</span><span class="p">(</span><span class="nl">textField:</span> <span class="n">UITextField</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// キーボードのreturnを押下するとキーボードが閉じる処理</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">msgField</span><span class="p">.</span><span class="n">resignFirstResponder</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">return</span> <span class="n">true</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">sendMessage</span><span class="p">(</span><span class="nl">sender:</span> <span class="n">AnyObject</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// Storyboardからのリンクづけ</span>
+</span><span class='line'>      <span class="c1">// テキストフィールド内の文字列をWebSocketで送る処理</span>
+</span><span class='line'>      <span class="n">var</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">msgField</span><span class="p">.</span><span class="n">text</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">socket</span><span class="p">.</span><span class="n">emit</span><span class="p">(</span><span class="s">&quot;chat message&quot;</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>はい。これでクライアント側の実装終了です！<br/>
+上記のソースは全て<a href="https://github.com/grandbig/socket.io.ios-swift">GitHub: socket.io.ios-swift</a>にアップしていますので、ご自由にご利用ください。</p>
+
+<p>ということで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://socket.io/get-started/chat/">socket.io</a></li>
+<li><a href="https://github.com/socketio/socket.io-client-swift">socketio/socket.io-client-swift</a></li>
+<li><a href="http://qiita.com/n0bisuke/items/6dc990579b343475a635">SocketRocketでWebSocketを実装してみる</a></li>
+<li><a href="http://mk.hatenablog.com/entry/2014/10/16/075841">SwiftからObjective-Cのライブラリ使う</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOS オールスターズ勉強会に参加しました！]]></title>
@@ -4910,217 +5157,6 @@ Swiftの勉強がてら、こういった取り組みを進めていこうと思
 <p>参考:<br/>
 <a href="http://qiita.com/oggata/items/5de43d71692d1abcff7c">SwiftとiBeaconを使ってお母さんが自分の部屋に近づいて来た事を警告するアプリをつくる</a><br/>
 <a href="http://qiita.com/shu223/items/437d9a9a3502800a891b">Objective-C で書いたアプリを Swift で書き換える5ステップ</a></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[WKWebViewとUIWebViewのベンチマーク取ってみた(Google Octane2.0 利用)]]></title>
-    <link href="http://grandbig.github.io/blog/2014/09/23/wkwebview2/"/>
-    <updated>2014-09-23T21:15:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/09/23/wkwebview2</id>
-    <content type="html"><![CDATA[<h3>WKWebViewとUIWebViewのベンチマーク比較</h3>
-
-<p>本日はGoogle Octane2.0を利用してWKwebViewとUIWebViewのベンチマークを取った結果を紹介したいと思います。<br/>
-まずは、Google Octane2.0とは何かから説明しましょう。<br/>
-Octane2.0とはGoogleからオープンソース提供している。ブラウザのパフォーマンスを測定するJavaScriptベンチマークスイートのことです。昨年、バージョン2.0が後悔され、これまでのテスト項目13から17への増えました。<br/>
-では、そのテスト項目とは何があるのか説明しましょう。</p>
-
-<!--more-->
-
-
-<ul>
-<li>Richards:
-
-<ul>
-<li>OSのタスクディスパッチ(プロセッサが、実行するタスクを切り替える)・シミュレーション・ベンチマーク</li>
-<li><a href="http://www.cl.cam.ac.uk/~mr10/">Martin Richards</a>によって<a href="http://ja.wikipedia.org/wiki/BCPL">BCPL</a>で書かれたものをJavaScriptに変換したもの</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/richards.js?r=19">ソースコード</a></li>
-</ul>
-</li>
-<li>Deltable:
-
-<ul>
-<li>単変数の<a href="http://constraints.cs.washington.edu/deltablue/">制約解法</a></li>
-<li>John MaloneyとMario Wolczkoによって<a href="http://ja.wikipedia.org/wiki/Smalltalk">Smalltalk</a>で書かれたものをJavaScriptに変換したもの</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/deltablue.js">ソースコード</a></li>
-</ul>
-</li>
-<li>Raytrace:
-
-<ul>
-<li>Adam Burmisterのコードを元に作成されたレイトレース(3次元空間内を伝わる波の伝播経路を追跡するシミュレーション)・ベンチマーク</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/raytrace.js">ソースコード</a></li>
-</ul>
-</li>
-<li>Regexp:
-
-<ul>
-<li>正規表現ベンチマーク</li>
-<li>最も人気のある50のWebページから正規表現の処理を抽出して作成</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/regexp.js">ソースコード</a></li>
-</ul>
-</li>
-<li>NavierStokes:
-
-<ul>
-<li>二次ナビエ・ストークス方程式解法</li>
-<li>倍精度(64ビットの浮動小数点数表現)配列を大量に処理</li>
-<li>Oliver Huntのコードを元にしている</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/navier-stokes.js">ソースコード</a></li>
-</ul>
-</li>
-<li>Crypto:
-
-<ul>
-<li>Tom Wuのコードを元にして作成した暗号化と復号化ベンチマーク</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/crypto.js">ソースコード</a></li>
-</ul>
-</li>
-<li>Splay:
-
-<ul>
-<li><a href="http://ja.wikipedia.org/wiki/%E3%82%B9%E3%83%97%E3%83%AC%E3%83%BC%E6%9C%A8">スプレー木</a>や自動メモリ管理サブシステムを実行するデータ操作ベンチマーク</li>
-<li>ノードへのメモリの割り当て＆古いノードに割り当てたメモリの再利用に要する処理時間を計測</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/splay.js">ソースコード</a></li>
-</ul>
-</li>
-<li>SplayLatency:
-
-<ul>
-<li>VMのGC(不要になったメモリ領域を自動開放する処理)サブシステムに圧力を与えるスプレー試験</li>
-<li>GCやコンパイラが原因のレイテンシ(遅延時間)をテスト</li>
-</ul>
-</li>
-<li>EarleyBoyer:
-
-<ul>
-<li>典型的なSchemeベンチをFlorian LoitschのScheme2Jsコンパイラを用いてJavaScriptに変換したもの</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/earley-boyer.js">ソースコード</a></li>
-</ul>
-</li>
-<li>pdf.js:
-
-<ul>
-<li>JavaScriptで実装されたMozillaのPDFリーダ</li>
-<li>デコード、インタープリター処理の時間を計測</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/pdfjs.js">ソースコード</a></li>
-</ul>
-</li>
-<li>Mandreel:
-
-<ul>
-<li>Mandreelを利用してC++からJavaScriptに移植した<a href="http://bulletphysics.org/wordpress/">3D Bullet 物理エンジン</a></li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/mandreel.js">ソースコード</a></li>
-</ul>
-</li>
-<li>MandreelLatency:
-
-<ul>
-<li>Mandreelベンチ時のGCやコンパイラが原因のレイテンシ(遅延時間)をテスト</li>
-</ul>
-</li>
-<li>GB Emulator:
-
-<ul>
-<li>携帯用コンソール(任天堂ゲームボーイ)のアーキテクチャをエミュレートして、厳しい3DシミュレーションをJavaScriptで実行</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/gbemu-part1.js">GB Emulatorソース1</a></li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/gbemu-part2.js">GB Emulatorソース2</a></li>
-</ul>
-</li>
-<li>Code loading:
-
-<ul>
-<li>大規模なJavaScriptプログラムをロードしたあと、JavaScriptエンジンがどれだけ速くコードの実行を開始できるかを計測</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/code-load.js">ソースコード</a></li>
-</ul>
-</li>
-<li>Box2DWeb:
-
-<ul>
-<li>Erin Cattoによって書かれた人気の2D物理シミュレーションエンジンである<a href="https://code.google.com/p/box2dweb/">Box2DWeb</a>のJavaScript移植版がベース</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/box2d.js">ソースコード</a></li>
-</ul>
-</li>
-<li>zlib:
-
-<ul>
-<li><a href="https://github.com/kripken/emscripten/tree/master/tests/zlib">zlib</a> の試験により、JavaScriptとの互換性を保ちつつ、スクリプトのパフォーマンスをネイティブコード並みに高速化するasm.jsのコードの処理速度を計測</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/zlib.js">ソースコード</a></li>
-</ul>
-</li>
-<li>Typescript:
-
-<ul>
-<li>Microsoftが発表したJavaScriptのスーパセットである<a href="http://www.typescriptlang.org/">Typescript</a>はJavaScriptが苦手な大規模アプリケーション開発に最適とされている</li>
-<li>この試験ではTypescriptをJavaScriptにコンパイルする時間を計測可能</li>
-<li><a href="https://code.google.com/p/octane-benchmark/source/browse/latest/typescript-compiler.js">コンパイラーソースコード</a></li>
-</ul>
-</li>
-</ul>
-
-
-<p>このOctane2.0を用いて、試験した結果を報告します。<br/>
-今回は、下記条件で試験しました。</p>
-
-<p>利用端末: iPhone5, iPhone6<br/>
-利用OS: iOS7.1.2, iOS8.0<br/>
-利用アプリ: Safari, 自作アプリ(内部にUIWebView利用), 自作アプリ(内部にWKWebView利用)</p>
-
-<p>組み合わせは下記です。</p>
-
-<ul>
-<li>Safari / iOS7.1.2 / iPhone5</li>
-<li>UIWebView / iOS7.1.2 / iPhone5</li>
-<li>Safari / iOS8.0 / iPhone5</li>
-<li>UIWebView / iOS8.0 / iPhone5</li>
-<li>WKWebView / iOS8.0 / iPhone5</li>
-<li>Safari / iOS8.0 / iPhone6</li>
-<li>UIWebView / iOS8.0 / iPhone6</li>
-<li>WKWebView / iOS8.0 / iPhone6</li>
-</ul>
-
-
-<p>結果は下記になりました。<br/>
-<img src="http://grandbig.github.io/images/wkwebview_bench.png" alt="Octane2.0によるベンチマーク結果" /></p>
-
-<p>数値としては下記です。<br/>
-* Safari / iOS7.1.2 / iPhone5: <strong>2,642</strong><br/>
-* UIWebView / iOS7.1.2 / iPhone5: <strong>453</strong><br/>
-* Safari / iOS8.0 / iPhone5: <strong>2983</strong><br/>
-* UIWebView / iOS8.0 / iPhone5: <strong>447</strong><br/>
-* WKWebView / iOS8.0 / iPhone5: <strong>3097</strong><br/>
-* Safari / iOS8.0 / iPhone6: <strong>6529</strong><br/>
-* UIWebView / iOS8.0 / iPhone6: <strong>1072</strong><br/>
-* WKWebView / iOS8.0 / iPhone6: <strong>6763</strong></p>
-
-<p>項目ごとの結果は下記になります。<br/>
-<img src="http://grandbig.github.io/images/wkwebview_bench_octane1.png" alt="Octane2.0 ベンチマーク結果: Richards〜Regexp" /><br/>
-<img src="http://grandbig.github.io/images/wkwebview_bench_octane2.png" alt="Octane2.0 ベンチマーク結果: Splay〜MandreelLatency" /><br/>
-<img src="http://grandbig.github.io/images/wkwebview_bench_octane3.png" alt="Octane2.0 ベンチマーク結果: GB Emulator〜Typescript" /></p>
-
-<p>全て1回だけ計測したため、ある程度の誤差があるかもしれません。<br/>
-しかし、UIWebViewとWKWebViewが圧倒的に異なるということはわかりました。また、SafariとWKWebViewの結果がほぼ同じであることから、これまでSafariでしか利用できなかった各種機能が解放されていることがわかりました。<br/>
-また、端末によって大きな差が出ました。やはり、iPhone5よりもiPhone6の方がマシンスペックが高いためにかなり良い結果が出ました。<br/>
-因みに、UIWebViewで計測するとき、Box2DWebまでは他と大きな差がなく進んだのですが、zlibとTypescriptの試験が非常に時間がかかりました。(もうこれ以上は計測できないのでは？と思ったほどです。)</p>
-
-<p>今日はここまで。</p>
-
-<p>参考:<br/>
-<a href="https://developers.google.com/octane/benchmark">Google Octane</a><br/>
-<a href="http://jp.techcrunch.com/2013/11/07/20131106google-updates-its-octane-javascript-benchmark-adds-asm-js-and-typescript-tests/">GoogleがJavaScriptベンチマークOctaneをアップデート</a><br/>
-<a href="http://www.forest.impress.co.jp/docs/news/20131107_622555.html">Google、JavaScriptベンチマークスイートOctane2.0をリリース</a><br/>
-<a href="http://www.infoq.com/jp/news/2012/08/Octane-JavaScript-Benchmark">JavaScript用の新ベンチマークスイートOctaneをGoogleがオープンソース化</a><br/>
-<a href="https://code.google.com/p/octane-benchmark/source/browse/#svn%2Flatest">octane benchmark</a></p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

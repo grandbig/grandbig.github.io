@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ios/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-02-28T22:48:50+09:00</updated>
+  <updated>2015-03-11T15:12:16+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,191 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftでWebSocket!]]></title>
+    <link href="http://grandbig.github.io/blog/2015/03/11/socketio-in-swift/"/>
+    <updated>2015-03-11T14:30:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/03/11/socketio-in-swift</id>
+    <content type="html"><![CDATA[<h4>socket.io公式クライアントソースを使ったサンプルの作成</h4>
+
+<p>先日、公開された<a href="https://github.com/socketio/socket.io-client-swift">socket.io公式のクライアントソース</a>を使って、サンプルを作成したいと思います。<br/>
+公式にも<a href="https://github.com/nuclearace/socket.io-client-swift-example">サンプルコード</a>は公開されているのですが、練習がてら試してみたいと思います。</p>
+
+<p>因みに本件にはサーバ側の説明は特に書いていません。<br/>
+下記、内容を試したい場合は<a href="https://github.com/grandbig/socket.io.web">GitHub: socket.io.web</a>からソースをダウンロードしてお使いください。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>プログラミング前の準備</h5>
+
+<p>まずは、<a href="https://github.com/square/SocketRocket">SocketRocket</a>をダウンロードしてきましょう。<br/>
+READMEに書かれている通り、SocketRocketフォルダごと、自身のフォルダにコピーします。</p>
+
+<p>続いて、下記４つのFrameworkを追加しましょう。</p>
+
+<ul>
+<li>libicucore.dylib</li>
+<li>CFNetwork.framework</li>
+<li>Security.framework</li>
+<li>Foundation.framework</li>
+</ul>
+
+
+<p>本プロジェクトはSwiftがベースであるため、このままだと、Objective-Cのクラスを読み込めません。<br/>
+そこで、 <strong>Bridge-Header</strong> ファイルを作成する必要があります。</p>
+
+<p>作成手順は下記です。</p>
+
+<ol>
+<li>プロジェクトを右クリックでAdd files to &ldquo;プロジェクト名"を選択</li>
+<li>TARGETS > Build Settings > Swift Compiler &ndash; Code Generation > Objective-C Bridging Header に作成したBridge-Headerファイルを指定</li>
+<li>作成したBridge-Headerファイルに利用したいObjective-Cファイルをimportする</li>
+</ol>
+
+
+<p>そして、socket.io公式のクライアントソースである <strong>SwiftIO</strong> を追加しましょう。</p>
+
+<p>ここまでで準備完了です。<br/>
+下記のようなプロジェクト構成になっていることを確認してください。</p>
+
+<p><img src="/images/ws_swift_1.png" alt="プロジェクト構成" /></p>
+
+<h5>プログラミング</h5>
+
+<p>さて、ここからは本格的にプログラミングを書いていきます。<br/>
+と言っても、今回作成するサンプルは<a href="http://socket.io/get-started/chat/">socket.io 公式HP > Get Started > Write a chat application</a>を途中まで作成する程度なので、少ししか書きません。</p>
+
+<p>まずは、Storyboardにテキストフィールドとボタンを設置します。</p>
+
+<p><img src="/images/ws_swift_2.png" alt="Storyboardの様子" /></p>
+
+<p>続いて、StoryboardからViewController.swiftにリンク付けします。<br/>
+その結果、下記の通りになります。<br/>
+(ついでに後々必要となる部分も実装しています。)</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController, UITextFieldDelegate {</p>
+
+<pre><code>// Storyboardからのリンクづけ
+@IBOutlet weak var msgField: UITextField!
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    // Delegateの設定
+    self.msgField.delegate = self
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func textFieldShouldReturn(textField: UITextField) -&gt; Bool {
+    // キーボードのreturnを押下するとキーボードが閉じる処理
+    self.msgField.resignFirstResponder()
+
+    return true;
+}
+
+@IBAction func sendMessage(sender: AnyObject) {
+    // Storyboardからのリンクづけ
+    // 後ほど記載
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>さて、これでほぼ大詰めです。<br/>
+WebSocket処理を書いてみましょう。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController, UITextFieldDelegate {</p>
+
+<pre><code>// Storyboardからのリンクづけ
+@IBOutlet weak var msgField: UITextField!
+
+// クライアント側のSocketコネクションの準備
+let socket = SocketIOClient(socketURL: "localhost:3000")
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    // Delegateの設定
+    self.msgField.delegate = self
+
+    // コネクションの接続
+    self.socket.connection()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func textFieldShouldReturn(textField: UITextField) -&gt; Bool {
+    // キーボードのreturnを押下するとキーボードが閉じる処理
+    self.msgField.resignFirstResponder()
+
+    return true;
+}
+
+@IBAction func sendMessage(sender: AnyObject) {
+    // Storyboardからのリンクづけ
+    // テキストフィールド内の文字列をWebSocketで送る処理
+    var msg = self.msgField.text
+    self.socket.emit("chat message", msg)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>はい。これでクライアント側の実装終了です！<br/>
+上記のソースは全て<a href="https://github.com/grandbig/socket.io.ios-swift">GitHub: socket.io.ios-swift</a>にアップしていますので、ご自由にご利用ください。</p>
+
+<p>ということで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://socket.io/get-started/chat/">socket.io</a></li>
+<li><a href="https://github.com/socketio/socket.io-client-swift">socketio/socket.io-client-swift</a></li>
+<li><a href="http://qiita.com/n0bisuke/items/6dc990579b343475a635">SocketRocketでWebSocketを実装してみる</a></li>
+<li><a href="http://mk.hatenablog.com/entry/2014/10/16/075841">SwiftからObjective-Cのライブラリ使う</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOS オールスターズ勉強会に参加しました！]]></title>
@@ -1308,110 +1493,6 @@ NSLog(@"value: %@", value);
 <a href="http://qiita.com/rnamiki/items/ea912393c4fb58e7a9b9">CoreBluetoothで出来る事</a><br/>
 <a href="http://qiita.com/miyatay/items/4d4ce4ccd7905ddc0144">Bluetooth Low Energy（BLE）/ iBeaconとは</a><br/>
 <a href="http://reinforce-lab.github.io/blog/2013/01/25/CBCentralManagerClassReference_jp/">Reinforce-Lab&rsquo;s Blog</a></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[REBL600FRをiBeaconとして検知してみた！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/02/07/bl600sample/"/>
-    <updated>2015-02-07T23:12:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/02/07/bl600sample</id>
-    <content type="html"><![CDATA[<h4>REBL600FRとFRISK</h4>
-
-<p>今日は<a href="http://www.runele.com/ca1/24/">ランニングエレクトロニクス</a>さんから購入したREBL600FRを使って遊んでみたいと思います。<br/>
-早速、REBL600FRを1個注文して、先日、家に届きました。</p>
-
-<p><img src="/images/REBL600FR_1.jpg" alt="REBL600FRが届いた！" /></p>
-
-<!-- more -->
-
-
-<p>REBL600FRの売りがFRISKのケースに入るサイズとのことなので、FRISKを購入しました。</p>
-
-<p><img src="/images/FRISK_1.jpg" alt="FRISK2つ購入しました" /></p>
-
-<p>なぜ2つ購入したかって？<br/>
-FRISKを購入しても、すぐにはREBL600FRをケースに入れられませんよね？<br/>
-FRISKが入っているのだから。</p>
-
-<p>なので、FRISKのケースを空けました。</p>
-
-<p><img src="/images/FRISK_2.jpg" alt="FRISKケースを空にします" /></p>
-
-<p>おぉ、空になった&hellip;かと思いきや、この状態ではFRISKで満帆となったケースが閉まらない&hellip;。<br/>
-閉まるように余分な分を除けてみたところ、</p>
-
-<p><img src="/images/FRISK_3.jpg" alt="FRISKケースが閉まるように少し除けます" /></p>
-
-<p>11粒を戻すこととなりました。良かった。11粒くらいなら一気に食べられます笑。<br/>
-また、何とか閉めたFRISKケースがこちら。</p>
-
-<p><img src="/images/FRISK_4.jpg" alt="FRISKケースが閉められた" /></p>
-
-<p>ちょっと浮いてますね&hellip;。</p>
-
-<p>ま、何はともあれこれでREBL600FRをFRISKケースに入れれば準備完了です！</p>
-
-<p><img src="/images/REBL600FR_2.jpg" alt="REBL600FRの準備完了" /></p>
-
-<h4>REBL600FRのiBeaconを検知してみる</h4>
-
-<p>さて、早速、iBeaconとしての動作を見ていくことにしましょう。<br/>
-iBeaconの信号をキャッチするCentral側のアプリとして、<a href="https://itunes.apple.com/jp/app/lightblue-bluetooth-low-energy/id557428110?mt=8">LightBlue</a>を使うことにしました。<br/>
-理由は、UUIDに何が設定されているのかわからないためです。</p>
-
-<p>では、REBL600FRのスイッチをONにして、LightBlueで見てみましょう。<br/>
-すると、このように <strong>Laird iBeacon</strong> というものを発見します。</p>
-
-<p><img src="/images/lightblue_1.png" alt="LightBlueの画面" /></p>
-
-<p>これを選択してみると、iBeaconとの接続を試みる処理が走ります。</p>
-
-<p><img src="/images/lightblue_2.png" alt="LightBlueが接続試みる" /></p>
-
-<p>接続後は詳細画面に遷移します。</p>
-
-<p><img src="/images/lightblue_3.png" alt="LightBlueでLaird iBeaconの詳細を見る" /></p>
-
-<p>その中で表示される画面の一部を紹介します。</p>
-
-<p><img src="/images/lightblue_4.png" alt="LightBlueでLaird iBeaconの詳細を見る2" /></p>
-
-<p>ここでぜひお知らせしたいのが、REBL600FRは送信出力をアプリから設定できるんです。<br/>
-それが先ほどの写真でお見せした <strong>Tx Power Level</strong> という項目です。<br/>
-これをタップすると、下記の画面に進みます。</p>
-
-<p><img src="/images/lightblue_5.png" alt="Tx Power Levelの画面" /></p>
-
-<p>初期状態では <strong>0x04</strong> となっており、4 [dBm] であることを示しています。<br/>
-MAXの送信出力が4 [dBm] のようなので、それ以下(負の値も含む)の値を16進数で設定します。<br/>
-10進数と16進数の相互変換は<a href="http://hogehoge.tk/tool/number.html">こちらのツール</a>からできます。</p>
-
-<p><strong>Write new Value</strong> をタップ ⇒ 数値を設定 ⇒ Doneをタップ<br/>
-これでスイッチのON / OFFを切り替えなくとも送信出力を変更することができます。<br/>
-※ REBL600FRのスイッチをONにしてから約1分の間に接続しないといけないようです。<br/>
-(少し時間が経ってしまうと接続できませんでした。)</p>
-
-<p>実際に、iBeacon検知用のアプリ<a href="https://itunes.apple.com/jp/app/locate-beacon/id738709014?mt=8">Locate Beacon</a>で確認してみると、初期状態に比べて <strong>unknown</strong> と表示される距離が変わるはずです。</p>
-
-<p>時間があるときに各種パラメータの値を変更可能なiOSアプリを作成したいと思います。</p>
-
-<p>ということで、今日はここまで。</p>
-
-<p>参考:<br/>
-<a href="http://eguchi.jp/blog/?p=461">Kazuyuki Eguchi Factory スマホでiBeaconのパラメータを変更できるアプリを作りました！（REBL600FR向け）</a><br/>
-<a href="http://todotani.cocolog-nifty.com/blog/2014/05/rbbl600fribeaco.html">Todotaniのはやり物Log</a><br/>
-<a href="http://support.tetrastyle.net/bl600-ibeacon/">TETRASTYLE: Support (BL600) iBeacon サンプルを使ってみる</a></p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
