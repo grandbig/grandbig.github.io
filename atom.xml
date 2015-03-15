@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-03-11T16:39:00+09:00</updated>
+  <updated>2015-03-15T22:55:38+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,188 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftでGoogle OAuth2認証をしよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/03/15/gtm-oauth2-in-swift/"/>
+    <updated>2015-03-15T22:20:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/03/15/gtm-oauth2-in-swift</id>
+    <content type="html"><![CDATA[<h4>Swift版 OAuth2認証</h4>
+
+<p>本日は<a href="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/">iOSでGoogle OAuth認証がしたい</a>のSwift版を紹介したいと思います。<br/>
+Google Play Consoleでの設定やGoogleから配布されているOAuth2認証に必要なソースのダウンロード方法については上記の記事に任せるとして、具体的なソース部分を紹介します。</p>
+
+<p>では早速、Objective-CのソースをSwiftで書きなおしたものを下記に載せます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">auth:</span><span class="n">GTMOAuth2Authentication</span><span class="o">!</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">kKeychainItemName:</span><span class="n">NSString</span><span class="o">!</span> <span class="o">=</span> <span class="s">&quot;GOAuthTest&quot;</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">scope:</span><span class="n">NSString</span><span class="o">!</span> <span class="o">=</span> <span class="s">&quot;https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/calendar&quot;</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">clientId:</span><span class="n">NSString</span><span class="o">!</span> <span class="o">=</span> <span class="s">&quot;Googleから発行されたクライアントID&quot;</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">clientSecret:</span><span class="n">NSString</span><span class="o">!</span> <span class="o">=</span> <span class="s">&quot;Googleから発行されたクライアントシークレット&quot;</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">hasLoggedIn:</span><span class="n">NSString</span><span class="o">!</span> <span class="o">=</span> <span class="s">&quot;hasLoggedInKey&quot;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidAppear</span><span class="p">(</span><span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">startLogIn</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">startLogIn</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">var</span> <span class="nl">defaults:</span><span class="n">NSUserDefaults</span><span class="o">?</span> <span class="o">=</span> <span class="n">NSUserDefaults</span><span class="p">.</span><span class="n">standardUserDefaults</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">var</span> <span class="nl">hasLoggedInFlag:</span><span class="n">Bool</span><span class="o">!</span> <span class="o">=</span> <span class="n">defaults</span><span class="o">?</span><span class="p">.</span><span class="n">boolForKey</span><span class="p">(</span><span class="n">hasLoggedIn</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">hasLoggedInFlag</span> <span class="o">==</span> <span class="n">true</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// 認証したことがある場合</span>
+</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">auth</span> <span class="o">=</span> <span class="n">GTMOAuth2ViewControllerTouch</span><span class="p">.</span><span class="n">authForGoogleFromKeychainForName</span><span class="p">(</span><span class="s">&quot;Google&quot;</span><span class="p">,</span> <span class="nl">clientID:</span> <span class="n">clientId</span><span class="p">,</span> <span class="nl">clientSecret:</span> <span class="n">clientSecret</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="c1">// アクセストークンの取得</span>
+</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">authorizeRequest</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// 認証したことがない場合</span>
+</span><span class='line'>          <span class="n">var</span> <span class="nl">gvc:</span><span class="n">GTMOAuth2ViewControllerTouch</span><span class="o">!</span> <span class="o">=</span> <span class="n">GTMOAuth2ViewControllerTouch</span><span class="p">(</span><span class="nl">scope:</span> <span class="n">scope</span><span class="p">,</span> <span class="nl">clientID:</span> <span class="n">clientId</span><span class="p">,</span> <span class="nl">clientSecret:</span> <span class="n">clientSecret</span><span class="p">,</span> <span class="nl">keychainItemName:</span> <span class="s">&quot;Google&quot;</span><span class="p">,</span> <span class="nl">delegate:</span> <span class="n">self</span><span class="p">,</span> <span class="nl">finishedSelector:</span> <span class="s">&quot;viewController:finishedWithAuth:error:&quot;</span><span class="p">)</span>
+</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">presentViewController</span><span class="p">(</span><span class="n">gvc</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">true</span><span class="p">,</span> <span class="nl">completion:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">viewController</span><span class="p">(</span><span class="nl">viewController:</span><span class="n">GTMOAuth2ViewControllerTouch</span><span class="o">!</span><span class="p">,</span> <span class="nl">finishedWithAuth:</span><span class="n">GTMOAuth2Authentication</span><span class="o">!</span><span class="p">,</span> <span class="nl">error:</span><span class="n">NSError</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">error</span> <span class="o">!=</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// 認証失敗</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// 認証成功</span>
+</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">auth</span> <span class="o">=</span> <span class="n">finishedWithAuth</span>
+</span><span class='line'>          <span class="n">var</span> <span class="n">defaults</span> <span class="o">=</span> <span class="n">NSUserDefaults</span><span class="p">.</span><span class="n">standardUserDefaults</span><span class="p">()</span>
+</span><span class='line'>          <span class="n">defaults</span><span class="p">.</span><span class="n">setBool</span><span class="p">(</span><span class="n">true</span><span class="p">,</span> <span class="nl">forKey:</span> <span class="n">hasLoggedIn</span><span class="p">)</span>
+</span><span class='line'>          <span class="n">defaults</span><span class="p">.</span><span class="n">synchronize</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="c1">// アクセストークンの取得</span>
+</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">authorizeRequest</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// 認証画面を閉じる</span>
+</span><span class='line'>      <span class="n">viewController</span><span class="p">.</span><span class="n">dismissViewControllerAnimated</span><span class="p">(</span><span class="n">true</span><span class="p">,</span> <span class="nl">completion:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">authorizeRequest</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">println</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">var</span> <span class="nl">req:</span><span class="n">NSMutableURLRequest</span><span class="o">!</span> <span class="o">=</span> <span class="n">NSMutableURLRequest</span><span class="p">(</span><span class="nl">URL:</span> <span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">.</span><span class="n">tokenURL</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">.</span><span class="n">authorizeRequest</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="nl">completionHandler:</span> <span class="p">{</span> <span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span> <span class="k">in</span>
+</span><span class='line'>          <span class="n">println</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">})</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>今回のソースは<a href="https://github.com/grandbig/gtm-oauth2-swift">GitHub</a>にアップしています。<br/>
+興味があればどしどし使ってみてください。<br/>
+ということで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Facebookのモバイルチューニングの極意を読んで...]]></title>
@@ -4503,69 +4685,6 @@ Second Itemに<strong>Relative to margin</strong>が紐付けられています�
 
 <p>いかがでしたでしょうか？<br/>
 これからはiPhone6, iPhone6 Plusにも最適化したアプリを開発する必要がありますし、たいへんですが、頑張って行きたいですね！</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[WKWebViewとUIWebViewのベンチマーク取ってみた(SunSpider 利用)]]></title>
-    <link href="http://grandbig.github.io/blog/2014/10/02/wkwebview3/"/>
-    <updated>2014-10-02T00:29:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/10/02/wkwebview3</id>
-    <content type="html"><![CDATA[<h3>WKWebViewとUIWebViewのベンチマーク比較</h3>
-
-<p>本日は<a href="https://www.webkit.org/perf/sunspider/sunspider.html">SunSpider</a>を利用してWKwebViewとUIWebViewのベンチマークを取った結果を紹介したいと思います。<br/>
-今回はGoogle Octane 2.0と同じく下記条件で試験しました。</p>
-
-<p>利用端末: iPhone5, iPhone6<br/>
-利用OS: iOS7.1.2, iOS8.0<br/>
-利用アプリ: Safari, 自作アプリ(内部にUIWebView利用), 自作アプリ(内部にWKWebView利用)</p>
-
-<p>組み合わせは下記です。</p>
-
-<ul>
-<li>Safari / iOS7.1.2 / iPhone5</li>
-<li>UIWebView / iOS7.1.2 / iPhone5</li>
-<li>Safari / iOS8.0 / iPhone6</li>
-<li>UIWebView / iOS8.0 / iPhone6</li>
-<li>WKWebView / iOS8.0 / iPhone6</li>
-</ul>
-
-
-<!--more-->
-
-
-<p>結果は下記になりました。</p>
-
-<p>Totalとしての結果は下記になりました。<br/>
-<img src="http://grandbig.github.io/images/wkwebview_bench2.png" alt="Total結果" /></p>
-
-<p>細かく見ていくと、<br/>
-<img src="http://grandbig.github.io/images/wkwebview_bench3.png" alt="項目別結果" /><br/>
-という結果になりました。</p>
-
-<p>これから</p>
-
-<ul>
-<li>iPhone5とiPhone6で差がある</li>
-<li>iOSバージョン別に比較すると、<strong>UIWebView &lt; Safari = WKWebView</strong>となる</li>
-</ul>
-
-
-<p>ということが言えます。</p>
-
-<p>Google Octane 2.0でもiPhone6で試してみる価値がありそうですね。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
