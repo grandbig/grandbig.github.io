@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Singleton | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/singleton/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-04-30T00:14:33+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[シングルトンパターンとクラスメソッドとインスタンスメソッド]]></title>
+    <link href="http://grandbig.github.io/blog/2014/10/21/singleton-pattern/"/>
+    <updated>2014-10-21T22:02:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/10/21/singleton-pattern</id>
+    <content type="html"><![CDATA[<h4>シングルトンを使用したクラスでクラスメソッドとインスタンスメソッドを定義する</h4>
+
+<p>本日は、シングルトンを使用したクラスの作成と、その中でクラスメソッドとインスタンスメソッドを定義した場合に、どう扱うのかについて見ていきます。<br/>
+早速、シングルトンパターンのクラスを定義しましょう。<br/>
+NSObjectを親クラスとしたSingletonSampleクラスを作成します。</p>
+
+<!--more-->
+
+
+<p>```objective-c
+// SingletonSample.hファイル</p>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<p>@interface SingletonSample : NSObject</p>
+
+<p>// シングルトンパターンであることを定義
++ (SingletonSample *)sharedInstance;</p>
+
+<p>@end
+```</p>
+
+<p>```objective-c
+// SingletonSample.mファイル</p>
+
+<h1>import &ldquo;SingletonSample.h&rdquo;</h1>
+
+<p>@implementation SingletonSample</p>
+
+<ul>
+<li><p>(SingletonSample <em>)sharedInstance
+{
+  static SingletonSample </em>sharedInstance = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&amp;onceToken, ^{
+      sharedInstance = [SingletonSample alloc] init];]
+  });</p>
+
+<p>  return sharedInstance;
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>これでシングルトンパターンのクラスとして定義できました。</p>
+
+<p>次にクラスメソッドとインスタンスメソッドを定義してみます。</p>
+
+<p>```objective-c
+// SingletonSample.hファイル</p>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<p>@interface SingletonSample : NSObject</p>
+
+<p>// インスタンス変数
+@property(assign, nonatomic) NSInteger num;
+@property(strong, nonatomic) NSString *str;</p>
+
+<p>// シングルトンパターンであることを定義
++ (SingletonSample *)sharedInstance;</p>
+
+<p>// クラスメソッド
++ (void)testClassMethod;</p>
+
+<p>// インスタンスメソッド
+&ndash; (void)testInstanceMethod;</p>
+
+<p>@end
+```</p>
+
+<p>```objective-c
+// SingletonSample.mファイル</p>
+
+<h1>import &ldquo;SingletonSample.h&rdquo;</h1>
+
+<p>@implementation SingletonSample</p>
+
+<ul>
+<li><p>(SingletonSample <em>)sharedInstance
+{
+  static SingletonSample </em>sharedInstance = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&amp;onceToken, ^{
+      sharedInstance = [SingletonSample alloc] init];]
+  });</p>
+
+<p>  return sharedInstance;
+}</p></li>
+<li><p>(id)init
+{
+  self = [super init];</p>
+
+<p>  if(self) {
+      // 初期化処理
+      self.num = 10;
+      self.str = @&ldquo;テスト&rdquo;;
+  }</p>
+
+<p>  return self;
+}</p></li>
+<li><p>(void)testClassMethod
+{
+  NSInteger cnt = 20;
+}</p></li>
+<li><p>(void)testInstanceMethod
+{
+  self.num = 30;
+  self.str = @&ldquo;TEST&rdquo;;
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>さて、この定義したシングルトンのクラスを使ってみましょう。<br/>
+適当にUIViewControllerクラスのViewController.mで使ってみます。</p>
+
+<p>```objective-c
+// ViewController.m
+&ndash; (void)viewDidLoad {</p>
+
+<pre><code>[super viewDidLoad];
+
+// インスタンス化
+[SingletonSample sharedInstance];
+// インスタンス変数を確認
+NSLog(@"num: %ld, str: %@", [SingletonSample sharedInstance].num, [SingletonSample sharedInstance].str);
+
+// クラスメソッドの実行
+[SingletonSample testClassMethod];
+// インスタンスメソッドの実行
+[SingletonSample sharedInstance] testInstanceMethod];
+
+// インスタンス変数
+NSLog(@"num: %ld, str: %@", [SingletonSample sharedInstance].num, [SingletonSample sharedInstance].str);]
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここまで書いた後にRunを実行すると、下記のログが出力されます。<br/>
+2014-10-21 22:19:38.922 SingletonSample[4334:26435] num: 10, str: テスト<br/>
+2014-10-21 22:19:46.986 SingletonSample[4334:26435] num: 30, str: TEST</p>
+
+<p>正しく実行されていることがわかりますね。</p>
+
+<p>このようにクラスメソッドは<br/>
+<strong>[クラス名 メソッド名]</strong><br/>
+で呼び出します。</p>
+
+<p>一方でインスタンスメソッドは<br/>
+<strong>[インスタンス メソッド名</strong><br/>
+で呼び出します。<br/>
+今回はシングルトンパターンであるため、シングルトンパターンのインスタンスである<strong>[SingletonSample sharedInstance]</strong>を用いていることに注意してください。</p>
+
+<p>これからシングルトンのクラスをどしどし使いこなしていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

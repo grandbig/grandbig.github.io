@@ -1,0 +1,1063 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: ios | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/ios/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-04-30T00:14:33+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iBeacon完全攻略！？]]></title>
+    <link href="http://grandbig.github.io/blog/2015/04/29/ibeacon-review/"/>
+    <updated>2015-04-29T21:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/04/29/ibeacon-review</id>
+    <content type="html"><![CDATA[<h4>iBeaconを復習しよう！</h4>
+
+<p>本日はこれまでも何度か取り上げてきたiBeaconについて改めて復習してみたいと思います。<br/>
+今回はiOS端末でのiBeaconの発信/受信に特化して書きます。</p>
+
+<p>これまでの関連記事は以下です。</p>
+
+<ul>
+<li><a href="http://grandbig.github.io/blog/2014/04/12/io7-dot-1-de-ibeacon/">噂のiOS7.1でiBeaconを試してみよう！！</a></li>
+<li><a href="http://grandbig.github.io/blog/2014/09/22/ios8-de-ibeacon/">iOS8でiBeaconを試してみよう！！</a></li>
+<li><a href="http://grandbig.github.io/blog/2014/09/29/developing-ibeacon-app-by-using-swift/">Swiftを使って、iBeaconのCentralアプリを作ろう！！</a></li>
+<li><a href="http://grandbig.github.io/blog/2015/04/13/multi-ibeacon/">複数のiBeacon信号を利用してみよう！</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>では、早速、まとめていきましょう。</p>
+
+<h4>iBeaconが利用可能な端末</h4>
+
+<ul>
+<li>OS: iOS7.0以上</li>
+<li>端末: iPhone4S以降, iPad(第３世代)以降, iPad mini以降, iPod touch(第５世代以降)
+※もちろんiPad Airでも利用可能</li>
+</ul>
+
+
+<h4>iOSごとのiBeacon機能の差異</h4>
+
+<p>まずは動作面での差異について</p>
+
+<ul>
+<li>iOS7.0.xの場合<br/>
+アプリをFG起動もしくはBG起動していないとiBeaconを検知することはできない</li>
+<li>iOS7.1.x以降の場合<br/>
+アプリを起動していない(停止状態の)場合でもiBeaconを検知可能</li>
+</ul>
+
+
+<p>次にプログラミング面での差異について</p>
+
+<p>プログラミング面ではCentral側にのみ多少の差異があります。<br/>
+iBeaconの検知には <strong>CoreLocation.framework</strong> を利用します。
+<strong>CoreLocation.framework</strong> は位置情報サービスを利用するためのフレームワークですが、iBeaconの領域監視メソッドが組み込まれています。<br/>
+もともと、ジオフェンスの領域監視メソッドが組み込まれていますので、それと同等に扱いたいというApple側の意図が見えます。</p>
+
+<p>具体的な差異について説明します。<br/>
+位置情報サービスの利用許可メソッドをiOS8から組み込む必要があります。</p>
+
+<p>```objective-c</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@property (strong, nonatomic) CLLocationManager <em>lm;
+@property (strong, nonatomic) NSUUID </em>proximityUUID;
+@property (strong, nonatomic) CLBeaconRegion <em>beaconRegion;
+@property (strong, nonatomic) CLBeacon </em>nearestBeacon;
+@property (strong, nonatomic) NSString *str;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad
+{
+  [super viewDidLoad];</p>
+
+<p>  if ([CLLocationManager isMonitoringAvailableForClass:[CLCircularRegion class]]) {
+      // iOS7.x以降の端末
+      // CLLocationManagerの初期化
+      self.lm = [[CLLocationManager alloc] init];
+      self.lm.delegate = self;</p>
+
+<pre><code>  // UUIDの設定
+  self.proximityUUID = [[NSUUID alloc] initWithUUIDString:@"8D4DB809-032F-4771-96F3-99BD5C25F924"];
+  // Bundle Identifierの取得
+  NSBundle *bundle = [NSBundle mainBundle];
+  NSString *bid = [bundle bundleIdentifier];
+  self.beaconRegion = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID identifier: bid];
+
+  if ([self.locationManager respondsToSelector:@selector(requestAlwaysAuthorization)]) {
+      // iOS8以上の場合
+      // 位置情報サービスを常に許可させて良いかどうかを尋ねるためのメソッド
+      [self.lm requestAlwaysAuthorization];
+  } else {
+      // iOS8未満の場合
+      // iBeacon領域の監視を開始
+      [self.lm startMonitoringForRegion: self.beaconRegion];
+  }
+</code></pre>
+
+<p>  } else {
+      // iOS6.x以前の端末
+      UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@&ldquo;確認&rdquo; message:@&ldquo;iBeacon機能を利用できない端末です。&rdquo; delegate: nil cancelButtonTitle: nil otherButtonTitles:@&ldquo;OK&rdquo;, nil];
+      // アラートを表示
+      [alert show];
+  }
+}</p></li>
+</ul>
+
+
+<p>// ユーザの位置情報の許可状態を確認するメソッド
+&ndash; (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{</p>
+
+<pre><code>if (status == kCLAuthorizationStatusAuthorizedAlways) {
+    // ユーザが位置情報の使用を常に許可している場合
+    // iBeacon領域の監視を開始
+    [self.lm startMonitoringForRegion: self.beaconRegion];
+} else {
+    // その他の場合
+    // 設定画面に遷移
+    NSURL *url = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
+    [[UIApplication sharedApplication] openURL:url];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>@end
+```</p>
+
+<p>iOS7.xでは<code>startMonitoringForRegion</code>メソッドを実行した段階で<code>didChangeAuthorizationStatus</code>メソッドが呼ばれます。<br/>
+iOS8では、<code>requestAlwaysAuthorization</code>メソッドを実行(位置情報サービスを常に許可する場合のメソッド)しなければ、<code>didChangeAuthorizationStatus</code>メソッドが呼ばれないため、<code>startMonitoringForRegion</code>メソッドの実行タイミングを変える必要が出てきました。</p>
+
+<h4>iBeacon関連メソッドの実行順について(Centralの場合)</h4>
+
+<p>先ほどiBeaconの検知は <strong>CoreLocation.framework</strong> 内のメソッドとして組み込まれていると説明しました。では、他にどんなメソッドがあるのでしょうか。</p>
+
+<p><code>objective-c
+// 領域監視が開始された後に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager didStartMonitoringForRegion:(CLRegion *)region {
+}
+</code></p>
+
+<p><code>objective-c
+// 領域監視に失敗した場合に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager monitoringDidFailForRegion:(CLRegion *)region withError:(NSError *)error {
+}
+</code></p>
+
+<p><code>objective-c
+// 監視領域に入った場合に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager didEnterRegion:(CLRegion *)region {
+}
+</code></p>
+
+<p><code>objective-c
+// 監視領域から出た場合に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager didExitRegion:(CLRegion *)region {
+}
+</code></p>
+
+<p><code>objective-c
+// 監視領域に対する状態が変化した場合に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion *)region {
+}
+</code></p>
+
+<p><code>objective-c
+// iBeacon信号をレンジング検知した場合に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager didRangeBeacons:(NSArray *)beacons inRegion:(CLBeaconRegion *)region {
+}
+</code></p>
+
+<p>上記のメソッドを使えば十分なアプリが開発できるはずです。<br/>
+さて、ここで注意しておくべきなのは、<code>startRangingBeaconsInRegion</code>メソッドをどのタイミングで実行するかということです。</p>
+
+<p>基本的には、 <strong>監視領域に入ったタイミング</strong> で<code>startRangingBeaconsInRegion</code>メソッドを実行するのが普通かもしれません。<br/>
+しかし、この場合は注意が必要です。<br/>
+なぜなら、監視領域内でアプリを落として、再度起動した場合、<code>didEnterRegion</code>メソッドが実行されないからです。つまり、既に監視領域に入っている場合は <strong>監視領域に侵入したと見なされない</strong> ということです。<br/>
+よって、こういったケースがアプリの利用に打撃を与えるのであれば、 <strong>監視領域に入ったタイミング</strong> のみに<code>startRangingBeaconsInRegion</code>メソッドを置くわけにはいかないことになります。<br/>
+その場合は、<code>didDetermineState</code>メソッドで既に監視領域内にいる場合(<code>state</code>が<code>CLRegionStateInside</code>の場合)に<code>startRangingBeaconsInRegion</code>メソッドを実行するようにしましょう。</p>
+
+<h4>Peripheralの注意点</h4>
+
+<p>続いて、PeripheralとしてiOS端末を使う場合の注意点についてお話しておきます。<br/>
+iOS端末ではアプリをFG起動している間のみiBeacon信号の発信が可能です。<br/>
+アプリがBG起動になった場合、iBeacon信号の発信が止まってしまうため、数秒後にCentral側のiOS端末で<code>didExitRegion</code>メソッドが実行されます。<br/>
+なので、iOS端末でPeripheralの役割を担いたいのであれば、FG起動を続けることに問題がない使い方である場合に限ります。</p>
+
+<p>因みに、XcodeのBackground Modesで <strong>Act as a Bluetooth LE accessory</strong> を有効にしたとしても、BG起動中はiBeaconを発信することはできません。</p>
+
+<p>また、 <strong>CoreBluetooth.framework</strong> にはiOS端末がiBeacon発信状態(アドバタイジング状態)かを判別する<code>isAdvertising</code> プロパティが存在します。<br/>
+iBeaconを発信している状態でアプリをBG起動にした場合は<code>isAdvertising</code>は <strong>YES</strong> として返却されます。つまり、実際の状態と必ずしも一致するわけではないということです。</p>
+
+<h4>Centralの注意点</h4>
+
+<p>最後にCentralとしてiOS端末を使う場合の注意点についてお話しておきます。<br/>
+iOS端末でiBeaconのレンジング処理を行う場合、FG起動時にしかレンジング処理を実行できません。<br/>
+そのため、アプリの状態によらずレンジング処理が必要な仕様を実現することは不可能ということになります。</p>
+
+<p>一応、<code>didEnterRegion</code>メソッドや<code>didExitRegion</code>メソッドなどのデリゲートメソッドが実行された場合、約10秒間はアプリの状態によらずあらゆる処理が実行可能であるため、この間のみレンジング処理を実行して<code>major</code>, <code>minor</code>などの値を取得することは可能です。</p>
+
+<p>正しい動作検証を実施した上でiBeaconを扱うようにしましょう。</p>
+
+<h4>各種設定がOFFの場合のアラート表示について</h4>
+
+<p>さて、直接iBeaconとは関係がありませんが、iOS端末をPeripheralとして扱う場合は <strong>Bluetoothの設定</strong> をONにしておく必要があります。iOS端末をCentralとして扱う場合は <strong>Bluetoothの設定</strong> と <strong>位置情報サービスの設定</strong> をONにしておく必要があります。</p>
+
+<p>これらがOFFになっている場合、iBeaconの機能を利用することができないため、アプリ開発時にアラートを表示してユーザに知らせることを考えるかと思います。<br/>
+さらに、できれば設定画面に飛ばしたいと思いますよね？</p>
+
+<p><strong>位置情報サービス</strong> の場合は、iOS8であれば設定画面へのURLスキームが復活したため、問題ありません。(iOS7.xでは設定画面への遷移は諦めましょう。)<br/>
+<strong>Bluetooth</strong> の場合は <strong>CoreBluetooth.framework</strong> を利用していれば、難しくありません。(処理に <strong>CoreBluetooth.framework</strong> が不要なCentral側であっても設定画面に飛ばしたいのであれば、<code>import</code>する必要があります。)<br/>
+※ 具体的には<code>CBPeripheralManager</code>もしくは<code>CBCentralManager</code>の初期化時に<code>option</code>に<code>CBPeripheralManagerOptionShowPowerAlertKey</code>もしくは<code>CBCentralManagerOptionShowPowerAlertKey</code>を設定すれば良いです。</p>
+
+<p>以上がまとめとなります。<br/>
+ぜひぜひ参考にして頂ければと思います。<br/>
+本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[BLEMeasure Ver3.0(iPhoneアプリを申請しました(4))]]></title>
+    <link href="http://grandbig.github.io/blog/2015/04/25/ble-measure-3-0-0/"/>
+    <updated>2015-04-25T11:50:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/04/25/ble-measure-3-0-0</id>
+    <content type="html"><![CDATA[<h4>BLEMeasure Ver3.0の紹介</h4>
+
+<p>約1年ぶりに本アプリのバージョンアップに着手しました。<br/>
+主な改善点・修正点としては下記です。</p>
+
+<ul>
+<li>デザイン, UIの変更</li>
+<li>マルチiBeaconの検知機能の実装</li>
+<li>iOS8対応</li>
+<li>iPhone6およびiPhone6 Plus対応</li>
+<li>バグFix</li>
+</ul>
+
+
+<p>※現在、アップデート申請中のため、公開されていません。<br/>
+(公開され次第、合わせてブログを更新する予定です。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>今回アップデートを行った理由としては、なぜかうまく起動しないという問題があったためです。<br/>
+少し苦労したのが、手違いで完全に昔のプロジェクトを削除してしまっていたため、初めから作り直したところです。</p>
+
+<h4>BLEMeasureの使い方(How to use BLEMeasure)</h4>
+
+<p>さて、ここからは審査も見据えて使い方を日本語＋拙い(多々間違いのあるであろう)英語で解説していきたいと思います。</p>
+
+<h5>iBeacon発信手順(Procedure of advertising iBeacon)</h5>
+
+<ol>
+<li>中央の赤いボタンをタップ(Tap the central red button)</li>
+<li>Advertiseボタンをタップ(Tap the advertise button)</li>
+<li>STARTボタンをタップ(Tap the start button)</li>
+</ol>
+
+
+<p><img src="/images/ble_measure_v3_1.png" alt="BLEMeasure Procedure1" /></p>
+
+<h5>iBeacon距離計測手順(Procedure of measuring the distance between a peripheral device and a central device)</h5>
+
+<ol>
+<li>中央の赤いボタンをタップ(Tap the central red button)</li>
+<li>Measureボタンをタップ(Tap the measure button)</li>
+</ol>
+
+
+<p><img src="/images/ble_measure_v3_2.png" alt="BLEMeasure Procedure2" /></p>
+
+<p>※ 周りにiBeacon発信端末が見つからない場合は0mと表記されます(If the device can&rsquo;t find the advertising device, the distance is 0m.)</p>
+
+<h5>複数iBeaconの検知手順(Procedure of searching the multi iBeacon)</h5>
+
+<ol>
+<li>中央の赤いボタンをタップ(Tap the central red button)</li>
+<li>Searchボタンをタップ(Tap the search button)</li>
+</ol>
+
+
+<p>※ 周りにiBeaconが見当たらない場合は何も表示されません(You don&rsquo;t look at the iBeacon list if there aren&rsquo;t iBeacon around you.)<br/>
+※ テーブルビューのプルダウンもしくは右上の更新ボタンで周囲のiBeaconを再検索することができます(You can search iBeacon again by pulling down the table view or tapping the update button)</p>
+
+<p><img src="/images/ble_measure_v3_3.png" alt="BLEMeasure Procedure3" /></p>
+
+<h5>iBeaconパラメータの設定手順(Procedure of setting the advertising iBeacon parameters)</h5>
+
+<ol>
+<li>中央の赤いボタンをタップ(Tap the central red button)</li>
+<li>Settingsボタンをタップ(Tap the settings button)</li>
+<li>UUID, major, minorの値を入力して、Saveボタンをタップ(Enter the parameters and tap the save button)</li>
+</ol>
+
+
+<p><img src="/images/ble_measure_v3_4.png" alt="BLEMeasure Procedure4" /></p>
+
+<h5>アプリ関連情報の確認手順(Procedure of confirming the information about the app)</h5>
+
+<ol>
+<li>中央の赤いボタンをタップ(Tap the central red button)</li>
+<li>Aboutボタンをタップ(Tap the about button)</li>
+</ol>
+
+
+<p><img src="/images/ble_measure_v3_5.png" alt="BLEMeasure Procedure5" /></p>
+
+<p>本日は以上です。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[複数のiBeacon信号を利用してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/04/13/multi-ibeacon/"/>
+    <updated>2015-04-13T00:28:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/04/13/multi-ibeacon</id>
+    <content type="html"><![CDATA[<h4>複数のiBeaconを検知する方法</h4>
+
+<p>さて、本日はさらっと複数のiBeacon信号の検知について考えてみたいと思います。<br/>
+(これまでできるだろうという考えではあったものの、実際に試してみたことがなかったのでメモ書きです。)<br/>
+Central側ではiBeacon信号をキャッチしたときに、そのオブジェクトを配列の形で取得することができます。<br/>
+具体的には、</p>
+
+<p>```objective-c
+// Beacon信号を検出した場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didRangeBeacons:(NSArray </em>)beacons inRegion:(CLBeaconRegion *)region
+{</p>
+
+<pre><code>if (beacons.count &gt; 0) {
+    NSLog(@"%@", beacons);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のように <strong>beacons</strong> が <strong>NSArray</strong> の型で返ってきていますよね。<br/>
+単純にこれを使ってやればよいのです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>実際にログを見てみると、</p>
+
+<p>```objective-c
+2015-04-13 00:27:23.974 iBeaconSampleCentral[312:15030] (</p>
+
+<pre><code>"CLBeacon (uuid:&lt;__NSConcreteUUID 0x17403a6e0&gt; 8D4DB809-032F-4771-96F3-99BD5C25F924, major:1, minor:2, proximity:1 +/- 0.07m, rssi:-35)",
+"CLBeacon (uuid:&lt;__NSConcreteUUID 0x174037520&gt; 8D4DB809-032F-4771-96F3-99BD5C25F924, major:1, minor:2, proximity:1 +/- 0.20m, rssi:-45)"
+</code></pre>
+
+<p>)
+```</p>
+
+<p>となっています。<br/>
+最寄りのiBeaconのみを使う方法ではできなかった何か新しいサービスを実現できるかもしれませんね。<br/>
+今日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Xcode6.2で使ってみようDoxygen]]></title>
+    <link href="http://grandbig.github.io/blog/2015/04/05/doxygen/"/>
+    <updated>2015-04-05T14:07:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/04/05/doxygen</id>
+    <content type="html"><![CDATA[<h4>Doxygen</h4>
+
+<p>さて、本日はDoxygenについて書こうと思います。<br/>
+筆者はAppleライクなリファレンスを生成できる<a href="https://github.com/tomaz/appledoc">appledoc</a>を利用していましたが、なぜかXcode6.2でうまく生成できないことやAppleの公式リファレンスのデザインが以前より大幅に変更されたことから<a href="http://www.doxygen.jp/">Doxygen</a>を使うことにしました。</p>
+
+<p>DoxygenはC++, C, Java, Objective-C, Python, IDL, Fortran, VHDL, PHP, C#のためのドキュメントジェネレータツールです。<br/>
+独特のリファレンススタイルであるものの、下記3点のメリットがあると公式サイトに書かれています。</p>
+
+<ul>
+<li>ドキュメントとソースコードの一貫性を保つことが容易</li>
+<li>文書化されていないソースファイルから、 コードの構造を抽出するように設定可能</li>
+<li>Doxygen を「乱用 (abuse)」して、 通常のドキュメントを作成可能</li>
+</ul>
+
+
+<p>では、早速使ってみることにしましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>Doxygenの使い方</h5>
+
+<p>まず、<a href="http://www.stack.nl/~dimitri/doxygen/download.html#srcbin">Doxygen公式サイト</a>からダウンロードしましょう。<br/>
+PCへのインストールが完了すると、下記のウィンドウが表示されます。<br/>
+<img src="/images/doxygen_1.png" alt="Doxygen.app" /></p>
+
+<p>ドラッグ＆ドロップでApplicationに追加しましょう。</p>
+
+<p>Doxygenを起動します。<br/>
+すると下記のようなウィンドウが表示されます。<br/>
+<img src="/images/doxygen_4.png" alt="Doxygenウィンドウ" /></p>
+
+<p>各項目を下記のように指定しましょう。<br/>
+<img src="/images/doxygen_3.png" alt="Doxygenウィンドウに各項目を指定" /></p>
+
+<p>そして、Runをクリックしてタブを切り替えます。そして、Run doxygenをクリックします。<br/>
+すると、Output produced by doxygenにログが出力されます。</p>
+
+<p><img src="/images/doxygen_2.png" alt="ログを出力" /></p>
+
+<p>完了したら、 <strong>Show HTML output</strong> をクリックしましょう。<br/>
+ブラウザが起動して、リファレンスが表示されるはずです。</p>
+
+<p><img src="/images/doxygen_5.png" alt="リファレンス" /></p>
+
+<p>クラス間の関係性もわかるため、なかなか良い気がします。<br/>
+appledocとほとんど書式も同じっぽいですし。<br/>
+少しずつ慣れていこうと思います。<br/>
+といったところで今日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Objective-Cにおける継承とカテゴリ]]></title>
+    <link href="http://grandbig.github.io/blog/2015/04/05/inheritance-and-expansion/"/>
+    <updated>2015-04-05T01:10:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/04/05/inheritance-and-expansion</id>
+    <content type="html"><![CDATA[<h4>Objective-Cの継承とカテゴリについて</h4>
+
+<p>さて、本日は今更ですが、Objective-Cの継承とカテゴリについて書きたいと思います。<br/>
+理由は、最近、自分だけではなく、 <strong>『第三者が見てもわかりやすいクラス』</strong> を作ることを意識し始めたからです。<br/>
+本当に今更ですね笑。</p>
+
+<p>アジェンダは下記です。</p>
+
+<ul>
+<li>Objective-Cの継承</li>
+<li>Objective-Cのカテゴリ</li>
+<li>シングルトンパターンでの継承</li>
+<li>シングルトンパターンのクラスを継承したクラスのカテゴリ</li>
+</ul>
+
+
+<p>では、早速見て行きましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>Objective-Cの継承</h4>
+
+<p>まずは、継承です。<br/>
+初めに元となるクラスを作成します。</p>
+
+<p>```objective-c
+// SampleClass.h</p>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<p>@interface SampleClass : NSObject</p>
+
+<p>@property(strong, nonatomic) NSString *sampleProperty;</p>
+
+<ul>
+<li>(void)sampleMethod;</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>```objective-c
+// SampleClass.m</p>
+
+<h1>import &ldquo;SampleClass.h&rdquo;</h1>
+
+<p>@implementation SampleClass</p>
+
+<ul>
+<li><p>(id)init
+{
+  self = [super init];</p>
+
+<p>  if(self) {
+      self.sampleProperty = @&ldquo;これはsamplePropertyです&rdquo;;
+  }</p>
+
+<p>  return self;
+}</p></li>
+<li><p>(void)sampleMethod
+{
+  NSLog(@&ldquo;sampleMethodを実行しました&rdquo;);
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>このSampleClassを継承したクラスを作成します。</p>
+
+<p>```objective-c
+// SampleClass2.h</p>
+
+<h1>import &ldquo;SampleClass.h&rdquo;</h1>
+
+<p>@interface SampleClass2 : SampleClass</p>
+
+<p>@property(strong, nonatomic) NSString *sample2Property;</p>
+
+<ul>
+<li>(void)sample2Method;</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>```objective-c
+// SampleClass2.m</p>
+
+<h1>import &ldquo;SampleClass2.h&rdquo;</h1>
+
+<p>@implementation SampleClass2</p>
+
+<ul>
+<li>(void)sample2Method
+{
+  [self sampleMethod];
+}</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>このようにSampleClass2はSampleClassを継承しているので、sampleMethodを利用することができます。<br/>
+このクラスをViewControllerで使う場合は下記のようにできます。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;SampleClass2.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];
+  [self testMethod];
+}</p></li>
+<li><p>(void)testMethod {
+  // SampleClass2の初期化
+  SampleClass2 *sample2 = [[SampleClass2 alloc] init];
+  // SampleClass2で定義されたsample2Methodを実行
+  [sample2 sample2Method];
+  // スーパークラスであるSampleClassのsampleMethodを実行
+  [sample2 sampleMethod];
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>元々あったクラスに新たなプロパティやメソッドを追加したクラスを作成した場合はこのようにやれば良いわけです。</p>
+
+<h4>Objective-Cのカテゴリ</h4>
+
+<p>続いて、カテゴリです。</p>
+
+<p>SampleClassのカテゴリクラスを作成します。</p>
+
+<p>```objective-c
+// SampleClass3.h</p>
+
+<h1>import &ldquo;SampleClass.h&rdquo;</h1>
+
+<p>@interface SampleClass(SampleClass3)</p>
+
+<ul>
+<li>(void)sample3Method;</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>```objective-c
+// SampleClass3.m</p>
+
+<h1>import &ldquo;SampleClass3.h&rdquo;</h1>
+
+<p>@implementation SampleClass(SampleClass3)</p>
+
+<ul>
+<li>(void)sample3Method
+{
+  return [self sampleMethod];
+}</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>上記を見ると、継承と何が違うの？と思われるかもしれません。<br/>
+実はカテゴリでは継承のようにプロパティの定義ができません。<br/>
+基本的に元のクラスに新しいメソッドを追加したいときに使うもののようです。<br/>
+<a href="http://ja.wikipedia.org/wiki/Objective-C">Wikipedia</a>にも書いてある通り、『ひとつのクラスの実装を関連するメソッド群毎に別々の場所に分割して記述することを可能とする目的で作られた』だそうです。</p>
+
+<p>しかしながら、厳密にはプロパティも追加できます。<br/>
+追加したい場合は下記のようにします。</p>
+
+<p>```objective-c
+// SampleClass3.h</p>
+
+<h1>import &ldquo;SampleClass.h&rdquo;</h1>
+
+<p>@interface SampleClass(SampleClass3)</p>
+
+<p>// ここを追加
+@property(strong, nonatomic) NSString *sample3Property;</p>
+
+<ul>
+<li>(void)sample3Method;</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>```objective-c
+// SampleClass3.m</p>
+
+<h1>import &ldquo;SampleClass3.h&rdquo;</h1>
+
+<p>// ここを追加</p>
+
+<h1>import &lt;objc/runtime.h></h1>
+
+<p>@implementation SampleClass(SampleClass3)</p>
+
+<p>// ここを追加
+@dynamic sample3Property;</p>
+
+<p>// ここを追加
+&ndash; (void)setValue:(NSString*)sample3Property
+{</p>
+
+<pre><code>objc_setAssociatedObject(self, _cmd, sample3Property, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+</code></pre>
+
+<p>}</p>
+
+<ul>
+<li>(void)sample3Method
+{
+  return [self sampleMethod];
+}</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>では、このカテゴリクラスをViewControllerで使ってみましょう。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;SampleClass.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];
+  [self testMethod];
+}</p></li>
+<li><p>(void)testMethod {
+  // SampleClassの初期化
+  SampleClass *sample = [[SampleClass alloc] init];
+  // SampleClassで定義されたsampleMethodを実行
+  [sample sampleMethod];
+  // SampleClass3のsample3Methodを実行
+  [sample sample3Method];
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>カテゴリは <strong>元のクラスに定義を追加した</strong> ものなので、上記ソースのように初期化するオブジェクトはあくまでも <strong>SampleClass</strong> であることに注意しましょう。</p>
+
+<h4>シングルトンパターンでの継承</h4>
+
+<p>シングルトンパターンでは、少し注意が必要です。<br/>
+元のクラスをシングルトンパターンにしましょう。</p>
+
+<p>```objective-c
+// SampleClass.h</p>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<p>@interface SampleClass : NSObject</p>
+
+<p>@property(strong, nonatomic) NSString *sampleProperty;</p>
+
+<p>// シングルトンのインスタンス取得
++ (SampleClass *)sharedInstance;</p>
+
+<ul>
+<li>(void)sampleMethod;</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>```objective-c
+// SampleClass.m</p>
+
+<h1>import &ldquo;SampleClass.h&rdquo;</h1>
+
+<p>@implementation SampleClass</p>
+
+<p>// シングルトンのインスタンス取得
++ (SampleClass *)sharedInstance
+{</p>
+
+<pre><code>static SampleClass* sharedInstance = nil;
+static dispatch_once_t onceToken;
+dispatch_once(&amp;onceToken, ^{
+    sharedInstance = [[SampleClass alloc] init];
+});
+
+return sharedInstance;
+</code></pre>
+
+<p>}</p>
+
+<ul>
+<li><p>(id)init
+{
+  self = [super init];</p>
+
+<p>  if(self) {
+      self.sampleProperty = @&ldquo;これはsamplePropertyです&rdquo;;
+  }</p>
+
+<p>  return self;
+}</p></li>
+<li><p>(void)sampleMethod
+{
+  NSLog(@&ldquo;sampleMethodを実行しました&rdquo;);
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>SampleClassをシングルトンパターンにした上で、継承したSample2ClassをViewControllerで使ってみましょう。</p>
+
+<p>```
+// ViewController.m</p>
+
+<h1>import &ldquo;SampleClass2.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];
+  [self testMethod];
+}</p></li>
+<li><p>(void)testMethod {
+  // SampleClassで定義されたsampleMethodを実行
+  [[SampleClass2 sharedInstance] sampleMethod];
+  // SampleClass2で定義されたsample2Methodを実行
+  [[SampleClass2 sharedInstance] sample2Method];
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>実はこれだとうまくいきません。<br/>
+どこがうまくいかないかというと、 <strong>SampleClass2で定義されたsample2Methodの実行</strong> の部分です。<br/>
+これは <strong>SampleClassにsample2Methodは定義されていません</strong> といったエラーが表示されます。<br/>
+そう、初期化されたのはあくまでもSampleClassであって、SampleClass2ではないため、上記のようなエラーが出るのです。</p>
+
+<p>このエラーを防ぐためには、SampleClass2を下記のように定義します。</p>
+
+<p>```objective-c
+// SampleClass2.h</p>
+
+<h1>import &ldquo;SampleClass.h&rdquo;</h1>
+
+<p>@interface SampleClass2 : SampleClass</p>
+
+<p>@property(strong, nonatomic) NSString *sample2Property;</p>
+
+<p>+(SampleClass2 *)sharedInstance;</p>
+
+<ul>
+<li>(void)sample2Method;</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>```objective-c
+// SampleClass2.m</p>
+
+<h1>import &ldquo;SampleClass2.h&rdquo;</h1>
+
+<p>@implementation SampleClass2</p>
+
+<p>// シングルトンのインスタンス取得
++ (SampleClass2 *)sharedInstance
+{</p>
+
+<pre><code>static SampleClass2* sharedInstance = nil;
+static dispatch_once_t onceToken;
+dispatch_once(&amp;onceToken, ^{
+    sharedInstance = [[SampleClass2 alloc] init];
+});
+
+return sharedInstance;
+</code></pre>
+
+<p>}</p>
+
+<ul>
+<li>(void)sample2Method
+{
+  [self sampleMethod];
+}</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>はい。当たり前ですね。<br/>
+正しく理解していないと悩むことになるのでご注意を！</p>
+
+<h4>シングルトンパターンのクラスを継承したクラスのカテゴリ</h4>
+
+<p>最後にややこしいことをしてみましょう笑。<br/>
+先ほどのシングルトンパターンのクラスであるSampleClassを継承したSampleClass2のカテゴリであるSampleClass4を作成してみます。</p>
+
+<p>```objective-c
+// SampleClass4.h</p>
+
+<h1>import &ldquo;SampleClass2.h&rdquo;</h1>
+
+<p>@interface SampleClass2(SampleClass4)</p>
+
+<ul>
+<li>(void)sample4Method;</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>```</p>
+
+<h1>import &ldquo;SampleClass4.h&rdquo;</h1>
+
+<p>@implementation SampleClass2(SampleClass4)</p>
+
+<ul>
+<li>(void)sample4Method
+{
+  [SampleClass2 sharedInstance].sample2Property = @&ldquo;SampleClass4オブジェクトのsample2Propertyプロパティ&rdquo;;
+}
+```</li>
+</ul>
+
+
+<p>さて、ViewControllerで使ってみましょう。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;SampleClass4.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];
+  [self testMethod];
+}</p></li>
+<li><p>(void)testMethod {
+  // SampleClassで定義されたsampleMethodを実行
+  [[SampleClass2 sharedInstance] sampleMethod];
+  // SampleClass2で定義されたsample2Methodを実行
+  [[SampleClass2 sharedInstance] sample2Method];
+  // SampleClass4で定義されたsample4Methodを実行
+  [[SampleClass2 sharedInstance] sample4Method];
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>なかなかに頭を混乱させられましたが、なんとかできました笑。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
