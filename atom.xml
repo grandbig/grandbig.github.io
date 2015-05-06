@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-04-30T19:51:08+09:00</updated>
+  <updated>2015-05-07T00:59:40+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,154 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[FMDBを使ってSQLiteに画像を保存しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/05/07/sqlite-img/"/>
+    <updated>2015-05-07T00:37:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/05/07/sqlite-img</id>
+    <content type="html"><![CDATA[<h4>FMDBを使ってSQLiteに画像を保存してみる</h4>
+
+<p>さて、当たり前なようでやったことがなかったのでやってみました。<br/>
+たぶんもっとキレイな方法があると思うのですが、なぜかできず&hellip;。できた方法を説明します。</p>
+
+<h5>SQLiteにデータを保存</h5>
+
+<p>まず下記のメソッドを実装します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// DBに接続</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nf">dbConnect:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">dbName</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSArray</span> <span class="o">*</span><span class="n">paths</span> <span class="o">=</span> <span class="n">NSSearchPathForDirectoriesInDomains</span><span class="p">(</span> <span class="n">NSDocumentDirectory</span><span class="p">,</span> <span class="n">NSUserDomainMask</span><span class="p">,</span> <span class="n">YES</span> <span class="p">);</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">dir</span> <span class="o">=</span> <span class="p">[</span><span class="n">paths</span> <span class="nl">objectAtIndex:</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">FMDatabase</span> <span class="o">*</span><span class="n">db</span> <span class="o">=</span> <span class="p">[</span><span class="n">FMDatabase</span> <span class="nl">databaseWithPath:</span><span class="p">[</span><span class="n">dir</span> <span class="nl">stringByAppendingPathComponent:</span><span class="n">dbName</span><span class="p">]];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// テーブルの作成</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">createTable:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">dbName</span> <span class="nf">tableName:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">tableName</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">FMDatabase</span> <span class="o">*</span><span class="n">db</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span> <span class="nl">dbConnect:</span><span class="n">dbName</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">sql</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;create table if not exists %@ (id INTEGER PRIMARY KEY, title TEXT, imgData TEXT)&quot;</span><span class="p">,</span> <span class="n">tableName</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="n">open</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="nl">executeUpdate:</span><span class="n">sql</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="n">close</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>さて、上記のメソッドは基本的なDB接続とテーブル作成をするためのものです。<br/>
+続いて画像のデータをinsertします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">insertImgData:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">dbName</span> <span class="nf">tableName:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">tableName</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">UIImage</span> <span class="o">*</span><span class="n">img</span> <span class="o">=</span> <span class="p">[</span><span class="n">UIImage</span> <span class="nl">imageNamed:</span><span class="s">@&quot;apple.png&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSData</span> <span class="o">*</span><span class="n">imgData</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSData</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithData:</span><span class="n">UIImagePNGRepresentation</span><span class="p">(</span><span class="n">img</span><span class="p">)];</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">imgString</span> <span class="o">=</span> <span class="p">[</span><span class="n">imgData</span> <span class="nl">base64EncodedStringWithOptions:</span><span class="n">NSDataBase64Encoding76CharacterLineLength</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">FMDatabase</span> <span class="o">*</span><span class="n">db</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span> <span class="nl">dbConnect:</span><span class="n">dbName</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">insert</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;insert into %@ (title, imgData) values (&#39;%@&#39;, &#39;%@&#39;)&quot;</span><span class="p">,</span> <span class="n">tableName</span><span class="p">,</span> <span class="s">@&quot;test&quot;</span><span class="p">,</span> <span class="n">imgString</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="n">open</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="nl">executeUpdate:</span><span class="n">insert</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="n">close</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>今回はテストのために固定の画像を内部DBにinsertするようにしています。<br/>
+そして、画像データを取得するメソッドを用意します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="n">UIImage</span><span class="p">)</span><span class="nf">getImgData:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">dbName</span> <span class="nf">tableName:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">tableName</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSData</span> <span class="o">*</span><span class="n">imgData</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">FMDatabase</span> <span class="o">*</span><span class="n">db</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span> <span class="nl">dbConnect:</span><span class="n">dbName</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">select</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;select * from %@ order by id desc limit 1&quot;</span><span class="p">,</span> <span class="n">table_name</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="n">open</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">FMResultSet</span> <span class="o">*</span><span class="n">rs</span> <span class="o">=</span> <span class="p">[</span><span class="n">db</span> <span class="nl">executeQuery:</span><span class="n">select</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">while</span><span class="p">([</span><span class="n">rs</span> <span class="n">next</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSString</span> <span class="o">*</span><span class="n">imgString</span> <span class="o">=</span> <span class="p">[</span><span class="n">rs</span> <span class="nl">stringForColumn:</span><span class="s">@&quot;imgData&quot;</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">imgData</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSData</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithBase64EncodedString:</span><span class="n">imgString</span> <span class="nl">options:</span><span class="n">NSDataBase64DecodingIgnoreUnknownCharacters</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="n">UIImage</span> <span class="o">*</span><span class="n">img</span> <span class="o">=</span> <span class="p">[</span><span class="n">UIImage</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithData:</span><span class="n">imgData</span><span class="p">];]</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>重要なのはエンコード/デコードです。<br/>
+いろいろなサイトを見ると、NSData型の値をSQLiteのBLOB型で保存すれば良いと書かれているのですが、デフォで画像用でないエンコードされているからなのか、想定した値が取れないんですよね〜。<br/>
+う〜ん。もう少し考えてみますが、一先ず、これでもできるってことでメモ書きとしておきます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[複数のMacでiOS端末の実機検証を可能にするためには！？]]></title>
@@ -4194,163 +4342,6 @@ MAXの送信出力が4 [dBm] のようなので、それ以下(負の値も含�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[自作ライブラリをCocoaPodsで管理しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/01/31/cocoapods/"/>
-    <updated>2015-01-31T22:54:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/01/31/cocoapods</id>
-    <content type="html"><![CDATA[<h4>自作ライブラリをCocoaPodsでインストールしたい</h4>
-
-<p>さて、本日はCocoaPodsについて書いてみます。<br/>
-最近、GitHubなどで公開されているiOS向けOSSのほとんどはCocoaPodsで管理されていることと思います。<br/>
-そんな中、『自分で開発したライブラリも皆に使ってもらうなら、カッコよくCocoaPodsでインストールしてほしい』といった思いも出てきますよね。<br/>
-よし！やってみよう！というのが本日の記事です。</p>
-
-<p>では、早速、その手順です。<br/>
-まずは、CocoaPodsで管理する対象の構造を下記に示します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">Classes</span> <span class="err">━┳━━</span> <span class="n">jsonUtil</span>
-</span><span class='line'>         <span class="err">┃</span>     <span class="err">┣━━</span> <span class="n">jsonUtil</span><span class="p">.</span><span class="n">h</span>
-</span><span class='line'>         <span class="err">┃</span>     <span class="err">┗━━</span> <span class="n">jsonUtil</span><span class="p">.</span><span class="n">m</span>
-</span><span class='line'>         <span class="err">┃</span>
-</span><span class='line'>         <span class="err">┗━━</span> <span class="n">Validation</span>
-</span><span class='line'>               <span class="err">┣━━</span> <span class="n">Validation</span><span class="p">.</span><span class="n">h</span>
-</span><span class='line'>               <span class="err">┗━━</span> <span class="n">Validation</span><span class="p">.</span><span class="n">m</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<!-- more -->
-
-
-<p>１．GitHubにファイルをアップロード<br/>
-OSSとして公開するのですから、<a href="https://github.com/">GitHub</a>にアップしましょう。<br/>
-アカウントを作成して、新レポジトリを作成しましょう。<br/>
-詳しくは<a href="http://www.atmarkit.co.jp/ait/articles/1407/22/news019.html">GitHub（ギットハブ）の使い方：登録編</a>を参考にしましょう。</p>
-
-<p>２．podspecファイルを作成<br/>
-ターミナルから公開したいファイルの階層に入り、podspecファイルを作成しましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">cd</span> <span class="o">&lt;</span><span class="err">指定ファイルのディレクトリ</span><span class="o">&gt;</span>
-</span><span class='line'><span class="n">pod</span> <span class="n">spec</span> <span class="n">create</span> <span class="o">&lt;</span><span class="err">公開ライブラリの名称</span><span class="o">&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>３．podspecファイルを編集<br/>
-podspecファイルを編集して、GitHubとの連携などを設定しましょう。<br/>
-とにかく今回書いたpodspecファイルは下記です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">Pod</span><span class="o">::</span><span class="n">Spec</span><span class="p">.</span><span class="n">new</span> <span class="k">do</span> <span class="o">|</span><span class="n">s</span><span class="o">|</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">s</span><span class="p">.</span><span class="n">name</span>         <span class="o">=</span> <span class="s">&quot;CocoaPodsSampleLibrary&quot;</span>
-</span><span class='line'>  <span class="n">s</span><span class="p">.</span><span class="n">version</span>      <span class="o">=</span> <span class="s">&quot;0.0.1&quot;</span>
-</span><span class='line'>  <span class="n">s</span><span class="p">.</span><span class="n">summary</span>      <span class="o">=</span> <span class="s">&quot;Library for CocoaPods Test&quot;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">s</span><span class="p">.</span><span class="n">description</span>  <span class="o">=</span> <span class="o">&lt;&lt;-</span><span class="n">DESC</span>
-</span><span class='line'>                   <span class="n">A</span> <span class="n">longer</span> <span class="n">description</span> <span class="n">of</span> <span class="n">CocoaPodsSampleLibrary</span> <span class="k">in</span> <span class="n">Markdown</span> <span class="n">format</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'>                   <span class="o">*</span> <span class="nl">Think:</span> <span class="n">Why</span> <span class="n">did</span> <span class="n">you</span> <span class="n">write</span> <span class="n">this</span><span class="o">?</span> <span class="n">What</span> <span class="n">is</span> <span class="n">the</span> <span class="n">focus</span><span class="o">?</span> <span class="n">What</span> <span class="n">does</span> <span class="n">it</span> <span class="k">do</span><span class="o">?</span>
-</span><span class='line'>                   <span class="o">*</span> <span class="n">CocoaPods</span> <span class="n">will</span> <span class="n">be</span> <span class="n">using</span> <span class="n">this</span> <span class="n">to</span> <span class="n">generate</span> <span class="n">tags</span><span class="p">,</span> <span class="n">and</span> <span class="n">improve</span> <span class="n">search</span> <span class="n">results</span><span class="p">.</span>
-</span><span class='line'>                   <span class="o">*</span> <span class="n">Try</span> <span class="n">to</span> <span class="n">keep</span> <span class="n">it</span> <span class="kt">short</span><span class="p">,</span> <span class="n">snappy</span> <span class="n">and</span> <span class="n">to</span> <span class="n">the</span> <span class="n">point</span><span class="p">.</span>
-</span><span class='line'>                   <span class="o">*</span> <span class="n">Finally</span><span class="p">,</span> <span class="n">don</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">worry</span> <span class="n">about</span> <span class="n">the</span> <span class="n">indent</span><span class="p">,</span> <span class="n">CocoaPods</span> <span class="n">strips</span> <span class="n">it</span><span class="o">!</span>
-</span><span class='line'>                   <span class="n">DESC</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">s</span><span class="p">.</span><span class="n">homepage</span>     <span class="o">=</span> <span class="s">&quot;https://github.com/grandbig/CocoaPodsSampleLibrary&quot;</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">s</span><span class="p">.</span><span class="n">source</span>       <span class="o">=</span> <span class="p">{</span> <span class="o">:</span><span class="n">git</span> <span class="o">=&gt;</span> <span class="s">&quot;https://github.com/grandbig/CocoaPodsSampleLibrary.git&quot;</span><span class="p">,</span> <span class="o">:</span><span class="n">tag</span> <span class="o">=&gt;</span> <span class="s">&quot;#{s.version}&quot;</span> <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">s</span><span class="p">.</span><span class="n">subspec</span> <span class="err">&#39;</span><span class="n">jsonUtil</span><span class="err">&#39;</span> <span class="k">do</span> <span class="o">|</span><span class="n">ss</span><span class="o">|</span>
-</span><span class='line'>    <span class="n">ss</span><span class="p">.</span><span class="n">source_files</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">Classes</span><span class="o">/</span><span class="n">jsonUtil</span><span class="o">/*</span><span class="p">.{</span><span class="n">h</span><span class="p">,</span><span class="n">m</span><span class="p">}</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">end</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">s</span><span class="p">.</span><span class="n">subspec</span> <span class="err">&#39;</span><span class="n">Validation</span><span class="err">&#39;</span> <span class="k">do</span> <span class="o">|</span><span class="n">ss</span><span class="o">|</span>
-</span><span class='line'>    <span class="n">ss</span><span class="p">.</span><span class="n">source_files</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">Classes</span><span class="o">/</span><span class="n">Validation</span><span class="o">/*</span><span class="p">.{</span><span class="n">h</span><span class="p">,</span><span class="n">m</span><span class="p">}</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">end</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><code>s.source</code>にはCocoaPodsでのインストールをするために<code>:git =&gt; "..."</code>の部分にGitHubからCloneするたときに指定するURLを書きましょう。</p>
-
-<p>そして、CocoaPodsでインストールした後もフォルダ構成を保ちたいのであれば、単純に<code>s.source_files  = "Classes", "Classes/**/*.{h,m}"</code>と指定するのではなく、
-<code>s.subspec 'jsonUtil' do |ss| 〜 end</code>と指定しましょう。</p>
-
-<p>さて、これで全ての対応が完了しました。<br/>
-実際に、CocoaPodsでインストールしてみましょう！<br/>
-思い描いた通りに自作ライブラリが追加されているはずです。<br/>
-といったところで今日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
 
 ]]></content>
   </entry>

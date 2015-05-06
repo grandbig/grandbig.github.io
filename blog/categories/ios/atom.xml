@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ios/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-04-30T19:51:51+09:00</updated>
+  <updated>2015-05-07T00:59:40+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,123 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[FMDBを使ってSQLiteに画像を保存しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/05/07/sqlite-img/"/>
+    <updated>2015-05-07T00:37:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/05/07/sqlite-img</id>
+    <content type="html"><![CDATA[<h4>FMDBを使ってSQLiteに画像を保存してみる</h4>
+
+<p>さて、当たり前なようでやったことがなかったのでやってみました。<br/>
+たぶんもっとキレイな方法があると思うのですが、なぜかできず&hellip;。できた方法を説明します。</p>
+
+<h5>SQLiteにデータを保存</h5>
+
+<p>まず下記のメソッドを実装します。</p>
+
+<p>```objective-c
+// DBに接続
+&ndash; (id)dbConnect:(NSString *)dbName
+{</p>
+
+<pre><code>NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
+NSString *dir = [paths objectAtIndex:0];
+FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:dbName]];
+
+return db;
+</code></pre>
+
+<p>}</p>
+
+<p>// テーブルの作成
+&ndash; (void)createTable:(NSString <em>)dbName tableName:(NSString </em>)tableName
+{</p>
+
+<pre><code>FMDatabase *db = [self dbConnect:dbName];
+NSString *sql = [[NSString alloc] initWithFormat:@"create table if not exists %@ (id INTEGER PRIMARY KEY, title TEXT, imgData TEXT)", tableName];
+[db open];
+[db executeUpdate:sql];
+[db close];
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>さて、上記のメソッドは基本的なDB接続とテーブル作成をするためのものです。<br/>
+続いて画像のデータをinsertします。</p>
+
+<p>```objective-c
+&ndash; (void)insertImgData:(NSString <em>)dbName tableName:(NSString </em>)tableName
+{</p>
+
+<pre><code>UIImage *img = [UIImage imageNamed:@"apple.png"];
+NSData *imgData = [NSData alloc] initWithData:UIImagePNGRepresentation(img)];
+NSString *imgString = [imgData base64EncodedStringWithOptions:NSDataBase64Encoding76CharacterLineLength];
+FMDatabase *db = [self dbConnect:dbName];
+NSString *insert = [[NSString alloc] initWithFormat:@"insert into %@ (title, imgData) values ('%@', '%@')", tableName, @"test", imgString];
+[db open];
+[db executeUpdate:insert];
+[db close];
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>今回はテストのために固定の画像を内部DBにinsertするようにしています。<br/>
+そして、画像データを取得するメソッドを用意します。</p>
+
+<p>```objective-c
+&ndash; (UIImage)getImgData:(NSString <em>)dbName tableName:(NSString </em>)tableName
+{</p>
+
+<pre><code>NSData *imgData;
+FMDatabase *db = [self dbConnect:dbName];
+NSString *select = [[NSString alloc] initWithFormat:@"select * from %@ order by id desc limit 1", table_name];
+[db open];
+FMResultSet *rs = [db executeQuery:select];
+while([rs next]) {
+    NSString *imgString = [rs stringForColumn:@"imgData"];
+    imgData = [[NSData alloc] initWithBase64EncodedString:imgString options:NSDataBase64DecodingIgnoreUnknownCharacters];
+}
+UIImage *img = [UIImage alloc] initWithData:imgData];]
+</code></pre>
+
+<p>}
+```</p>
+
+<p>重要なのはエンコード/デコードです。<br/>
+いろいろなサイトを見ると、NSData型の値をSQLiteのBLOB型で保存すれば良いと書かれているのですが、デフォで画像用でないエンコードされているからなのか、想定した値が取れないんですよね〜。<br/>
+う〜ん。もう少し考えてみますが、一先ず、これでもできるってことでメモ書きとしておきます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iBeacon完全攻略！？]]></title>
@@ -512,541 +629,6 @@ PCへのインストールが完了すると、下記のウィンドウが表示
 appledocとほとんど書式も同じっぽいですし。<br/>
 少しずつ慣れていこうと思います。<br/>
 といったところで今日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Objective-Cにおける継承とカテゴリ]]></title>
-    <link href="http://grandbig.github.io/blog/2015/04/05/inheritance-and-expansion/"/>
-    <updated>2015-04-05T01:10:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/04/05/inheritance-and-expansion</id>
-    <content type="html"><![CDATA[<h4>Objective-Cの継承とカテゴリについて</h4>
-
-<p>さて、本日は今更ですが、Objective-Cの継承とカテゴリについて書きたいと思います。<br/>
-理由は、最近、自分だけではなく、 <strong>『第三者が見てもわかりやすいクラス』</strong> を作ることを意識し始めたからです。<br/>
-本当に今更ですね笑。</p>
-
-<p>アジェンダは下記です。</p>
-
-<ul>
-<li>Objective-Cの継承</li>
-<li>Objective-Cのカテゴリ</li>
-<li>シングルトンパターンでの継承</li>
-<li>シングルトンパターンのクラスを継承したクラスのカテゴリ</li>
-</ul>
-
-
-<p>では、早速見て行きましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>Objective-Cの継承</h4>
-
-<p>まずは、継承です。<br/>
-初めに元となるクラスを作成します。</p>
-
-<p>```objective-c
-// SampleClass.h</p>
-
-<h1>import &lt;Foundation/Foundation.h></h1>
-
-<p>@interface SampleClass : NSObject</p>
-
-<p>@property(strong, nonatomic) NSString *sampleProperty;</p>
-
-<ul>
-<li>(void)sampleMethod;</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>```objective-c
-// SampleClass.m</p>
-
-<h1>import &ldquo;SampleClass.h&rdquo;</h1>
-
-<p>@implementation SampleClass</p>
-
-<ul>
-<li><p>(id)init
-{
-  self = [super init];</p>
-
-<p>  if(self) {
-      self.sampleProperty = @&ldquo;これはsamplePropertyです&rdquo;;
-  }</p>
-
-<p>  return self;
-}</p></li>
-<li><p>(void)sampleMethod
-{
-  NSLog(@&ldquo;sampleMethodを実行しました&rdquo;);
-}</p></li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>このSampleClassを継承したクラスを作成します。</p>
-
-<p>```objective-c
-// SampleClass2.h</p>
-
-<h1>import &ldquo;SampleClass.h&rdquo;</h1>
-
-<p>@interface SampleClass2 : SampleClass</p>
-
-<p>@property(strong, nonatomic) NSString *sample2Property;</p>
-
-<ul>
-<li>(void)sample2Method;</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>```objective-c
-// SampleClass2.m</p>
-
-<h1>import &ldquo;SampleClass2.h&rdquo;</h1>
-
-<p>@implementation SampleClass2</p>
-
-<ul>
-<li>(void)sample2Method
-{
-  [self sampleMethod];
-}</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>このようにSampleClass2はSampleClassを継承しているので、sampleMethodを利用することができます。<br/>
-このクラスをViewControllerで使う場合は下記のようにできます。</p>
-
-<p>```objective-c
-// ViewController.m</p>
-
-<h1>import &ldquo;SampleClass2.h&rdquo;</h1>
-
-<p>@interface ViewController ()</p>
-
-<p>@end</p>
-
-<p>@implementation ViewController</p>
-
-<ul>
-<li><p>(void)viewDidLoad {
-  [super viewDidLoad];
-  [self testMethod];
-}</p></li>
-<li><p>(void)testMethod {
-  // SampleClass2の初期化
-  SampleClass2 *sample2 = [[SampleClass2 alloc] init];
-  // SampleClass2で定義されたsample2Methodを実行
-  [sample2 sample2Method];
-  // スーパークラスであるSampleClassのsampleMethodを実行
-  [sample2 sampleMethod];
-}</p></li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>元々あったクラスに新たなプロパティやメソッドを追加したクラスを作成した場合はこのようにやれば良いわけです。</p>
-
-<h4>Objective-Cのカテゴリ</h4>
-
-<p>続いて、カテゴリです。</p>
-
-<p>SampleClassのカテゴリクラスを作成します。</p>
-
-<p>```objective-c
-// SampleClass3.h</p>
-
-<h1>import &ldquo;SampleClass.h&rdquo;</h1>
-
-<p>@interface SampleClass(SampleClass3)</p>
-
-<ul>
-<li>(void)sample3Method;</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>```objective-c
-// SampleClass3.m</p>
-
-<h1>import &ldquo;SampleClass3.h&rdquo;</h1>
-
-<p>@implementation SampleClass(SampleClass3)</p>
-
-<ul>
-<li>(void)sample3Method
-{
-  return [self sampleMethod];
-}</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>上記を見ると、継承と何が違うの？と思われるかもしれません。<br/>
-実はカテゴリでは継承のようにプロパティの定義ができません。<br/>
-基本的に元のクラスに新しいメソッドを追加したいときに使うもののようです。<br/>
-<a href="http://ja.wikipedia.org/wiki/Objective-C">Wikipedia</a>にも書いてある通り、『ひとつのクラスの実装を関連するメソッド群毎に別々の場所に分割して記述することを可能とする目的で作られた』だそうです。</p>
-
-<p>しかしながら、厳密にはプロパティも追加できます。<br/>
-追加したい場合は下記のようにします。</p>
-
-<p>```objective-c
-// SampleClass3.h</p>
-
-<h1>import &ldquo;SampleClass.h&rdquo;</h1>
-
-<p>@interface SampleClass(SampleClass3)</p>
-
-<p>// ここを追加
-@property(strong, nonatomic) NSString *sample3Property;</p>
-
-<ul>
-<li>(void)sample3Method;</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>```objective-c
-// SampleClass3.m</p>
-
-<h1>import &ldquo;SampleClass3.h&rdquo;</h1>
-
-<p>// ここを追加</p>
-
-<h1>import &lt;objc/runtime.h></h1>
-
-<p>@implementation SampleClass(SampleClass3)</p>
-
-<p>// ここを追加
-@dynamic sample3Property;</p>
-
-<p>// ここを追加
-&ndash; (void)setValue:(NSString*)sample3Property
-{</p>
-
-<pre><code>objc_setAssociatedObject(self, _cmd, sample3Property, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-</code></pre>
-
-<p>}</p>
-
-<ul>
-<li>(void)sample3Method
-{
-  return [self sampleMethod];
-}</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>では、このカテゴリクラスをViewControllerで使ってみましょう。</p>
-
-<p>```objective-c
-// ViewController.m</p>
-
-<h1>import &ldquo;SampleClass.h&rdquo;</h1>
-
-<p>@interface ViewController ()</p>
-
-<p>@end</p>
-
-<p>@implementation ViewController</p>
-
-<ul>
-<li><p>(void)viewDidLoad {
-  [super viewDidLoad];
-  [self testMethod];
-}</p></li>
-<li><p>(void)testMethod {
-  // SampleClassの初期化
-  SampleClass *sample = [[SampleClass alloc] init];
-  // SampleClassで定義されたsampleMethodを実行
-  [sample sampleMethod];
-  // SampleClass3のsample3Methodを実行
-  [sample sample3Method];
-}</p></li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>カテゴリは <strong>元のクラスに定義を追加した</strong> ものなので、上記ソースのように初期化するオブジェクトはあくまでも <strong>SampleClass</strong> であることに注意しましょう。</p>
-
-<h4>シングルトンパターンでの継承</h4>
-
-<p>シングルトンパターンでは、少し注意が必要です。<br/>
-元のクラスをシングルトンパターンにしましょう。</p>
-
-<p>```objective-c
-// SampleClass.h</p>
-
-<h1>import &lt;Foundation/Foundation.h></h1>
-
-<p>@interface SampleClass : NSObject</p>
-
-<p>@property(strong, nonatomic) NSString *sampleProperty;</p>
-
-<p>// シングルトンのインスタンス取得
-+ (SampleClass *)sharedInstance;</p>
-
-<ul>
-<li>(void)sampleMethod;</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>```objective-c
-// SampleClass.m</p>
-
-<h1>import &ldquo;SampleClass.h&rdquo;</h1>
-
-<p>@implementation SampleClass</p>
-
-<p>// シングルトンのインスタンス取得
-+ (SampleClass *)sharedInstance
-{</p>
-
-<pre><code>static SampleClass* sharedInstance = nil;
-static dispatch_once_t onceToken;
-dispatch_once(&amp;onceToken, ^{
-    sharedInstance = [[SampleClass alloc] init];
-});
-
-return sharedInstance;
-</code></pre>
-
-<p>}</p>
-
-<ul>
-<li><p>(id)init
-{
-  self = [super init];</p>
-
-<p>  if(self) {
-      self.sampleProperty = @&ldquo;これはsamplePropertyです&rdquo;;
-  }</p>
-
-<p>  return self;
-}</p></li>
-<li><p>(void)sampleMethod
-{
-  NSLog(@&ldquo;sampleMethodを実行しました&rdquo;);
-}</p></li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>SampleClassをシングルトンパターンにした上で、継承したSample2ClassをViewControllerで使ってみましょう。</p>
-
-<p>```
-// ViewController.m</p>
-
-<h1>import &ldquo;SampleClass2.h&rdquo;</h1>
-
-<p>@interface ViewController ()</p>
-
-<p>@end</p>
-
-<p>@implementation ViewController</p>
-
-<ul>
-<li><p>(void)viewDidLoad {
-  [super viewDidLoad];
-  [self testMethod];
-}</p></li>
-<li><p>(void)testMethod {
-  // SampleClassで定義されたsampleMethodを実行
-  [[SampleClass2 sharedInstance] sampleMethod];
-  // SampleClass2で定義されたsample2Methodを実行
-  [[SampleClass2 sharedInstance] sample2Method];
-}</p></li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>実はこれだとうまくいきません。<br/>
-どこがうまくいかないかというと、 <strong>SampleClass2で定義されたsample2Methodの実行</strong> の部分です。<br/>
-これは <strong>SampleClassにsample2Methodは定義されていません</strong> といったエラーが表示されます。<br/>
-そう、初期化されたのはあくまでもSampleClassであって、SampleClass2ではないため、上記のようなエラーが出るのです。</p>
-
-<p>このエラーを防ぐためには、SampleClass2を下記のように定義します。</p>
-
-<p>```objective-c
-// SampleClass2.h</p>
-
-<h1>import &ldquo;SampleClass.h&rdquo;</h1>
-
-<p>@interface SampleClass2 : SampleClass</p>
-
-<p>@property(strong, nonatomic) NSString *sample2Property;</p>
-
-<p>+(SampleClass2 *)sharedInstance;</p>
-
-<ul>
-<li>(void)sample2Method;</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>```objective-c
-// SampleClass2.m</p>
-
-<h1>import &ldquo;SampleClass2.h&rdquo;</h1>
-
-<p>@implementation SampleClass2</p>
-
-<p>// シングルトンのインスタンス取得
-+ (SampleClass2 *)sharedInstance
-{</p>
-
-<pre><code>static SampleClass2* sharedInstance = nil;
-static dispatch_once_t onceToken;
-dispatch_once(&amp;onceToken, ^{
-    sharedInstance = [[SampleClass2 alloc] init];
-});
-
-return sharedInstance;
-</code></pre>
-
-<p>}</p>
-
-<ul>
-<li>(void)sample2Method
-{
-  [self sampleMethod];
-}</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>はい。当たり前ですね。<br/>
-正しく理解していないと悩むことになるのでご注意を！</p>
-
-<h4>シングルトンパターンのクラスを継承したクラスのカテゴリ</h4>
-
-<p>最後にややこしいことをしてみましょう笑。<br/>
-先ほどのシングルトンパターンのクラスであるSampleClassを継承したSampleClass2のカテゴリであるSampleClass4を作成してみます。</p>
-
-<p>```objective-c
-// SampleClass4.h</p>
-
-<h1>import &ldquo;SampleClass2.h&rdquo;</h1>
-
-<p>@interface SampleClass2(SampleClass4)</p>
-
-<ul>
-<li>(void)sample4Method;</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>```</p>
-
-<h1>import &ldquo;SampleClass4.h&rdquo;</h1>
-
-<p>@implementation SampleClass2(SampleClass4)</p>
-
-<ul>
-<li>(void)sample4Method
-{
-  [SampleClass2 sharedInstance].sample2Property = @&ldquo;SampleClass4オブジェクトのsample2Propertyプロパティ&rdquo;;
-}
-```</li>
-</ul>
-
-
-<p>さて、ViewControllerで使ってみましょう。</p>
-
-<p>```objective-c
-// ViewController.m</p>
-
-<h1>import &ldquo;SampleClass4.h&rdquo;</h1>
-
-<p>@interface ViewController ()</p>
-
-<p>@end</p>
-
-<p>@implementation ViewController</p>
-
-<ul>
-<li><p>(void)viewDidLoad {
-  [super viewDidLoad];
-  [self testMethod];
-}</p></li>
-<li><p>(void)testMethod {
-  // SampleClassで定義されたsampleMethodを実行
-  [[SampleClass2 sharedInstance] sampleMethod];
-  // SampleClass2で定義されたsample2Methodを実行
-  [[SampleClass2 sharedInstance] sample2Method];
-  // SampleClass4で定義されたsample4Methodを実行
-  [[SampleClass2 sharedInstance] sample4Method];
-}</p></li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>なかなかに頭を混乱させられましたが、なんとかできました笑。<br/>
-といったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
