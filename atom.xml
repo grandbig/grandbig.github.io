@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-05-07T00:59:40+09:00</updated>
+  <updated>2015-05-09T23:51:10+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,125 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[一定時間内は画面タップをさせない！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/05/09/timer-progresshud/"/>
+    <updated>2015-05-09T23:37:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/05/09/timer-progresshud</id>
+    <content type="html"><![CDATA[<h4>SVProgressHUDとNSTimerを使う</h4>
+
+<p>さて、本日はさくっとメモしておきます。<br/>
+できると思っていて当然できた話なので、本当にメモです笑。</p>
+
+<p><a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>などでどこかしらのサーバに通信している間、画面をユーザに触らせたくないことがあるかもしれません。<br/>
+そんなときはローディングウィンドウを<a href="https://github.com/TransitApp/SVProgressHUD">SVProgressHUD</a>で表示し、 <strong>NSTimer</strong> を使って時間で操ります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;SVProgressHUD.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSTimer</span> <span class="o">*</span><span class="n">timer</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">ViewController</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">didReceiveMemoryWarning</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">didReceiveMemoryWarning</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">IBAction</span><span class="p">)</span><span class="nf">showLoadWindow:</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nv">sender</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// ローディングウィンドウの表示</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">SVProgressHUD</span> <span class="nl">showWithStatus:</span><span class="s">@&quot;Loading...&quot;</span> <span class="nl">maskType:</span><span class="n">SVProgressHUDMaskTypeGradient</span><span class="p">];</span>
+</span><span class='line'>  <span class="c1">// タイマーの設定</span>
+</span><span class='line'>  <span class="n">_timer</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSTimer</span> <span class="nl">scheduledTimerWithTimeInterval:</span><span class="mf">5.0</span> <span class="nl">target:</span><span class="n">self</span> <span class="nl">selector:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">hiddenWindow:</span><span class="p">)</span> <span class="nl">userInfo:</span><span class="nb">nil</span> <span class="nl">repeats:</span><span class="n">NO</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> タイマー対象メソッド(ローディングウィンドウを非表示にする処理)</span>
+</span><span class='line'><span class="cm"> @param timer タイマー</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">hiddenWindow:</span><span class="p">(</span><span class="n">NSTimer</span> <span class="o">*</span><span class="p">)</span><span class="nv">timer</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">SVProgressHUD</span> <span class="n">dismiss</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>よし、できた！ってところでメモ書き終了。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[FMDBを使ってSQLiteに画像を保存しよう！]]></title>
@@ -4229,110 +4348,6 @@ REBL600FRの場合、characteristicsをNSLogでログ出力してみると、</p
 <a href="http://qiita.com/rnamiki/items/ea912393c4fb58e7a9b9">CoreBluetoothで出来る事</a><br/>
 <a href="http://qiita.com/miyatay/items/4d4ce4ccd7905ddc0144">Bluetooth Low Energy（BLE）/ iBeaconとは</a><br/>
 <a href="http://reinforce-lab.github.io/blog/2013/01/25/CBCentralManagerClassReference_jp/">Reinforce-Lab&rsquo;s Blog</a></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[REBL600FRをiBeaconとして検知してみた！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/02/07/bl600sample/"/>
-    <updated>2015-02-07T23:12:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/02/07/bl600sample</id>
-    <content type="html"><![CDATA[<h4>REBL600FRとFRISK</h4>
-
-<p>今日は<a href="http://www.runele.com/ca1/24/">ランニングエレクトロニクス</a>さんから購入したREBL600FRを使って遊んでみたいと思います。<br/>
-早速、REBL600FRを1個注文して、先日、家に届きました。</p>
-
-<p><img src="http://grandbig.github.io/images/REBL600FR_1.jpg" alt="REBL600FRが届いた！" /></p>
-
-<!-- more -->
-
-
-<p>REBL600FRの売りがFRISKのケースに入るサイズとのことなので、FRISKを購入しました。</p>
-
-<p><img src="http://grandbig.github.io/images/FRISK_1.jpg" alt="FRISK2つ購入しました" /></p>
-
-<p>なぜ2つ購入したかって？<br/>
-FRISKを購入しても、すぐにはREBL600FRをケースに入れられませんよね？<br/>
-FRISKが入っているのだから。</p>
-
-<p>なので、FRISKのケースを空けました。</p>
-
-<p><img src="http://grandbig.github.io/images/FRISK_2.jpg" alt="FRISKケースを空にします" /></p>
-
-<p>おぉ、空になった&hellip;かと思いきや、この状態ではFRISKで満帆となったケースが閉まらない&hellip;。<br/>
-閉まるように余分な分を除けてみたところ、</p>
-
-<p><img src="http://grandbig.github.io/images/FRISK_3.jpg" alt="FRISKケースが閉まるように少し除けます" /></p>
-
-<p>11粒を戻すこととなりました。良かった。11粒くらいなら一気に食べられます笑。<br/>
-また、何とか閉めたFRISKケースがこちら。</p>
-
-<p><img src="http://grandbig.github.io/images/FRISK_4.jpg" alt="FRISKケースが閉められた" /></p>
-
-<p>ちょっと浮いてますね&hellip;。</p>
-
-<p>ま、何はともあれこれでREBL600FRをFRISKケースに入れれば準備完了です！</p>
-
-<p><img src="http://grandbig.github.io/images/REBL600FR_2.jpg" alt="REBL600FRの準備完了" /></p>
-
-<h4>REBL600FRのiBeaconを検知してみる</h4>
-
-<p>さて、早速、iBeaconとしての動作を見ていくことにしましょう。<br/>
-iBeaconの信号をキャッチするCentral側のアプリとして、<a href="https://itunes.apple.com/jp/app/lightblue-bluetooth-low-energy/id557428110?mt=8">LightBlue</a>を使うことにしました。<br/>
-理由は、UUIDに何が設定されているのかわからないためです。</p>
-
-<p>では、REBL600FRのスイッチをONにして、LightBlueで見てみましょう。<br/>
-すると、このように <strong>Laird iBeacon</strong> というものを発見します。</p>
-
-<p><img src="http://grandbig.github.io/images/lightblue_1.png" alt="LightBlueの画面" /></p>
-
-<p>これを選択してみると、iBeaconとの接続を試みる処理が走ります。</p>
-
-<p><img src="http://grandbig.github.io/images/lightblue_2.png" alt="LightBlueが接続試みる" /></p>
-
-<p>接続後は詳細画面に遷移します。</p>
-
-<p><img src="http://grandbig.github.io/images/lightblue_3.png" alt="LightBlueでLaird iBeaconの詳細を見る" /></p>
-
-<p>その中で表示される画面の一部を紹介します。</p>
-
-<p><img src="http://grandbig.github.io/images/lightblue_4.png" alt="LightBlueでLaird iBeaconの詳細を見る2" /></p>
-
-<p>ここでぜひお知らせしたいのが、REBL600FRは送信出力をアプリから設定できるんです。<br/>
-それが先ほどの写真でお見せした <strong>Tx Power Level</strong> という項目です。<br/>
-これをタップすると、下記の画面に進みます。</p>
-
-<p><img src="http://grandbig.github.io/images/lightblue_5.png" alt="Tx Power Levelの画面" /></p>
-
-<p>初期状態では <strong>0x04</strong> となっており、4 [dBm] であることを示しています。<br/>
-MAXの送信出力が4 [dBm] のようなので、それ以下(負の値も含む)の値を16進数で設定します。<br/>
-10進数と16進数の相互変換は<a href="http://hogehoge.tk/tool/number.html">こちらのツール</a>からできます。</p>
-
-<p><strong>Write new Value</strong> をタップ ⇒ 数値を設定 ⇒ Doneをタップ<br/>
-これでスイッチのON / OFFを切り替えなくとも送信出力を変更することができます。<br/>
-※ REBL600FRのスイッチをONにしてから約1分の間に接続しないといけないようです。<br/>
-(少し時間が経ってしまうと接続できませんでした。)</p>
-
-<p>実際に、iBeacon検知用のアプリ<a href="https://itunes.apple.com/jp/app/locate-beacon/id738709014?mt=8">Locate Beacon</a>で確認してみると、初期状態に比べて <strong>unknown</strong> と表示される距離が変わるはずです。</p>
-
-<p>時間があるときに各種パラメータの値を変更可能なiOSアプリを作成したいと思います。</p>
-
-<p>ということで、今日はここまで。</p>
-
-<p>参考:<br/>
-<a href="http://eguchi.jp/blog/?p=461">Kazuyuki Eguchi Factory スマホでiBeaconのパラメータを変更できるアプリを作りました！（REBL600FR向け）</a><br/>
-<a href="http://todotani.cocolog-nifty.com/blog/2014/05/rbbl600fribeaco.html">Todotaniのはやり物Log</a><br/>
-<a href="http://support.tetrastyle.net/bl600-ibeacon/">TETRASTYLE: Support (BL600) iBeacon サンプルを使ってみる</a></p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
