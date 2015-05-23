@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ios/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-05-17T23:59:05+09:00</updated>
+  <updated>2015-05-24T02:12:11+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,233 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Swift Alamofireライブラリを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/05/24/swift-alamofire1/"/>
+    <updated>2015-05-24T00:40:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/05/24/swift-alamofire1</id>
+    <content type="html"><![CDATA[<h4>通信系ライブラリAlamofireの使い方を覚えよう！</h4>
+
+<p>さて、本日は <strong>Alamofire</strong> ライブラリの使い方を勉強します。<br/>
+<a href="https://github.com/Alamofire/Alamofire">Alamofire</a>はObjective-Cの超有名通信系ライブラリである<a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>のSwift版と思えばよいでしょう。</p>
+
+<h5>導入の仕方</h5>
+
+<p>まずは導入の仕方から見て行きましょう。<br/>
+CocoaPodsを使います。<br/>
+Podfileを作成し、下記の内容を記載しましょう。</p>
+
+<p>```objective-c
+source &lsquo;<a href="https://github.com/CocoaPods/Specs.git">https://github.com/CocoaPods/Specs.git</a>&rsquo;
+platform :ios, &lsquo;8.0&rsquo;
+use_frameworks!</p>
+
+<p>pod &lsquo;Alamofire&rsquo;, &lsquo;~> 1.2&rsquo;
+```</p>
+
+<p>これで<code>pod install</code>すればプロジェクトにAlamofireが追加されるはずです！<br/>
+後は利用したいswiftファイルで<code>import Alamofire</code>しましょう。<br/>
+SwiftライブラリをCocoaPodsでインストールすると対象iOSが8.0以上である必要が出てくるので、そこだけ注意しましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>GETリクエスト(パターン１)</h5>
+
+<p>続いて、GETリクエストのメソッドを書いてみます。<br/>
+以前の<a href="http://grandbig.github.io/blog/2015/02/12/afnetworking/">AFNetworking2.xでWeb-APIを叩いてみた！</a>でも利用した <strong>OpenWeatherMap API</strong> を例として使います。</p>
+
+<p><code>http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp</code>でリクエストして、<br/>
+下記のデータを返してもらうことを想定しています。</p>
+
+<p>```objective-c</p>
+
+<p>{</p>
+
+<pre><code>base:  "stations",
+clouds: {
+    all: 32
+},
+cod: 200,
+coord: {
+    lat: 35.69,
+    lon: 139.65
+},
+dt: 1432394992,
+id: 1850147,
+main: {
+    grnd_level: 1019.97,
+    humidity: 88,
+    pressure: 1019.97,
+    sea_level: 1024.92,
+    temp: 290.99,
+    temp_max: 290.99,
+    temp_min: 290.99
+},
+name: Tokyo,
+sys: {
+    country: "JP",
+    message: 0.0386,
+    sunrise: 1432323041,
+    sunset: 1432374314
+},
+weather: [
+    {
+        description: "scattered clouds",
+        icon: "03n",
+        id: 802,
+        main: "Clouds"
+    }
+],
+wind: {
+    deg: 198.001,
+    speed: 5.11
+}
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>では、GETリクエストを投げてみましょう。<br/>
+返却されたデータの取得方法についても記載します。<br/>
+幾つか書き方があるのですが、まずは１つ目の書き方です。</p>
+
+<p>```objective-c
+// GETリクエスト
+Alamofire.request(.GET, &ldquo;<a href="http://api.openweathermap.org/data/2.5/weather">http://api.openweathermap.org/data/2.5/weather</a>&rdquo;, parameters:[&ldquo;q&rdquo;:&ldquo;Tokyo,jp&rdquo;]).response { (request, response, data, error) in</p>
+
+<pre><code>if let data = data as? NSData {
+    // AnyObject型をNSData型に変換できた場合に通過
+    // NSData型をJSONの形に変換して、AnyObject?型の変数に格納
+    var obj: AnyObject? = NSJSONSerialization.JSONObjectWithData(data, options: NSJSONReadingOptions.AllowFragments, error: nil)
+
+    if let weatherArray = obj["weather"] as? NSArray {
+        // objからweatherフィールドを取得。その際、NSArray型に変換できた場合に通過
+        if let weather = weatherArray[0] as? NSDictionary {
+            // NSArray型のweatherArrayから要素0番目を取得。その際、NSDictionary型に変換できた場合に通過
+            if let description = weather["description"] as? String {
+                // NSDictionary型のweatherからdescriptionフィールドを取得。その際、String型に変換できた場合に通過
+                println(description)
+            }
+
+            // NSDictionary型のweatherからdescriptionを指定して取得
+            var description2:String? = weather["description"] as? String
+            println(description2)
+        }
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>注意したいのは、responseで返却される<code>data</code>は <strong>NSData型</strong> ではなく、 <strong>AnyObject?型</strong> だということです。<br/>
+そのため、直接<code>NSJSONSerialization.JSONObjectWithData</code>の１つ目の引数に<code>data</code>を指定するとNSData型ではないことを示唆するエラーが出ます。<br/>
+なので、 <strong>NSData型</strong> に変換する必要があります。</p>
+
+<p>そして、NSData型のままでは各要素を取り出せないので、 <strong>(JSONの形をした)AnyObject?型</strong> に変換させましょう。<br/>
+(NSDictionary型に変換しても良いのですが、既にJSONの形に変換されているので十分でしょう。)<br/>
+後は各フィールドの型に従って変換して取り出していくイメージで書きましょう。</p>
+
+<p>覚えておきたいのは、</p>
+
+<p>```objective-c
+if let 定数名 = 要素 as? 定数の型 {</p>
+
+<pre><code>// 指定した定数の型に変換できた場合に、この中を通過する(変換できなかった場合はnilを入れようとするので、この中を通過しない)
+</code></pre>
+
+<p>}
+```</p>
+
+<p>という変換の書き方です。<br/>
+Swiftの場合、JSONの取り扱いで思った以上にコードが長くなり、ネスト化してしまいます。<br/>
+それを防ぐため&amp;JavaScriptのような書き方を意識したライブラリがたくさん出ています。<br/>
+近いうち使ってみようと思います。</p>
+
+<h5>GETリクエスト(パターン２)</h5>
+
+<p>とは言え、少しネストが深いので、別のresoponse形式のパターンで試してみましょう。</p>
+
+<p>```objective-c
+// GETリクエスト
+Alamofire.request(.GET, &ldquo;<a href="http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp">http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp</a>&rdquo;).responseJSON { (<em>, </em>, JSON, _) in</p>
+
+<pre><code>if let weatherArray = JSON!["weather"] as? NSArray {
+    // JSONからweatherフィールドを取得。その際、NSArray型に変換できた場合に通過
+    if let weather = weatherArray[0] as? NSDictionary {
+        // NSArray型のweatherArrayから要素0番目を取得。その際、NSDictionary型に変換できた場合に通過
+        if let description = weather["description"] as? String {
+            // NSDictionary型のweatherからdescriptionフィールドを取得。その際、String型に変換できた場合に通過
+            println(description)
+        }
+
+        // NSDictionary型のweatherからdescriptionを指定して取得
+        var description2:String? = weather["description"] as? String
+        println(description2)
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これは、レスポンスメソッドに<code>responseJSON</code>を指定することで、<br/>
+1つ目に上げた<code>AnyObject?型 ⇒ NSData型</code>への変換と<code>NSData型 ⇒ JSONの形をしたAnyObject?型</code>への変換は不要となります。<br/>
+既に<code>responseJSON</code>の中でやってくれています。<br/>
+少しネストが浅くなりましたね！</p>
+
+<h5>GETリクエスト(パターン３)</h5>
+
+<p>まだ、ネストが深いって？<br/>
+よし！思い切ってネストをなくしましょう！</p>
+
+<p>```objective-c
+// GETリクエスト
+Alamofire.request(.GET, &ldquo;<a href="http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp">http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp</a>&rdquo;).response { (request, response, data, error) in</p>
+
+<pre><code>// AnyObject?型をNSData型に変換。さらにJSONの形をしたNSDictionary型に変換。
+let json = NSJSONSerialization.JSONObjectWithData(data as! NSData, options: NSJSONReadingOptions.MutableContainers, error: nil) as! [String: AnyObject]
+let weatherArray = json["weather"] as! NSArray
+let weather = weatherArray[0] as! NSDictionary
+let description = weather["description"] as! String
+println(description)
+</code></pre>
+
+<p>}
+```</p>
+
+<p>う〜ん。ネストは確かになくなったのですが、Unwrapの手法を <strong>Implicitly Unwrapped Optional</strong> にしたため、nilが発生した段階でエラーが発生して落ちます&hellip;。<br/>
+値がない場合には空オブジェクトを返すAPIである場合には問題ないと思います。</p>
+
+<p>だんだんとSwiftの基礎含めて理解が進んできた気がします。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Swiftの基礎を理解しよう！(2)]]></title>
@@ -168,6 +395,9 @@ Engineerクラスには<code>level</code>, <code>businessTitle</code>, <code>ski
 <p>ここで気になるのが、自作したクラスを使うときに<code>import</code>をしていないという点です。<br/>
 同プロジェクト内のクラスは<code>import</code>の必要がないということらしいです。<br/>
 なので、自作したクラスをCocoaPodでインストールした場合は<code>import</code>の必要があると思われます。</p>
+
+<p>基本的なところで微妙にObjective-Cと異なる部分があるので注意が必要ですね。<br/>
+と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
@@ -740,123 +970,6 @@ Main.storyboardを開いて、 <strong>メニューのEditor > Embed In > Naviga
 <p>```</p>
 
 <p>よし、できた！ってところでメモ書き終了。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[FMDBを使ってSQLiteに画像を保存しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/05/07/sqlite-img/"/>
-    <updated>2015-05-07T00:37:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/05/07/sqlite-img</id>
-    <content type="html"><![CDATA[<h4>FMDBを使ってSQLiteに画像を保存してみる</h4>
-
-<p>さて、当たり前なようでやったことがなかったのでやってみました。<br/>
-たぶんもっとキレイな方法があると思うのですが、なぜかできず&hellip;。できた方法を説明します。</p>
-
-<h5>SQLiteにデータを保存</h5>
-
-<p>まず下記のメソッドを実装します。</p>
-
-<p>```objective-c
-// DBに接続
-&ndash; (id)dbConnect:(NSString *)dbName
-{</p>
-
-<pre><code>NSArray *paths = NSSearchPathForDirectoriesInDomains( NSDocumentDirectory, NSUserDomainMask, YES );
-NSString *dir = [paths objectAtIndex:0];
-FMDatabase *db = [FMDatabase databaseWithPath:[dir stringByAppendingPathComponent:dbName]];
-
-return db;
-</code></pre>
-
-<p>}</p>
-
-<p>// テーブルの作成
-&ndash; (void)createTable:(NSString <em>)dbName tableName:(NSString </em>)tableName
-{</p>
-
-<pre><code>FMDatabase *db = [self dbConnect:dbName];
-NSString *sql = [[NSString alloc] initWithFormat:@"create table if not exists %@ (id INTEGER PRIMARY KEY, title TEXT, imgData TEXT)", tableName];
-[db open];
-[db executeUpdate:sql];
-[db close];
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>さて、上記のメソッドは基本的なDB接続とテーブル作成をするためのものです。<br/>
-続いて画像のデータをinsertします。</p>
-
-<p>```objective-c
-&ndash; (void)insertImgData:(NSString <em>)dbName tableName:(NSString </em>)tableName
-{</p>
-
-<pre><code>UIImage *img = [UIImage imageNamed:@"apple.png"];
-NSData *imgData = [NSData alloc] initWithData:UIImagePNGRepresentation(img)];
-NSString *imgString = [imgData base64EncodedStringWithOptions:NSDataBase64Encoding76CharacterLineLength];
-FMDatabase *db = [self dbConnect:dbName];
-NSString *insert = [[NSString alloc] initWithFormat:@"insert into %@ (title, imgData) values ('%@', '%@')", tableName, @"test", imgString];
-[db open];
-[db executeUpdate:insert];
-[db close];
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>今回はテストのために固定の画像を内部DBにinsertするようにしています。<br/>
-そして、画像データを取得するメソッドを用意します。</p>
-
-<p>```objective-c
-&ndash; (UIImage)getImgData:(NSString <em>)dbName tableName:(NSString </em>)tableName
-{</p>
-
-<pre><code>NSData *imgData;
-FMDatabase *db = [self dbConnect:dbName];
-NSString *select = [[NSString alloc] initWithFormat:@"select * from %@ order by id desc limit 1", table_name];
-[db open];
-FMResultSet *rs = [db executeQuery:select];
-while([rs next]) {
-    NSString *imgString = [rs stringForColumn:@"imgData"];
-    imgData = [[NSData alloc] initWithBase64EncodedString:imgString options:NSDataBase64DecodingIgnoreUnknownCharacters];
-}
-UIImage *img = [UIImage alloc] initWithData:imgData];]
-</code></pre>
-
-<p>}
-```</p>
-
-<p>重要なのはエンコード/デコードです。<br/>
-いろいろなサイトを見ると、NSData型の値をSQLiteのBLOB型で保存すれば良いと書かれているのですが、デフォで画像用でないエンコードされているからなのか、想定した値が取れないんですよね〜。<br/>
-う〜ん。もう少し考えてみますが、一先ず、これでもできるってことでメモ書きとしておきます。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
