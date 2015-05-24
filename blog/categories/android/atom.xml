@@ -4,7 +4,7 @@
   <title><![CDATA[Category: android | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-05-24T11:31:51+09:00</updated>
+  <updated>2015-05-24T22:14:27+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,206 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android Studioでvolley frameworkを利用するまで]]></title>
+    <link href="http://grandbig.github.io/blog/2015/05/24/android-volley/"/>
+    <updated>2015-05-24T20:50:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/05/24/android-volley</id>
+    <content type="html"><![CDATA[<h4>volley frameworkを使ったプロジェクトをGitHubにアップする</h4>
+
+<p>本日はAndroidについて書きます。<br/>
+Androidアプリを開発する上で、通信系のframeworkを使うなら、<a href="https://android.googlesource.com/platform/frameworks/volley">volley framework</a>を選択すると思います。<br/>
+非常に便利なframworkである反面、導入が面倒だったりします。<br/>
+筆者はiOSエンジニアなので、<a href="https://cocoapods.org/">CocoaPods</a>をよく使うのですが、如何に便利なツールなのかがよくわかりました笑</p>
+
+<h5>プロジェクトの作成</h5>
+
+<p>まずは、Android Studioでプロジェクトを作成して、GitHubにアップしましょう。</p>
+
+<ol>
+<li>Android Studioでプロジェクトを作成(VolleySampleを作成)</li>
+<li>GitHubで新規repogitoryを作成</li>
+<li>Android Studioのプロジェクトのルート(VolleySample/)配下に移動して、下記コマンドを実行しましょう。</li>
+</ol>
+
+
+<p><code>java
+$ echo "# VolleySample" &gt;&gt; README.md
+$ git init
+$ git add .
+$ git commit -m "first commit"
+$ git remote add origin https://github.com/grandbig/VolleySample.git
+$ git push -u origin master
+</code></p>
+
+<p>下記のようになればOKです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p><img src="/images/android-volley-1.png" alt="プロジェクトをGitHubにアップ" /></p>
+
+<h5>volleyの導入</h5>
+
+<p>次にvolley frameworkを自身のプロジェクトに導入します。<br/>
+導入にはgit submoduleを使います。</p>
+
+<p>先ほど作成したAndroid Studioプロジェクトのルート(VolleySample/)配下で下記コマンドを実行</p>
+
+<p><code>java
+$ git submodule add https://android.googlesource.com/platform/frameworks/volley modules/volley
+</code></p>
+
+<p>これにより、VolleySample/.gitmodulesが作成されます。<br/>
+中身はというと、</p>
+
+<p>```java
+[submodule &ldquo;modules/volley&rdquo;]</p>
+
+<pre><code>path = modules/volley
+url = https://android.googlesource.com/platform/frameworks/volley
+</code></pre>
+
+<p>```</p>
+
+<p>になっているはずです。
+続いて、<code>settings.gradle(Project Settings)</code>に下記1行を追加します。</p>
+
+<p><code>java
+include ':modules:volley'
+</code></p>
+
+<p><img src="/images/android-volley-2.png" alt="settings.gradleの設定" /></p>
+
+<p>そして、<code>build.gradle(Module: app)</code>の<code>dependencies</code>に1行追加しましょう。</p>
+
+<p>```java
+dependencies {</p>
+
+<pre><code>compile fileTree(dir: 'libs', include: ['*.jar'])
+compile 'com.android.support:appcompat-v7:21.0.3'
+compile project(':modules:volley')  .... ここを追加しましょう
+</code></pre>
+
+<p>}
+```</p>
+
+<p><img src="/images/android-volley-3.png" alt="build.gradleの設定" /></p>
+
+<p>ここまできたら、一旦、GradleをSyncさせましょう。<br/>
+足りないものがあればインストールを求められるはずなので、その場合はインストールしておきましょう。</p>
+
+<p>では、GitHubにこれまでの作業分を更新させましょう。</p>
+
+<p><img src="/images/android-volley-4.png" alt="volleyを追加した状態でGitHubにアップ" /></p>
+
+<h5>volleyの利用</h5>
+
+<p>実際にvolleyを使ってみましょう。<br/>
+<a href="http://grandbig.github.io/blog/2015/05/24/swift-alamofire1/">Swift Alamofireライブラリを使ってみよう！</a>と<a href="http://grandbig.github.io/blog/2015/05/24/swift-afnetworking/">Swift AFNetworkingライブラリを使ってみよう！</a>で例として使ったOpen Weather Map APIをここでも利用します。</p>
+
+<p>```java
+// MainActivity.java
+package com.example.takahiro.volleysample;</p>
+
+<p>import android.support.v7.app.ActionBarActivity;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;</p>
+
+<p>import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.VolleyError;
+import com.android.volley.Response;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;</p>
+
+<p>import org.json.JSONObject;</p>
+
+<p>public class MainActivity extends ActionBarActivity {</p>
+
+<pre><code>private RequestQueue mRequestQueue;
+
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    if (mRequestQueue == null) {
+        mRequestQueue = Volley.newRequestQueue(getApplicationContext());
+    }
+
+    // URLの指定
+    String url = "http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp";
+
+    mRequestQueue.add(new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener&lt;JSONObject&gt;() {
+        @Override
+        public void onResponse(JSONObject response) {
+            // 通信に成功した場合
+            Log.d("VolleySample", response.toString());
+        }
+    }, new Response.ErrorListener() {
+        @Override
+        public void onErrorResponse(VolleyError error) {
+            // エラーが発生した場合
+            Log.d("VolleySample", error.toString());
+        }
+    });
+}
+
+&lt;省略&gt;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>因みに、<code>AndroidManifest.xml</code>にインターネットの通信許可を与えることを忘れずに。</p>
+
+<p>```java
+// AndroidManifest.xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;manifest xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>package="com.example.takahiro.volleysample" &gt;
+
+&lt;uses-permission android:name="android.permission.INTERNET" /&gt;
+
+&lt;application
+    &lt;省略&gt;
+&lt;/application&gt;
+</code></pre>
+
+<p></manifest>
+```</p>
+
+<p>無事、通信が成功しましたね！<br/>
+ってところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AltBeaconを使ってAndroidでiBeaconを検知しよう]]></title>
