@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-05-24T10:51:33+09:00</updated>
+  <updated>2015-05-24T11:28:36+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,246 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Swift AFNetworkingライブラリを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/05/24/swift-afnetworking/"/>
+    <updated>2015-05-24T10:53:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/05/24/swift-afnetworking</id>
+    <content type="html"><![CDATA[<h4>通信系ライブラリAFNetworkingの使い方を覚えよう！</h4>
+
+<p>さて、本日はObjective-Cの超有名通信系ライブラリの<a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>をSwiftで使ってみようと思います。</p>
+
+<h5>導入の仕方</h5>
+
+<p>まずは導入の仕方を見て行きましょう。<br/>
+CocoaPodsを使います。<br/>
+Podfileを作成し、下記の内容を記載しましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">platform</span> <span class="o">:</span><span class="n">ios</span><span class="p">,</span> <span class="err">&#39;</span><span class="mf">7.0</span><span class="err">&#39;</span>
+</span><span class='line'><span class="n">pod</span> <span class="s">&quot;AFNetworking&quot;</span><span class="p">,</span> <span class="s">&quot;~&gt; 2.0&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これで<code>pod install</code>すればプロジェクトに <strong>AFNetworking</strong> が追加されるはずです。<br/>
+ここで注意したいのが、あくまでもObjective-Cで書かれたライブラリなので、Swiftで使うためにはBridgeファイルを用意する必要があります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<ol>
+<li>プロジェクトにヘッダーファイルを追加します。
+ProjectName-Bridging-Header.hという形式が推奨されている模様<br/>
+今回はSwiftSample-Bridging-Header.hという名前で追加しました。</li>
+<li>TARGETS > SwiftSample > Build Settings > Swift Compiler &ndash; Code Generation > Objective-C Bridging Headerにパスを指定
+SwiftSample/SwiftSample-Bridging-Header.hを指定しました。</li>
+<li>Bridgeファイルにライブラリを<code>import</code>する</li>
+<li>ライブラリを利用するファイルにも<code>import</code>を書きましょう(Swiftの書き方で。)</li>
+</ol>
+
+
+<p>下記の画像を参照ください。
+<img src="http://grandbig.github.io/images/swift-afnetworking.png" alt="Bridgeファイルの用意" /></p>
+
+<p>また、Bridgeファイルへの具体的な内容を書いておきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#ifndef SwiftSample_SwiftSample_Bridging_Header_h</span>
+</span><span class='line'><span class="cp">#define SwiftSample_SwiftSample_Bridging_Header_h</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#endif</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#import &lt;AFNetworking/AFNetworking.h&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>GETリクエスト</h5>
+
+<p>では、早速、GETリクエストを書いてみましょう。<br/>
+以前の<a href="http://grandbig.github.io/blog/2015/02/12/afnetworking/">AFNetworking2.xでWeb-APIを叩いてみた！</a>でも利用した <strong>OpenWeatherMap API</strong> を例として使います。</p>
+
+<p><code>http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp</code>でリクエストして、<br/>
+下記のデータを返してもらうことを想定しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="nl">base:</span>  <span class="s">&quot;stations&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nl">clouds:</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nl">all:</span> <span class="mi">32</span>
+</span><span class='line'>  <span class="p">},</span>
+</span><span class='line'>  <span class="nl">cod:</span> <span class="mi">200</span><span class="p">,</span>
+</span><span class='line'>  <span class="nl">coord:</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nl">lat:</span> <span class="mf">35.69</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">lon:</span> <span class="mf">139.65</span>
+</span><span class='line'>  <span class="p">},</span>
+</span><span class='line'>  <span class="nl">dt:</span> <span class="mi">1432394992</span><span class="p">,</span>
+</span><span class='line'>  <span class="kt">id</span><span class="o">:</span> <span class="mi">1850147</span><span class="p">,</span>
+</span><span class='line'>  <span class="nl">main:</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nl">grnd_level:</span> <span class="mf">1019.97</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">humidity:</span> <span class="mi">88</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">pressure:</span> <span class="mf">1019.97</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">sea_level:</span> <span class="mf">1024.92</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">temp:</span> <span class="mf">290.99</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">temp_max:</span> <span class="mf">290.99</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">temp_min:</span> <span class="mf">290.99</span>
+</span><span class='line'>  <span class="p">},</span>
+</span><span class='line'>  <span class="nl">name:</span> <span class="n">Tokyo</span><span class="p">,</span>
+</span><span class='line'>  <span class="nl">sys:</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nl">country:</span> <span class="s">&quot;JP&quot;</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">message:</span> <span class="mf">0.0386</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">sunrise:</span> <span class="mi">1432323041</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">sunset:</span> <span class="mi">1432374314</span>
+</span><span class='line'>  <span class="p">},</span>
+</span><span class='line'>  <span class="nl">weather:</span> <span class="p">[</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="nl">description:</span> <span class="s">&quot;scattered clouds&quot;</span><span class="p">,</span>
+</span><span class='line'>          <span class="nl">icon:</span> <span class="s">&quot;03n&quot;</span><span class="p">,</span>
+</span><span class='line'>          <span class="kt">id</span><span class="o">:</span> <span class="mi">802</span><span class="p">,</span>
+</span><span class='line'>          <span class="nl">main:</span> <span class="s">&quot;Clouds&quot;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">],</span>
+</span><span class='line'>  <span class="nl">wind:</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nl">deg:</span> <span class="mf">198.001</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">speed:</span> <span class="mf">5.11</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>では、GETリクエストを投げてみましょう。<br/>
+返却されたデータの取得方法についても記載します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// GETリクエスト</span>
+</span><span class='line'><span class="n">let</span> <span class="n">manager</span> <span class="o">=</span> <span class="n">AFHTTPSessionManager</span><span class="p">()</span>
+</span><span class='line'><span class="n">manager</span><span class="p">.</span><span class="n">GET</span><span class="p">(</span><span class="s">&quot;http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp&quot;</span><span class="p">,</span> <span class="nl">parameters:</span> <span class="nb">nil</span><span class="p">,</span>
+</span><span class='line'>  <span class="nl">success:</span> <span class="p">{</span> <span class="p">(</span><span class="n">operation</span><span class="p">,</span> <span class="n">json</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span> <span class="k">in</span>
+</span><span class='line'>      <span class="c1">// 処理が成功した場合</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">dict</span> <span class="o">=</span> <span class="n">json</span> <span class="n">as</span><span class="o">!</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">AnyObject</span><span class="p">]</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">weatherArray</span> <span class="o">=</span> <span class="n">dict</span><span class="p">[</span><span class="s">&quot;weather&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">!</span> <span class="p">[</span><span class="n">AnyObject</span><span class="p">]</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">weather</span> <span class="o">=</span> <span class="n">weatherArray</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="n">as</span><span class="o">!</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">AnyObject</span><span class="p">]</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">description</span> <span class="o">=</span> <span class="n">weather</span><span class="p">[</span><span class="s">&quot;description&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">!</span> <span class="n">String</span>
+</span><span class='line'>      <span class="n">println</span><span class="p">(</span><span class="n">description</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">},</span> <span class="nl">failure:</span> <span class="p">{</span> <span class="p">(</span><span class="n">operation</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span> <span class="k">in</span>
+</span><span class='line'>      <span class="c1">// エラーが発生した場合</span>
+</span><span class='line'>  <span class="p">})</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Objective-Cでは下記のように書いていたので、対応づけて見るとわかりやすいかもしれません。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">AFHTTPSessionManager</span> <span class="o">*</span><span class="n">manager</span> <span class="o">=</span> <span class="p">[</span><span class="n">AFHTTPSessionManager</span> <span class="n">manager</span><span class="p">];</span>
+</span><span class='line'><span class="p">[</span><span class="n">manager</span><span class="p">.</span><span class="nl">GET:</span><span class="s">@&quot;http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp&quot;</span><span class="p">,</span> <span class="nl">parameters:</span> <span class="nb">nil</span><span class="p">,</span>
+</span><span class='line'>  <span class="nl">success:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURLSessionDataTask</span> <span class="o">*</span><span class="n">task</span><span class="p">,</span> <span class="kt">id</span> <span class="n">responseObject</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSArray</span> <span class="o">*</span><span class="n">weatherArray</span> <span class="o">=</span> <span class="p">[</span><span class="n">responseObject</span> <span class="nl">objectForKey:</span><span class="s">@&quot;weather&quot;</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">NSDictionary</span> <span class="o">*</span><span class="n">weather</span> <span class="o">=</span> <span class="p">[</span><span class="n">weatherArray</span> <span class="nl">objectAtIndex:</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">NSString</span> <span class="o">*</span><span class="n">description</span> <span class="o">=</span> <span class="p">[</span><span class="n">weather</span> <span class="nl">objectForKey:</span><span class="s">@&quot;description&quot;</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="n">description</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">},</span> <span class="nl">failure:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURLSessionDataTask</span> <span class="o">*</span><span class="n">task</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// エラーが発生した場合</span>
+</span><span class='line'>  <span class="p">}];</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>success</code>と<code>failure</code>は戻り値が<code>void</code>なので、Swiftでも<code>-&gt; Void</code>と指定しています。<br/>
+<code>[String: AnyObject]</code>は <strong>keyがString型</strong> で <strong>valueがAnyObject(何でもあり)型</strong> のDictionary型への変換で、<br/>
+<code>[AnyObject]</code>は <strong>要素がAnyObject(何でもあり)型</strong> のArray型への変換です。</p>
+
+<p>Alamofireとはやはり違った書き方となるので、iOSのターゲットなど要件に従って使い分けていくのが良いでしょう。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Swift Alamofireライブラリを使ってみよう！]]></title>
@@ -4105,89 +4345,6 @@ Google Play Consoleでの設定やGoogleから配布されているOAuth2認証�
 <p>今回のソースは<a href="https://github.com/grandbig/gtm-oauth2-swift">GitHub</a>にアップしています。<br/>
 興味があればどしどし使ってみてください。<br/>
 ということで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Facebookのモバイルチューニングの極意を読んで...]]></title>
-    <link href="http://grandbig.github.io/blog/2015/03/11/facebook-tuning/"/>
-    <updated>2015-03-11T15:33:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/03/11/facebook-tuning</id>
-    <content type="html"><![CDATA[<h4>発展途上国への提供を見据えたモバイルチューニング技術について</h4>
-
-<p>さて、今回は少し趣向を変えた内容を書いてみようと思います。<br/>
-以前の記事、<a href="http://grandbig.github.io/blog/2015/02/14/ios-allstars-study/">iOS オールスターズ勉強会に参加しました！</a>で通信のパフォーマンス改善の話を聞いたと書きました。<br/>
-その話の中で紹介されていた、<a href="http://urx.nu/ijSD">Facebook が語るモバイル･チューニングの極意：これで途上国のインターネットも OK！</a>を読んでみて、それを自分なりにまとめてみましたので、載せたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>まず、アメリカと発展途上国を比較して、3Gの普及率とレイテンシは下図のようになっているそうです。<br/>
-<img src="http://grandbig.github.io/images/facebook_mobile_tuning_1.png" alt="3Gの普及率とレイテンシ" /></p>
-
-<p>この世の中の現状に対して、Facebookアプリにダウンロードされるバイト数の大半の割合を <strong>画像</strong> が占めています。<br/>
-Androidアプリで言うと、実にFacebookアプリが85%, メッセンジャーが65%の割合になるようです。</p>
-
-<p>ということは、 <strong>イメージサイズを削減すれば</strong> 、高レイテンシなネットワークであったとしても、高品質なユーザ体験を提供することができると言えます。</p>
-
-<p>では、イメージサイズを削減するにはどんな方法があるのでしょうか？</p>
-
-<ul>
-<li>クライアント側での画像のリサイズはNG(クライアント側で必要なサイズにサーバ側で事前に変換しておくこと)</li>
-<li>ユーザに提供する画像はサムネイルと小さいプレビュー用のもので十分(ほとんどの欲求をカバーできる)</li>
-<li>デバイスサイズよりも大きな画像を提供する必要はない</li>
-</ul>
-
-
-<p>これは当然と言えば、当然の話ですよね。</p>
-
-<p>Facebookは特に工夫していることとして、 <strong>webp</strong> の活用を上げています。<br/>
-<img src="http://grandbig.github.io/images/facebook_mobile_tuning_3.png" alt="webpのメリット" /></p>
-
-<p>※詳しい、画像圧縮の方式については<a href="https://html5experts.jp/jxck/2550/">WebP – Webを速くするためにGoogleがやっていること </a>を参照してください。</p>
-
-<p>また、Facebookはサーバから <strong>レスポンス時のHTTPヘッダー内でRTT(Round-Trip Time)</strong> を提供しています。<br/>
-その中で、Facebookは通信品質を下記の4段階に区分けしています。</p>
-
-<p><img src="http://grandbig.github.io/images/facebook_mobile_tuning_4.png" alt="通信品質の表" /></p>
-
-<p>上記を見極めた上で、</p>
-
-<ul>
-<li>画像の圧縮比を増減</li>
-<li>並列ネットワークリクエストの増減</li>
-<li>ビデオ自動再生のON / OFF</li>
-<li>コンテンツのプリフェッチ量の増減</li>
-</ul>
-
-
-<p>といった対応を取っているとのことです。</p>
-
-<p>今回の件は、日本だけでなく、発展途上国へのサービスの提供を考えたときの参考になると感じました。</p>
-
-<p>といったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
