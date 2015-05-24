@@ -1,0 +1,927 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: iBeacon | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/ibeacon/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-05-24T11:31:51+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[AltBeaconを使ってAndroidでiBeaconを検知しよう]]></title>
+    <link href="http://grandbig.github.io/blog/2015/05/16/altbeacon/"/>
+    <updated>2015-05-16T19:12:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/05/16/altbeacon</id>
+    <content type="html"><![CDATA[<h4>AltBeaconを使って手軽にAndroidでiBeaconを検知しよう</h4>
+
+<p>本日はAndroidでのiBeacon検知をやってみようと思います。<br/>
+自作することも簡単だと聞きますが、Radius Networks社が出している<a href="https://github.com/AltBeacon/android-beacon-library">AltBeacon</a>が非常に便利なようです。</p>
+
+<p>何と言ってもiOSのCoreLocation.frameworkと同じ感覚で扱えるというのが強みでしょう。<br/>
+(iOSアプリエンジニアにとっては非常に助かります笑)</p>
+
+<p>さて、実際に実装方法を見て行きましょう。</p>
+
+<p>実装方法や設定に関しては、<a href="http://dev.classmethod.jp/series/android-x-ibeacon/">Developers.IO Android x iBeacon – シリーズ –</a>を踏襲させて頂きました。<br/>
+めちゃくちゃわかりやすいサイトなので、他のページも参考にすると良いです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>本記事のAndroid Studioのバージョンは1.2となります。</p>
+
+<p><img src="/images/altbeacon_1.png" alt="Android Studioバージョン" /></p>
+
+<h5>AltBeaconのライブラリを使うための準備</h5>
+
+<p>AltBeaconライブラリを導入します。</p>
+
+<p>１. Gradle Scripts > build.gradle(Module: app)の編集
+<code>compile 'org.altbeacon:android-beacon-library:2+'</code>を<code>dependencies</code>に追加</p>
+
+<p>```java
+apply plugin: &lsquo;com.android.application&rsquo;</p>
+
+<p>android {</p>
+
+<pre><code>&lt;省略&gt;
+</code></pre>
+
+<p>}</p>
+
+<p>dependencies {</p>
+
+<pre><code>compile fileTree(dir: 'libs', include: ['*.jar'])
+compile 'com.android.support:appcompat-v7:21.0.3'
+compile 'org.altbeacon:android-beacon-library:2+'
+</code></pre>
+
+<p>}
+```</p>
+
+<p>２. app > manifests > AndroidManifest.xmlの編集
+Bluetooth関連のpermissionを追加</p>
+
+<p>```xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;manifest xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>package="com.example.takahiro.altbeaconsample" &gt;
+
+&lt;!-- ここを追加 --&gt;
+&lt;uses-permission android:name="android.permission.BLUETOOTH"/&gt;
+&lt;uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/&gt;
+&lt;uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/&gt;
+
+&lt;application
+
+    &lt;省略&gt;
+
+&lt;/application&gt;
+</code></pre>
+
+<p></manifest>
+```</p>
+
+<h5>iBeaconの検知を実装</h5>
+
+<p>早速、iBeaconの検知(モニタリング)を実装します。</p>
+
+<p>```java
+package com.example.takahiro.altbeaconsample;</p>
+
+<p>import android.os.RemoteException;
+import android.support.v7.app.ActionBarActivity;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;</p>
+
+<p>// AltBeacon関連のライブラリをimport
+import org.altbeacon.beacon.BeaconConsumer;
+import org.altbeacon.beacon.BeaconManager;
+import org.altbeacon.beacon.BeaconParser;
+import org.altbeacon.beacon.Identifier;
+import org.altbeacon.beacon.MonitorNotifier;
+import org.altbeacon.beacon.Region;</p>
+
+<p>public class MainActivity extends ActionBarActivity implements BeaconConsumer {</p>
+
+<pre><code>// BeaconConsumerインターフェースを実装
+private static String TAG = "AltBeacon Sample";
+// BeaconManagerクラスの変数を定義
+private BeaconManager beaconManager;
+
+// iBeaconのデータを認識するためのParserフォーマット
+public static final String IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24";
+
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    // staticメソッドでBeaconManagerクラスのインスタンスを取得
+    beaconManager = BeaconManager.getInstanceForApplication(this);
+    // BeaconParseをBeaconManagerに設定
+    beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(IBEACON_FORMAT));
+}
+
+@Override
+public boolean onCreateOptionsMenu(Menu menu) {
+    // Inflate the menu; this adds items to the action bar if it is present.
+    getMenuInflater().inflate(R.menu.menu_main, menu);
+    return true;
+}
+
+@Override
+public boolean onOptionsItemSelected(MenuItem item) {
+    // Handle action bar item clicks here. The action bar will
+    // automatically handle clicks on the Home/Up button, so long
+    // as you specify a parent activity in AndroidManifest.xml.
+    int id = item.getItemId();
+
+    //noinspection SimplifiableIfStatement
+    if(id == R.id.action_settings) {
+        return true;
+    }
+
+    return super.onOptionsItemSelected(item);
+}
+
+@Override
+public void onBeaconServiceConnect() {
+    // BeaconManagerクラスのモニタリング通知受取り処理
+    beaconManager.setMonitorNotifier(new MonitorNotifier() {
+        @Override
+        public void didEnterRegion(Region region) {
+            // 領域進入時に実行
+            Log.d(TAG, "didEnterRegion");
+        }
+
+        @Override
+        public void didExitRegion(Region region) {
+            // 領域退出時に実行
+            Log.d(TAG, "didExitRegion");
+        }
+
+        @Override
+        public void didDetermineStateForRegion(int i, Region region) {
+            // 領域への侵入/退出のステータスが変化したときに実行
+            Log.d(TAG, "didDetermineStateForRegion");
+        }
+    });
+
+    try {
+        // UUIDの作成
+        Identifier identifier = Identifier.parse("434B4666-E4B2-4B78-8C13-901AFEE3DBB6");
+        // モニタリングの開始
+        beaconManager.startMonitoringBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+    } catch(RemoteException e) {
+        // 例外が発生した場合の処理
+        e.printStackTrace();
+    }
+}
+
+@Override
+protected void onPause() {
+    super.onPause();
+    beaconManager.unbind(this);
+}
+
+@Override
+protected void onResume() {
+    super.onPause();
+    beaconManager.bind(this);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントは下記です。</p>
+
+<ul>
+<li>iBeacon検知のためにBeaconParserを定義して、BeaconLayoutに設定</li>
+<li><code>startMonitoringBeaconsInRegion</code>する際の引数であるRegionへの定義
+各引数は<code>Region("監視対象ID", "UUID", "major", "minor")</code>のようになっています。<br/>
+<strong>監視対象ID</strong> さえ設定すれば、iBeaconを検知可能です。UUID, major, minorを設定すると、該当するiBeaconのみ検知するようになります。</li>
+</ul>
+
+
+<h5>iBeaconで距離計測</h5>
+
+<p>次にiBeaconの距離計測をしてみましょう。<br/>
+今回は領域観測をして、領域に入ったタイミングで距離計測を開始し、領域を出たタイミングで距離計測を停止します。</p>
+
+<p>```java</p>
+
+<p>&lt;省略></p>
+
+<p>@Override
+public void onBeaconServiceConnect() {</p>
+
+<pre><code>// BeaconManagerクラスのモニタリング設定
+beaconManager.setMonitorNotifier(new MonitorNotifier() {
+    @Override
+    public void didEnterRegion(Region region) {
+        // 領域侵入時に実行
+        Log.d(TAG, "didEnterRegion");
+
+        try {
+            // レンジングの開始
+            beaconManager.startRangingBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+        } catch(RemoteException e) {
+            // 例外が発生した場合
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void didExitRegion(Region region) {
+        // 領域退出時に実行
+        Log.d(TAG, "didExitRegion");
+
+        try {
+            // レンジングの停止
+            beaconManager.stopRangingBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+        } catch(RemoteException e) {
+            // 例外が発生した場合
+            e.printStackTrace();
+        }
+    }
+}
+
+// BeaconManagerクラスのレンジング設定
+beaconManager.setRangeNotifier(new RangeNotifier() {
+    @Override
+    public void didRangeBeaconsInRegion(Collection&lt;Beacon&gt; beacons, Region region) {
+        // 検出したビーコンの情報を全部Logに書き出す
+        for(Beacon beacon : beacons) {
+            Log.d(TAG, "UUID:" + beacon.getId1() + ", major:" + beacon.getId2() + ", minor:" + beacon.getId3() + ", Distance:" + beacon.getDistance() + ",RSSI" + beacon.getRssi() + ", TxPower" + beacon.getTxPower());
+        }
+    }
+}
+
+try {
+    // モニタリングの開始
+    beaconManager.startMonitoringBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+} catch(RemoteException e) {
+    e.printStackTrace();
+}
+</code></pre>
+
+<p>}</p>
+
+<p>&lt;省略></p>
+
+<p>```</p>
+
+<p>AltBeaconライブラリはだいぶ使いやすいですね！<br/>
+iBeaconはiOS先行でサービスを始めることが多いと思うので、iOSの仕様に合わせてプログラミングを組めるのはエンジニアとしてありがたいですね。<br/>
+(Androidユーザが多いとは言えない日本にとっては、Android特有の機能を設けることは工数的に優先すべきではなかったりしますしね。趣味として取り入れたい気持ちはありますが&hellip;。)</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<p><a href="https://github.com/grandbig/altBeaconSample">本記事のレポジトリはこちら</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iBeacon完全攻略！？]]></title>
+    <link href="http://grandbig.github.io/blog/2015/04/29/ibeacon-review/"/>
+    <updated>2015-04-29T21:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/04/29/ibeacon-review</id>
+    <content type="html"><![CDATA[<h4>iBeaconを復習しよう！</h4>
+
+<p>本日はこれまでも何度か取り上げてきたiBeaconについて改めて復習してみたいと思います。<br/>
+今回はiOS端末でのiBeaconの発信/受信に特化して書きます。</p>
+
+<p>これまでの関連記事は以下です。</p>
+
+<ul>
+<li><a href="http://grandbig.github.io/blog/2014/04/12/io7-dot-1-de-ibeacon/">噂のiOS7.1でiBeaconを試してみよう！！</a></li>
+<li><a href="http://grandbig.github.io/blog/2014/09/22/ios8-de-ibeacon/">iOS8でiBeaconを試してみよう！！</a></li>
+<li><a href="http://grandbig.github.io/blog/2014/09/29/developing-ibeacon-app-by-using-swift/">Swiftを使って、iBeaconのCentralアプリを作ろう！！</a></li>
+<li><a href="http://grandbig.github.io/blog/2015/04/13/multi-ibeacon/">複数のiBeacon信号を利用してみよう！</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>では、早速、まとめていきましょう。</p>
+
+<h4>iBeaconが利用可能な端末</h4>
+
+<ul>
+<li>OS: iOS7.0以上</li>
+<li>端末: iPhone4S以降, iPad(第３世代)以降, iPad mini以降, iPod touch(第５世代以降)
+※もちろんiPad Airでも利用可能</li>
+</ul>
+
+
+<h4>iOSごとのiBeacon機能の差異</h4>
+
+<p>まずは動作面での差異について</p>
+
+<ul>
+<li>iOS7.0.xの場合<br/>
+アプリをFG起動もしくはBG起動していないとiBeaconを検知することはできない</li>
+<li>iOS7.1.x以降の場合<br/>
+アプリを起動していない(停止状態の)場合でもiBeaconを検知可能</li>
+</ul>
+
+
+<p>次にプログラミング面での差異について</p>
+
+<p>プログラミング面ではCentral側にのみ多少の差異があります。<br/>
+iBeaconの検知には <strong>CoreLocation.framework</strong> を利用します。
+<strong>CoreLocation.framework</strong> は位置情報サービスを利用するためのフレームワークですが、iBeaconの領域監視メソッドが組み込まれています。<br/>
+もともと、ジオフェンスの領域監視メソッドが組み込まれていますので、それと同等に扱いたいというApple側の意図が見えます。</p>
+
+<p>具体的な差異について説明します。<br/>
+位置情報サービスの利用許可メソッドをiOS8から組み込む必要があります。</p>
+
+<p>```objective-c</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@property (strong, nonatomic) CLLocationManager <em>lm;
+@property (strong, nonatomic) NSUUID </em>proximityUUID;
+@property (strong, nonatomic) CLBeaconRegion <em>beaconRegion;
+@property (strong, nonatomic) CLBeacon </em>nearestBeacon;
+@property (strong, nonatomic) NSString *str;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad
+{
+  [super viewDidLoad];</p>
+
+<p>  if ([CLLocationManager isMonitoringAvailableForClass:[CLCircularRegion class]]) {
+      // iOS7.x以降の端末
+      // CLLocationManagerの初期化
+      self.lm = [[CLLocationManager alloc] init];
+      self.lm.delegate = self;</p>
+
+<pre><code>  // UUIDの設定
+  self.proximityUUID = [[NSUUID alloc] initWithUUIDString:@"8D4DB809-032F-4771-96F3-99BD5C25F924"];
+  // Bundle Identifierの取得
+  NSBundle *bundle = [NSBundle mainBundle];
+  NSString *bid = [bundle bundleIdentifier];
+  self.beaconRegion = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID identifier: bid];
+
+  if ([self.locationManager respondsToSelector:@selector(requestAlwaysAuthorization)]) {
+      // iOS8以上の場合
+      // 位置情報サービスを常に許可させて良いかどうかを尋ねるためのメソッド
+      [self.lm requestAlwaysAuthorization];
+  } else {
+      // iOS8未満の場合
+      // iBeacon領域の監視を開始
+      [self.lm startMonitoringForRegion: self.beaconRegion];
+  }
+</code></pre>
+
+<p>  } else {
+      // iOS6.x以前の端末
+      UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@&ldquo;確認&rdquo; message:@&ldquo;iBeacon機能を利用できない端末です。&rdquo; delegate: nil cancelButtonTitle: nil otherButtonTitles:@&ldquo;OK&rdquo;, nil];
+      // アラートを表示
+      [alert show];
+  }
+}</p></li>
+</ul>
+
+
+<p>// ユーザの位置情報の許可状態を確認するメソッド
+&ndash; (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{</p>
+
+<pre><code>if (status == kCLAuthorizationStatusAuthorizedAlways) {
+    // ユーザが位置情報の使用を常に許可している場合
+    // iBeacon領域の監視を開始
+    [self.lm startMonitoringForRegion: self.beaconRegion];
+} else {
+    // その他の場合
+    // 設定画面に遷移
+    NSURL *url = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
+    [[UIApplication sharedApplication] openURL:url];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>@end
+```</p>
+
+<p>iOS7.xでは<code>startMonitoringForRegion</code>メソッドを実行した段階で<code>didChangeAuthorizationStatus</code>メソッドが呼ばれます。<br/>
+iOS8では、<code>requestAlwaysAuthorization</code>メソッドを実行(位置情報サービスを常に許可する場合のメソッド)しなければ、<code>didChangeAuthorizationStatus</code>メソッドが呼ばれないため、<code>startMonitoringForRegion</code>メソッドの実行タイミングを変える必要が出てきました。</p>
+
+<h4>iBeacon関連メソッドの実行順について(Centralの場合)</h4>
+
+<p>先ほどiBeaconの検知は <strong>CoreLocation.framework</strong> 内のメソッドとして組み込まれていると説明しました。では、他にどんなメソッドがあるのでしょうか。</p>
+
+<p><code>objective-c
+// 領域監視が開始された後に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager didStartMonitoringForRegion:(CLRegion *)region {
+}
+</code></p>
+
+<p><code>objective-c
+// 領域監視に失敗した場合に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager monitoringDidFailForRegion:(CLRegion *)region withError:(NSError *)error {
+}
+</code></p>
+
+<p><code>objective-c
+// 監視領域に入った場合に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager didEnterRegion:(CLRegion *)region {
+}
+</code></p>
+
+<p><code>objective-c
+// 監視領域から出た場合に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager didExitRegion:(CLRegion *)region {
+}
+</code></p>
+
+<p><code>objective-c
+// 監視領域に対する状態が変化した場合に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion *)region {
+}
+</code></p>
+
+<p><code>objective-c
+// iBeacon信号をレンジング検知した場合に呼び出される処理
+- (void)locationManager:(CLLocationManager *)manager didRangeBeacons:(NSArray *)beacons inRegion:(CLBeaconRegion *)region {
+}
+</code></p>
+
+<p>上記のメソッドを使えば十分なアプリが開発できるはずです。<br/>
+さて、ここで注意しておくべきなのは、<code>startRangingBeaconsInRegion</code>メソッドをどのタイミングで実行するかということです。</p>
+
+<p>基本的には、 <strong>監視領域に入ったタイミング</strong> で<code>startRangingBeaconsInRegion</code>メソッドを実行するのが普通かもしれません。<br/>
+しかし、この場合は注意が必要です。<br/>
+なぜなら、監視領域内でアプリを落として、再度起動した場合、<code>didEnterRegion</code>メソッドが実行されないからです。つまり、既に監視領域に入っている場合は <strong>監視領域に侵入したと見なされない</strong> ということです。<br/>
+よって、こういったケースがアプリの利用に打撃を与えるのであれば、 <strong>監視領域に入ったタイミング</strong> のみに<code>startRangingBeaconsInRegion</code>メソッドを置くわけにはいかないことになります。<br/>
+その場合は、<code>didDetermineState</code>メソッドで既に監視領域内にいる場合(<code>state</code>が<code>CLRegionStateInside</code>の場合)に<code>startRangingBeaconsInRegion</code>メソッドを実行するようにしましょう。</p>
+
+<h4>Peripheralの注意点</h4>
+
+<p>続いて、PeripheralとしてiOS端末を使う場合の注意点についてお話しておきます。<br/>
+iOS端末ではアプリをFG起動している間のみiBeacon信号の発信が可能です。<br/>
+アプリがBG起動になった場合、iBeacon信号の発信が止まってしまうため、数秒後にCentral側のiOS端末で<code>didExitRegion</code>メソッドが実行されます。<br/>
+なので、iOS端末でPeripheralの役割を担いたいのであれば、FG起動を続けることに問題がない使い方である場合に限ります。</p>
+
+<p>因みに、XcodeのBackground Modesで <strong>Act as a Bluetooth LE accessory</strong> を有効にしたとしても、BG起動中はiBeaconを発信することはできません。</p>
+
+<p>また、 <strong>CoreBluetooth.framework</strong> にはiOS端末がiBeacon発信状態(アドバタイジング状態)かを判別する<code>isAdvertising</code> プロパティが存在します。<br/>
+iBeaconを発信している状態でアプリをBG起動にした場合は<code>isAdvertising</code>は <strong>YES</strong> として返却されます。つまり、実際の状態と必ずしも一致するわけではないということです。</p>
+
+<h4>Centralの注意点</h4>
+
+<p>最後にCentralとしてiOS端末を使う場合の注意点についてお話しておきます。<br/>
+iOS端末でiBeaconのレンジング処理を行う場合、FG起動時にしかレンジング処理を実行できません。<br/>
+そのため、アプリの状態によらずレンジング処理が必要な仕様を実現することは不可能ということになります。</p>
+
+<p>一応、<code>didEnterRegion</code>メソッドや<code>didExitRegion</code>メソッドなどのデリゲートメソッドが実行された場合、約10秒間はアプリの状態によらずあらゆる処理が実行可能であるため、この間のみレンジング処理を実行して<code>major</code>, <code>minor</code>などの値を取得することは可能です。</p>
+
+<p>正しい動作検証を実施した上でiBeaconを扱うようにしましょう。</p>
+
+<h4>各種設定がOFFの場合のアラート表示について</h4>
+
+<p>さて、直接iBeaconとは関係がありませんが、iOS端末をPeripheralとして扱う場合は <strong>Bluetoothの設定</strong> をONにしておく必要があります。iOS端末をCentralとして扱う場合は <strong>Bluetoothの設定</strong> と <strong>位置情報サービスの設定</strong> をONにしておく必要があります。</p>
+
+<p>これらがOFFになっている場合、iBeaconの機能を利用することができないため、アプリ開発時にアラートを表示してユーザに知らせることを考えるかと思います。<br/>
+さらに、できれば設定画面に飛ばしたいと思いますよね？</p>
+
+<p><strong>位置情報サービス</strong> の場合は、iOS8であれば設定画面へのURLスキームが復活したため、問題ありません。(iOS7.xでは設定画面への遷移は諦めましょう。)<br/>
+<strong>Bluetooth</strong> の場合は <strong>CoreBluetooth.framework</strong> を利用していれば、難しくありません。(処理に <strong>CoreBluetooth.framework</strong> が不要なCentral側であっても設定画面に飛ばしたいのであれば、<code>import</code>する必要があります。)<br/>
+※ 具体的には<code>CBPeripheralManager</code>もしくは<code>CBCentralManager</code>の初期化時に<code>option</code>に<code>CBPeripheralManagerOptionShowPowerAlertKey</code>もしくは<code>CBCentralManagerOptionShowPowerAlertKey</code>を設定すれば良いです。</p>
+
+<p>以上がまとめとなります。<br/>
+ぜひぜひ参考にして頂ければと思います。<br/>
+本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[BLEMeasure Ver3.0(iPhoneアプリを申請しました(4))]]></title>
+    <link href="http://grandbig.github.io/blog/2015/04/25/ble-measure-3-0-0/"/>
+    <updated>2015-04-25T11:50:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/04/25/ble-measure-3-0-0</id>
+    <content type="html"><![CDATA[<h4>BLEMeasure Ver3.0の紹介</h4>
+
+<p>約1年ぶりに本アプリのバージョンアップに着手しました。<br/>
+主な改善点・修正点としては下記です。</p>
+
+<ul>
+<li>デザイン, UIの変更</li>
+<li>マルチiBeaconの検知機能の実装</li>
+<li>iOS8対応</li>
+<li>iPhone6およびiPhone6 Plus対応</li>
+<li>バグFix</li>
+</ul>
+
+
+<p>※現在、アップデート申請中のため、公開されていません。<br/>
+(公開され次第、合わせてブログを更新する予定です。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>今回アップデートを行った理由としては、なぜかうまく起動しないという問題があったためです。<br/>
+少し苦労したのが、手違いで完全に昔のプロジェクトを削除してしまっていたため、初めから作り直したところです。</p>
+
+<h4>BLEMeasureの使い方(How to use BLEMeasure)</h4>
+
+<p>さて、ここからは審査も見据えて使い方を日本語＋拙い(多々間違いのあるであろう)英語で解説していきたいと思います。</p>
+
+<h5>iBeacon発信手順(Procedure of advertising iBeacon)</h5>
+
+<ol>
+<li>中央の赤いボタンをタップ(Tap the central red button)</li>
+<li>Advertiseボタンをタップ(Tap the advertise button)</li>
+<li>STARTボタンをタップ(Tap the start button)</li>
+</ol>
+
+
+<p><img src="/images/ble_measure_v3_1.png" alt="BLEMeasure Procedure1" /></p>
+
+<h5>iBeacon距離計測手順(Procedure of measuring the distance between a peripheral device and a central device)</h5>
+
+<ol>
+<li>中央の赤いボタンをタップ(Tap the central red button)</li>
+<li>Measureボタンをタップ(Tap the measure button)</li>
+</ol>
+
+
+<p><img src="/images/ble_measure_v3_2.png" alt="BLEMeasure Procedure2" /></p>
+
+<p>※ 周りにiBeacon発信端末が見つからない場合は0mと表記されます(If the device can&rsquo;t find the advertising device, the distance is 0m.)</p>
+
+<h5>複数iBeaconの検知手順(Procedure of searching the multi iBeacon)</h5>
+
+<ol>
+<li>中央の赤いボタンをタップ(Tap the central red button)</li>
+<li>Searchボタンをタップ(Tap the search button)</li>
+</ol>
+
+
+<p>※ 周りにiBeaconが見当たらない場合は何も表示されません(You don&rsquo;t look at the iBeacon list if there aren&rsquo;t iBeacon around you.)<br/>
+※ テーブルビューのプルダウンもしくは右上の更新ボタンで周囲のiBeaconを再検索することができます(You can search iBeacon again by pulling down the table view or tapping the update button)</p>
+
+<p><img src="/images/ble_measure_v3_3.png" alt="BLEMeasure Procedure3" /></p>
+
+<h5>iBeaconパラメータの設定手順(Procedure of setting the advertising iBeacon parameters)</h5>
+
+<ol>
+<li>中央の赤いボタンをタップ(Tap the central red button)</li>
+<li>Settingsボタンをタップ(Tap the settings button)</li>
+<li>UUID, major, minorの値を入力して、Saveボタンをタップ(Enter the parameters and tap the save button)</li>
+</ol>
+
+
+<p><img src="/images/ble_measure_v3_4.png" alt="BLEMeasure Procedure4" /></p>
+
+<h5>アプリ関連情報の確認手順(Procedure of confirming the information about the app)</h5>
+
+<ol>
+<li>中央の赤いボタンをタップ(Tap the central red button)</li>
+<li>Aboutボタンをタップ(Tap the about button)</li>
+</ol>
+
+
+<p><img src="/images/ble_measure_v3_5.png" alt="BLEMeasure Procedure5" /></p>
+
+<p>本日は以上です。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[複数のiBeacon信号を利用してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/04/13/multi-ibeacon/"/>
+    <updated>2015-04-13T00:28:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/04/13/multi-ibeacon</id>
+    <content type="html"><![CDATA[<h4>複数のiBeaconを検知する方法</h4>
+
+<p>さて、本日はさらっと複数のiBeacon信号の検知について考えてみたいと思います。<br/>
+(これまでできるだろうという考えではあったものの、実際に試してみたことがなかったのでメモ書きです。)<br/>
+Central側ではiBeacon信号をキャッチしたときに、そのオブジェクトを配列の形で取得することができます。<br/>
+具体的には、</p>
+
+<p>```objective-c
+// Beacon信号を検出した場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didRangeBeacons:(NSArray </em>)beacons inRegion:(CLBeaconRegion *)region
+{</p>
+
+<pre><code>if (beacons.count &gt; 0) {
+    NSLog(@"%@", beacons);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のように <strong>beacons</strong> が <strong>NSArray</strong> の型で返ってきていますよね。<br/>
+単純にこれを使ってやればよいのです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>実際にログを見てみると、</p>
+
+<p>```objective-c
+2015-04-13 00:27:23.974 iBeaconSampleCentral[312:15030] (</p>
+
+<pre><code>"CLBeacon (uuid:&lt;__NSConcreteUUID 0x17403a6e0&gt; 8D4DB809-032F-4771-96F3-99BD5C25F924, major:1, minor:2, proximity:1 +/- 0.07m, rssi:-35)",
+"CLBeacon (uuid:&lt;__NSConcreteUUID 0x174037520&gt; 8D4DB809-032F-4771-96F3-99BD5C25F924, major:1, minor:2, proximity:1 +/- 0.20m, rssi:-45)"
+</code></pre>
+
+<p>)
+```</p>
+
+<p>となっています。<br/>
+最寄りのiBeaconのみを使う方法ではできなかった何か新しいサービスを実現できるかもしれませんね。<br/>
+今日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[REBL600FRの発信パラメータをiOSアプリで変更してみた！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/02/11/bl600sample3/"/>
+    <updated>2015-02-11T14:23:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/02/11/bl600sample3</id>
+    <content type="html"><![CDATA[<h4>REBL600FRのパラメータ値を変更</h4>
+
+<p><a href="http://grandbig.github.io/blog/2015/02/08/bl600sample2/">前回</a>はREBL600FRの検知＆パラメータ値の読込みまでやってみました。<br/>
+今日はREBL600FRが発信するパラメータ値をiOSアプリから変更してみます。</p>
+
+<p>まず、UIButtonをタップしたときにmajorの値を固定値に変更するメソッドを作成してみます。</p>
+
+<p>```objective-c
+// ViewController.m
+// 書き込みテスト用のメソッド
+&ndash; (IBAction)writeDataTestMethod:(id)sender {</p>
+
+<pre><code>// ① majorの値を4661に設定
+NSInteger writeInt = 4661;
+// ② 10進数を16進数に変換して文字列にする
+NSString *witeString = [NSString stringWithFormat:@"%lX",(long)writeInt];
+// ③ 16進数のNSString型をNSData型に変換する処理
+NSData *writeData = [witeString dataFromHexString];
+NSLog(@"writeData: %@", writeData);
+
+// ④ データの書込み処理
+[self.connectedPeripheral writeValue:writeData forCharacteristic:self.majorChar type:CBCharacteristicWriteWithResponse];
+</code></pre>
+
+<p>}
+```</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>上記メソッドの説明をします。<br/>
+まず、majorの値を4661に変更したいとします。</p>
+
+<p>【処理の順番】<br/>
+① ユーザが入力する際には当然、10進数の値で考えると思うので、初めの入力値は <strong>10進数</strong> の4661とします。<br/>
+② 次にREBL600FRが理解できるように16進数に変換する必要があります。<br/>
+『NSInteger型かつ10進数』で表された4661を『NSString型かつ16進数』の値に変換します。<br/>
+③ 書換えたい値をREBL600FRに送るためにNSData型に変換します。<br/>
+④ 書込みたいデータが用意できたので、書込み処理を実行します。<br/>
+<code>self.majorChar</code>には予め、major値のキャラクタリスティックを保持しています。</p>
+
+<p>さて、③と④の処理について説明が不十分なので、説明します。<br/>
+③ですが、NSString型のクラスを拡張し、 <strong>16進数のNSString型をNSData型に変換する</strong> メソッドを追加します。</p>
+
+<p>```objective-c
+// NSString+Conversion.h</p>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<p>@interface NSString (NSString_Conversion)</p>
+
+<h1>pragma mark &ndash; Data Conversion</h1>
+
+<ul>
+<li>(NSData *)dataFromHexString;</li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>```objective-c
+// NSString+Conversion.m</p>
+
+<h1>import &ldquo;NSString+Conversion.h&rdquo;</h1>
+
+<p>@implementation NSString (NSString_Conversion)</p>
+
+<h1>pragma mark &ndash; Data Conversion</h1>
+
+<ul>
+<li><p>(NSData <em>)dataFromHexString {
+  const char </em>chars = [self UTF8String];
+  NSUInteger i = 0, len = self.length;</p>
+
+<p>  NSMutableData *data = [NSMutableData dataWithCapacity:len / 2];
+  char byteChars[3] = {&lsquo;\0&rsquo;,&lsquo;\0&rsquo;,&lsquo;\0&rsquo;};
+  unsigned long wholeByte;</p>
+
+<p>  while (i &lt; len) {
+      byteChars[0] = chars[i++];
+      byteChars[1] = chars[i++];
+      wholeByte = strtoul(byteChars, NULL, 16);
+      [data appendBytes:&amp;wholeByte length:1];
+  }</p>
+
+<p>  return data;
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>続いて、④について説明します。<br/>
+<code>self.majorChar</code>にmajor値のキャラクタリステックを保持するために、<a href="http://grandbig.github.io/blog/2015/02/08/bl600sample2/">前回</a>の記事で説明した処理を少し書換えます。</p>
+
+<p>```objective-c
+// ViewController.m
+// Characteristicesが見つかったときに呼び出される処理
+&ndash; (void)peripheral:(CBPeripheral <em>)peripheral didDiscoverCharacteristicsForService:(CBService </em>)service error:(NSError *)error {</p>
+
+<pre><code>for(CBCharacteristic *characteristic in service.characteristics) {
+    // キャラクタリステックのUUID値を取得
+    CBUUID *uuid = characteristic.UUID;
+    NSString *uuidString = [NSString alloc] initWithFormat:@"%@", uuid];]
+
+    if([uuidString isEqual:@"569A2013-B87F-490C-92CB-11BA5EA5167C"]) {
+        // major値の場合はCharacteristicをメモリに保持
+        self.majorChar = characteristic;
+    }
+
+    // 値が変わったときに通知を受けたい場合に実行
+    [peripheral setNotifyValue:YES forCharacteristic:characteristic];
+    // キャラクタリステックのvalueを知りたい場合に実行
+    [peripheral readValueForCharacteristic:characteristic];
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記処理のタイミングで<code>self.majorChar</code>をメモリに保持できるので、<code>writeValue</code>メソッドの引数として指定できます。<br/>
+さて、<code>writeValue</code>メソッドを実行したときにエラーが発生する可能性があるので、下記メソッドを追加します。</p>
+
+<p>```objective-c
+// Characteristicの書き込み処理が完了した場合に呼び出される処理
+&ndash; (void)peripheral:(CBPeripheral <em>)peripheral didWriteValueForCharacteristic:(CBCharacteristic </em>)characteristic error:(NSError *)error
+{</p>
+
+<pre><code>if(error) {
+    NSLog(@"error: %@", error);
+    return;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>以上の処理を実装した上でUIButtonを押して、<a href="https://itunes.apple.com/jp/app/lightblue-bluetooth-low-energy/id557428110?mt=8">LightBlue</a>を使って確認してみると、確かに値が変更されていることがわかります。</p>
+
+<p>これまでのソースは<a href="https://github.com/grandbig/REBL600FR-Central">GitHub</a>にアップしてありますので、興味がある方はご自由にお使いください。</p>
+
+<p>参考:<br/>
+<a href="http://tyashushi.blogspot.jp/2012/09/1016.html">10進数と16進数の変換</a><br/>
+<a href="http://stackoverflow.com/questions/2501033/nsstring-hex-to-bytes">NSString hex to bytes</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

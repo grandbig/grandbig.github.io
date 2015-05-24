@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: html | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/html/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-05-24T11:31:51+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[UIWebView内でheaderを固定して滑らかなスクロールを実現しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2013/12/06/header-fixed/"/>
+    <updated>2013-12-06T23:24:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/12/06/header-fixed</id>
+    <content type="html"><![CDATA[<h3>header固定をしたスクロールは案外難しい！！</h3>
+
+<p>本日はUIWebViewを全面に貼り付けた上で、ヘッダーを固定して滑らかなスクロールを実現する方法について書きたいと思います。<br/>
+もし、ヘッダーをネイティブで作成して、中身をWebで作成すれば簡単に実現できます。しかし、ネイティブとWebのハイブリットアプリを目指すとAndroidへの対応が手間となるため一長一短な面があります。今回はあえて全面UIWebViewに拘りたいと思います。</p>
+
+<!--more-->
+
+
+<h4>position: fixedだとうまくいかない！？</h4>
+
+<p>まず、Webでヘッダーを固定することを考えたときに真っ先に思い浮かぶものは<strong>position: fixed</strong>を利用することだと思います。</p>
+
+<p>サンプルHTML
+```
+&lt;!DOCTYPE html></p>
+
+<pre><code>&lt;head&gt;
+    &lt;meta charset="UTF-8" content="text/css" http-equiv="Content-Style-Type" /&gt;
+    &lt;meta content="width=device-width, user-scalable=no,minimum-scale=0.5, maximum-scale=1.0" name="viewport" /&gt;
+    &lt;link href="./main.css" media="all" rel="stylesheet" type="text/css" /&gt;
+    &lt;title&gt;サンプル&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="header"&gt;ヘッダー&lt;/div&gt;
+    &lt;div id="mainContents"&gt;
+        &lt;div id="main"&gt;
+            contents
+            &lt;br&gt;
+            contents
+            &lt;br&gt;
+            ...
+            contents
+            &lt;br&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+</code></pre>
+
+<p></html>
+```</p>
+
+<p>サンプルCSS
+```
+html, body {</p>
+
+<pre><code>padding: 0;
+margin: 0;
+width: 100%;
+height: 100%;
+</code></pre>
+
+<p>}</p>
+
+<h1>header {</h1>
+
+<pre><code>position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 64px;
+z-index: 2;
+</code></pre>
+
+<p>}</p>
+
+<h1>mainContents {</h1>
+
+<pre><code>position: relative;
+top: 64px;
+width: 100%;
+height: 100%;
+-webkit-overflow-scrolling: touch;
+z-index: 1;
+</code></pre>
+
+<p>}
+```
+確かにこの設定であればヘッダーを固定して中身を滑らかにスクロールすることが可能になります。そして、iPhoneのSafariからその画面を見るのであればさして違和感はないでしょう。しかし、これをUIWebView上で見ると画面のバウンドを止められないことに気がつきます。これは結構な違和感です。<br/>
+このバウンドを以下のようにネイティブソース側から止めることを考えました。</p>
+
+<p>ネイティブソース(UIWebViewの設定部分)
+```
+&ndash; (void)viewDidLoad {</p>
+
+<pre><code>[super viewDidLoad];
+uiWebView.delegate = self;
+// バウンドしないように設定
+[[(UIScrollView *)[uiWebView subviews] objectAtIndex:0] setBounces:NO];
+...
+</code></pre>
+
+<p>}
+```
+しかし、これだとCSSで設定した<strong>-webkit-overflow-scrolling: touch</strong>の効果がなくなってしまいます。なので別の方法を考えました。</p>
+
+<h4>position: absoluteを使う！！</h4>
+
+<p>position: fixed;は使いません。position: absolute;を使います。以下、踏まえて書き直します。</p>
+
+<p>サンプルHTML
+```
+&lt;!DOCTYPE html></p>
+
+<pre><code>&lt;head&gt;
+    &lt;meta charset="UTF-8" content="text/css" http-equiv="Content-Style-Type" /&gt;
+    &lt;meta content="width=device-width, user-scalable=no,minimum-scale=0.5, maximum-scale=1.0" name="viewport" /&gt;
+    &lt;link href="./main.css" media="all" rel="stylesheet" type="text/css" /&gt;
+    &lt;title&gt;サンプル&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="wrapper"&gt;
+        &lt;div id="header"&gt;ヘッダー&lt;/div&gt;
+        &lt;div id="mainContents"&gt;
+            &lt;div id="main"&gt;
+                contents
+                &lt;br&gt;
+                contents
+                &lt;br&gt;
+                ...
+                contents
+                &lt;br&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+</code></pre>
+
+<p></html>
+```</p>
+
+<p>サンプルCSS
+```
+html, body {</p>
+
+<pre><code>padding: 0;
+margin: 0;
+width: 100%;
+height: 100%;
+overflow: hidden;
+</code></pre>
+
+<p>}</p>
+
+<h1>wrapper {</h1>
+
+<pre><code>position: relative;
+width: 100%;
+height: 100%;
+</code></pre>
+
+<p>}</p>
+
+<h1>header {</h1>
+
+<pre><code>position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 64px;
+z-index: 2;
+</code></pre>
+
+<p>}</p>
+
+<h1>mainContents {</h1>
+
+<pre><code>position: relative;
+top: 64px;
+width: 100%;
+height: 100%;
+overflow: auto;
+-webkit-overflow-scrolling: touch;
+z-index: 1;
+</code></pre>
+
+<p>}</p>
+
+<h1>main {</h1>
+
+<pre><code>position: relative;
+padding: 64px 0;
+</code></pre>
+
+<p>}
+```
+これでほとんどの場合、バウンドしなくなります。しかも、滑らかなスクロールを保つこともできます。<br/>
+ただし、ヘッダーをタッチムーブすると&hellip;バウンドしてしまいます！！</p>
+
+<p>う〜ん。これは果たして無理なのか！？と思ったところで思いつきました。<strong>touchイベントを無効化</strong>しましょう！！<br/>
+jQueryを使っている前提で下記を紹介します。</p>
+
+<p>サンプルJS
+```</p>
+
+<p>jQuery( function($) {</p>
+
+<pre><code>$("#header").bind("touchstart", function() {
+    event.preventDefault();
+});
+
+$("#header").bind("touchmove", function() {
+    event.preventDefault();
+});
+
+$("#header").bind("touchend", function() {
+    event.preventDefault();
+});
+</code></pre>
+
+<p>});
+```
+これでバウンドせずに滑らかなスクロールを保つことができました。</p>
+
+<p>と思ったのですが、画面の両端を触っているとバウンドが発生してしまいます&hellip;。要調査ですね&hellip;。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[cache.manifestのキャッシュがかなり厄介!?]]></title>
+    <link href="http://grandbig.github.io/blog/2013/10/04/html5-cache-dot-manifest/"/>
+    <updated>2013-10-04T00:35:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/10/04/html5-cache-dot-manifest</id>
+    <content type="html"><![CDATA[<h3>cache.manifestで苦労することまとめ</h3>
+
+<p>本日は筆者が日頃から困っているcache.manifestについて紹介したいと思います。<br/>
+『な〜んだWebか〜。ネイティブアプリとは関係ないかな〜』なんて思っていませんか？<br/>
+ネイティブアプリではWebViewを実装することができます。このWebViewにも大いに関わってくるところなので、知って損はないでしょう。</p>
+
+<!--more-->
+
+
+<h4>cache.manifestの基本を簡単に紹介</h4>
+
+<p>cache.manifestを使ったことがあるという方は多いでしょうが、おさらい程度に基本を確認しておきましょう。</p>
+
+<p>```</p>
+
+<h1>cache.manifestの記載例</h1>
+
+<p>CACHE MANIFEST</p>
+
+<h1>version 1.0</h1>
+
+<p>CACHE:
+image1.png</p>
+
+<p>NETWORK:
+base.css</p>
+
+<p>FALLBACK:
+```</p>
+
+<p>・CACHEはキャッシュしたいファイルを記載します。<br/>
+・NETWORKは毎回サーバに問い合わせたいファイルを記載します。<br/>
+・FALLBACKはキャッシュできなかった場合の代わりのファイルを記載します。
+・キャッシュしたいファイルの設定は変わらないがキャッシュの変更を読み込ませたいというときにversionをアップさせましょう。(なぜ必要か詳しくは例を交えて説明します)</p>
+
+<h4>cache.manifestを試そう</h4>
+
+<p>実際に簡単なhtml, css, cache.manifestを作成してcache.manifestの挙動を確認してみます。</p>
+
+<p>まずはcache.manifestを読み込む設定を書くindex.html
+```
+//index.html
+&lt;!DOCTYPE html>
+<html manifest="cache.manifest"></p>
+
+<pre><code>&lt;head&gt;
+    &lt;meta charset="UTF-8" content="text/css" http-equiv="Content-Style-Type"&gt;
+    &lt;meta content="width=device-width, user-scalable=no, minimum-scale=0.5, maximum-scale=1.0" name="viewport"&gt;
+    &lt;meta name="format-detection" content="telephone=no"&gt;
+    &lt;link href="./base.css" media="all" rel="stylesheet" type="text/css"&gt;
+    &lt;title&gt;Cache-Test&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="word"&gt;Cache Test&lt;/div&gt;
+    &lt;img src="./image1.png" /&gt;
+&lt;/body&gt;
+</code></pre>
+
+<p></html>
+<code>
+次にcache.manifestの変更がわかりやすいようにcssを作成しましょう。
+</code>
+html, body {</p>
+
+<pre><code>position: absolute;
+width: 100%;
+height: 100%;
+padding: 0;
+margin: 0;
+background-color: white;
+</code></pre>
+
+<p>}</p>
+
+<h1>word {</h1>
+
+<pre><code>font-size: 30px;
+text-align: center;
+</code></pre>
+
+<p>}
+```
+これをChromeで表示すると
+<img src="/images/cachetest1.png" alt="Chromeで確認しよう" /><br/>
+このようになっています。</p>
+
+<p>画像はデバッガツールで詳細を見た様子です。cache.manifestで書いたimage1.pngだけでなくcache.manifestの読み込みを書いた<strong>index.html自体もキャッシュ</strong>されています。因みにbase.cssファイルはキャッシュされていないことも確認できます。<br/>
+base.cssは毎回読み込みに行くので変更内容は次回アクセス時に即座に反映されます。<br/>
+重要な事は<strong>cache.manifestを編集していなくても反映される</strong>ということです。</p>
+
+<p>一方でindex.htmlの内容を以下に変えてみたとします。
+```
+&hellip;
+<body></p>
+
+<pre><code>&lt;div id="word"&gt;Cache Test&lt;/div&gt;
+&lt;img src="./image1.png" /&gt;
+&lt;div&gt;test&lt;/div&gt;
+</code></pre>
+
+<p></body>
+&hellip;</p>
+
+<p><code>
+これでブラウザを更新してみましょう。divタグを追加したにも関わらず何も変化がないはずです。  
+CACHEで設定したファイルの変更を知らせるためには必ずcache.manifestに変更を加えて下さい。(この場合はcache.manifestのバージョンを上げれば十分です。)
+</code></p>
+
+<h1>cache.manifestのコメントアウトのバージョンを変更しよう</h1>
+
+<p>CACHE MANIFEST</p>
+
+<h1>version 1.0.1</h1>
+
+<p>CACHE:
+image1.png</p>
+
+<p>NETWORK:
+base.css</p>
+
+<p>FALLBACK:
+```
+さて改めてブラウザを更新しましょう。あれ？まだ何も変わらない！と思うかもしれませんが、よくよくデバッガツールを見てみて下さい。<br/>
+<img src="/images/cachetest2.png" alt="キャッシュが更新されている" /><br/>
+cache.manifestの更新を読み込んでいます。</p>
+
+<p>ここでもう一度ブラウザを更新しましょう。すると、先ほど追加したdivタグが表示されているはずです。</p>
+
+<p>つまり、cache.manifestの読み込みを書いたindex.html自体を更新するためには2回ブラウザを更新する必要があるということです。<br/>
+これをもし、iPhoneのネイティブアプリをWebViewを用いることで作るとしたらアプリの再起動が2回以上必要になります。ユーザにそれを強いるのはかなりハードルが高いと言えるでしょう。</p>
+
+<p>以上をまとめます。<br/>
+・cache.manifestの読み込みを設定したhtmlファイル(index.htmlなど)は更新することのないファイルとしましょう。<br/>
+・更新が生じる可能性のあるhtmlファイルは(index.htmlに)ロードするようにしましょう！</p>
+
+<p>本日はcache.manifestを用いた場合のキャッシュについて試しました。次回はネイティブ側でキャッシュ設定をした場合、どんな挙動を示すのか追いたいと思います。(cache.manifestと併用させた場合どうなるかも追えればと思います。)</p>
+]]></content>
+  </entry>
+  
+</feed>

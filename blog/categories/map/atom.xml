@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: map | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/map/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-05-24T11:31:51+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[MKMapViewの初期中心点をユーザの現在地に設定する方法]]></title>
+    <link href="http://grandbig.github.io/blog/2014/02/16/userlocationandmap/"/>
+    <updated>2014-02-16T21:16:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/02/16/userlocationandmap</id>
+    <content type="html"><![CDATA[<h3>MKMapViewの中心位置について考えた</h3>
+
+<p>本日はMKMapViewの初期表示について説明します。MKMapViewを扱うときにはユーザの位置情報を用いることが多いと思います。そのほとんどの場合、マップを初期表示したときにユーザの現在地を中心にしたいのではないかと思います。しかしながらiPhoneで位置情報を取得するとき、アプリを起動して即座に現在地を特定することはできません。では、『どうするのか？』について失敗談を交えつつ紹介させて頂きます。</p>
+
+<!--more-->
+
+
+<p>まずは失敗例から紹介します。<br/>
+筆者は<strong>ユーザの現在地をマップの中心位置に設定する</strong>ということに意識が向きすぎたせいか当初は下記の手段を取っていました。</p>
+
+<p>下記はViewController.h<br/>
+```</p>
+
+<h1>import &lt;UIKit/UIKit.h></h1>
+
+<h1>import &lt;CoreLocation/CoreLocation.h></h1>
+
+<h1>import &lt;MapKit/MapKit.h></h1>
+
+<p>@interface ViewController : UIViewController &lt;MKMapViewDelegate, CLLocationManagerDelegate></p>
+
+<p>@property (strong, nonatomic) IBOutlet CLLocationManager <em>locationManager;
+@property (weak, nonatomic) IBOutlet MKMapView </em>map;
+```</p>
+
+<p>下記はViewController.m<br/>
+<code>
+// ユーザの位置を取得
+CLLocation *location = [locationManager location];
+CLLocationCoordinate2D uCoordinate = [location coordinate];
+// マップの中心位置を設定
+MKCoordinateRegion region = MKCoordinateRegionMake(uCoordinate, MKCoordinateSpanMake(0.05, 0.05));
+</code>
+しかし、これではアプリ起動直後に真っ青な画面が表示されてしまうことでしょう。その理由はiPhone側で位置情報を取得する前にマップを表示しようとしてしまっているためです。結果、ユーザの現在地はlatitude, longitude共に0として返ってきます。<br/>
+ここで筆者はマップに現在地のピンを表示することは割りと早くできていることに気づきました。であれば何かマップからユーザ情報が取得できるのではないかと。<br/>
+で考えたのが下記。(ViewController.mのみ修正)<br/>
+<code>
+// ユーザの位置を取得
+CLLocation *userLocation = self.map.userLocation.location;
+CLLocationCoordinate2D uCoordinate = CLLocationCoordinate2DMake(userLocation.coordinate.latitude, userLocation.coordinate.longitude);
+// マップの中心位置を設定
+MKCoordinateRegion region = MKCoordinateRegionMake(uCoordinate, MKCoordinateSpanMake(0.05, 0.05));
+</code></p>
+
+<p>しかし、これまたアプリ起動後に真っ青な画面が表示されてしまいました&hellip;。う〜む、なかなかうまくいかない。</p>
+
+<p>で、結局、下記で解決。(ViewController.mのみ修正)<br/>
+<code>
+// マップにユーザの現在地を表示
+self.map.showsUserLocation = YES;
+// マップの中心地がユーザの現在地を追従するように設定
+[self.map setUserTrackingMode:MKUserTrackingModeFollow];
+</code>
+位置情報が取れ次第(ユーザの現在地が特定でき次第)、マップの中心地が移動するのでアプリ起動後に割りとすぐ理想の結果が得られます。(因みにマップを動かせば、追従モードはOFFとなります。)</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Google Maps SDK for iOSをiOS6対応させようとしてハマったこと]]></title>
+    <link href="http://grandbig.github.io/blog/2014/01/27/googlemapssdk2/"/>
+    <updated>2014-01-27T23:50:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/01/27/googlemapssdk2</id>
+    <content type="html"><![CDATA[<h3>iOS6からGoogle Maps SDKが使いたい！！</h3>
+
+<p>さて、最近取り組んでいるGoogle Maps SDKについて書きます。前回ご紹介させて頂いたときはiOS7からの対応として書かせて頂きました。<br/>
+今日はiOS6から対応するアプリを開発する上でハマったことについて説明します。</p>
+
+<p>Xcode5でiOS6から対応に変更するとき、<strong>Deployment Target</strong>を6.0に変更すると思います。そのままClearn ⇒ Buildをしてみると下図のようなおびただしい数のエラーが&hellip;<br/>
+<img src="/images/googlemapssdk_howtouse1.png" alt="iOS6でビルドするとエラーがたくさん出る" /></p>
+
+<!--more-->
+
+
+<p>なぜ、Deployment Targetを変えただけでこんなにもエラーが？と思ったので、エラー内容を見てみると&hellip;<br/>
+<strong>Undefined symbols for architecture armv7</strong>と書いてあります。<br/>
+これだけで調べてもよくわかりませんでした。(原因がわかってからよくよく見てみると様々なサイトでヒントを教えてくれていたとわかるのですが&hellip;)</p>
+
+<p>もう少し、詳しく見てみると<strong>Google Maps</strong>がひっかかっていることがわかりました。で、再度検索し続けると<br/>
+<strong>ライブラリが足りない</strong><br/>
+という可能性にたどり着きました。<br/>
+さ、<a href="https://developers.google.com/maps/documentation/ios/start?hl=ja">Google Maps SDK 公式ページ</a>を見てみましょう。<br/>
+自分で作成したXcodeプロジェクトに追加してあるライブラリと公式ページに書いてある追加すべきライブラリを比較すると下記の違いに気づきました。(作成したXcodeプロジェクトにはデフォルトで追加されているライブラリも含まれています。)<br/>
+<img src="/images/googlemapssdk_howtouse2.png" alt="ライブラリが違う" /></p>
+
+<p>結果、ライブラリが異なるという単純な理由だったわけですが、気づくのに時間がかかりました。<br/>
+iOS7では動いてしまうという部分も混乱を招く原因だったと思います。</p>
+
+<p>ま、英語を嫌がらずに公式ページを読んだ方が時間はかかりませんってことですね&hellip;。<br/>
+今日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOSでMapにGIFアニメーションの画像を表示したい]]></title>
+    <link href="http://grandbig.github.io/blog/2014/01/26/googlemapsdk/"/>
+    <updated>2014-01-26T23:29:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/01/26/googlemapsdk</id>
+    <content type="html"><![CDATA[<h3>MAPにGIFアニメーション画像を表示したい</h3>
+
+<p>最近、ネイティブアプリ開発を再び始めました。そこでマップ上にアニメーションGIF画像を表示しようと思ったのですが、これがなかなかうまくいかないんですね。<br/>
+そのときのことについて今日は書きます。</p>
+
+<p>iOSのMapライブラリにはApple標準提供の<strong>MapKit</strong>とGoogleが提供する<strong>Google Maps SDK for iOS</strong>があります。<br/>
+当然のことながら標準のMapKitの方が導入は簡単です。(Google Mapsの利用にはそれなりに導入手順があります。ただ、ここで挫折しなければ実はかなり使いやすいのではないかと。)</p>
+
+<p>Google Mapsの導入手順については下記を参考にすると良いと思います。<br/>
+<a href="http://qiita.com/shu223/items/bfb5ef3e45682c2bb763">Google Maps SDK for iOSの導入手順 &ndash; Qiita</a><br/>
+<a href="http://dev.eyewhale.com/archives/157">Google Maps SDK for iOSの使い方 &ndash; 目くじら日記</a></p>
+
+<!--more-->
+
+
+<h4>Apple標準提供のMapKitを使ってみる</h4>
+
+<p>さて、まずは当然のことながらMapKitで試してみることにしました。そもそもMapKitライブラリを使用すると簡単にはピンの画像を変えられません。<br/>
+詳しくは<a href="http://grandbig.github.io/blog/2013/09/28/put-annotation/">Mapに好きな画像を配置しよう！</a>を見てください。</p>
+
+<p>MapKitにGIFアニメーション画像を配置するべく、LBGIFImageを利用しました。非常に簡単に利用できるので、ぜひ<a href="https://github.com/larcus94/LBGIFImage">LBGIFImage &ndash; GitHub</a>からダウンロードしてみてください。
+しかし、MapKitではGIFアニメーション画像を表示することができませんでした。アノテーション(Mapにさすピン)をGIFアニメーションで置き換えることができないのか定かではないのですが、うまくいきませんでした。</p>
+
+<h4>Google Maps SDK for iOSを使ってみる</h4>
+
+<p>次にもしや<strong>Google Maps SDK for iOS</strong>ならできるのでは！？と思いつき試してみました。<br/>
+結果から言いますと、超簡単にできました！！</p>
+
+<p><code>
+// マーカーの作成
+GMSMarker *marker = [[GMSMarker alloc] init];
+// 位置の設定
+marker.position = CLLocationCoordinate2DMake(35.659352, 139.776228);
+// マーカーを地図にプロット
+marker.map = mapView;
+// GIFアニメーションをUIImageに設定
+UIImage* image = [UIImage animatedGIFNamed:@"GIF画像名(.gifは含まない)"];
+// マーカーにその画像を設定
+marker.icon = image;
+</code>
+これだけでできます。(もちろんLBGIFImageライブラリはインポートしてください)</p>
+
+<p>標準提供のMapKitを利用しているアプリでGIFアニメーションをマップ上に表示しているアプリもあるので、やり方はあるのと思います。
+ただ、Google Maps SDKはとても使いやすそうなので、こっち使おうかな。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Mapに好きな画像を配置しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2013/09/28/put-annotation/"/>
+    <updated>2013-09-28T18:27:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/09/28/put-annotation</id>
+    <content type="html"><![CDATA[<h3>Mapにピンではなく、自分の好きな画像を配置したい！！</h3>
+
+<p>さて、筆者は思った以上にハマってしまいました。マップを表示して、よく見る赤ピンを配置するまでは余裕だったのですが、如何せんその先が上手くいかず時間がかかってしまいました。ネット上でいろいろとヒントをもらいましたが、なかなかわかりづらかったのでブログにメモしておきます。</p>
+
+<!--more-->
+
+
+<h4>Mapを表示しよう</h4>
+
+<p>iOS6以降から実装されたApple独自のMapを嫌う人もいるかもしれませんが、実装は最も簡単です。(iOS5以前であればGoogleのMapが表示されます。)<br/>
+まず、AnnotationPracticeという名前でプロジェクトを作成します。<br/>
+例によって<a href="http://grandbig.github.io/blog/2013/09/13/lets-create-an-iphone-app/">Let&rsquo;s Create an iPhone App</a>のときと同様にViewControllerの追加まで進めます。そして、今回はMapを表示するので、<strong>MapKit.framework</strong>をライブラリに追加します。<br/>
+<img src="/images/annotationpractice1.png" alt="AnnotationPractice.xcodeprojを作成" /></p>
+
+<p>AppDelegate.mファイルでViewController.xibに設定している画面を表示できるよう設定することを忘れずに。(リマインドとして下記に書いておきます。)
+```
+// AppDelegate.mファイルに下記を書くこと</p>
+
+<h1>import &ldquo;AppDelegate.h&rdquo;</h1>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<p>@implementation AppDelegate</p>
+
+<ul>
+<li><p>(BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions
+{
+  self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen] bounds];
+  self.window.backgroundColor = [UIColor whiteColor];
+  [self.window makeKeyAndVisible];
+  UIViewController *viewCtl = [[ViewController alloc] init];
+  self.window.rootViewController = viewCtl;</p>
+
+<p>  return YES;
+}
+```</p></li>
+</ul>
+
+
+<p>さて、次にViewController.hファイルを下記のようにします。
+```
+// ViewController.hファイルの内容</p>
+
+<h1>import &lt;UIKit/UIKit.h></h1>
+
+<h1>import &lt;MapKit/MapKit.h></h1>
+
+<p>@interface ViewController : UIViewController <MKMapViewDelegate> {</p>
+
+<pre><code>    IBOutlet MKMapView *mapView;
+</code></pre>
+
+<p>}</p>
+
+<p>@end
+```</p>
+
+<p>また、ViewController.xibでMapを貼り付けて、そのMapとViewController.hで定義したmapViewを結びつけます。<br/>
+<img src="/images/annotationpractice2.png" alt="Map ViewをViewController.xibに貼り付け" /></p>
+
+<p>さあ、これで端末を繋いで実行すればマップが下のように表示されます。
+<img src="/images/annotationpractice3.png" alt="Mapが表示されます" /></p>
+
+<h4>赤いピンを配置しよう</h4>
+
+<p>画像を配置したいのですが、ここはぐっと我慢してまずはデフォルトの赤ピンを配置してみることにします。</p>
+
+<p>新たにCustomAnnotationクラスを作成します。<br/>
+＜手順＞<br/>
+①プロジェクトを右クリックして<strong>New File&hellip;</strong><br/>
+②Subclass ofで<strong>NSObject</strong>を選択<br/>
+③ClassをCustomAnnotationとする(クラス名なので好きな名前でOK)</p>
+
+<p>追加できたら、早速CustomAnnotation.hとCustomAnnotation.mの両ファイルを編集しましょう。
+```
+// CustomAnnotation.hファイル</p>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<h1>import &lt;MapKit/MapKit.h></h1>
+
+<p>@interface CustomAnnotation : NSObject <MKAnnotation> {</p>
+
+<pre><code>CLLocationCoordinate2D coordinate;
+IBOutlet NSString *annotationTitle;
+IBOutlet NSString *annotationSubtitle;
+</code></pre>
+
+<p>}</p>
+
+<p>@property (nonatomic, readonly) CLLocationCoordinate2D coordinate;
+&ndash; (id)initWithLocationCoordinate:(CLLocationCoordinate2D) _coordinate</p>
+
+<pre><code>                       title:(NSString *)_annotationTitle subtitle:(NSString *)_annotationannSubtitle;
+</code></pre>
+
+<ul>
+<li>(NSString *)title;</li>
+<li>(NSString *)subtitle;</li>
+</ul>
+
+
+<p>@end
+<code>
+CLLocationCoordinate2Dの型ではIBOutletを指定できないので、少々面倒ですが、CustomAnnotation.hに@propertyを書き、CustomAnnotation.mファイルに@synthesizeを書きます。
+</code>
+// CustomAnnotation.mファイル</p>
+
+<h1>import &ldquo;CustomAnnotation.h&rdquo;</h1>
+
+<p>@implementation CustomAnnotation
+@synthesize coordinate;</p>
+
+<ul>
+<li><p>(NSString *)title {
+      return annotationTitle;
+}</p></li>
+<li><p>(NSString *)subtitle {
+      return annotationSubtitle;
+}</p></li>
+<li><p>(id)initWithLocationCoordinate:(CLLocationCoordinate2D) <em>coordinate
+                         title:(NSString *)</em>annotationTitle subtitle:(NSString *)<em>annotationSubtitle {
+  coordinate = </em>coordinate;
+  self->annotationTitle = <em>annotationTitle;
+  self->annotationSubtitle = </em>annotationSubtitle;
+  return self;
+}</p></li>
+</ul>
+
+
+<p>@end
+```
+initWithLocationCoordinate関数を定義して初期化時に位置(緯度・経度), 吹き出しのタイトル, 吹き出しのサブタイトルを設定したannotationを返すようにします。</p>
+
+<p>そしてViewController.mファイルを下記のように編集して、赤いピンを配置します。
+```</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<p>// ①CustomAnnotation.hファイルをimport</p>
+
+<h1>import &ldquo;CustomAnnotation.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(id)initWithNibName:(NSString <em>)nibNameOrNil bundle:(NSBundle </em>)nibBundleOrNil
+{
+  self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+  if (self) {
+      // Custom initialization
+  }
+  return self;
+}</p></li>
+<li><p>(void)viewDidLoad
+{
+  [super viewDidLoad];</p>
+
+<p>  // ②CustomAnnotationクラスの初期化(インスタンス化)
+  CustomAnnotation *ann1 = [[CustomAnnotation alloc] initWithLocationCoordinate:CLLocationCoordinate2DMake(35.685623, 139.763153) title:@&ldquo;TEST&rdquo; subtitle:@&ldquo;test&rdquo;];
+  // ③ついでにユーザの現在地を表示するように設定
+  [mapView setShowsUserLocation:YES];
+  // ④annotationをマップに追加
+  [mapView addAnnotation:ann1];
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning
+{
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>これでプロジェクトを実行してみましょう。以下のようになるはず。<br/>
+<img src="/images/annotationpractice4.png" alt="Mapに赤いピンを配置" /></p>
+
+<h4>Mapに好きな画像を配置しよう</h4>
+
+<p>よし、これでやっと画像配置の段階に移れそうです。<br/>
+赤いピンを好きな画像に置き換えるためにはMKAnnotationViewクラスを使います。まずはViewController.mファイルのviewDidLoad関数内に1行追加します。</p>
+
+<p>```
+&ndash; (void)viewDidLoad
+{</p>
+
+<pre><code>[super viewDidLoad];
+
+CustomAnnotation *ann1 = [[CustomAnnotation alloc] initWithLocationCoordinate:CLLocationCoordinate2DMake(35.685623, 139.763153) title:@"大手町駅" subtitle:@"千代田線"];
+// 下記１行を追加
+[mapView setDelegate:self];
+[mapView setShowsUserLocation:YES];
+[mapView addAnnotation:ann1];
+</code></pre>
+
+<p>}</p>
+
+<p>```
+これを追加することでaddAnnotationを実行した後にviewForAnnotation関数内の処理を実行するようになります。viewForAnnotation関数で実行したい処理を書きます。(もちろんViewController.mファイルに記述します。)</p>
+
+<p>```
+// ViewController.mファイル内にviewForAnnotation関数を記述
+&ndash;(MKAnnotationView<em>)mapView:(MKMapView</em>)_mapView viewForAnnotation:(id <MKAnnotation>)annotation {</p>
+
+<pre><code>// ①ユーザの現在地はデフォルトの青丸マークを使いたいのでreturn: nil
+if (annotation == mapView.userLocation) {
+    return nil;
+} else {
+    MKAnnotationView *annotationView;
+    // ②再利用可能なannotationがあるかどうかを判断するための識別子を定義
+    NSString* identifier = @"Pin";
+    // ③dequeueReusableAnnotationViewWithIdentifierで"Pin"という識別子の使いまわせるannotationがあるかチェック
+    annotationView = (MKAnnotationView*)[mapView dequeueReusableAnnotationViewWithIdentifier:identifier];
+    // ④使い回しができるannotationがない場合、annotationの初期化
+    if(annotationView == nil) {
+        annotationView = [[MKAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:identifier];
+    }
+    // ⑤好きな画像をannotationとして設定
+    annotationView.image = [UIImage imageNamed:@"foot_30.png"];
+    annotationView.annotation = annotation;
+    return annotationView;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>これでプロジェクトを実行すると、めでたく自分で設定した画像が表示されます。<br/>
+<img src="/images/annotationpractice5.png" alt="足あと画像がMapに表示" /></p>
+
+<h4>吹き出しをつける</h4>
+
+<p>画像をタップしたときに吹き出しを出すようにしましょう。<br/>
+viewForAnnotation関数内で設定を追加します。
+<code>
+annotationView.image = [UIImage imageNamed:@"foot_30.png"];
+// ここに追加
+annotationView.canShowCallout = YES;
+annotationView.annotation = annotation;
+</code></p>
+
+<p>今回の例ではtitleにTEST, subtitleにtestとしましたが、例えば何らかの取得した値を表示したいということもあるでしょう。その場合、数値, 日付などをNSString型に変換した上で設定する必要があります。ここで結構ハマりました(汗)<br/>
+何にハマったかというとNSStringの初期化です。<br/>
+```
+// 失敗例(メモリリークが発生する例)
+NSString <em>str1 = [NSString stringWithString:@&ldquo;test&rdquo;];
+NSString </em>str2 = [NSString stringWithFormat:@&ldquo;test:%f&rdquo;,123];</p>
+
+<p>// 成功例
+NSString <em>str1 = [NSString initWithString:@&ldquo;test&rdquo;];
+NSString </em>str2 = [NSString initWithFormat:@&ldquo;test:%f&rdquo;,123];
+```
+stringWithString, stringWithFormatを使用した場合、簡易コンストラクタで生成され、releaseタイミングがNSStringに委ねられるとのことです。なので、アプリ起動時に画像をタップするときにはメモリが解放されてしまっているためにメモリリークエラーを引き起こすものと思われます。<br/>
+initWithString, initWithFormatでコンストラクタを生成するようにした方が良さそうです。<br/>
+次のサイトを参考にしました。(<a href="http://iphone-app-developer.seesaa.net/article/183323144.html">iPhoneアプリ開発備忘録</a>)</p>
+
+<p>基本中の基本かもしれませんが、一つ一つ理解しながら開発できたので、良い勉強になりました。</p>
+]]></content>
+  </entry>
+  
+</feed>

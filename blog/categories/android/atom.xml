@@ -1,0 +1,694 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: android | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/android/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-05-24T11:31:51+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[AltBeaconを使ってAndroidでiBeaconを検知しよう]]></title>
+    <link href="http://grandbig.github.io/blog/2015/05/16/altbeacon/"/>
+    <updated>2015-05-16T19:12:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/05/16/altbeacon</id>
+    <content type="html"><![CDATA[<h4>AltBeaconを使って手軽にAndroidでiBeaconを検知しよう</h4>
+
+<p>本日はAndroidでのiBeacon検知をやってみようと思います。<br/>
+自作することも簡単だと聞きますが、Radius Networks社が出している<a href="https://github.com/AltBeacon/android-beacon-library">AltBeacon</a>が非常に便利なようです。</p>
+
+<p>何と言ってもiOSのCoreLocation.frameworkと同じ感覚で扱えるというのが強みでしょう。<br/>
+(iOSアプリエンジニアにとっては非常に助かります笑)</p>
+
+<p>さて、実際に実装方法を見て行きましょう。</p>
+
+<p>実装方法や設定に関しては、<a href="http://dev.classmethod.jp/series/android-x-ibeacon/">Developers.IO Android x iBeacon – シリーズ –</a>を踏襲させて頂きました。<br/>
+めちゃくちゃわかりやすいサイトなので、他のページも参考にすると良いです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>本記事のAndroid Studioのバージョンは1.2となります。</p>
+
+<p><img src="/images/altbeacon_1.png" alt="Android Studioバージョン" /></p>
+
+<h5>AltBeaconのライブラリを使うための準備</h5>
+
+<p>AltBeaconライブラリを導入します。</p>
+
+<p>１. Gradle Scripts > build.gradle(Module: app)の編集
+<code>compile 'org.altbeacon:android-beacon-library:2+'</code>を<code>dependencies</code>に追加</p>
+
+<p>```java
+apply plugin: &lsquo;com.android.application&rsquo;</p>
+
+<p>android {</p>
+
+<pre><code>&lt;省略&gt;
+</code></pre>
+
+<p>}</p>
+
+<p>dependencies {</p>
+
+<pre><code>compile fileTree(dir: 'libs', include: ['*.jar'])
+compile 'com.android.support:appcompat-v7:21.0.3'
+compile 'org.altbeacon:android-beacon-library:2+'
+</code></pre>
+
+<p>}
+```</p>
+
+<p>２. app > manifests > AndroidManifest.xmlの編集
+Bluetooth関連のpermissionを追加</p>
+
+<p>```xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;manifest xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>package="com.example.takahiro.altbeaconsample" &gt;
+
+&lt;!-- ここを追加 --&gt;
+&lt;uses-permission android:name="android.permission.BLUETOOTH"/&gt;
+&lt;uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/&gt;
+&lt;uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/&gt;
+
+&lt;application
+
+    &lt;省略&gt;
+
+&lt;/application&gt;
+</code></pre>
+
+<p></manifest>
+```</p>
+
+<h5>iBeaconの検知を実装</h5>
+
+<p>早速、iBeaconの検知(モニタリング)を実装します。</p>
+
+<p>```java
+package com.example.takahiro.altbeaconsample;</p>
+
+<p>import android.os.RemoteException;
+import android.support.v7.app.ActionBarActivity;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;</p>
+
+<p>// AltBeacon関連のライブラリをimport
+import org.altbeacon.beacon.BeaconConsumer;
+import org.altbeacon.beacon.BeaconManager;
+import org.altbeacon.beacon.BeaconParser;
+import org.altbeacon.beacon.Identifier;
+import org.altbeacon.beacon.MonitorNotifier;
+import org.altbeacon.beacon.Region;</p>
+
+<p>public class MainActivity extends ActionBarActivity implements BeaconConsumer {</p>
+
+<pre><code>// BeaconConsumerインターフェースを実装
+private static String TAG = "AltBeacon Sample";
+// BeaconManagerクラスの変数を定義
+private BeaconManager beaconManager;
+
+// iBeaconのデータを認識するためのParserフォーマット
+public static final String IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24";
+
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    // staticメソッドでBeaconManagerクラスのインスタンスを取得
+    beaconManager = BeaconManager.getInstanceForApplication(this);
+    // BeaconParseをBeaconManagerに設定
+    beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(IBEACON_FORMAT));
+}
+
+@Override
+public boolean onCreateOptionsMenu(Menu menu) {
+    // Inflate the menu; this adds items to the action bar if it is present.
+    getMenuInflater().inflate(R.menu.menu_main, menu);
+    return true;
+}
+
+@Override
+public boolean onOptionsItemSelected(MenuItem item) {
+    // Handle action bar item clicks here. The action bar will
+    // automatically handle clicks on the Home/Up button, so long
+    // as you specify a parent activity in AndroidManifest.xml.
+    int id = item.getItemId();
+
+    //noinspection SimplifiableIfStatement
+    if(id == R.id.action_settings) {
+        return true;
+    }
+
+    return super.onOptionsItemSelected(item);
+}
+
+@Override
+public void onBeaconServiceConnect() {
+    // BeaconManagerクラスのモニタリング通知受取り処理
+    beaconManager.setMonitorNotifier(new MonitorNotifier() {
+        @Override
+        public void didEnterRegion(Region region) {
+            // 領域進入時に実行
+            Log.d(TAG, "didEnterRegion");
+        }
+
+        @Override
+        public void didExitRegion(Region region) {
+            // 領域退出時に実行
+            Log.d(TAG, "didExitRegion");
+        }
+
+        @Override
+        public void didDetermineStateForRegion(int i, Region region) {
+            // 領域への侵入/退出のステータスが変化したときに実行
+            Log.d(TAG, "didDetermineStateForRegion");
+        }
+    });
+
+    try {
+        // UUIDの作成
+        Identifier identifier = Identifier.parse("434B4666-E4B2-4B78-8C13-901AFEE3DBB6");
+        // モニタリングの開始
+        beaconManager.startMonitoringBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+    } catch(RemoteException e) {
+        // 例外が発生した場合の処理
+        e.printStackTrace();
+    }
+}
+
+@Override
+protected void onPause() {
+    super.onPause();
+    beaconManager.unbind(this);
+}
+
+@Override
+protected void onResume() {
+    super.onPause();
+    beaconManager.bind(this);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントは下記です。</p>
+
+<ul>
+<li>iBeacon検知のためにBeaconParserを定義して、BeaconLayoutに設定</li>
+<li><code>startMonitoringBeaconsInRegion</code>する際の引数であるRegionへの定義
+各引数は<code>Region("監視対象ID", "UUID", "major", "minor")</code>のようになっています。<br/>
+<strong>監視対象ID</strong> さえ設定すれば、iBeaconを検知可能です。UUID, major, minorを設定すると、該当するiBeaconのみ検知するようになります。</li>
+</ul>
+
+
+<h5>iBeaconで距離計測</h5>
+
+<p>次にiBeaconの距離計測をしてみましょう。<br/>
+今回は領域観測をして、領域に入ったタイミングで距離計測を開始し、領域を出たタイミングで距離計測を停止します。</p>
+
+<p>```java</p>
+
+<p>&lt;省略></p>
+
+<p>@Override
+public void onBeaconServiceConnect() {</p>
+
+<pre><code>// BeaconManagerクラスのモニタリング設定
+beaconManager.setMonitorNotifier(new MonitorNotifier() {
+    @Override
+    public void didEnterRegion(Region region) {
+        // 領域侵入時に実行
+        Log.d(TAG, "didEnterRegion");
+
+        try {
+            // レンジングの開始
+            beaconManager.startRangingBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+        } catch(RemoteException e) {
+            // 例外が発生した場合
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void didExitRegion(Region region) {
+        // 領域退出時に実行
+        Log.d(TAG, "didExitRegion");
+
+        try {
+            // レンジングの停止
+            beaconManager.stopRangingBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+        } catch(RemoteException e) {
+            // 例外が発生した場合
+            e.printStackTrace();
+        }
+    }
+}
+
+// BeaconManagerクラスのレンジング設定
+beaconManager.setRangeNotifier(new RangeNotifier() {
+    @Override
+    public void didRangeBeaconsInRegion(Collection&lt;Beacon&gt; beacons, Region region) {
+        // 検出したビーコンの情報を全部Logに書き出す
+        for(Beacon beacon : beacons) {
+            Log.d(TAG, "UUID:" + beacon.getId1() + ", major:" + beacon.getId2() + ", minor:" + beacon.getId3() + ", Distance:" + beacon.getDistance() + ",RSSI" + beacon.getRssi() + ", TxPower" + beacon.getTxPower());
+        }
+    }
+}
+
+try {
+    // モニタリングの開始
+    beaconManager.startMonitoringBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+} catch(RemoteException e) {
+    e.printStackTrace();
+}
+</code></pre>
+
+<p>}</p>
+
+<p>&lt;省略></p>
+
+<p>```</p>
+
+<p>AltBeaconライブラリはだいぶ使いやすいですね！<br/>
+iBeaconはiOS先行でサービスを始めることが多いと思うので、iOSの仕様に合わせてプログラミングを組めるのはエンジニアとしてありがたいですね。<br/>
+(Androidユーザが多いとは言えない日本にとっては、Android特有の機能を設けることは工数的に優先すべきではなかったりしますしね。趣味として取り入れたい気持ちはありますが&hellip;。)</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<p><a href="https://github.com/grandbig/altBeaconSample">本記事のレポジトリはこちら</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[CROSSWALKの性能を確かめよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/04/12/crosswalk-test/"/>
+    <updated>2015-04-12T16:50:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/04/12/crosswalk-test</id>
+    <content type="html"><![CDATA[<h4>CROSSWALKは果たして優秀なのか！？</h4>
+
+<p>以前、CROSSWALKについて紹介させて頂きました。<br/>
+メリット/デメリットはいろいろなサイトで紹介されていますが、実際に性能はどうなのか気になりますよね？<br/>
+そこで今回は幾つかの端末を用いて試験をしてみました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>Sunspiderでベンチマーク</h5>
+
+<p>試験に利用した端末は下記3つです。</p>
+
+<ul>
+<li>Android4.4.2 / AQOUS 305SH</li>
+<li>Android4.2.2 / AQOUS 303SH</li>
+</ul>
+
+
+<p>これら端末で下記4つのWebの性能を確かめました。</p>
+
+<ul>
+<li>CROSSWALK</li>
+<li>標準のWebView</li>
+<li>標準のブラウザ</li>
+<li>Chrome</li>
+</ul>
+
+
+<p>早速ですが、結果を載せます。</p>
+
+<p><img src="/images/crosswalk_sunspider_305sh.png" alt="Android4.4.2, AQOUS 305SH, Sunspider結果" /><br/>
+<img src="/images/crosswalk_sunspider_303sh.png" alt="Android4.2.2, AQOUS 303SH, Sunspider結果" /></p>
+
+<p>結果を見ると、処理速度だけで言えば、必ずしもCROSSWALKが優秀とは言えないことがわかります。<br/>
+しかし、CROSSWALKの良さは処理速度に限ったことではありません。<br/>
+何と言っても最新のChromiumと同じHTML, CSSの対応度合いが肝です。<br/>
+では続けて、HTMLとCSSに関して試験してみましょう。</p>
+
+<h5>HTML5のテスト</h5>
+
+<p>まずは、HTML5の対応度合いを見て行きましょう。<br/>
+計測に使うのはもちろん<a href="https://html5test.com/">HTML5test</a>です。<br/>
+HTML5testは550点満点なので、数値が550に近いほど優秀と言えます。</p>
+
+<p><img src="/images/crosswalk_html5test_305sh.png" alt="Android4.4.2, AQOUS 305SH, HTML5Test結果" /><br/>
+<img src="/images/crosswalk_html5test_303sh.png" alt="Android4.2.2, AQOUS 303SH, HTML5Test結果" /></p>
+
+<p>これはさすがの結果と言えるでしょう。<br/>
+Chromeの方が高かったりしますが、標準のWebViewや標準のブラウザに比べれば遥かに優秀であると言えます。</p>
+
+<h5>CSS3のテスト</h5>
+
+<p>次に、CSS3の対応度合いを見て行きましょう。<br/>
+計測に使うのはもちろん<a href="http://css3test.com/">The CSS3 Test</a>です。<br/>
+The CSS3 Testは100%満点の%で表現されます。</p>
+
+<p><img src="/images/crosswalk_css3test_305sh.png" alt="Android4.4.2 AQOUS 305SH, CSS3Test結果" /><br/>
+<img src="/images/crosswalk_css3test_303sh.png" alt="Android4.2.2 AQOUS 303SH, CSS3Test結果" /></p>
+
+<p>こちらもCROSSWALKがメリットとなる結果と言えるでしょう。<br/>
+Chromeと同じ対応度合いであったので、全く問題がないと言えると思います。</p>
+
+<h5>まとめ</h5>
+
+<p>以上の結果を見ると、処理速度が気になるものの、WebSocketやWebGL, WebRTCなどに対応した上で、ターゲットにAndroid4.0〜4.3を含めたいのであれば、CROSSWALKは入れるべきと言えるでしょう。<br/>
+Android5.0以上がほとんどを占める世の中になったとしたら、何も考えずに標準のWebViewを使えば良いのかもしれないですが、まだまだ先の話でしょう。<br/>
+と言ったところで、本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android StudioでCROSSWALKを使おう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/03/28/crosswalk/"/>
+    <updated>2015-03-28T13:57:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/03/28/crosswalk</id>
+    <content type="html"><![CDATA[<h4>Androidでハイブリッドアプリを作ろう</h4>
+
+<p>以前、iOSではiOS8からWKWebViewという新しいWebViewが追加されたことを説明しました。<br/>
+では、Androidはどうなのでしょうか？</p>
+
+<p>Androidは4.3までWebKitベースのWebViewをアプリに組み込んでいました。<br/>
+しかし、Android4.4より、ChromiumベースのWebViewとなりました。ここで、大きく異なるのはレンダリングエンジンが <strong>Blink</strong> になったというところです。<br/>
+また、Android4.4まではChromiumがバージョンアップされたとしても、各メーカーがAndroidのOSバージョンアップを提供しなければ、最新のWebViewを利用することができませんでした。</p>
+
+<p>この現状を見たのかGoogleはAndroid5.0以降、WebViewをOSから切り離し、Google Play経由でバージョンアップ可能としました。<br/>
+よって、メーカーがOSのバージョンアップをする/しないに関わらず、Google側の意志で最新のWebViewをユーザに提供可能となったのです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>近年はAndroid2.xを使っているユーザもだいぶ減少してきました。<br/>
+が、未だ、Android4.0〜4.3の端末を利用しているユーザは相当数、存在しています。<br/>
+では、4.x〜5.0.xまでの端末全てに対応するハイブリットアプリを作成するためには、各バージョンに気をつけつつ、開発するしかないのでしょうか？</p>
+
+<p>本記事では、 <strong>CROSSWALK</strong> に注目し、上記の問題に対応することとしました。</p>
+
+<h4>CROSSWALKを組み込もう</h4>
+
+<p>まずは、CROSSWALKのレポジトリを追加できるようにしましょう。</p>
+
+<p>```java
+// build.gradle(Module: app)
+apply plugin: &lsquo;com.android.application&rsquo;</p>
+
+<p>android {</p>
+
+<pre><code>....
+</code></pre>
+
+<p>}</p>
+
+<p>// ここを追加
+repositories {</p>
+
+<pre><code>maven {
+    url 'https://download.01.org/crosswalk/releases/crosswalk/android/maven2'
+}
+</code></pre>
+
+<p>}</p>
+
+<p>dependencies {</p>
+
+<pre><code>compile fileTree(dir: 'libs', include: ['*.jar'])
+compile 'com.android.support:appcompat-v7:21.0.3'
+compile 'org.xwalk:xwalk_core_library:10.39.235.15'     // ここも追加
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>次に、CROSSWALKのWebViewである <strong>XWalkView</strong> を画面に組み込みましょう。</p>
+
+<p>```xml
+// activity_main.xml
+&lt;RelativeLayout xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+android:layout_height="match_parent" android:paddingLeft="0dp"
+android:paddingRight="0dp"
+android:paddingTop="0dp"
+android:paddingBottom="0dp" tools:context=".MainActivity"&gt;
+
+&lt;!-- XWalkViewを追加 --&gt;
+&lt;org.xwalk.core.XWalkView
+    android:id="@+id/xwalkWebView"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:background="#000000"
+    /&gt;
+</code></pre>
+
+<p></RelativeLayout>
+```</p>
+
+<p>続いて、AndroidManifest.xmlにWebViewを使うための設定を書きましょう。</p>
+
+<p>```xml
+// AndroidManifest.xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;manifest xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>package="com.example.takahiro.crosswalksample" &gt;
+
+&lt;!-- 追加 --&gt;
+&lt;uses-permission android:name="android.permission.INTERNET" /&gt;
+&lt;uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" /&gt;
+&lt;uses-permission android:name="android.permission.ACCESS_WIFI_STATE" /&gt;
+
+....
+</code></pre>
+
+<p></manifest>
+```</p>
+
+<p>そして、メイン画面にWebViewの設定を書き込みましょう。</p>
+
+<p>```java
+// MainActivity.java</p>
+
+<p>package com.example.takahiro.crosswalksample;</p>
+
+<p>import android.support.v7.app.ActionBarActivity;
+import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
+import org.xwalk.core.XWalkView;</p>
+
+<p>public class MainActivity extends ActionBarActivity {</p>
+
+<pre><code>private XWalkView mXWalkView;
+
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    mXWalkView = (XWalkView) findViewById(R.id.activity_main);
+    mXWalkView.load("https://www.google.co.jp", null);
+}
+
+@Override
+protected void onPause() {
+    super.onPause();
+    if (mXWalkWebView != null) {
+        mXWalkWebView.pauseTimers();
+        mXWalkWebView.onHide();
+    }
+}
+
+@Override
+protected void onResume() {
+    super.onResume();
+    if (mXWalkWebView != null) {
+        mXWalkWebView.resumeTimers();
+        mXWalkWebView.onShow();
+    }
+}
+
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    if (mXWalkWebView != null) {
+        mXWalkWebView.onDestroy();
+    }
+}
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>これでAndroid4.x 〜 5.xで同じChromiumベースのWebViewを利用することができるはずです。<br/>
+といったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="https://diego.org/2015/01/07/embedding-crosswalk-in-android-studio/">Embedding Crosswalk in Android Studio</a></li>
+<li><a href="https://crosswalk-project.org/documentation/embedding_crosswalk.html">Embedding the Crosswalk Project</a></li>
+<li><a href="https://crosswalk-project.org/apis/embeddingapidocs_v3/org/xwalk/core/XWalkView.html#addJavascriptInterface(java.lang.Object,%20java.lang.String">XWalkView Reference</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android Studioを始めてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/03/28/start-android-studio/"/>
+    <updated>2015-03-28T13:13:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/03/28/start-android-studio</id>
+    <content type="html"><![CDATA[<h2>Android Studioとは</h2>
+
+<p>Googleが2013年のGoogle I/Oで発表したAndroidアプリ開発に最適化した開発統合環境です。<br/>
+iOSアプリ開発者であると、Macを使っている方がほとんどだと思うのですが、<br/>
+もちろんMacにもインストール可能です。<br/>
+Android Studioのインストールは<a href="http://developer.android.com/sdk/index.html">こちら</a>からできます。</p>
+
+<p>この記事時点での最新版は1.2です。<br/>
+では、早速、Android Studioを使ってみましょう。</p>
+
+<h3>プログラミングまでの準備</h3>
+
+<p>Android Studioを起動すると次のウィンドウが表示されます。<br/>
+<img src="/images/android_studio_1.png" alt="Android Studioを起動" /></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>プロジェクトを新規作成する場合は、『Start a new Android Studio project』を選択します。<br/>
+すると、Application Name, Company Nameを設定するウィンドウが表示されます。</p>
+
+<p><img src="/images/android_studio_2.png" alt="プロジェクトの設定ウィンドウ" /></p>
+
+<p>Nextを選択して、次に進むとAndroidアプリの対応バージョンを設定するウィンドウが表示されます。</p>
+
+<p><img src="/images/android_studio_3.png" alt="Androidアプリのバージョンを設定するウィンドウ" /></p>
+
+<p>Androidアプリのバージョンと一言で言っても、どのバージョンから対応させるべきか迷うこともあるでしょう。<br/>
+そんなときは <strong>Help me choose</strong> を選択しましょう。</p>
+
+<p><img src="/images/android_studio_4.png" alt="Androidアプリのバージョン確認ウィンドウ" /></p>
+
+<p>今回は9割をカバーするために <strong>API 15</strong> で設定しました。<br/>
+続いてNextを選択すると、初期GUI設定ウィンドウが表示されます。</p>
+
+<p><img src="/images/android_studio_5.png" alt="GUI設定ウィンドウ" /></p>
+
+<p>ここまで選択できたところで、プロジェクト作成ウィンドウが表示されます。</p>
+
+<p><img src="/images/android_studio_6.png" alt="プロジェクト作成ウィンドウ" /></p>
+
+<p>初めはヘルプウィンドウが表示されるので、Closeで閉じちゃいましょう。</p>
+
+<p>Android Studioで各ソースを編集するために、左サイドバーにある <strong>1: Project</strong> を選択しましょう。<br/>
+最終的に下記の画面が表示できれば準備完了です。</p>
+
+<p><img src="/images/android_studio_7.png" alt="プロジェクト作成ウィンドウ" /></p>
+
+<p>本記事はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
