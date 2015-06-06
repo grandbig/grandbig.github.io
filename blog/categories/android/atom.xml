@@ -4,7 +4,7 @@
   <title><![CDATA[Category: android | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-06-01T01:55:58+09:00</updated>
+  <updated>2015-06-06T22:54:06+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,186 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[AndroidでBackgroundでiBeaconを検知しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/06/altbeacon-service/"/>
+    <updated>2015-06-06T22:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/06/altbeacon-service</id>
+    <content type="html"><![CDATA[<h4>AltBeaconでiBeacon検知(アプリBG起動編)</h4>
+
+<p>さて、以前、<a href="http://grandbig.github.io/blog/2015/05/16/altbeacon/">AltBeaconを使ってAndroidでiBeaconを検知しよう</a>で基本的な使い方を説明させて頂きました。<br/>
+今回はアプリをBackgroundで起動しているときにもiBeaconを検知できるようにしてみようと思います。<br/>
+Background起動だけであれば、Applicationクラスを使うことで実現できますが、<br/>
+Serviceクラスを使えば、アプリをBackgroundから削除したとしても動作させることができます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>では早速、ソースコードを見て行きましょう。</p>
+
+<p>```java
+// BeaconServiceクラス
+// Serviceを拡張し、BootstrapNotifierをインターフェースとしたBeaconServiceクラス
+public class BeaconService extends Service implements BootstrapNotifier {</p>
+
+<pre><code>public static final String TAG = org.altbeacon.beacon.service.BeaconService.class.getSimpleName();
+
+// iBeaconのデータを認識するためのParserフォーマット
+public static final String IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24";
+// BGで監視するiBeacon領域
+private RegionBootstrap regionBootstrap;
+// iBeacon検知用のマネージャー
+private BeaconManager beaconManager;
+// UUID設定用
+private Identifier identifier;
+// iBeacon領域
+private Region region;
+// 監視するiBeacon領域の名前
+private String beaconName;
+
+@Override
+public void onCreate() {
+    super.onCreate();
+
+    // iBeaconのデータを受信できるようにParserを設定
+    beaconManager = BeaconManager.getInstanceForApplication(this);
+    beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(IBEACON_FORMAT));
+    // BGでiBeacon領域を監視(モニタリング)するスキャン間隔を設定
+    beaconManager.setBackgroundBetweenScanPeriod(1000);
+
+    // UUIDの作成
+    identifier = Identifier.parse("A56BA1E1-C06E-4C08-8467-DB6F5BD04486");
+    // Beacon名の作成
+    beaconName = "MyBeacon-000206C6";
+    // major, minorの指定はしない
+    region = new Region(beaconName, identifier, null, null);
+    regionBootstrap = new RegionBootstrap(this, region);
+
+    beaconManager.setRangeNotifier(new RangeNotifier() {
+        @Override
+        public void didRangeBeaconsInRegion(Collection&lt;Beacon&gt; beacons, Region region) {
+            // 検出したビーコンの情報を全部Logに書き出す
+            for(Beacon beacon : beacons) {
+                Log.d(TAG, "UUID:" + beacon.getId1() + ", major:" + beacon.getId2() + ", minor:" + beacon.getId3() + ", Distance:" + beacon.getDistance() + ",RSSI" + beacon.getRssi() + ", TxPower" + beacon.getTxPower());
+            }
+        }
+    });
+}
+
+@Override
+public int onStartCommand(Intent intent, int flags, int startId) {
+    return super.onStartCommand(intent, flags, startId);
+}
+
+@Override
+public void onDestroy() {
+    super.onDestroy();
+}
+
+@Override
+public IBinder onBind(Intent intent) {
+    return null;
+}
+
+@Override
+public void didEnterRegion(Region region) {
+    // 領域侵入
+    Log.d(TAG, "Enter Region");
+    // アプリをFG起動させる
+    Intent intent = new Intent(this, MainActivity.class);
+    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    startActivity(intent);
+
+    try {
+        // レンジング開始
+        beaconManager.startRangingBeaconsInRegion(region);
+    } catch(RemoteException e) {
+        // 例外が発生した場合
+        e.printStackTrace();
+    }
+}
+
+@Override
+public void didExitRegion(Region region) {
+    // 領域退出
+    Log.d(TAG, "Exit Region");
+    try {
+        // レンジング停止
+        beaconManager.stopRangingBeaconsInRegion(region);
+    } catch() {
+        // 例外が発生した場合
+        e.printStackTrace();
+    }
+}
+
+@Override
+public void didDetermineStateForRegion(int i, Region region) {
+    // 領域に対する状態が変化
+    Log.d(TAG, "Determine State: " + i);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p><strong>領域進入時にアプリをFG起動</strong> させているので、アプリがFG起動したらiBeacon領域に侵入したと言えます。<br/>
+さあ、これでiOSとほぼ同じ挙動を実現できました。</p>
+
+<p>蛇足かもしれませんが、<code>MainActivity.java</code>でサービスを起動する部分も書いておきます。</p>
+
+<p>```java
+// MainActivity.java</p>
+
+<p>public class MainActivity extends ActionBarActivity {</p>
+
+<pre><code>@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    // サービス起動
+    startService(new Intent(MainActivity.this, BeaconService.class));
+}
+
+&lt;省略&gt;
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>ソースコードは<a href="https://github.com/grandbig/altBeaconSample/tree/service">こちら</a>から。<br/>
+serviceブランチを参照ください。</p>
+
+<p>といったところで本日はここまで。</p>
+
+<p>参考:<br/>
+<a href="http://dev.classmethod.jp/smartphone/android-beacon-library-introduction-5/">[Android][iBeacon] Android Beacon Library パラっと解説 その5 [バックグラウンド領域監視]</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android Studioでvolley frameworkを利用するまで]]></title>
@@ -799,85 +979,6 @@ protected void onDestroy() {
 <li><a href="https://crosswalk-project.org/apis/embeddingapidocs_v3/org/xwalk/core/XWalkView.html#addJavascriptInterface(java.lang.Object,%20java.lang.String">XWalkView Reference</a></li>
 </ul>
 
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android Studioを始めてみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/03/28/start-android-studio/"/>
-    <updated>2015-03-28T13:13:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/03/28/start-android-studio</id>
-    <content type="html"><![CDATA[<h2>Android Studioとは</h2>
-
-<p>Googleが2013年のGoogle I/Oで発表したAndroidアプリ開発に最適化した開発統合環境です。<br/>
-iOSアプリ開発者であると、Macを使っている方がほとんどだと思うのですが、<br/>
-もちろんMacにもインストール可能です。<br/>
-Android Studioのインストールは<a href="http://developer.android.com/sdk/index.html">こちら</a>からできます。</p>
-
-<p>この記事時点での最新版は1.2です。<br/>
-では、早速、Android Studioを使ってみましょう。</p>
-
-<h3>プログラミングまでの準備</h3>
-
-<p>Android Studioを起動すると次のウィンドウが表示されます。<br/>
-<img src="/images/android_studio_1.png" alt="Android Studioを起動" /></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>プロジェクトを新規作成する場合は、『Start a new Android Studio project』を選択します。<br/>
-すると、Application Name, Company Nameを設定するウィンドウが表示されます。</p>
-
-<p><img src="/images/android_studio_2.png" alt="プロジェクトの設定ウィンドウ" /></p>
-
-<p>Nextを選択して、次に進むとAndroidアプリの対応バージョンを設定するウィンドウが表示されます。</p>
-
-<p><img src="/images/android_studio_3.png" alt="Androidアプリのバージョンを設定するウィンドウ" /></p>
-
-<p>Androidアプリのバージョンと一言で言っても、どのバージョンから対応させるべきか迷うこともあるでしょう。<br/>
-そんなときは <strong>Help me choose</strong> を選択しましょう。</p>
-
-<p><img src="/images/android_studio_4.png" alt="Androidアプリのバージョン確認ウィンドウ" /></p>
-
-<p>今回は9割をカバーするために <strong>API 15</strong> で設定しました。<br/>
-続いてNextを選択すると、初期GUI設定ウィンドウが表示されます。</p>
-
-<p><img src="/images/android_studio_5.png" alt="GUI設定ウィンドウ" /></p>
-
-<p>ここまで選択できたところで、プロジェクト作成ウィンドウが表示されます。</p>
-
-<p><img src="/images/android_studio_6.png" alt="プロジェクト作成ウィンドウ" /></p>
-
-<p>初めはヘルプウィンドウが表示されるので、Closeで閉じちゃいましょう。</p>
-
-<p>Android Studioで各ソースを編集するために、左サイドバーにある <strong>1: Project</strong> を選択しましょう。<br/>
-最終的に下記の画面が表示できれば準備完了です。</p>
-
-<p><img src="/images/android_studio_7.png" alt="プロジェクト作成ウィンドウ" /></p>
-
-<p>本記事はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
