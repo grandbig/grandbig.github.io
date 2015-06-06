@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-06-06T22:53:22+09:00</updated>
+  <updated>2015-06-07T00:17:39+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,564 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[OAuth2.0認証をUIWebView&WKWebViewで実施しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/06/custom-oauth-webview/"/>
+    <updated>2015-06-06T23:38:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/06/custom-oauth-webview</id>
+    <content type="html"><![CDATA[<h4>最適なWebViewを使って、OAuth2.0認証をしよう！</h4>
+
+<p>本日は、iOSのバージョン毎に最適なWebViewを使ってOAuth2.0認証を実施してみたいと思います。<br/>
+やはり、iOS8であればWKWebViewを使いたいですし、iOS7ではUIWebViewしか利用できないという現実があります。</p>
+
+<p>WKWebViewとUIWebViewの使い分け処理に関しては、<a href="http://techblog.yahoo.co.jp/ios/let-uiwebview-as-wkwebview/">let UIWebView as WKWebView</a>を参考にさせて頂きました。<br/>
+(あえてObjective-Cで書いています。)</p>
+
+<p>まずは、UIWebViewとWKWebViewの使い分け部分を説明していきます。</p>
+
+<p>共通インターフェースとして<code>WKWebViewProtocol.h</code>を作成します。<br/>
+共通化したい処理を書き出しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// WKWebViewProtocol.h</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#import &lt;UIKit/UIKit.h&gt;</span>
+</span><span class='line'><span class="cp">#import &lt;WebKit/WebKit.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@protocol</span> <span class="nc">WKWebViewProtocol</span> <span class="o">&lt;</span><span class="n">NSObject</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span> <span class="n">NSString</span> <span class="o">*</span><span class="n">title</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span> <span class="n">NSURL</span> <span class="o">*</span><span class="n">URL</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">getter</span><span class="o">=</span><span class="n">isLoading</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="n">loading</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">readonly</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="n">canGoBack</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">readonly</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="n">canGoForward</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">loadRequest:</span><span class="p">(</span><span class="n">NSURLRequest</span> <span class="o">*</span><span class="p">)</span><span class="nv">request</span><span class="p">;</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">stopLoading</span><span class="p">;</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">evaluateJavaScript:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">javaScriptString</span> <span class="nf">completionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="kt">id</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="p">))</span><span class="nv">completionHandler</span><span class="p">;</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">goBack</span><span class="p">;</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">goForward</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>次にUIWebViewを拡張した<code>UIWebView+ProtocolConfirmed</code>クラスを作成します。<br/>
+基本的にWKWebViewに合わせる形で実装していきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// UIWebView+ProtocolConfirmed.h</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#import &lt;UIKit/UIKit.h&gt;</span>
+</span><span class='line'><span class="cp">#import &quot;WKWebViewProtocol.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">UIWebView</span><span class="nl">(UIWebView_ProtocolConfirmed)</span> <span class="o">&lt;</span><span class="n">WKWebViewProtocol</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// UIWebView+ProtocolConfirmed.m</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#import &quot;UIWebView+ProtocolConfirmed.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">UIWebView</span><span class="nl">(UIWebView_ProtocolConfirmed)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// NSURLの取得</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="p">)</span><span class="nf">URL</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">URLString</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span> <span class="nl">stringByEvaluatingJavaScriptFromString:</span><span class="s">@&quot;document.URL&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">return</span> <span class="p">[</span><span class="n">NSURL</span> <span class="nl">URLWithString:</span><span class="n">URLString</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ページのタイトルの取得</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nf">title</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>   <span class="k">return</span> <span class="p">[</span><span class="n">self</span> <span class="nl">stringByEvaluatingJavaScriptFromString:</span><span class="s">@&quot;document.title&quot;</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// JavaScriptの実行処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">evaluateJavaScript:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">javaScriptString</span> <span class="nf">completionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="kt">id</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="p">))</span><span class="nv">completionHandler</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span> <span class="nl">stringByEvaluatingJavaScriptFromString:</span><span class="n">javaScriptString</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">completionHandler</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">completionHandler</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>最後にWKWebView側を実装します。<br/>
+と言っても、UIWebViewをWKWebViewに合わせるので、何も書くことはありません。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// WKWebView+ProtocolConfirmed.h</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#import &lt;WebKit/WebKit.h&gt;</span>
+</span><span class='line'><span class="cp">#import &quot;WKWebViewProtocol.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">WKWebView</span><span class="nl">(WKWebView_ProtocolConfirmed)</span> <span class="o">&lt;</span><span class="n">WKWebViewProtocol</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// WKWebView+ProtocolConfirmed.m</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#import &quot;WKWebView+ProtocolConfirmed.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">WKWebView</span><span class="nl">(WKWebView_ProtocolConfirmed)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>では、実際に実装していきましょう。<br/>
+OAuth認証の処理に関しては、<a href="http://grandbig.github.io/blog/2015/06/01/custom-oauth/">OAuth2.0認証の処理を自作しよう！</a>を参考にしてください。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+<span class='line-number'>154</span>
+<span class='line-number'>155</span>
+<span class='line-number'>156</span>
+<span class='line-number'>157</span>
+<span class='line-number'>158</span>
+<span class='line-number'>159</span>
+<span class='line-number'>160</span>
+<span class='line-number'>161</span>
+<span class='line-number'>162</span>
+<span class='line-number'>163</span>
+<span class='line-number'>164</span>
+<span class='line-number'>165</span>
+<span class='line-number'>166</span>
+<span class='line-number'>167</span>
+<span class='line-number'>168</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.m</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;WKWebViewProtocol.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;WKWebView+ProtocolConfirmed.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;UIWebView+ProtocolConfirmed.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;OAuth2Client.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">clientId</span> <span class="o">=</span> <span class="s">@&quot;クライアントID&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">clientSecret</span> <span class="o">=</span> <span class="s">@&quot;クライアントシークレット&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">authorizationURL</span> <span class="o">=</span> <span class="s">@&quot;https://accounts.google.com/o/oauth2/auth&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">tokenURL</span> <span class="o">=</span> <span class="s">@&quot;https://accounts.google.com/o/oauth2/token&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">scope</span> <span class="o">=</span> <span class="s">@&quot;https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// UIWebViewおよびWKWebView関連のDelegateを読み込む</span>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span><span class="o">&lt;</span><span class="n">UIWebViewDelegate</span><span class="p">,</span> <span class="n">WKUIDelegate</span><span class="p">,</span> <span class="n">WKNavigationDelegate</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// UIWebViewとWKWebViewを一纏めにしたWebViewとして下記を定義</span>
+</span><span class='line'><span class="k">@property</span><span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">assign</span><span class="p">)</span> <span class="kt">id</span> <span class="o">&lt;</span><span class="n">WKWebViewProtocol</span><span class="o">&gt;</span> <span class="n">webView</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSMutableData</span> <span class="o">*</span><span class="n">receivedData</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">assign</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="o">*</span><span class="n">isLogin</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">ViewController</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c1">// WebViewを画面に追加する処理</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="n">createWebView</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">([</span><span class="n">defaults</span> <span class="nl">boolForKey:</span><span class="s">@&quot;isLogin&quot;</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 既にOAuth2.0認証実行済みの場合</span>
+</span><span class='line'>      <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">getRefreshAccessToken:</span><span class="o">^</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// 成功した場合</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">accessToken</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span> <span class="nl">failure:</span><span class="o">^</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// 失敗した場合</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}];</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 初めてOAuth2.0認証を実行する場合</span>
+</span><span class='line'>      <span class="c1">// OAuth2.0認証に必要な各種パラメータの設定</span>
+</span><span class='line'>      <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">setUpOAuth2AccountClientId:</span><span class="n">clientId</span> <span class="nl">clientSecret:</span><span class="n">clientSecret</span> <span class="nl">scope:</span><span class="n">scope</span> <span class="nl">authorizationURL:</span><span class="n">authorizationURL</span> <span class="nl">tokenURL:</span><span class="n">tokenURL</span><span class="p">];</span>
+</span><span class='line'>      <span class="c1">// OAuth2.0認証リクエスト</span>
+</span><span class='line'>      <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">requestAccessToAccount:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="n">preparedURL</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// リクエスト</span>
+</span><span class='line'>          <span class="p">[</span><span class="n">_webView</span> <span class="nl">loadRequest:</span><span class="p">[</span><span class="n">NSURLRequest</span> <span class="nl">requestWithURL:</span> <span class="n">preparedURL</span><span class="p">]];</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">didReceiveMemoryWarning</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">didReceiveMemoryWarning</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// WKWebViewまたはUIWebViewをViewに追加する処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">createWebView</span> <span class="p">{</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">NSClassFromString</span><span class="p">(</span><span class="s">@&quot;WKWebView&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// iOS8の場合</span>
+</span><span class='line'>      <span class="n">WKWebView</span> <span class="o">*</span><span class="n">wkWebView</span> <span class="o">=</span> <span class="p">[[</span><span class="n">WKWebView</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFrame:</span><span class="n">self</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">bounds</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">wkWebView</span><span class="p">.</span><span class="n">navigationDelegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">wkWebView</span><span class="p">.</span><span class="n">UIDelegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">view</span> <span class="nl">addSubview:</span><span class="n">wkWebView</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">webView</span> <span class="o">=</span> <span class="n">wkWebView</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// iOS7以下の場合</span>
+</span><span class='line'>      <span class="n">UIWebView</span> <span class="o">*</span><span class="n">uiWebView</span> <span class="o">=</span> <span class="p">[[</span><span class="n">UIWebView</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFrame:</span><span class="n">self</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">bounds</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">uiWebView</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">view</span> <span class="nl">addSubview:</span><span class="n">uiWebView</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">webView</span> <span class="o">=</span> <span class="n">uiWebView</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#pragma mark - UIWebViewDelegate</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ページの読込みが開始されたときに呼び出される処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webViewDidStartLoad:</span><span class="p">(</span><span class="n">UIWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;webViewDidStartLoad&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ページを読み終わった後に呼び出される処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webViewDidFinishLoad:</span><span class="p">(</span><span class="n">UIWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;webViewDidFinishLoad&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// エラーが発生したときに呼び出される処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">UIWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">didFailLoadWithError:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;didFailLoadWithError&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ページ遷移する前に呼び出される処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">UIWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">shouldStartLoadWithRequest:</span><span class="p">(</span><span class="n">NSURLRequest</span> <span class="o">*</span><span class="p">)</span><span class="nv">request</span> <span class="nf">navigationType:</span><span class="p">(</span><span class="n">UIWebViewNavigationType</span><span class="p">)</span><span class="nv">navigationType</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;shouldStartLoadWithRequest&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kt">BOOL</span> <span class="n">flag</span> <span class="o">=</span> <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">checkRedirectURI:</span><span class="n">request</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">getAccessToken:</span><span class="n">request</span> <span class="nl">completionHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">){</span>
+</span><span class='line'>          <span class="c1">// 処理が終了したら呼び出される</span>
+</span><span class='line'>          <span class="k">if</span><span class="p">(</span><span class="n">accessToken</span><span class="p">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+</span><span class='line'>              <span class="p">[</span><span class="n">defaults</span> <span class="nl">setBool:</span><span class="n">YES</span> <span class="nl">forKey:</span><span class="s">@&quot;isLogin&quot;</span><span class="p">];</span>
+</span><span class='line'>              <span class="p">[</span><span class="n">defaults</span> <span class="n">synchronize</span><span class="p">];</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="p">[</span><span class="n">webView</span> <span class="n">removeFromSuperview</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">}];</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// ページ遷移しない</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">NO</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// ページ遷移する</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">YES</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#pragma mark - WKNavigationDelegate</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ページの読込みが開始されたときに呼び出される処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">WKWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">didStartProvisionalNavigation:</span><span class="p">(</span><span class="n">WKNavigation</span> <span class="o">*</span><span class="p">)</span><span class="nv">navigation</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;didStartProvisionalNavigation&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ページを読み終わった後に呼び出される処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">WKWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">didFinishNavigation:</span><span class="p">(</span><span class="n">WKNavigation</span> <span class="o">*</span><span class="p">)</span><span class="nv">navigation</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;didFinishNavigation&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// エラーが発生したときに呼び出される処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">WKWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">didFailProvisionalNavigation:</span><span class="p">(</span><span class="n">WKNavigation</span> <span class="o">*</span><span class="p">)</span><span class="nv">navigation</span> <span class="nf">withError:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;didFailProvisionalNavigation&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ページ遷移する前に呼び出される処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">WKWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">decidePolicyForNavigationAction:</span><span class="p">(</span><span class="n">WKNavigationAction</span> <span class="o">*</span><span class="p">)</span><span class="nv">navigationAction</span> <span class="nf">decisionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">WKNavigationActionPolicy</span><span class="p">))</span><span class="nv">decisionHandler</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;decidePolicyForNavigationAction&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">NSURLRequest</span> <span class="o">*</span><span class="n">request</span> <span class="o">=</span> <span class="n">navigationAction</span><span class="p">.</span><span class="n">request</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kt">BOOL</span> <span class="n">flag</span> <span class="o">=</span> <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">checkRedirectURI:</span><span class="n">request</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">getAccessToken:</span><span class="n">request</span> <span class="nl">completionHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">){</span>
+</span><span class='line'>          <span class="c1">// 処理が終了したら呼び出される</span>
+</span><span class='line'>          <span class="k">if</span><span class="p">(</span><span class="n">accessToken</span><span class="p">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+</span><span class='line'>              <span class="p">[</span><span class="n">defaults</span> <span class="nl">setBool:</span><span class="n">YES</span> <span class="nl">forKey:</span><span class="s">@&quot;isLogin&quot;</span><span class="p">];</span>
+</span><span class='line'>              <span class="p">[</span><span class="n">defaults</span> <span class="n">synchronize</span><span class="p">];</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="p">[</span><span class="n">webView</span> <span class="n">removeFromSuperview</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">}];</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// ページ遷移しない</span>
+</span><span class='line'>      <span class="n">decisionHandler</span><span class="p">(</span><span class="n">WKNavigationActionPolicyCancel</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c1">// ページ遷移する</span>
+</span><span class='line'>  <span class="n">decisionHandler</span><span class="p">(</span><span class="n">WKNavigationActionPolicyAllow</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>さあ、これでiOS8端末でもiOS7端末でも正しくOAuth認証画面が表示されるかと思います。<br/>
+もう今年にはiOS9が発表され、WKWebViewが当然のようになってくるとしたら、UIWebViewは不要になると思いますが、今のところはまだまだ必要でしょう。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AndroidでBackgroundでiBeaconを検知しよう！]]></title>
@@ -4927,288 +5485,6 @@ appledocとほとんど書式も同じっぽいですし。<br/>
 
 <p>なかなかに頭を混乱させられましたが、なんとかできました笑。<br/>
 といったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android StudioでCROSSWALKを使おう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/03/28/crosswalk/"/>
-    <updated>2015-03-28T13:57:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/03/28/crosswalk</id>
-    <content type="html"><![CDATA[<h4>Androidでハイブリッドアプリを作ろう</h4>
-
-<p>以前、iOSではiOS8からWKWebViewという新しいWebViewが追加されたことを説明しました。<br/>
-では、Androidはどうなのでしょうか？</p>
-
-<p>Androidは4.3までWebKitベースのWebViewをアプリに組み込んでいました。<br/>
-しかし、Android4.4より、ChromiumベースのWebViewとなりました。ここで、大きく異なるのはレンダリングエンジンが <strong>Blink</strong> になったというところです。<br/>
-また、Android4.4まではChromiumがバージョンアップされたとしても、各メーカーがAndroidのOSバージョンアップを提供しなければ、最新のWebViewを利用することができませんでした。</p>
-
-<p>この現状を見たのかGoogleはAndroid5.0以降、WebViewをOSから切り離し、Google Play経由でバージョンアップ可能としました。<br/>
-よって、メーカーがOSのバージョンアップをする/しないに関わらず、Google側の意志で最新のWebViewをユーザに提供可能となったのです。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>近年はAndroid2.xを使っているユーザもだいぶ減少してきました。<br/>
-が、未だ、Android4.0〜4.3の端末を利用しているユーザは相当数、存在しています。<br/>
-では、4.x〜5.0.xまでの端末全てに対応するハイブリットアプリを作成するためには、各バージョンに気をつけつつ、開発するしかないのでしょうか？</p>
-
-<p>本記事では、 <strong>CROSSWALK</strong> に注目し、上記の問題に対応することとしました。</p>
-
-<h4>CROSSWALKを組み込もう</h4>
-
-<p>まずは、CROSSWALKのレポジトリを追加できるようにしましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// build.gradle(Module: app)</span>
-</span><span class='line'><span class="n">apply</span> <span class="nl">plugin:</span> <span class="err">&#39;</span><span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">application</span><span class="err">&#39;</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">android</span> <span class="o">{</span>
-</span><span class='line'>  <span class="o">....</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// ここを追加</span>
-</span><span class='line'><span class="n">repositories</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">maven</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">url</span> <span class="err">&#39;</span><span class="nl">https:</span><span class="c1">//download.01.org/crosswalk/releases/crosswalk/android/maven2&#39;</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">dependencies</span> <span class="o">{</span>
-</span><span class='line'>  <span class="n">compile</span> <span class="nf">fileTree</span><span class="o">(</span><span class="nl">dir:</span> <span class="err">&#39;</span><span class="n">libs</span><span class="err">&#39;</span><span class="o">,</span> <span class="nl">include:</span> <span class="o">[</span><span class="err">&#39;</span><span class="o">*.</span><span class="na">jar</span><span class="err">&#39;</span><span class="o">])</span>
-</span><span class='line'>  <span class="n">compile</span> <span class="err">&#39;</span><span class="n">com</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">support</span><span class="o">:</span><span class="n">appcompat</span><span class="o">-</span><span class="nl">v7:</span><span class="mf">21.0</span><span class="o">.</span><span class="mi">3</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">compile</span> <span class="err">&#39;</span><span class="n">org</span><span class="o">.</span><span class="na">xwalk</span><span class="o">:</span><span class="nl">xwalk_core_library:</span><span class="mf">10.39</span><span class="o">.</span><span class="mf">235.15</span><span class="err">&#39;</span>        <span class="c1">// ここも追加</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>次に、CROSSWALKのWebViewである <strong>XWalkView</strong> を画面に組み込みましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'>// activity_main.xml
-</span><span class='line'><span class="nt">&lt;RelativeLayout</span> <span class="na">xmlns:android=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
-</span><span class='line'>  <span class="na">xmlns:tools=</span><span class="s">&quot;http://schemas.android.com/tools&quot;</span> <span class="na">android:layout_width=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>  <span class="na">android:layout_height=</span><span class="s">&quot;match_parent&quot;</span> <span class="na">android:paddingLeft=</span><span class="s">&quot;0dp&quot;</span>
-</span><span class='line'>  <span class="na">android:paddingRight=</span><span class="s">&quot;0dp&quot;</span>
-</span><span class='line'>  <span class="na">android:paddingTop=</span><span class="s">&quot;0dp&quot;</span>
-</span><span class='line'>  <span class="na">android:paddingBottom=</span><span class="s">&quot;0dp&quot;</span> <span class="na">tools:context=</span><span class="s">&quot;.MainActivity&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c">&lt;!-- XWalkViewを追加 --&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;org.xwalk.core.XWalkView</span>
-</span><span class='line'>      <span class="na">android:id=</span><span class="s">&quot;@+id/xwalkWebView&quot;</span>
-</span><span class='line'>      <span class="na">android:orientation=</span><span class="s">&quot;vertical&quot;</span>
-</span><span class='line'>      <span class="na">android:layout_width=</span><span class="s">&quot;fill_parent&quot;</span>
-</span><span class='line'>      <span class="na">android:layout_height=</span><span class="s">&quot;fill_parent&quot;</span>
-</span><span class='line'>      <span class="na">android:background=</span><span class="s">&quot;#000000&quot;</span>
-</span><span class='line'>      <span class="nt">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="nt">&lt;/RelativeLayout&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>続いて、AndroidManifest.xmlにWebViewを使うための設定を書きましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='xml'><span class='line'>// AndroidManifest.xml
-</span><span class='line'><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
-</span><span class='line'><span class="nt">&lt;manifest</span> <span class="na">xmlns:android=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
-</span><span class='line'>    <span class="na">package=</span><span class="s">&quot;com.example.takahiro.crosswalksample&quot;</span> <span class="nt">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c">&lt;!-- 追加 --&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;uses-permission</span> <span class="na">android:name=</span><span class="s">&quot;android.permission.INTERNET&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;uses-permission</span> <span class="na">android:name=</span><span class="s">&quot;android.permission.ACCESS_NETWORK_STATE&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;uses-permission</span> <span class="na">android:name=</span><span class="s">&quot;android.permission.ACCESS_WIFI_STATE&quot;</span> <span class="nt">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  ....
-</span><span class='line'>
-</span><span class='line'><span class="nt">&lt;/manifest&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>そして、メイン画面にWebViewの設定を書き込みましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// MainActivity.java</span>
-</span><span class='line'>
-</span><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">takahiro</span><span class="o">.</span><span class="na">crosswalksample</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.support.v7.app.ActionBarActivity</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.os.Bundle</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.view.Menu</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">android.view.MenuItem</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.xwalk.core.XWalkView</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainActivity</span> <span class="kd">extends</span> <span class="n">ActionBarActivity</span> <span class="o">{</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="kd">private</span> <span class="n">XWalkView</span> <span class="n">mXWalkView</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">mXWalkView</span> <span class="o">=</span> <span class="o">(</span><span class="n">XWalkView</span><span class="o">)</span> <span class="n">findViewById</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">mXWalkView</span><span class="o">.</span><span class="na">load</span><span class="o">(</span><span class="s">&quot;https://www.google.co.jp&quot;</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onPause</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="kd">super</span><span class="o">.</span><span class="na">onPause</span><span class="o">();</span>
-</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">mXWalkWebView</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">mXWalkWebView</span><span class="o">.</span><span class="na">pauseTimers</span><span class="o">();</span>
-</span><span class='line'>          <span class="n">mXWalkWebView</span><span class="o">.</span><span class="na">onHide</span><span class="o">();</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onResume</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="kd">super</span><span class="o">.</span><span class="na">onResume</span><span class="o">();</span>
-</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">mXWalkWebView</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">mXWalkWebView</span><span class="o">.</span><span class="na">resumeTimers</span><span class="o">();</span>
-</span><span class='line'>          <span class="n">mXWalkWebView</span><span class="o">.</span><span class="na">onShow</span><span class="o">();</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onDestroy</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>      <span class="kd">super</span><span class="o">.</span><span class="na">onDestroy</span><span class="o">();</span>
-</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">mXWalkWebView</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">mXWalkWebView</span><span class="o">.</span><span class="na">onDestroy</span><span class="o">();</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これでAndroid4.x 〜 5.xで同じChromiumベースのWebViewを利用することができるはずです。<br/>
-といったところで本日はここまで。</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="https://diego.org/2015/01/07/embedding-crosswalk-in-android-studio/">Embedding Crosswalk in Android Studio</a></li>
-<li><a href="https://crosswalk-project.org/documentation/embedding_crosswalk.html">Embedding the Crosswalk Project</a></li>
-<li><a href="https://crosswalk-project.org/apis/embeddingapidocs_v3/org/xwalk/core/XWalkView.html#addJavascriptInterface(java.lang.Object,%20java.lang.String">XWalkView Reference</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

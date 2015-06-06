@@ -4,7 +4,7 @@
   <title><![CDATA[Category: WKWebView | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/wkwebview/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-06-06T22:54:06+09:00</updated>
+  <updated>2015-06-07T00:17:39+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,376 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[OAuth2.0認証をUIWebView&WKWebViewで実施しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/06/custom-oauth-webview/"/>
+    <updated>2015-06-06T23:38:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/06/custom-oauth-webview</id>
+    <content type="html"><![CDATA[<h4>最適なWebViewを使って、OAuth2.0認証をしよう！</h4>
+
+<p>本日は、iOSのバージョン毎に最適なWebViewを使ってOAuth2.0認証を実施してみたいと思います。<br/>
+やはり、iOS8であればWKWebViewを使いたいですし、iOS7ではUIWebViewしか利用できないという現実があります。</p>
+
+<p>WKWebViewとUIWebViewの使い分け処理に関しては、<a href="http://techblog.yahoo.co.jp/ios/let-uiwebview-as-wkwebview/">let UIWebView as WKWebView</a>を参考にさせて頂きました。<br/>
+(あえてObjective-Cで書いています。)</p>
+
+<p>まずは、UIWebViewとWKWebViewの使い分け部分を説明していきます。</p>
+
+<p>共通インターフェースとして<code>WKWebViewProtocol.h</code>を作成します。<br/>
+共通化したい処理を書き出しています。</p>
+
+<p>```objective-c
+// WKWebViewProtocol.h</p>
+
+<h1>import &lt;UIKit/UIKit.h></h1>
+
+<h1>import &lt;WebKit/WebKit.h></h1>
+
+<p>@protocol WKWebViewProtocol <NSObject></p>
+
+<p>@property (nonatomic, readonly, copy) NSString <em>title;
+@property (nonatomic, readonly, copy) NSURL </em>URL;
+@property (nonatomic, readonly, getter=isLoading) BOOL loading;
+@property (nonatomic, readonly) BOOL canGoBack;
+@property (nonatomic, readonly) BOOL canGoForward;</p>
+
+<ul>
+<li>(void)loadRequest:(NSURLRequest *)request;</li>
+<li>(void)stopLoading;</li>
+<li>(void)evaluateJavaScript:(NSString <em>)javaScriptString completionHandler:(void (^)(id, NSError </em>))completionHandler;</li>
+<li>(void)goBack;</li>
+<li>(void)goForward;</li>
+</ul>
+
+
+<p>@end</p>
+
+<p>```</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>次にUIWebViewを拡張した<code>UIWebView+ProtocolConfirmed</code>クラスを作成します。<br/>
+基本的にWKWebViewに合わせる形で実装していきます。</p>
+
+<p>```objective-c
+// UIWebView+ProtocolConfirmed.h</p>
+
+<h1>import &lt;UIKit/UIKit.h></h1>
+
+<h1>import &ldquo;WKWebViewProtocol.h&rdquo;</h1>
+
+<p>@interface UIWebView(UIWebView_ProtocolConfirmed) <WKWebViewProtocol></p>
+
+<p>@end</p>
+
+<p>```</p>
+
+<p>```objective-c
+// UIWebView+ProtocolConfirmed.m</p>
+
+<h1>import &ldquo;UIWebView+ProtocolConfirmed.h&rdquo;</h1>
+
+<p>@implementation UIWebView(UIWebView_ProtocolConfirmed)</p>
+
+<p>// NSURLの取得
+&ndash; (NSURL *)URL
+{</p>
+
+<pre><code>NSString *URLString = [self stringByEvaluatingJavaScriptFromString:@"document.URL"];
+return [NSURL URLWithString:URLString];
+</code></pre>
+
+<p>}</p>
+
+<p>// ページのタイトルの取得
+&ndash; (NSString *)title
+{</p>
+
+<pre><code> return [self stringByEvaluatingJavaScriptFromString:@"document.title"];
+</code></pre>
+
+<p>}</p>
+
+<p>// JavaScriptの実行処理
+&ndash; (void)evaluateJavaScript:(NSString <em>)javaScriptString completionHandler:(void (^)(id, NSError </em>))completionHandler
+{</p>
+
+<pre><code>NSString *result = [self stringByEvaluatingJavaScriptFromString:javaScriptString];
+if(completionHandler) {
+    completionHandler(result, nil);
+}
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>最後にWKWebView側を実装します。<br/>
+と言っても、UIWebViewをWKWebViewに合わせるので、何も書くことはありません。</p>
+
+<p>```objective-c
+// WKWebView+ProtocolConfirmed.h</p>
+
+<h1>import &lt;WebKit/WebKit.h></h1>
+
+<h1>import &ldquo;WKWebViewProtocol.h&rdquo;</h1>
+
+<p>@interface WKWebView(WKWebView_ProtocolConfirmed) <WKWebViewProtocol></p>
+
+<p>@end</p>
+
+<p>```</p>
+
+<p>```objective-c
+// WKWebView+ProtocolConfirmed.m</p>
+
+<h1>import &ldquo;WKWebView+ProtocolConfirmed.h&rdquo;</h1>
+
+<p>@implementation WKWebView(WKWebView_ProtocolConfirmed)</p>
+
+<p>@end</p>
+
+<p>```</p>
+
+<p>では、実際に実装していきましょう。<br/>
+OAuth認証の処理に関しては、<a href="http://grandbig.github.io/blog/2015/06/01/custom-oauth/">OAuth2.0認証の処理を自作しよう！</a>を参考にしてください。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;WKWebViewProtocol.h&rdquo;</h1>
+
+<h1>import &ldquo;WKWebView+ProtocolConfirmed.h&rdquo;</h1>
+
+<h1>import &ldquo;UIWebView+ProtocolConfirmed.h&rdquo;</h1>
+
+<h1>import &ldquo;OAuth2Client.h&rdquo;</h1>
+
+<p>static NSString <em>const clientId = @&ldquo;クライアントID&rdquo;;
+static NSString </em>const clientSecret = @&ldquo;クライアントシークレット&rdquo;;
+static NSString <em>const authorizationURL = @&ldquo;<a href="https://accounts.google.com/o/oauth2/auth">https://accounts.google.com/o/oauth2/auth</a>&rdquo;;
+static NSString </em>const tokenURL = @&ldquo;<a href="https://accounts.google.com/o/oauth2/token">https://accounts.google.com/o/oauth2/token</a>&rdquo;;
+static NSString *const scope = @&ldquo;<a href="https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar">https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar</a>&rdquo;;</p>
+
+<p>// UIWebViewおよびWKWebView関連のDelegateを読み込む
+@interface ViewController ()&lt;UIWebViewDelegate, WKUIDelegate, WKNavigationDelegate></p>
+
+<p>// UIWebViewとWKWebViewを一纏めにしたWebViewとして下記を定義
+@property(nonatomic, assign) id <WKWebViewProtocol> webView;
+@property (strong, nonatomic) NSMutableData <em>receivedData;
+@property (assign, nonatomic) BOOL </em>isLogin;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];</p>
+
+<p>  // WebViewを画面に追加する処理
+  [self createWebView];</p>
+
+<p>  NSUserDefaults <em>defaults = [NSUserDefaults standardUserDefaults];
+  if([defaults boolForKey:@&ldquo;isLogin&rdquo;]) {
+      // 既にOAuth2.0認証実行済みの場合
+      [[OAuth2Client sharedInstance] getRefreshAccessToken:^(NSString </em>accessToken) {
+          // 成功した場合
+          NSLog(@&ldquo;%@&rdquo;, accessToken);
+      } failure:^(NSError <em>error) {
+          // 失敗した場合
+          NSLog(@&ldquo;%@&rdquo;, error);
+      }];
+  } else {
+      // 初めてOAuth2.0認証を実行する場合
+      // OAuth2.0認証に必要な各種パラメータの設定
+      [[OAuth2Client sharedInstance] setUpOAuth2AccountClientId:clientId clientSecret:clientSecret scope:scope authorizationURL:authorizationURL tokenURL:tokenURL];
+      // OAuth2.0認証リクエスト
+      [[OAuth2Client sharedInstance] requestAccessToAccount:^(NSURL </em>preparedURL) {
+          // リクエスト
+          [_webView loadRequest:[NSURLRequest requestWithURL: preparedURL]];
+      }
+  }</p></li>
+</ul>
+
+
+<p>}</p>
+
+<ul>
+<li>(void)didReceiveMemoryWarning {
+  [super didReceiveMemoryWarning];
+}</li>
+</ul>
+
+
+<p>// WKWebViewまたはUIWebViewをViewに追加する処理
+&ndash; (void)createWebView {</p>
+
+<pre><code>if(NSClassFromString(@"WKWebView") != nil) {
+    // iOS8の場合
+    WKWebView *wkWebView = [[WKWebView alloc] initWithFrame:self.view.bounds];
+    wkWebView.navigationDelegate = self;
+    wkWebView.UIDelegate = self;
+    [self.view addSubview:wkWebView];
+    self.webView = wkWebView;
+} else {
+    // iOS7以下の場合
+    UIWebView *uiWebView = [[UIWebView alloc] initWithFrame:self.view.bounds];
+    uiWebView.delegate = self;
+    [self.view addSubview:uiWebView];
+    self.webView = uiWebView;
+}
+</code></pre>
+
+<p>}</p>
+
+<h1>pragma mark &ndash; UIWebViewDelegate</h1>
+
+<p>// ページの読込みが開始されたときに呼び出される処理
+&ndash; (void)webViewDidStartLoad:(UIWebView *)webView {</p>
+
+<pre><code>NSLog(@"webViewDidStartLoad");
+</code></pre>
+
+<p>}</p>
+
+<p>// ページを読み終わった後に呼び出される処理
+&ndash; (void)webViewDidFinishLoad:(UIWebView *)webView {</p>
+
+<pre><code>NSLog(@"webViewDidFinishLoad");
+</code></pre>
+
+<p>}</p>
+
+<p>// エラーが発生したときに呼び出される処理
+&ndash; (void)webView:(UIWebView <em>)webView didFailLoadWithError:(NSError </em>)error {</p>
+
+<pre><code>NSLog(@"didFailLoadWithError");
+</code></pre>
+
+<p>}</p>
+
+<p>// ページ遷移する前に呼び出される処理
+&ndash; (BOOL)webView:(UIWebView <em>)webView shouldStartLoadWithRequest:(NSURLRequest </em>)request navigationType:(UIWebViewNavigationType)navigationType {</p>
+
+<pre><code>NSLog(@"shouldStartLoadWithRequest");
+
+BOOL flag = [[OAuth2Client sharedInstance] checkRedirectURI:request];
+
+if(flag) {
+    [[OAuth2Client sharedInstance] getAccessToken:request completionHandler:^(NSString *accessToken){
+        // 処理が終了したら呼び出される
+        if(accessToken.length &gt; 0) {
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+            [defaults setBool:YES forKey:@"isLogin"];
+            [defaults synchronize];
+        }
+        [webView removeFromSuperview];
+    }];
+
+    // ページ遷移しない
+    return NO;
+}
+
+// ページ遷移する
+return YES;
+</code></pre>
+
+<p>}</p>
+
+<h1>pragma mark &ndash; WKNavigationDelegate</h1>
+
+<p>// ページの読込みが開始されたときに呼び出される処理
+&ndash; (void)webView:(WKWebView <em>)webView didStartProvisionalNavigation:(WKNavigation </em>)navigation
+{</p>
+
+<pre><code>NSLog(@"didStartProvisionalNavigation");
+</code></pre>
+
+<p>}</p>
+
+<p>// ページを読み終わった後に呼び出される処理
+&ndash; (void)webView:(WKWebView <em>)webView didFinishNavigation:(WKNavigation </em>)navigation
+{</p>
+
+<pre><code>NSLog(@"didFinishNavigation");
+</code></pre>
+
+<p>}</p>
+
+<p>// エラーが発生したときに呼び出される処理
+&ndash; (void)webView:(WKWebView <em>)webView didFailProvisionalNavigation:(WKNavigation </em>)navigation withError:(NSError *)error
+{</p>
+
+<pre><code>NSLog(@"didFailProvisionalNavigation");
+</code></pre>
+
+<p>}</p>
+
+<p>// ページ遷移する前に呼び出される処理
+&ndash; (void)webView:(WKWebView <em>)webView decidePolicyForNavigationAction:(WKNavigationAction </em>)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {</p>
+
+<pre><code>NSLog(@"decidePolicyForNavigationAction");
+NSURLRequest *request = navigationAction.request;
+
+BOOL flag = [[OAuth2Client sharedInstance] checkRedirectURI:request];
+
+if(flag) {
+    [[OAuth2Client sharedInstance] getAccessToken:request completionHandler:^(NSString *accessToken){
+        // 処理が終了したら呼び出される
+        if(accessToken.length &gt; 0) {
+            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+            [defaults setBool:YES forKey:@"isLogin"];
+            [defaults synchronize];
+        }
+        [webView removeFromSuperview];
+    }];
+
+    // ページ遷移しない
+    decisionHandler(WKNavigationActionPolicyCancel);
+}
+
+// ページ遷移する
+decisionHandler(WKNavigationActionPolicyAllow);
+</code></pre>
+
+<p>}</p>
+
+<p>@end</p>
+
+<p>```</p>
+
+<p>さあ、これでiOS8端末でもiOS7端末でも正しくOAuth認証画面が表示されるかと思います。<br/>
+もう今年にはiOS9が発表され、WKWebViewが当然のようになってくるとしたら、UIWebViewは不要になると思いますが、今のところはまだまだ必要でしょう。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[WKWebViewとUIWebViewのベンチマーク取ってみた(SunSpider 利用)]]></title>
