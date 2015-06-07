@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ios/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-06-07T00:43:23+09:00</updated>
+  <updated>2015-06-07T17:38:06+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,229 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftでRealmを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/07/swift-realm/"/>
+    <updated>2015-06-07T16:35:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/07/swift-realm</id>
+    <content type="html"><![CDATA[<h4>Realmをプロジェクトに追加しよう</h4>
+
+<p>本日は最近、流行っているRealmについて遊んでみたいと思います。<br/>
+まずは導入の仕方から見て行きましょう！</p>
+
+<h5>Realmの導入方法</h5>
+
+<p>下記のPodfileを作成しましょう。<br/>
+本記事のSwiftプロジェクトとして、<code>SwiftRealm.xcodeproj</code>を作成します。</p>
+
+<p>```objective-c
+// Podfile
+platform :ios, &lsquo;8.0&rsquo;
+source &lsquo;<a href="https://github.com/CocoaPods/Specs.git">https://github.com/CocoaPods/Specs.git</a>&rsquo;</p>
+
+<p>target &lsquo;SwiftRealm&rsquo;, exclusive: true do</p>
+
+<pre><code>pod 'Realm'
+</code></pre>
+
+<p>end</p>
+
+<p>target &lsquo;SwiftRealmTests&rsquo;, exclusive: true do</p>
+
+<pre><code>pod 'Realm/Headers'
+</code></pre>
+
+<p>end
+```</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>あとは<code>pod install</code>しましょう。<br/>
+すると、<code>SwiftRealm.xcworkspace</code>が作成されるので、Xcodeで起動しましょう。</p>
+
+<p><img src="/images/swift-realm.png" alt="Realmを追加した結果" /></p>
+
+<p>なんと、Objective-C++で書かれていますね！
+Swiftで利用するためにはBridging-Headerファイルの設定を行う必要があります。</p>
+
+<p>SwiftRealm-Bridging-Header.hを作成します。<br/>
+<img src="/images/swift-realm2.png" alt="ヘッダーファイルの作成" /></p>
+
+<p>TARGETS > SwiftRealm > Build Settings > Swift Compiler &ndash; Code Generation > Objective-C Bridging Header にパスを設定します。<br/>
+<img src="/images/swift-realm3.png" alt="パスの設定" /></p>
+
+<p>SwiftRealm-Bridging-Header.hの中身を書きます。</p>
+
+<p>```objective-c</p>
+
+<h1>ifndef SwiftRealm_SwiftRealm_Bridging_Header_h</h1>
+
+<h1>define SwiftRealm_SwiftRealm_Bridging_Header_h</h1>
+
+<h1>import &lt;Realm/Realm.h></h1>
+
+<h1>endif</h1>
+
+<p>```</p>
+
+<p>これでRealmを利用する準備が整いました。<br/>
+実際にコードを書いていきましょう。</p>
+
+<h5>保存オブジェクトの生成</h5>
+
+<p>Realmでは保存する対象を<code>RLMObject</code>として作成します。<br/>
+SQLiteでいうところのテーブルを生成しているイメージでしょうか。</p>
+
+<p>今回は練習として<code>Engineer.swift</code>内で<code>Engineer</code>クラスを作ってみました。</p>
+
+<p>```objective-c
+// Engineer.swift</p>
+
+<p>// Engineerクラス
+class Engineer:RLMObject {</p>
+
+<pre><code>// プロパティと初期値の設定
+dynamic var id:Int = 0
+dynamic var level:Int = 0
+dynamic var businessTitle:String = ""
+dynamic var skills = RLMArray(objectClassName: "Skills")
+dynamic var created:Double = 0
+dynamic var updated:Double = 0
+
+// プライマリーキーの設定
+override class func primaryKey() -&gt; String? {
+    return "id"
+}
+
+// インデックスの設定
+override class func indexedProperties() -&gt; [AnyObject]? {
+    return ["level"]
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// Skillsクラス
+class Skills: RLMObject {</p>
+
+<pre><code>    dynamic var skill:String = ""
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントとしては、<code>skills</code>のように配列の形で1つの要素に複数の値を割り当てたい場合は、それ単体で別に<code>RLMObject</code>の拡張クラスを作成する必要があります。<br/>
+<code>RLMArray</code>を初期化することは許可されていないためです。</p>
+
+<h5>オブジェクトのインサート/アップデート</h5>
+
+<p>続いて、先ほど生成したオブジェクトをインサート/アップデートしてみましょう。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()
+
+    // id=0のオブジェクトを検索
+    if let engineer = Engineer(forPrimaryKey: 0) {
+        // 検索結果がある場合
+        println("既にエンジニアが１人います。\(engineer)")
+
+        // アップデート
+        let realm = RLMRealm.defaultRealm()
+        // 書込みの開始
+        realm.beginWriteTransaction()
+        // Skillsクラスをインスタンス化
+        let skills = Skills()
+        // 要素を設定
+        skills.skill = "Objective-C"
+        // 既存のデータに要素を追加
+        engineer.skills.addObject(skills)
+        engineer.updated = NSDate().timeIntervalSince1970
+        // データのアップデート処理
+        realm.addOrUpdateObject(engineer)
+        // 書込みの終了
+        realm.commitWriteTransaction()
+    } else {
+        // 検索結果がない場合
+        // Engineerクラスをインスタンス化
+        let newEngineer = Engineer()
+        newEngineer.id = 0
+        newEngineer.level = 0
+        newEngineer.businessTitle = "新米エンジニア"
+        // Skillsクラスをインスタンス化
+        let skills = Skills()
+        skills.skill = "Swift"
+        newEngineer.skills.addObject(skills)
+        newEngineer.created = NSDate().timeIntervalSince1970
+
+        // データの新規作成
+        let realm = RLMRealm.defaultRealm()
+        // 書込みの開始
+        realm.beginWriteTransaction()
+        // データのインサート処理
+        realm.addObject(newEngineer)
+        // 書込みの終了
+        realm.commitWriteTransaction()
+    }
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここでは、<code>id=0</code>のデータを検索して、見つからない場合は新規データをインサートし、見つかった場合はデータのアップデートをしています。<br/>
+書込みにはトランザクションブロックを使った方法もあるようですが、今回は<code>beginWriteTransaction</code>と<code>commitWriteTransaction</code>を利用しました。</p>
+
+<h5>データの確認</h5>
+
+<p>では、データを作成した後に、そのデータを確認したい場合はどうすれば良いのでしょうか？<br/>
+実はMac専用のアプリが提供されています。</p>
+
+<p><a href="https://realm.io/jp/docs/java/latest/">こちらのサイト</a>の <strong>Realm Browser</strong> の項目からインストールしましょう。</p>
+
+<p>Realm Browserを使えば、下記のようにデータを見ることができます。</p>
+
+<p><img src="/images/swift-realm4.png" alt="Realm Browserで確認１" /><br/>
+<img src="/images/swift-realm5.png" alt="Realm Browserで確認２" /></p>
+
+<p>これからSQLiteよりもRealmの方がスタンダートな保存方法となることでしょう。<br/>
+どんどん使い方を勉強していかなくては！！<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[OAuth2.0認証をUIWebView&WKWebViewで実施しよう！]]></title>
@@ -1164,177 +1387,6 @@ println(description)
 値がない場合には空オブジェクトを返すAPIである場合には問題ないと思います。</p>
 
 <p>だんだんとSwiftの基礎含めて理解が進んできた気がします。<br/>
-と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Swiftの基礎を理解しよう！(2)]]></title>
-    <link href="http://grandbig.github.io/blog/2015/05/17/swift-base-2/"/>
-    <updated>2015-05-17T17:48:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/05/17/swift-base-2</id>
-    <content type="html"><![CDATA[<h4>Swiftの型</h4>
-
-<p>続いて、基本的な内容を見ていきます。<br/>
-SwiftはObjective-Cと型の表現が変わりました。<br/>
-よく使う型を見て行きましょう。</p>
-
-<p>```objective-c</p>
-
-<p>var intValue:Int = 3
-var doubleValue:Double = 1.234
-var floatValue:Float = 5.678
-var boolValue:Bool = true
-var stringValue:String = &ldquo;abcdefg&rdquo;
-var charValue:Character = &ldquo;a&rdquo;
-var intArray = [1, 30, 120, 6]
-var stringArray = [&ldquo;abc&rdquo;, &ldquo;123&rdquo;]
-var testDictionary = [&ldquo;job&rdquo;: &ldquo;programmer&rdquo;, &ldquo;skillNum&rdquo;: 5]</p>
-
-<p>```</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>因みにこれをObjective-Cで書くと</p>
-
-<p>```objective-c</p>
-
-<p>NSInteger intValue = 3;
-CGFloat doubleValue = 1.234;
-CGFloat floatValue = 5.678;
-BOOL boolValue = YES;
-NSString <em>stringValue = @&ldquo;abcdefg&rdquo;;
-char charValue = &ldquo;a&rdquo;
-NSArray </em>intArray = @[1, 30, 120, 6];
-NSArray <em>stringArray = @[@&ldquo;abc&rdquo;, @&ldquo;123&rdquo;];
-NSDictionary </em>testDictionary = @{@&ldquo;job&rdquo;: @&ldquo;programmer&rdquo;, @&ldquo;skillNum&rdquo;: @5};</p>
-
-<p>```</p>
-
-<p>CGFloatで定義された<code>doubleValue</code>と<code>floatValue</code>は<code>double</code>, <code>float</code>をそれぞれ書くこともできます。<br/>
-(ここは32bit, 64bit問題のため、安全側に倒すために<code>CGFloat</code>に統一して書いています。)</p>
-
-<h4>Swiftでクラスを作成</h4>
-
-<p>さて、新たにSwiftファイルを追加して、カスタムクラスを実装してみましょう。<br/>
-まずは、Objective-Cと同様で、左メニューのフォルダを右クリックして、『New File』を選択します。</p>
-
-<p><img src="/images/swift_add_new_class.png" alt="New File" /></p>
-
-<p>そして、iOS > Source > Swift Fileを選択します。</p>
-
-<p><img src="/images/choose_swift_file.png" alt="Add Swift File" /></p>
-
-<p>Objective-Cと違って、どのクラスを継承するか否かを決めるフェーズはありません。<br/>
-ファイル名と保存場所を決めるのみです。</p>
-
-<p><img src="/images/create_swift_file.png" alt="Save Swift File" /></p>
-
-<p>作成されるファイルの内容は下記になります。</p>
-
-<p>```objective-c</p>
-
-<p>import Foundation</p>
-
-<p>```</p>
-
-<p>ここにカスタムクラスを実装していきましょう。<br/>
-例えば下記のようなクラスを作ります。</p>
-
-<p>```objective-c</p>
-
-<p>class Engineer:NSObject {</p>
-
-<pre><code>// プロパティの定義
-var level:Int = 1
-var businessTitle:String = "新米エンジニア"
-var skill:Array&lt;String&gt; = ["Swift"]
-
-// メソッドの定義
-// レベルアップ処理
-func levelUp() -&gt;Int {
-    return level++
-}
-
-// 新規スキルをセットする処理
-func addNewSkills(newSkill:String) {
-    skill.append(newSkill)
-}
-
-// 新たな肩書をセットする処理
-func updateBusinessTitle(title:String) {
-    businessTitle = title
-}
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>上記のクラスでは <strong>NSObject</strong> クラスを継承しています。逆に言えばEngineerクラスのスーパークラスは <strong>NSObject</strong> クラスということです。<br/>
-Engineerクラスには<code>level</code>, <code>businessTitle</code>, <code>skill</code>という3つのプロパティを定義しています。(全てに初期値を与えています。)<br/>
-また、<code>levelUp()</code>, <code>addNewSkills(newSkill:String)</code>, <code>updateBusinessTitle(title:String)</code>の3つのクラス・メソッドを定義しています。</p>
-
-<p>では、実際にカスタムクラスを使ってみましょう。</p>
-
-<p>```objective-c
-// 呼び出す側のswiftファイル(ViewController.swift)</p>
-
-<p>import UIKit</p>
-
-<p>class ViewController: UIViewController {</p>
-
-<pre><code>override func viewDidLoad() {
-    super.viewDidLoad()
-
-    // カスタムクラスの初期化
-    var engineer:Engineer = Engineer()
-    // プロパティの初期値をログ出力
-    println("Engineer level : \(engineer.level), businessTitle : \(engineer.businessTitle), skill : \(engineer.skill)")
-
-    // 各メソッドを実行
-    engineer.levelUp()
-    engineer.addNewSkills("Objective-C")
-    engineer.updateBusinessTitle("iOSアプリエンジニア")
-    // プロパティをログに再出力
-    println("Engineer level : \(engineer.level), businessTitle : \(engineer.businessTitle), skill : \(engineer.skill)")
-}
-
-&lt;省略&gt;
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>ここで気になるのが、自作したクラスを使うときに<code>import</code>をしていないという点です。<br/>
-同プロジェクト内のクラスは<code>import</code>の必要がないということらしいです。<br/>
-なので、自作したクラスをCocoaPodでインストールした場合は<code>import</code>の必要があると思われます。</p>
-
-<p>基本的なところで微妙にObjective-Cと異なる部分があるので注意が必要ですね。<br/>
 と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
