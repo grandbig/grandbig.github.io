@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ios/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-06-07T23:50:54+09:00</updated>
+  <updated>2015-06-15T00:12:32+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,205 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[複数のiBeaconを検知しよう！(別UUIDの場合)]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region/"/>
+    <updated>2015-06-14T23:43:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region</id>
+    <content type="html"><![CDATA[<h4>複数のiBeacon(別UUIDのiBeacon)を検知する方法</h4>
+
+<p>さて、本日は別々のUUIDを持ったiBeacon信号を補足したいと思います。<br/>
+iBeaconは案外、電波が遠くまで飛ぶため、幾つかのUUIDを補足できるようにしておくことで、うまく<code>didEnterRegion</code>, <code>didExitRegion</code>を使い、レンジングでのみ取得可能な値を効果的に使うことができるかもしれません。<br/>
+今回はiOS8以上を対象に下記サンプルソースを書きました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@property (strong, nonatomic) CLLocationManager <em>locationManager;
+@property (strong, nonatomic) NSUUID </em>proximityUUID1, <em>proximityUUID2;
+@property (strong, nonatomic) CLBeaconRegion </em>beaconRegion1, <em>beaconRegion2;
+@property (strong, nonatomic) CLBeacon </em>nearestBeacon;
+@property (strong, nonatomic) NSString *str;</p>
+
+<p>@end</p>
+
+<ul>
+<li><p>(void)viewDidLoad
+{
+  [super viewDidLoad];</p>
+
+<p>  self.locationManager = [[CLLocationManager alloc] init];
+  self.locationManager.delegate = self;</p>
+
+<p>  self.proximityUUID1 = [[NSUUID alloc] initWithUUIDString:@&ldquo;8D4DB809-032F-4771-96F3-99BD5C25F924&rdquo;];
+  self.beaconRegion1 = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID1 identifier:@&ldquo;com.takahiro.ibeaconSample&rdquo;];
+  self.proximityUUID2 = [[NSUUID alloc] initWithUUIDString:@&ldquo;1AE93327-B172-4C5D-BBF7-F52B959FD4EB&rdquo;];
+  self.beaconRegion2 = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID1 identifier:@&ldquo;com.takahiro.ibeaconSample2&rdquo;];</p>
+
+<p>  [self.locationManager requestAlwaysAuthorization];
+}</p></li>
+</ul>
+
+
+<p>// ユーザの位置情報の許可状態を確認するメソッド
+&ndash; (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{</p>
+
+<pre><code>if (status == kCLAuthorizationStatusAuthorizedAlways) {
+    // Beaconのモニタリングを開始
+    [self.locationManager startMonitoringForRegion:self.beaconRegion1];
+    [self.locationManager startMonitoringForRegion:self.beaconRegion2];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// 指定した領域に入った場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didEnterRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>[self sendLocalNotificationForMessage:@"Enter Region"];
+</code></pre>
+
+<p>}</p>
+
+<p>// 指定した領域から出た場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didExitRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>[self sendLocalNotificationForMessage:@"Exit Region"];
+</code></pre>
+
+<p>}</p>
+
+<p>// iBeacon領域内に既にいるか/いないかの判定
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>switch (state) {
+    case CLRegionStateInside:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+            [self.locationManager startRangingBeaconsInRegion:self.beaconRegion1];
+            [self.locationManager startRangingBeaconsInRegion:self.beaconRegion2];
+        }
+        break;
+    case CLRegionStateOutside:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+        }
+        break;
+    case CLRegionStateUnknown:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+        }
+        break;
+    default:
+        break;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// Beacon信号を検出した場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didRangeBeacons:(NSArray </em>)beacons inRegion:(CLBeaconRegion *)region
+{</p>
+
+<pre><code>if (beacons.count &gt; 0) {
+    self.nearestBeacon = beacons.firstObject;
+    NSString *rangeMessage;
+
+    switch(self.nearestBeacon.proximity) {
+        case CLProximityImmediate:
+            rangeMessage = @"Range Immediate";
+            break;
+        case CLProximityNear:
+            rangeMessage = @"Range Near";
+            break;
+        case CLProximityFar:
+            rangeMessage = @"Range Far";
+            break;
+        default:
+            rangeMessage = @"Range Unknown";
+            break;
+    }
+
+    self.str = [[NSString alloc] initWithFormat:@"%f [m]", self.nearestBeacon.accuracy];
+    [self sendLocalNotificationForMessage:self.str];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// ローカルプッシュ
+&ndash; (void)sendLocalNotificationForMessage:(NSString *)message
+{</p>
+
+<pre><code>UILocalNotification *localNotification = [UILocalNotification new];
+localNotification.alertBody = message;
+localNotification.fireDate = [NSDate date];
+localNotification.soundName = nil;
+[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ローカルプッシュを可能にするために<code>AppDelegate.m</code>に下記書式を追加しましょう。</p>
+
+<p>```objective-c
+// AppDelegate.m
+&ndash; (BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions
+{</p>
+
+<pre><code>...
+
+if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)]) {
+    [[UIApplication sharedApplication] registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|UIUserNotificationTypeSound categories:nil]];
+}
+
+return YES;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントは<code>CLBeaconRegion</code>を作成するときに指定する<code>UUID</code>と<code>identifier</code>が共にユニークであることです。<br/>
+<code>UUID</code>のみを別々にしても<code>identifier</code>が同じだと別のiBeacon領域と見なされないので注意が必要です。</p>
+
+<p>別々のiBeacon領域が作成できれば、<code>didEnterRegion</code>, <code>didExitRegion</code>などのデリゲートメソッドはそれぞれのiBeacon領域に対して発生します。<br/>
+もし、比較的狭い空間で複数のiBeaconを設置して、アプリをFG起動しない前提で人流解析をしたい場合は複数のiBeacon領域(別々のUUIDを持ったiBeacon領域)を用意することも１つの手だと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Swiftで継承とカテゴリってどうやってやるの！？]]></title>
@@ -1121,188 +1320,6 @@ static NSString *const scope = @&ldquo;<a href="https://www.googleapis.com/auth/
 <li><a href="http://qiita.com/asakahara/items/06abbc0209262d0051ef">iOSでアプリを削除してもデータを保持する方法</a></li>
 </ul>
 
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Swift AFNetworkingライブラリを使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/05/24/swift-afnetworking/"/>
-    <updated>2015-05-24T10:53:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/05/24/swift-afnetworking</id>
-    <content type="html"><![CDATA[<h4>通信系ライブラリAFNetworkingの使い方を覚えよう！</h4>
-
-<p>さて、本日はObjective-Cの超有名通信系ライブラリの<a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>をSwiftで使ってみようと思います。</p>
-
-<h5>導入の仕方</h5>
-
-<p>まずは導入の仕方を見て行きましょう。<br/>
-CocoaPodsを使います。<br/>
-Podfileを作成し、下記の内容を記載しましょう。</p>
-
-<p><code>objective-c
-platform :ios, '7.0'
-pod "AFNetworking", "~&gt; 2.0"
-</code></p>
-
-<p>これで<code>pod install</code>すればプロジェクトに <strong>AFNetworking</strong> が追加されるはずです。<br/>
-ここで注意したいのが、あくまでもObjective-Cで書かれたライブラリなので、Swiftで使うためにはBridgeファイルを用意する必要があります。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<ol>
-<li>プロジェクトにヘッダーファイルを追加します。
-ProjectName-Bridging-Header.hという形式が推奨されている模様<br/>
-今回はSwiftSample-Bridging-Header.hという名前で追加しました。</li>
-<li>TARGETS > SwiftSample > Build Settings > Swift Compiler &ndash; Code Generation > Objective-C Bridging Headerにパスを指定
-SwiftSample/SwiftSample-Bridging-Header.hを指定しました。</li>
-<li>Bridgeファイルにライブラリを<code>import</code>する</li>
-<li>ライブラリを利用するファイルにも<code>import</code>を書きましょう(Swiftの書き方で。)</li>
-</ol>
-
-
-<p>下記の画像を参照ください。
-<img src="/images/swift-afnetworking.png" alt="Bridgeファイルの用意" /></p>
-
-<p>また、Bridgeファイルへの具体的な内容を書いておきます。</p>
-
-<p>```objective-c</p>
-
-<h1>ifndef SwiftSample_SwiftSample_Bridging_Header_h</h1>
-
-<h1>define SwiftSample_SwiftSample_Bridging_Header_h</h1>
-
-<h1>endif</h1>
-
-<h1>import &lt;AFNetworking/AFNetworking.h></h1>
-
-<p>```</p>
-
-<h5>GETリクエスト</h5>
-
-<p>では、早速、GETリクエストを書いてみましょう。<br/>
-以前の<a href="http://grandbig.github.io/blog/2015/02/12/afnetworking/">AFNetworking2.xでWeb-APIを叩いてみた！</a>でも利用した <strong>OpenWeatherMap API</strong> を例として使います。</p>
-
-<p><code>http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp</code>でリクエストして、<br/>
-下記のデータを返してもらうことを想定しています。</p>
-
-<p>```objective-c</p>
-
-<p>{</p>
-
-<pre><code>base:  "stations",
-clouds: {
-    all: 32
-},
-cod: 200,
-coord: {
-    lat: 35.69,
-    lon: 139.65
-},
-dt: 1432394992,
-id: 1850147,
-main: {
-    grnd_level: 1019.97,
-    humidity: 88,
-    pressure: 1019.97,
-    sea_level: 1024.92,
-    temp: 290.99,
-    temp_max: 290.99,
-    temp_min: 290.99
-},
-name: Tokyo,
-sys: {
-    country: "JP",
-    message: 0.0386,
-    sunrise: 1432323041,
-    sunset: 1432374314
-},
-weather: [
-    {
-        description: "scattered clouds",
-        icon: "03n",
-        id: 802,
-        main: "Clouds"
-    }
-],
-wind: {
-    deg: 198.001,
-    speed: 5.11
-}
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>では、GETリクエストを投げてみましょう。<br/>
-返却されたデータの取得方法についても記載します。</p>
-
-<p>```objective-c
-// GETリクエスト
-let manager = AFHTTPSessionManager()
-manager.GET(&ldquo;<a href="http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp">http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp</a>&rdquo;, parameters: nil,</p>
-
-<pre><code>success: { (operation, json) -&gt; Void in
-    // 処理が成功した場合
-    let dict = json as! [String: AnyObject]
-    let weatherArray = dict["weather"] as! [AnyObject]
-    let weather = weatherArray[0] as! [String: AnyObject]
-    let description = weather["description"] as! String
-    println(description)
-}, failure: { (operation, error) -&gt; Void in
-    // エラーが発生した場合
-})
-</code></pre>
-
-<p>```</p>
-
-<p>Objective-Cでは下記のように書いていたので、対応づけて見るとわかりやすいかもしれません。</p>
-
-<p>```objective-c
-AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
-[manager.GET:@&ldquo;<a href="http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp">http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp</a>&rdquo;, parameters: nil,</p>
-
-<pre><code>success:^(NSURLSessionDataTask *task, id responseObject) {
-    NSArray *weatherArray = [responseObject objectForKey:@"weather"];
-    NSDictionary *weather = [weatherArray objectAtIndex:0];
-    NSString *description = [weather objectForKey:@"description"];
-    NSLog(description);
-}, failure:^(NSURLSessionDataTask *task, NSError *error) {
-    // エラーが発生した場合
-}];
-</code></pre>
-
-<p>```</p>
-
-<p><code>success</code>と<code>failure</code>は戻り値が<code>void</code>なので、Swiftでも<code>-&gt; Void</code>と指定しています。<br/>
-<code>[String: AnyObject]</code>は <strong>keyがString型</strong> で <strong>valueがAnyObject(何でもあり)型</strong> のDictionary型への変換で、<br/>
-<code>[AnyObject]</code>は <strong>要素がAnyObject(何でもあり)型</strong> のArray型への変換です。</p>
-
-<p>Alamofireとはやはり違った書き方となるので、iOSのターゲットなど要件に従って使い分けていくのが良いでしょう。<br/>
-と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

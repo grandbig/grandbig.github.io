@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iBeacon | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ibeacon/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-06-07T23:50:54+09:00</updated>
+  <updated>2015-06-15T00:12:32+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,205 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[複数のiBeaconを検知しよう！(別UUIDの場合)]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region/"/>
+    <updated>2015-06-14T23:43:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region</id>
+    <content type="html"><![CDATA[<h4>複数のiBeacon(別UUIDのiBeacon)を検知する方法</h4>
+
+<p>さて、本日は別々のUUIDを持ったiBeacon信号を補足したいと思います。<br/>
+iBeaconは案外、電波が遠くまで飛ぶため、幾つかのUUIDを補足できるようにしておくことで、うまく<code>didEnterRegion</code>, <code>didExitRegion</code>を使い、レンジングでのみ取得可能な値を効果的に使うことができるかもしれません。<br/>
+今回はiOS8以上を対象に下記サンプルソースを書きました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@property (strong, nonatomic) CLLocationManager <em>locationManager;
+@property (strong, nonatomic) NSUUID </em>proximityUUID1, <em>proximityUUID2;
+@property (strong, nonatomic) CLBeaconRegion </em>beaconRegion1, <em>beaconRegion2;
+@property (strong, nonatomic) CLBeacon </em>nearestBeacon;
+@property (strong, nonatomic) NSString *str;</p>
+
+<p>@end</p>
+
+<ul>
+<li><p>(void)viewDidLoad
+{
+  [super viewDidLoad];</p>
+
+<p>  self.locationManager = [[CLLocationManager alloc] init];
+  self.locationManager.delegate = self;</p>
+
+<p>  self.proximityUUID1 = [[NSUUID alloc] initWithUUIDString:@&ldquo;8D4DB809-032F-4771-96F3-99BD5C25F924&rdquo;];
+  self.beaconRegion1 = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID1 identifier:@&ldquo;com.takahiro.ibeaconSample&rdquo;];
+  self.proximityUUID2 = [[NSUUID alloc] initWithUUIDString:@&ldquo;1AE93327-B172-4C5D-BBF7-F52B959FD4EB&rdquo;];
+  self.beaconRegion2 = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID1 identifier:@&ldquo;com.takahiro.ibeaconSample2&rdquo;];</p>
+
+<p>  [self.locationManager requestAlwaysAuthorization];
+}</p></li>
+</ul>
+
+
+<p>// ユーザの位置情報の許可状態を確認するメソッド
+&ndash; (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{</p>
+
+<pre><code>if (status == kCLAuthorizationStatusAuthorizedAlways) {
+    // Beaconのモニタリングを開始
+    [self.locationManager startMonitoringForRegion:self.beaconRegion1];
+    [self.locationManager startMonitoringForRegion:self.beaconRegion2];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// 指定した領域に入った場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didEnterRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>[self sendLocalNotificationForMessage:@"Enter Region"];
+</code></pre>
+
+<p>}</p>
+
+<p>// 指定した領域から出た場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didExitRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>[self sendLocalNotificationForMessage:@"Exit Region"];
+</code></pre>
+
+<p>}</p>
+
+<p>// iBeacon領域内に既にいるか/いないかの判定
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>switch (state) {
+    case CLRegionStateInside:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+            [self.locationManager startRangingBeaconsInRegion:self.beaconRegion1];
+            [self.locationManager startRangingBeaconsInRegion:self.beaconRegion2];
+        }
+        break;
+    case CLRegionStateOutside:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+        }
+        break;
+    case CLRegionStateUnknown:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+        }
+        break;
+    default:
+        break;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// Beacon信号を検出した場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didRangeBeacons:(NSArray </em>)beacons inRegion:(CLBeaconRegion *)region
+{</p>
+
+<pre><code>if (beacons.count &gt; 0) {
+    self.nearestBeacon = beacons.firstObject;
+    NSString *rangeMessage;
+
+    switch(self.nearestBeacon.proximity) {
+        case CLProximityImmediate:
+            rangeMessage = @"Range Immediate";
+            break;
+        case CLProximityNear:
+            rangeMessage = @"Range Near";
+            break;
+        case CLProximityFar:
+            rangeMessage = @"Range Far";
+            break;
+        default:
+            rangeMessage = @"Range Unknown";
+            break;
+    }
+
+    self.str = [[NSString alloc] initWithFormat:@"%f [m]", self.nearestBeacon.accuracy];
+    [self sendLocalNotificationForMessage:self.str];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// ローカルプッシュ
+&ndash; (void)sendLocalNotificationForMessage:(NSString *)message
+{</p>
+
+<pre><code>UILocalNotification *localNotification = [UILocalNotification new];
+localNotification.alertBody = message;
+localNotification.fireDate = [NSDate date];
+localNotification.soundName = nil;
+[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ローカルプッシュを可能にするために<code>AppDelegate.m</code>に下記書式を追加しましょう。</p>
+
+<p>```objective-c
+// AppDelegate.m
+&ndash; (BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions
+{</p>
+
+<pre><code>...
+
+if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)]) {
+    [[UIApplication sharedApplication] registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|UIUserNotificationTypeSound categories:nil]];
+}
+
+return YES;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントは<code>CLBeaconRegion</code>を作成するときに指定する<code>UUID</code>と<code>identifier</code>が共にユニークであることです。<br/>
+<code>UUID</code>のみを別々にしても<code>identifier</code>が同じだと別のiBeacon領域と見なされないので注意が必要です。</p>
+
+<p>別々のiBeacon領域が作成できれば、<code>didEnterRegion</code>, <code>didExitRegion</code>などのデリゲートメソッドはそれぞれのiBeacon領域に対して発生します。<br/>
+もし、比較的狭い空間で複数のiBeaconを設置して、アプリをFG起動しない前提で人流解析をしたい場合は複数のiBeacon領域(別々のUUIDを持ったiBeacon領域)を用意することも１つの手だと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AndroidでBackgroundでiBeaconを検知しよう！]]></title>
@@ -873,77 +1072,6 @@ iOS端末でiBeaconのレンジング処理を行う場合、FG起動時にし�
 </script>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[複数のiBeacon信号を利用してみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/04/13/multi-ibeacon/"/>
-    <updated>2015-04-13T00:28:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/04/13/multi-ibeacon</id>
-    <content type="html"><![CDATA[<h4>複数のiBeaconを検知する方法</h4>
-
-<p>さて、本日はさらっと複数のiBeacon信号の検知について考えてみたいと思います。<br/>
-(これまでできるだろうという考えではあったものの、実際に試してみたことがなかったのでメモ書きです。)<br/>
-Central側ではiBeacon信号をキャッチしたときに、そのオブジェクトを配列の形で取得することができます。<br/>
-具体的には、</p>
-
-<p>```objective-c
-// Beacon信号を検出した場合
-&ndash; (void)locationManager:(CLLocationManager <em>)manager didRangeBeacons:(NSArray </em>)beacons inRegion:(CLBeaconRegion *)region
-{</p>
-
-<pre><code>if (beacons.count &gt; 0) {
-    NSLog(@"%@", beacons);
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>のように <strong>beacons</strong> が <strong>NSArray</strong> の型で返ってきていますよね。<br/>
-単純にこれを使ってやればよいのです。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>実際にログを見てみると、</p>
-
-<p>```objective-c
-2015-04-13 00:27:23.974 iBeaconSampleCentral[312:15030] (</p>
-
-<pre><code>"CLBeacon (uuid:&lt;__NSConcreteUUID 0x17403a6e0&gt; 8D4DB809-032F-4771-96F3-99BD5C25F924, major:1, minor:2, proximity:1 +/- 0.07m, rssi:-35)",
-"CLBeacon (uuid:&lt;__NSConcreteUUID 0x174037520&gt; 8D4DB809-032F-4771-96F3-99BD5C25F924, major:1, minor:2, proximity:1 +/- 0.20m, rssi:-45)"
-</code></pre>
-
-<p>)
-```</p>
-
-<p>となっています。<br/>
-最寄りのiBeaconのみを使う方法ではできなかった何か新しいサービスを実現できるかもしれませんね。<br/>
-今日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
 
 ]]></content>
   </entry>
