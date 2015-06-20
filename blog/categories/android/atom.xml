@@ -4,7 +4,7 @@
   <title><![CDATA[Category: android | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-06-15T00:12:32+09:00</updated>
+  <updated>2015-06-21T02:27:44+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,253 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android StudioでRealmを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/20/android-realm/"/>
+    <updated>2015-06-20T23:56:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/20/android-realm</id>
+    <content type="html"><![CDATA[<h4>Realmを読み込もう！</h4>
+
+<p>AndroidでもRealmを導入してみたいと思います。<br/>
+今後、SQLite同様、非常に重宝されるライブラリであることは間違いないですし。</p>
+
+<h5>Realmの導入方法</h5>
+
+<p>ここに関しては、<a href="https://realm.io/jp/docs/java/latest/">公式サイト</a>を見れば、特に困ることはないと思いますが、筆者と同様にAndroidアプリ開発の初心者は躓くかもしれないので、詳しく書いてみようと思います。</p>
+
+<p>まず、 <strong>Realm Android</strong> を検索すると、『 <strong>Realm Java(0.☓☓.☓)</strong> 』のような検索結果が出てくると思います。<br/>
+ここで注意して頂きたいのが、そのページが最新版のページになっているか否かということです。<br/>
+旧バージョンの場合、URLが <strong><a href="https://realm.io/jp/docs/java/0.%E2%98%93%E2%98%93.%E2%98%93/**">https://realm.io/jp/docs/java/0.%E2%98%93%E2%98%93.%E2%98%93/**</a> のようにバージョンが含まれています。<br/>
+最新版の場合は、URLが </strong><a href="https://realm.io/jp/docs/java/latest/**">https://realm.io/jp/docs/java/latest/**</a> のように <strong>latest</strong> というワードが含まれています。</p>
+
+<p>現在(2015/06/20)は <strong>0.80.3</strong> が最新版となっています。</p>
+
+<p>では、導入していきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>１. GradleScripts > build.gradle(Module: app) のdependenciesを修正
+<code>compile 'io.realm:realm-android:0.80.3'</code>を<code>dependencies { ... }</code>に追加します。<br/>
+２. メニューのFile > Project Structure&hellip; > Modulesのapp > Build Types > release > Minify Enabledをtrueに変更
+<img src="/images/android-realm1.png" alt="Minify Enabledを設定" /><br/>
+これにより、GradleScripts > build.gradle(Module: app)に</p>
+
+<p>```java
+android {</p>
+
+<pre><code>...
+buildTypes {
+    release {
+        minifyEnabled true
+        proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+    }
+}
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>という記述が追加されます。<br/>
+３. GradleScripts > proguard-rules.proに記述を追加</p>
+
+<p><code>java
+-keepnames public class * extends io.realm.RealmObject
+-keep class io.realm.** { *; }
+-dontwarn javax.**
+-dontwarn io.realm.**
+</code></p>
+
+<p>これでRealmを利用する準備が整いました。<br/>
+実際にコードを書いていきましょう。</p>
+
+<h5>保存オブジェクトの生成</h5>
+
+<p>Realmでは保存する対象を<code>RLMObject</code>として作成します。<br/>
+SQLiteでいうところのテーブルを生成しているイメージでしょうか。</p>
+
+<p>今回は練習として<code>Engineer.java</code>内で<code>Engineer</code>クラスを作ってみました。</p>
+
+<p>```java
+// Engineer.java
+public class Engineer extends RealmObject {</p>
+
+<pre><code>@PrimaryKey
+private int id;
+private int level;
+private String name;
+private String businessTitle;
+private RealmList&lt;Skill&gt; skills;
+private Date createDateTime;
+private Date updateDateTime;
+
+public int getId() {
+    return id;
+}
+public void setId(int id) {
+    this.id = id;
+}
+
+public int getLevel() {
+    return level;
+}
+public void setLevel(int level) {
+    this.level = level;
+}
+
+public String getName() {
+    return name;
+}
+public void setName(String name) {
+    this.name = name;
+}
+
+public String getBusinessTitle() {
+    return businessTitle;
+}
+public void setBusinessTitle(String businessTitle) {
+    this.businessTitle = businessTitle;
+}
+
+public RealmList&lt;Skill&gt; getSkills() {
+    return skills;
+}
+public void setSkills(RealmList&lt;Skill&gt; skills) {
+    this.skills = skills;
+}
+
+public Date getCreateDateTime() {
+    return createDateTime;
+}
+public void setCreateDateTime(Date createDateTime) {
+    this.createDateTime = createDateTime;
+}
+
+public Date getUpdateDateTime() {
+    return updateDateTime;
+}
+public void setUpdateDateTime(Date updateDateTime) {
+    this.updateDateTime = updateDateTime;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>```java
+// Skill.java
+public class Skill extends RealmObject {</p>
+
+<pre><code>@PrimaryKey
+private int id;
+private String skill;
+
+public int getId() {
+    return id;
+}
+public void setId(int id) {
+    this.id = id;
+}
+
+public String getSkill() {
+    return skill;
+}
+public void setSkill(String skill) {
+    this.skill = skill;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントとしては、<code>skills</code>のように配列の形で値を保持したい場合は<code>RealmList</code>を利用するということです。</p>
+
+<h5>オブジェクトのセレクト/インサート</h5>
+
+<p>続いて先ほど生成したオブジェクトをセレクト/インサートしてみましょう。</p>
+
+<p>```java
+// MainActivity.java
+public class MainActivity extends Activity {</p>
+
+<pre><code>@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    Realm realm = Realm.getInstance(this);
+    RealmQuery&lt;Engineer&gt; query = realm.where(Engineer.class);
+    query.equalTo("name", "ABC123");
+    RealmResults&lt;Engineer&gt; result = query.findAll();
+
+    if(result.size() &gt; 0) {
+        // 検索結果が見つかった場合
+        Engineer engineer = result.first();
+        int level = engineer.getLevel();
+        String name = engineer.getName();
+        String businessTitle = engineer.getBusinessTitle();
+        RealmList&lt;Skill&gt; skills = engineer.getSkills();
+        Date createDateTime = engineer.getCreateDateTime();
+
+        Log.d("MainActivity", "name: " + name + ", businessTitle: " + businessTitle);
+    } else {
+        // 検索結果が見つからなかった場合
+        realm.beginTransaction();
+        Engineer engineer = realm.createObject(Engineer.class);
+        engineer.setLevel(1);
+        engineer.setName("ABC123");
+        engineer.setBusinessTitle("新米エンジニア");
+
+        Skill skill = realm.createObject(Skill.class);
+        skill.setSkill("Java");
+        engineer.getSkills().add(skill);
+        engineer.setCreateDateTime(new Date());
+
+        realm.commitTransaction();
+    }
+}
+....
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここでは<code>name = "ABC123"</code>のデータを検索して、見つからない場合は新規データをインサートし、見つかった場合はデータをログに出力しています。<br/>
+書込みには<code>beginTransaction()</code>と<code>commitTransaction()</code>を利用しています。</p>
+
+<h5>データの確認</h5>
+
+<p>Realm Browserを使いたいところですが、現在調査中です&hellip;。<br/>
+デバイス内のどこにファイルがあるのかについてはわかったのですが、うまくファイルをPCに取り込めません&hellip;。<br/>
+継続調査をし、ブログにアップしますね。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AndroidでBackgroundでiBeaconを検知しよう！]]></title>
@@ -779,206 +1026,6 @@ Chromeと同じ対応度合いであったので、全く問題がないと言�
 <p>以上の結果を見ると、処理速度が気になるものの、WebSocketやWebGL, WebRTCなどに対応した上で、ターゲットにAndroid4.0〜4.3を含めたいのであれば、CROSSWALKは入れるべきと言えるでしょう。<br/>
 Android5.0以上がほとんどを占める世の中になったとしたら、何も考えずに標準のWebViewを使えば良いのかもしれないですが、まだまだ先の話でしょう。<br/>
 と言ったところで、本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android StudioでCROSSWALKを使おう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/03/28/crosswalk/"/>
-    <updated>2015-03-28T13:57:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/03/28/crosswalk</id>
-    <content type="html"><![CDATA[<h4>Androidでハイブリッドアプリを作ろう</h4>
-
-<p>以前、iOSではiOS8からWKWebViewという新しいWebViewが追加されたことを説明しました。<br/>
-では、Androidはどうなのでしょうか？</p>
-
-<p>Androidは4.3までWebKitベースのWebViewをアプリに組み込んでいました。<br/>
-しかし、Android4.4より、ChromiumベースのWebViewとなりました。ここで、大きく異なるのはレンダリングエンジンが <strong>Blink</strong> になったというところです。<br/>
-また、Android4.4まではChromiumがバージョンアップされたとしても、各メーカーがAndroidのOSバージョンアップを提供しなければ、最新のWebViewを利用することができませんでした。</p>
-
-<p>この現状を見たのかGoogleはAndroid5.0以降、WebViewをOSから切り離し、Google Play経由でバージョンアップ可能としました。<br/>
-よって、メーカーがOSのバージョンアップをする/しないに関わらず、Google側の意志で最新のWebViewをユーザに提供可能となったのです。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>近年はAndroid2.xを使っているユーザもだいぶ減少してきました。<br/>
-が、未だ、Android4.0〜4.3の端末を利用しているユーザは相当数、存在しています。<br/>
-では、4.x〜5.0.xまでの端末全てに対応するハイブリットアプリを作成するためには、各バージョンに気をつけつつ、開発するしかないのでしょうか？</p>
-
-<p>本記事では、 <strong>CROSSWALK</strong> に注目し、上記の問題に対応することとしました。</p>
-
-<h4>CROSSWALKを組み込もう</h4>
-
-<p>まずは、CROSSWALKのレポジトリを追加できるようにしましょう。</p>
-
-<p>```java
-// build.gradle(Module: app)
-apply plugin: &lsquo;com.android.application&rsquo;</p>
-
-<p>android {</p>
-
-<pre><code>....
-</code></pre>
-
-<p>}</p>
-
-<p>// ここを追加
-repositories {</p>
-
-<pre><code>maven {
-    url 'https://download.01.org/crosswalk/releases/crosswalk/android/maven2'
-}
-</code></pre>
-
-<p>}</p>
-
-<p>dependencies {</p>
-
-<pre><code>compile fileTree(dir: 'libs', include: ['*.jar'])
-compile 'com.android.support:appcompat-v7:21.0.3'
-compile 'org.xwalk:xwalk_core_library:10.39.235.15'     // ここも追加
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>次に、CROSSWALKのWebViewである <strong>XWalkView</strong> を画面に組み込みましょう。</p>
-
-<p>```xml
-// activity_main.xml
-&lt;RelativeLayout xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
-
-<pre><code>xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
-android:layout_height="match_parent" android:paddingLeft="0dp"
-android:paddingRight="0dp"
-android:paddingTop="0dp"
-android:paddingBottom="0dp" tools:context=".MainActivity"&gt;
-
-&lt;!-- XWalkViewを追加 --&gt;
-&lt;org.xwalk.core.XWalkView
-    android:id="@+id/xwalkWebView"
-    android:orientation="vertical"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    android:background="#000000"
-    /&gt;
-</code></pre>
-
-<p></RelativeLayout>
-```</p>
-
-<p>続いて、AndroidManifest.xmlにWebViewを使うための設定を書きましょう。</p>
-
-<p>```xml
-// AndroidManifest.xml
-&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
-&lt;manifest xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
-
-<pre><code>package="com.example.takahiro.crosswalksample" &gt;
-
-&lt;!-- 追加 --&gt;
-&lt;uses-permission android:name="android.permission.INTERNET" /&gt;
-&lt;uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" /&gt;
-&lt;uses-permission android:name="android.permission.ACCESS_WIFI_STATE" /&gt;
-
-....
-</code></pre>
-
-<p></manifest>
-```</p>
-
-<p>そして、メイン画面にWebViewの設定を書き込みましょう。</p>
-
-<p>```java
-// MainActivity.java</p>
-
-<p>package com.example.takahiro.crosswalksample;</p>
-
-<p>import android.support.v7.app.ActionBarActivity;
-import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
-import org.xwalk.core.XWalkView;</p>
-
-<p>public class MainActivity extends ActionBarActivity {</p>
-
-<pre><code>private XWalkView mXWalkView;
-
-@Override
-protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
-
-    mXWalkView = (XWalkView) findViewById(R.id.activity_main);
-    mXWalkView.load("https://www.google.co.jp", null);
-}
-
-@Override
-protected void onPause() {
-    super.onPause();
-    if (mXWalkWebView != null) {
-        mXWalkWebView.pauseTimers();
-        mXWalkWebView.onHide();
-    }
-}
-
-@Override
-protected void onResume() {
-    super.onResume();
-    if (mXWalkWebView != null) {
-        mXWalkWebView.resumeTimers();
-        mXWalkWebView.onShow();
-    }
-}
-
-@Override
-protected void onDestroy() {
-    super.onDestroy();
-    if (mXWalkWebView != null) {
-        mXWalkWebView.onDestroy();
-    }
-}
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>これでAndroid4.x 〜 5.xで同じChromiumベースのWebViewを利用することができるはずです。<br/>
-といったところで本日はここまで。</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="https://diego.org/2015/01/07/embedding-crosswalk-in-android-studio/">Embedding Crosswalk in Android Studio</a></li>
-<li><a href="https://crosswalk-project.org/documentation/embedding_crosswalk.html">Embedding the Crosswalk Project</a></li>
-<li><a href="https://crosswalk-project.org/apis/embeddingapidocs_v3/org/xwalk/core/XWalkView.html#addJavascriptInterface(java.lang.Object,%20java.lang.String">XWalkView Reference</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
