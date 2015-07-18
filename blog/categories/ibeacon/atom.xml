@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iBeacon | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ibeacon/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-06-22T00:48:54+09:00</updated>
+  <updated>2015-07-19T00:14:46+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,245 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kontakt.ioのSmart Beaconを使ってみた]]></title>
+    <link href="http://grandbig.github.io/blog/2015/07/18/start-kontakt-beacon/"/>
+    <updated>2015-07-18T22:40:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/07/18/start-kontakt-beacon</id>
+    <content type="html"><![CDATA[<h4>Kontakt.ioのSmart Beaconを使ってみよう</h4>
+
+<p>さて、久しぶりの更新です。<br/>
+実は先日、以前から気になっていた<a href="https://store.kontakt.io/our-products/1-bluetooth-beacon.html">Kontakt.io Smart Beacon</a>を購入してみました。<br/>
+あまり海外の製品を購入することがないので、届くか心配でしたが、ばっちり自宅に届きました笑</p>
+
+<p>なぜ、Kontakt.ioのSmart Beaconに着目していたかというと、筆者が知る限り、最も発信出力(TxPower)を弱くすることが可能なBeaconだからです。<br/>
+<a href="https://support.kontakt.io/hc/en-gb/articles/201621521-Transmission-power-Range-and-RSSI">仕様書</a>を見てみると、出力を-30[dBm]にまで下げることができ、その電波距離は実に2[m]程度らしいです。</p>
+
+<p>また、SDKが充実しており、発信出力を自由に変更できるところもポイント高いですね。<br/>
+さて、今回は基本的な実装から見て行きましょう！(何回かに分けて記事にしようと思います。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>SDKをプロジェクトに追加</h4>
+
+<p>まずは、SDKを使える状態に持っていきます。</p>
+
+<h5>Objective-C編</h5>
+
+<p>CocoaPodsで提供されていますので、簡単です。</p>
+
+<ol>
+<li>Projectファイルと同じ階層に<code>Podfile</code>を作成します</li>
+<li><code>pod 'KontaktSDK'</code>と記載します</li>
+<li><code>pod install</code>を実行します</li>
+</ol>
+
+
+<p>以上でプロジェクトへの追加完了です。</p>
+
+<h5>Swift編</h5>
+
+<p>CocoaPods使いましょう！</p>
+
+<ol>
+<li>Projectファイルと同じ階層に<code>Podfile</code>を作成します</li>
+<li><code>pod 'KontaktSDK'</code>と記載します</li>
+<li><code>pod install</code>を実行します</li>
+<li>Bridging-Headerファイルを作成します
+<code>ProjectName-Bridging-Header.h</code>ファイルを作成し、Build Settings > Swift Compiler > Objective-C Bridging Headerにパスを設定</li>
+<li>Bridging-Headerファイルに必要なライブラリを<code>import</code>します</li>
+</ol>
+
+
+<p>下記は、Buid Settingsの設定です。<br/>
+<img src="/images/kontakt1.png" alt="Bridging-Headerファイルの設定" /></p>
+
+<p>下記はBridging-Headerファイルの中身です。</p>
+
+<p>```objective-c</p>
+
+<h1>ifndef KontaktSwiftTest_KontaktSwiftTest_Bridging_Header_h</h1>
+
+<h1>define KontaktSwiftTest_KontaktSwiftTest_Bridging_Header_h</h1>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<h1>import &lt;CoreLocation/CoreLocation.h></h1>
+
+<h1>import &lt;CoreBluetooth/CoreBluetooth.h></h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<h1>endif</h1>
+
+<p>```</p>
+
+<h4>Kontakt.ioのBeaconを検知してみよう</h4>
+
+<p>これで準備が整ったので、実際にソースを書いて、Beaconを検知してみましょう！</p>
+
+<h5>Objective-C編</h5>
+
+<p>ViewController.mにどんどん書いていきます。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<p>@interface ViewController ()<KTKLocationManagerDelegate></p>
+
+<p>@property(strong, nonatomic) KTKLocationManager *lm;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];</p>
+
+<p>  <em>lm = [KTKLocationManager new];
+  </em>lm.delegate = self;</p>
+
+<p>  if ([KTKLocationManager canMonitorBeacons]) {
+      KTKRegion *region = [KTKRegion alloc] init];
+      region.uuid = @&ldquo;AF41A130-E105-4F13-9483-316B7101B0A9&rdquo;;
+      [_lm setRegions:@[region]];]
+  }
+}</p></li>
+<li><p>(void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];</p>
+
+<p>  [_lm startMonitoringBeacons];
+}</p></li>
+<li><p>(void)viewDidDisappear:(BOOL)animated {
+  [super viewDidDisappear:animated];</p>
+
+<p>  [_lm stopMonitoringBeacons];
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning {
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<h1>pragma mark &ndash; KTKLocationManagerDelegate</h1>
+
+<ul>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didChangeState:(KTKLocationManagerState)state withError:(NSError </em>)error {
+  if(state == KTKLocationManagerStateFailed) {
+      NSLog(@&ldquo;Something went wrong with your Location Services settings. Check OS settings.&rdquo;);
+  }
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didEnterRegion:(KTKRegion </em>)region {
+  NSLog(@&ldquo;Enter region %@&rdquo;, region.uuid);
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didExitRegion:(KTKRegion </em>)region {
+  NSLog(@&ldquo;Exit region %@&rdquo;, region.uuid);
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didRangeBeacons:(NSArray </em>)beacons {
+  NSLog(@&ldquo;Ranged beacons count: %lu&rdquo;, [beacons count]);
+}</p></li>
+</ul>
+
+
+<p>@end</p>
+
+<p>```</p>
+
+<h5>Swift編</h5>
+
+<p><code>ViwController.swift</code>にどんどん書いていきます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController, KTKLocationManagerDelegate {</p>
+
+<pre><code>let lm:KTKLocationManager = KTKLocationManager()
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    if(KTKLocationManager.canMonitorBeacons()) {
+        let region:KTKRegion = KTKRegion()
+        region.uuid = "AF41A130-E105-4F13-9483-316B7101B0A9"
+        lm.setRegions([region])
+        self.lm.delegate = self
+    }
+}
+
+override func viewDidAppear(animated: Bool) {
+    super.viewDidAppear(animated)
+
+    lm.startMonitoringBeacons()
+}
+
+override func viewDidDisappear(animated: Bool) {
+    super.viewDidDisappear(animated)
+
+    lm.stopMonitoringBeacons()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func locationManager(locationManager: KTKLocationManager!, didChangeState state: KTKLocationManagerState, withError error: NSError!) {
+    if(state == .Failed) {
+        println("Something went wrong with your Location Services settings. Check OS settings.")
+    }
+}
+
+func locationManager(locationManager: KTKLocationManager!, didEnterRegion region: KTKRegion!) {
+    println("Enter region \(region.uuid)")
+}
+
+func locationManager(locationManager: KTKLocationManager!, didExitRegion region: KTKRegion!) {
+    println("Exit region \(region.uuid)")
+}
+
+func locationManager(locationManager: KTKLocationManager!, didRangeBeacons beacons: [AnyObject]!) {
+    println("Ranged beacons count: \(beacons.count)")
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これでKontakt.ioのSmart Beaconを検知することができるようになりました。<br/>
+次回はAPI連携して、Beaconのパラメータを変えてみたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[複数のiBeaconを検知しよう！(別UUIDの場合)]]></title>
@@ -934,144 +1173,6 @@ iOS端末でiBeaconのレンジング処理を行う場合、FG起動時にし�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[BLEMeasure Ver3.0(iPhoneアプリを申請しました(4))]]></title>
-    <link href="http://grandbig.github.io/blog/2015/04/25/ble-measure-3-0-0/"/>
-    <updated>2015-04-25T11:50:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/04/25/ble-measure-3-0-0</id>
-    <content type="html"><![CDATA[<h4>BLEMeasure Ver3.0の紹介</h4>
-
-<p>約1年ぶりに本アプリのバージョンアップに着手しました。<br/>
-主な改善点・修正点としては下記です。</p>
-
-<ul>
-<li>デザイン, UIの変更</li>
-<li>マルチiBeaconの検知機能の実装</li>
-<li>iOS8対応</li>
-<li>iPhone6およびiPhone6 Plus対応</li>
-<li>バグFix</li>
-</ul>
-
-
-<p><del>※現在、アップデート申請中のため、公開されていません。</del><br/>
-<del>(公開され次第、合わせてブログを更新する予定です。)</del><br/>
-2015/05/28にめでたく公開されました！！<br/>
-本記事を書いてから、実に1ヶ月もの時間を要したのですが、そこには新たに判明した事柄があったためです。<br/>
-そこについて本記事に追記させて頂きます。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>今回アップデートを行った理由としては、なぜかうまく起動しないという問題があったためです。<br/>
-少し苦労したのが、手違いで完全に昔のプロジェクトを削除してしまっていたため、初めから作り直したところです。</p>
-
-<h4>BLEMeasureの使い方(How to use BLEMeasure)</h4>
-
-<p>さて、ここからは審査も見据えて使い方を日本語＋拙い(多々間違いのあるであろう)英語で解説していきたいと思います。</p>
-
-<h5>iBeacon発信手順(Procedure of advertising iBeacon)</h5>
-
-<ol>
-<li>中央の赤いボタンをタップ(Tap the central red button)</li>
-<li>Advertiseボタンをタップ(Tap the advertise button)</li>
-<li>STARTボタンをタップ(Tap the start button)</li>
-</ol>
-
-
-<p><img src="/images/ble_measure_v3_1.png" alt="BLEMeasure Procedure1" /></p>
-
-<h5>iBeacon距離計測手順(Procedure of measuring the distance between a peripheral device and a central device)</h5>
-
-<ol>
-<li>中央の赤いボタンをタップ(Tap the central red button)</li>
-<li>Measureボタンをタップ(Tap the measure button)</li>
-</ol>
-
-
-<p><img src="/images/ble_measure_v3_2.png" alt="BLEMeasure Procedure2" /></p>
-
-<p>※ 周りにiBeacon発信端末が見つからない場合は0mと表記されます(If the device can&rsquo;t find the advertising device, the distance is 0m.)</p>
-
-<h5>複数iBeaconの検知手順(Procedure of searching the multi iBeacon)</h5>
-
-<ol>
-<li>中央の赤いボタンをタップ(Tap the central red button)</li>
-<li>Searchボタンをタップ(Tap the search button)</li>
-</ol>
-
-
-<p>※ 周りにiBeaconが見当たらない場合は何も表示されません(You don&rsquo;t look at the iBeacon list if there aren&rsquo;t iBeacon around you.)<br/>
-※ テーブルビューのプルダウンもしくは右上の更新ボタンで周囲のiBeaconを再検索することができます(You can search iBeacon again by pulling down the table view or tapping the update button)</p>
-
-<p><img src="/images/ble_measure_v3_3.png" alt="BLEMeasure Procedure3" /></p>
-
-<h5>iBeaconパラメータの設定手順(Procedure of setting the advertising iBeacon parameters)</h5>
-
-<ol>
-<li>中央の赤いボタンをタップ(Tap the central red button)</li>
-<li>Settingsボタンをタップ(Tap the settings button)</li>
-<li>UUID, major, minorの値を入力して、Saveボタンをタップ(Enter the parameters and tap the save button)</li>
-</ol>
-
-
-<p><img src="/images/ble_measure_v3_4.png" alt="BLEMeasure Procedure4" /></p>
-
-<h5>アプリ関連情報の確認手順(Procedure of confirming the information about the app)</h5>
-
-<ol>
-<li>中央の赤いボタンをタップ(Tap the central red button)</li>
-<li>Aboutボタンをタップ(Tap the about button)</li>
-</ol>
-
-
-<p><img src="/images/ble_measure_v3_5.png" alt="BLEMeasure Procedure5" /></p>
-
-<h4>アップデート完了までの道のり</h4>
-
-<p>さて、ここからは追記になります。<br/>
-さらっと審査が通るかと思っていたものの、実に2度の <strong>リジェクト</strong> を受けました。</p>
-
-<p>リジェクトの理由は、本アプリでも受けていた設定画面のUUID/major/minorの手動変更が<a href="http://adcdownload.apple.com//Documents/license_agreements__ios_standard/iOS_Program_Standard_Agreement_20150309.pdf">iOS Developer Program License Agreement</a>の3.3.1項目に違反するとされたためです。<br/>
-既存のバージョンで問題視されていなかった項目だったため、その旨を伝えたり、major/minorの手動変更のみを削除したり(UUIDのみの手動変更を許可したり)したものの、同様の理由でリジェクトされました。</p>
-
-<p>因みに同項目では、<br/>
-<strong>Applications may only use Documented APIs in the manner prescribed by Apple and must not use or call any private APIs.</strong> <br/>
-と記されています。</p>
-
-<p>要は、Public APIがAppleの意図せぬ形で使われている or Private APIを使っている場合に引っかかる項目ということです。<br/>
-他に手動変更を許可しているアプリはもうアップデートできないんじゃないかな&hellip;なんて思ってしまいました。</p>
-
-<p>専用のBeacon機器を出している会社さんの場合はOKなのかは気になるところです。<br/>
-これができないとなると、iBeaconが普及し得ないと思いますし&hellip;。</p>
-
-<p>本日は以上です。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
 
 ]]></content>
   </entry>

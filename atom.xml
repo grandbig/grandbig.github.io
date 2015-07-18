@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-06-22T00:48:54+09:00</updated>
+  <updated>2015-07-19T00:14:46+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,355 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kontakt.ioのSmart Beaconを使ってみた]]></title>
+    <link href="http://grandbig.github.io/blog/2015/07/18/start-kontakt-beacon/"/>
+    <updated>2015-07-18T22:40:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/07/18/start-kontakt-beacon</id>
+    <content type="html"><![CDATA[<h4>Kontakt.ioのSmart Beaconを使ってみよう</h4>
+
+<p>さて、久しぶりの更新です。<br/>
+実は先日、以前から気になっていた<a href="https://store.kontakt.io/our-products/1-bluetooth-beacon.html">Kontakt.io Smart Beacon</a>を購入してみました。<br/>
+あまり海外の製品を購入することがないので、届くか心配でしたが、ばっちり自宅に届きました笑</p>
+
+<p>なぜ、Kontakt.ioのSmart Beaconに着目していたかというと、筆者が知る限り、最も発信出力(TxPower)を弱くすることが可能なBeaconだからです。<br/>
+<a href="https://support.kontakt.io/hc/en-gb/articles/201621521-Transmission-power-Range-and-RSSI">仕様書</a>を見てみると、出力を-30[dBm]にまで下げることができ、その電波距離は実に2[m]程度らしいです。</p>
+
+<p>また、SDKが充実しており、発信出力を自由に変更できるところもポイント高いですね。<br/>
+さて、今回は基本的な実装から見て行きましょう！(何回かに分けて記事にしようと思います。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>SDKをプロジェクトに追加</h4>
+
+<p>まずは、SDKを使える状態に持っていきます。</p>
+
+<h5>Objective-C編</h5>
+
+<p>CocoaPodsで提供されていますので、簡単です。</p>
+
+<ol>
+<li>Projectファイルと同じ階層に<code>Podfile</code>を作成します</li>
+<li><code>pod 'KontaktSDK'</code>と記載します</li>
+<li><code>pod install</code>を実行します</li>
+</ol>
+
+
+<p>以上でプロジェクトへの追加完了です。</p>
+
+<h5>Swift編</h5>
+
+<p>CocoaPods使いましょう！</p>
+
+<ol>
+<li>Projectファイルと同じ階層に<code>Podfile</code>を作成します</li>
+<li><code>pod 'KontaktSDK'</code>と記載します</li>
+<li><code>pod install</code>を実行します</li>
+<li>Bridging-Headerファイルを作成します
+<code>ProjectName-Bridging-Header.h</code>ファイルを作成し、Build Settings > Swift Compiler > Objective-C Bridging Headerにパスを設定</li>
+<li>Bridging-Headerファイルに必要なライブラリを<code>import</code>します</li>
+</ol>
+
+
+<p>下記は、Buid Settingsの設定です。<br/>
+<img src="http://grandbig.github.io/images/kontakt1.png" alt="Bridging-Headerファイルの設定" /></p>
+
+<p>下記はBridging-Headerファイルの中身です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#ifndef KontaktSwiftTest_KontaktSwiftTest_Bridging_Header_h</span>
+</span><span class='line'><span class="cp">#define KontaktSwiftTest_KontaktSwiftTest_Bridging_Header_h</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#import &lt;Foundation/Foundation.h&gt;</span>
+</span><span class='line'><span class="cp">#import &lt;CoreLocation/CoreLocation.h&gt;</span>
+</span><span class='line'><span class="cp">#import &lt;CoreBluetooth/CoreBluetooth.h&gt;</span>
+</span><span class='line'><span class="cp">#import &quot;KontaktSDK.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#endif</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Kontakt.ioのBeaconを検知してみよう</h4>
+
+<p>これで準備が整ったので、実際にソースを書いて、Beaconを検知してみましょう！</p>
+
+<h5>Objective-C編</h5>
+
+<p>ViewController.mにどんどん書いていきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.m</span>
+</span><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;KontaktSDK.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span><span class="o">&lt;</span><span class="n">KTKLocationManagerDelegate</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span><span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">KTKLocationManager</span> <span class="o">*</span><span class="n">lm</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">ViewController</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">_lm</span> <span class="o">=</span> <span class="p">[</span><span class="n">KTKLocationManager</span> <span class="n">new</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">_lm</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">([</span><span class="n">KTKLocationManager</span> <span class="n">canMonitorBeacons</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">KTKRegion</span> <span class="o">*</span><span class="n">region</span> <span class="o">=</span> <span class="p">[</span><span class="n">KTKRegion</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">region</span><span class="p">.</span><span class="n">uuid</span> <span class="o">=</span> <span class="s">@&quot;AF41A130-E105-4F13-9483-316B7101B0A9&quot;</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">_lm</span> <span class="nl">setRegions:</span><span class="err">@</span><span class="p">[</span><span class="n">region</span><span class="p">]];]</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidAppear:</span><span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nv">animated</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="nl">viewDidAppear:</span><span class="n">animated</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="p">[</span><span class="n">_lm</span> <span class="n">startMonitoringBeacons</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidDisappear:</span><span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nv">animated</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="nl">viewDidDisappear:</span><span class="n">animated</span><span class="p">];</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="p">[</span><span class="n">_lm</span> <span class="n">stopMonitoringBeacons</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">didReceiveMemoryWarning</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">didReceiveMemoryWarning</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#pragma mark - KTKLocationManagerDelegate</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">KTKLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">locationManager</span> <span class="nf">didChangeState:</span><span class="p">(</span><span class="n">KTKLocationManagerState</span><span class="p">)</span><span class="nv">state</span> <span class="nf">withError:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">state</span> <span class="o">==</span> <span class="n">KTKLocationManagerStateFailed</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;Something went wrong with your Location Services settings. Check OS settings.&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">KTKLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">locationManager</span> <span class="nf">didEnterRegion:</span><span class="p">(</span><span class="n">KTKRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;Enter region %@&quot;</span><span class="p">,</span> <span class="n">region</span><span class="p">.</span><span class="n">uuid</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">KTKLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">locationManager</span> <span class="nf">didExitRegion:</span><span class="p">(</span><span class="n">KTKRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;Exit region %@&quot;</span><span class="p">,</span> <span class="n">region</span><span class="p">.</span><span class="n">uuid</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">KTKLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">locationManager</span> <span class="nf">didRangeBeacons:</span><span class="p">(</span><span class="n">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nv">beacons</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;Ranged beacons count: %lu&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">beacons</span> <span class="n">count</span><span class="p">]);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>Swift編</h5>
+
+<p><code>ViwController.swift</code>にどんどん書いていきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">KTKLocationManagerDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">lm:</span><span class="n">KTKLocationManager</span> <span class="o">=</span> <span class="n">KTKLocationManager</span><span class="p">()</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">KTKLocationManager</span><span class="p">.</span><span class="n">canMonitorBeacons</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">let</span> <span class="nl">region:</span><span class="n">KTKRegion</span> <span class="o">=</span> <span class="n">KTKRegion</span><span class="p">()</span>
+</span><span class='line'>          <span class="n">region</span><span class="p">.</span><span class="n">uuid</span> <span class="o">=</span> <span class="s">&quot;AF41A130-E105-4F13-9483-316B7101B0A9&quot;</span>
+</span><span class='line'>          <span class="n">lm</span><span class="p">.</span><span class="n">setRegions</span><span class="p">([</span><span class="n">region</span><span class="p">])</span>
+</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">lm</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidAppear</span><span class="p">(</span><span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidAppear</span><span class="p">(</span><span class="n">animated</span><span class="p">)</span>
+</span><span class='line'>      
+</span><span class='line'>      <span class="n">lm</span><span class="p">.</span><span class="n">startMonitoringBeacons</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidDisappear</span><span class="p">(</span><span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidDisappear</span><span class="p">(</span><span class="n">animated</span><span class="p">)</span>
+</span><span class='line'>      
+</span><span class='line'>      <span class="n">lm</span><span class="p">.</span><span class="n">stopMonitoringBeacons</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="nl">locationManager:</span> <span class="n">KTKLocationManager</span><span class="o">!</span><span class="p">,</span> <span class="n">didChangeState</span> <span class="nl">state:</span> <span class="n">KTKLocationManagerState</span><span class="p">,</span> <span class="n">withError</span> <span class="nl">error:</span> <span class="n">NSError</span><span class="o">!</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">state</span> <span class="o">==</span> <span class="p">.</span><span class="n">Failed</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">println</span><span class="p">(</span><span class="s">&quot;Something went wrong with your Location Services settings. Check OS settings.&quot;</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="nl">locationManager:</span> <span class="n">KTKLocationManager</span><span class="o">!</span><span class="p">,</span> <span class="n">didEnterRegion</span> <span class="nl">region:</span> <span class="n">KTKRegion</span><span class="o">!</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">println</span><span class="p">(</span><span class="s">&quot;Enter region \(region.uuid)&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="nl">locationManager:</span> <span class="n">KTKLocationManager</span><span class="o">!</span><span class="p">,</span> <span class="n">didExitRegion</span> <span class="nl">region:</span> <span class="n">KTKRegion</span><span class="o">!</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">println</span><span class="p">(</span><span class="s">&quot;Exit region \(region.uuid)&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="nl">locationManager:</span> <span class="n">KTKLocationManager</span><span class="o">!</span><span class="p">,</span> <span class="n">didRangeBeacons</span> <span class="nl">beacons:</span> <span class="p">[</span><span class="n">AnyObject</span><span class="p">]</span><span class="o">!</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">println</span><span class="p">(</span><span class="s">&quot;Ranged beacons count: \(beacons.count)&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでKontakt.ioのSmart Beaconを検知することができるようになりました。<br/>
+次回はAPI連携して、Beaconのパラメータを変えてみたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AndroidでRealmで保存した値を確認しよう！]]></title>
@@ -5545,115 +5894,6 @@ iOS端末でiBeaconのレンジング処理を行う場合、FG起動時にし�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Apple Watch Sportを購入しました]]></title>
-    <link href="http://grandbig.github.io/blog/2015/04/25/apple-watch/"/>
-    <updated>2015-04-25T12:58:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/04/25/apple-watch</id>
-    <content type="html"><![CDATA[<h4>Apple Watch Sport</h4>
-
-<p>先日とうとう発売されたApple Watch Sportについて書きたいと思います。<br/>
-本記事ではApple Watch Sportの開封および初期設定の手順について説明するに留め、プログラミングは今後に回したいと思います。</p>
-
-<p>まず、Apple Watch Sportは他のApple製品と同じで真っ白な箱に入ってきました。<br/>
-写真だと見づらいですが、箱に『Apple Watch』と書かれています。</p>
-
-<p><img src="http://grandbig.github.io/images/apple_watch1.png" alt="Apple Watch Sportの箱" /></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>箱を明けてみると、真っ白なケースが入っています。<br/>
-<img src="http://grandbig.github.io/images/apple_watch2.png" alt="Apple Watch Sportの箱を開けると..." /></p>
-
-<p>真っ白なケースを開けてみましょう。<br/>
-出ました！Apple Watch Sportの初お目見えです！<br/>
-<img src="http://grandbig.github.io/images/apple_watch3.png" alt="Apple Watch Sport" /></p>
-
-<p>付属品は他にサイズ違いのバンド, 充電ケーブル, 電源コネクタ, 説明書が入っていました。<br/>
-<img src="http://grandbig.github.io/images/apple_watch4.png" alt="Apple Watch Sportの付属品" /></p>
-
-<p>※ 因みに、初めからつけられていたバンドはLサイズのものでした。付属品として入っていたものがS/M兼用サイズのようです。</p>
-
-<p>次にApple Watch Sportの初期設定に移ります。<br/>
-Apple Watch Sportの右側面にはハードボタンが2つついています。<br/>
-下のボタンを長押しして起動してみましょう。<br/>
-<img src="http://grandbig.github.io/images/apple_watch5.png" alt="Apple Watch Sportの側面" /></p>
-
-<p>初めに使用言語を聞かれるため、もちろん日本語を選択します。<br/>
-すると、iPhoneでApple Watchのアプリを起動するように求められます。<br/>
-<img src="http://grandbig.github.io/images/apple_watch6.png" alt="Apple Watch Sportとペアリング1" /></p>
-
-<p>では、iPhoneでApple Watchアプリを起動してみましょう。<br/>
-ペアリングを開始をタップしましょう。<br/>
-<img src="http://grandbig.github.io/images/apple_watch7.png" alt="Apple Watch Sportとペアリング2" /></p>
-
-<p>どうやらカメラを向ける必要があるようなので、Apple Watch Sportに向けてみます。<br/>
-<img src="http://grandbig.github.io/images/apple_watch8.png" alt="Apple Watch Sportとペアリング3" /></p>
-
-<p>ペアリングが完了すると下記のようになります。<br/>
-<img src="http://grandbig.github.io/images/apple_watch9.png" alt="Apple Watch Sportとペアリング4" /></p>
-
-<p>続いて、iPhoneからApple Watch Sportの設定を続ける必要があります。<br/>
-Apple Watchを設定をタップすると、装着する腕を選択する画面が表示されます。<br/>
-<img src="http://grandbig.github.io/images/apple_watch10.png" alt="Apple Watch Sportの設定1" /></p>
-
-<p>次に利用規約に同意する画面が表示されるので、同意しましょう。<br/>
-<img src="http://grandbig.github.io/images/apple_watch11.png" alt="Apple Watch Sportの設定2" /></p>
-
-<p>そして、Apple IDを入力します。<br/>
-<img src="http://grandbig.github.io/images/apple_watch12.png" alt="Apple Watch Sportの設定3" /></p>
-
-<p>このあと、各種機能の利用の確認画面が表示されます。
-<img src="http://grandbig.github.io/images/apple_watch13.png" alt="位置情報サービス利用の確認" /><br/>
-<img src="http://grandbig.github.io/images/apple_watch14.png" alt="Siri利用の確認" /><br/>
-<img src="http://grandbig.github.io/images/apple_watch15.png" alt="診断情報の送信の確認" /></p>
-
-<p>Apple Watch Sportのパスコードを設定します。<br/>
-<img src="http://grandbig.github.io/images/apple_watch16.png" alt="Apple Watch Sportのパスコード" /></p>
-
-<p>Apple Watch Sportで動作可能なアプリをインストールします。<br/>
-<img src="http://grandbig.github.io/images/apple_watch17.png" alt="アプリのインストール" /></p>
-
-<p>同期中は下記画面が表示されます。<br/>
-<img src="http://grandbig.github.io/images/apple_watch18.png" alt="Apple Watch Sportと同期中" /></p>
-
-<p>Apple Watch Sportの利用準備が整うと下記の画面が表示されます。<br/>
-<img src="http://grandbig.github.io/images/apple_watch19.png" alt="Apple Watch Sportの利用準備完了" /></p>
-
-<p>さて、設定が完了したところでApple Watch Sportを見てみましょう。<br/>
-側面のゲージボタンを押せば、iPhoneで言うところのホーム画面が開けるはずです。<br/>
-<img src="http://grandbig.github.io/images/apple_watch20.png" alt="Apple Watch Sport ホーム画面" /></p>
-
-<p>まだまだApple Watch Sportを触りきれていない状態なので、今後どんどん慣れていって、何が開発できるのか追求していきたいと思います。<br/>
-本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
 
 ]]></content>
   </entry>

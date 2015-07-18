@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ios/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-06-22T00:48:54+09:00</updated>
+  <updated>2015-07-19T00:14:46+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,245 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kontakt.ioのSmart Beaconを使ってみた]]></title>
+    <link href="http://grandbig.github.io/blog/2015/07/18/start-kontakt-beacon/"/>
+    <updated>2015-07-18T22:40:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/07/18/start-kontakt-beacon</id>
+    <content type="html"><![CDATA[<h4>Kontakt.ioのSmart Beaconを使ってみよう</h4>
+
+<p>さて、久しぶりの更新です。<br/>
+実は先日、以前から気になっていた<a href="https://store.kontakt.io/our-products/1-bluetooth-beacon.html">Kontakt.io Smart Beacon</a>を購入してみました。<br/>
+あまり海外の製品を購入することがないので、届くか心配でしたが、ばっちり自宅に届きました笑</p>
+
+<p>なぜ、Kontakt.ioのSmart Beaconに着目していたかというと、筆者が知る限り、最も発信出力(TxPower)を弱くすることが可能なBeaconだからです。<br/>
+<a href="https://support.kontakt.io/hc/en-gb/articles/201621521-Transmission-power-Range-and-RSSI">仕様書</a>を見てみると、出力を-30[dBm]にまで下げることができ、その電波距離は実に2[m]程度らしいです。</p>
+
+<p>また、SDKが充実しており、発信出力を自由に変更できるところもポイント高いですね。<br/>
+さて、今回は基本的な実装から見て行きましょう！(何回かに分けて記事にしようと思います。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>SDKをプロジェクトに追加</h4>
+
+<p>まずは、SDKを使える状態に持っていきます。</p>
+
+<h5>Objective-C編</h5>
+
+<p>CocoaPodsで提供されていますので、簡単です。</p>
+
+<ol>
+<li>Projectファイルと同じ階層に<code>Podfile</code>を作成します</li>
+<li><code>pod 'KontaktSDK'</code>と記載します</li>
+<li><code>pod install</code>を実行します</li>
+</ol>
+
+
+<p>以上でプロジェクトへの追加完了です。</p>
+
+<h5>Swift編</h5>
+
+<p>CocoaPods使いましょう！</p>
+
+<ol>
+<li>Projectファイルと同じ階層に<code>Podfile</code>を作成します</li>
+<li><code>pod 'KontaktSDK'</code>と記載します</li>
+<li><code>pod install</code>を実行します</li>
+<li>Bridging-Headerファイルを作成します
+<code>ProjectName-Bridging-Header.h</code>ファイルを作成し、Build Settings > Swift Compiler > Objective-C Bridging Headerにパスを設定</li>
+<li>Bridging-Headerファイルに必要なライブラリを<code>import</code>します</li>
+</ol>
+
+
+<p>下記は、Buid Settingsの設定です。<br/>
+<img src="/images/kontakt1.png" alt="Bridging-Headerファイルの設定" /></p>
+
+<p>下記はBridging-Headerファイルの中身です。</p>
+
+<p>```objective-c</p>
+
+<h1>ifndef KontaktSwiftTest_KontaktSwiftTest_Bridging_Header_h</h1>
+
+<h1>define KontaktSwiftTest_KontaktSwiftTest_Bridging_Header_h</h1>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<h1>import &lt;CoreLocation/CoreLocation.h></h1>
+
+<h1>import &lt;CoreBluetooth/CoreBluetooth.h></h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<h1>endif</h1>
+
+<p>```</p>
+
+<h4>Kontakt.ioのBeaconを検知してみよう</h4>
+
+<p>これで準備が整ったので、実際にソースを書いて、Beaconを検知してみましょう！</p>
+
+<h5>Objective-C編</h5>
+
+<p>ViewController.mにどんどん書いていきます。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<p>@interface ViewController ()<KTKLocationManagerDelegate></p>
+
+<p>@property(strong, nonatomic) KTKLocationManager *lm;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];</p>
+
+<p>  <em>lm = [KTKLocationManager new];
+  </em>lm.delegate = self;</p>
+
+<p>  if ([KTKLocationManager canMonitorBeacons]) {
+      KTKRegion *region = [KTKRegion alloc] init];
+      region.uuid = @&ldquo;AF41A130-E105-4F13-9483-316B7101B0A9&rdquo;;
+      [_lm setRegions:@[region]];]
+  }
+}</p></li>
+<li><p>(void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];</p>
+
+<p>  [_lm startMonitoringBeacons];
+}</p></li>
+<li><p>(void)viewDidDisappear:(BOOL)animated {
+  [super viewDidDisappear:animated];</p>
+
+<p>  [_lm stopMonitoringBeacons];
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning {
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<h1>pragma mark &ndash; KTKLocationManagerDelegate</h1>
+
+<ul>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didChangeState:(KTKLocationManagerState)state withError:(NSError </em>)error {
+  if(state == KTKLocationManagerStateFailed) {
+      NSLog(@&ldquo;Something went wrong with your Location Services settings. Check OS settings.&rdquo;);
+  }
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didEnterRegion:(KTKRegion </em>)region {
+  NSLog(@&ldquo;Enter region %@&rdquo;, region.uuid);
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didExitRegion:(KTKRegion </em>)region {
+  NSLog(@&ldquo;Exit region %@&rdquo;, region.uuid);
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didRangeBeacons:(NSArray </em>)beacons {
+  NSLog(@&ldquo;Ranged beacons count: %lu&rdquo;, [beacons count]);
+}</p></li>
+</ul>
+
+
+<p>@end</p>
+
+<p>```</p>
+
+<h5>Swift編</h5>
+
+<p><code>ViwController.swift</code>にどんどん書いていきます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController, KTKLocationManagerDelegate {</p>
+
+<pre><code>let lm:KTKLocationManager = KTKLocationManager()
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    if(KTKLocationManager.canMonitorBeacons()) {
+        let region:KTKRegion = KTKRegion()
+        region.uuid = "AF41A130-E105-4F13-9483-316B7101B0A9"
+        lm.setRegions([region])
+        self.lm.delegate = self
+    }
+}
+
+override func viewDidAppear(animated: Bool) {
+    super.viewDidAppear(animated)
+
+    lm.startMonitoringBeacons()
+}
+
+override func viewDidDisappear(animated: Bool) {
+    super.viewDidDisappear(animated)
+
+    lm.stopMonitoringBeacons()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func locationManager(locationManager: KTKLocationManager!, didChangeState state: KTKLocationManagerState, withError error: NSError!) {
+    if(state == .Failed) {
+        println("Something went wrong with your Location Services settings. Check OS settings.")
+    }
+}
+
+func locationManager(locationManager: KTKLocationManager!, didEnterRegion region: KTKRegion!) {
+    println("Enter region \(region.uuid)")
+}
+
+func locationManager(locationManager: KTKLocationManager!, didExitRegion region: KTKRegion!) {
+    println("Exit region \(region.uuid)")
+}
+
+func locationManager(locationManager: KTKLocationManager!, didRangeBeacons beacons: [AnyObject]!) {
+    println("Ranged beacons count: \(beacons.count)")
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これでKontakt.ioのSmart Beaconを検知することができるようになりました。<br/>
+次回はAPI連携して、Beaconのパラメータを変えてみたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[複数のiBeaconを検知しよう！(別UUIDの場合)]]></title>
@@ -940,386 +1179,6 @@ decisionHandler(WKNavigationActionPolicyAllow);
 <p>さあ、これでiOS8端末でもiOS7端末でも正しくOAuth認証画面が表示されるかと思います。<br/>
 もう今年にはiOS9が発表され、WKWebViewが当然のようになってくるとしたら、UIWebViewは不要になると思いますが、今のところはまだまだ必要でしょう。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[OAuth2.0認証の処理を自作しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/06/01/custom-oauth/"/>
-    <updated>2015-06-01T00:56:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/06/01/custom-oauth</id>
-    <content type="html"><![CDATA[<h4>OAuth2.0認証処理を自分で作ろう！ Objective-C編</h4>
-
-<p>本日は、<a href="https://code.google.com/p/gtm-oauth2/">gtm-oauth</a>や<a href="https://github.com/nxtbgthng/OAuth2Client">OAuth2Client</a>を使わずにOAuth2.0認証処理を自作してみます。</p>
-
-<p>OAuth2.0認証を通すためのGoogle設定は<a href="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/">iOSでGoogle OAuth認証がしたい</a>を参照ください。<br/>
-筆者が開発したライブラリは単純な下記処理のみ含んでいます。</p>
-
-<ul>
-<li>OAuth2.0認証に必要な各種パラメータをKeychain Servicesに保存</li>
-<li>アクセストークンを取得する処理</li>
-<li>リフレッシュトークンから新規アクセストークンを取得する処理</li>
-</ul>
-
-
-<p>ここで、Keychain Servicesを使うにあたって、<a href="https://github.com/TheLevelUp/LUKeychainAccess">LUKeychainAccess</a>を利用しています。<br/>
-これにより、複雑なKeychain ServicesをNSUserDefaultsの感覚で利用することができます。<br/>
-また、Googleへの問い合わせなどのHTTP/HTTPSリクエストに<a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>を利用しています。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>OAuth2.0認証ライブラリの作成</h4>
-
-<p>下記にソースをそのまま載せておきます。</p>
-
-<p>```objective-c</p>
-
-<p>// OAuth2Client.m</p>
-
-<h1>import &ldquo;OAuth2Client.h&rdquo;</h1>
-
-<h1>import &ldquo;LUKeychainAccess.h&rdquo;</h1>
-
-<h1>import &ldquo;AFNetworking.h&rdquo;</h1>
-
-<p>static NSString <em>callback =  @&ldquo;<a href="http://localhost">http://localhost</a>&rdquo;;
-static NSString </em>visibleactions = @&ldquo;<a href="http://schemas.google.com/AddActivity">http://schemas.google.com/AddActivity</a>&rdquo;;</p>
-
-<p>@implementation OAuth2Client</p>
-
-<p>// シングルトンのインスタンス取得
-+ (OAuth2Client *)sharedInstance {</p>
-
-<pre><code>static OAuth2Client* sharedInstance = nil;
-static dispatch_once_t onceToken;
-dispatch_once(&amp;onceToken, ^{
-    sharedInstance = [OAuth2Client alloc] init];]
-});
-
-return sharedInstance;
-</code></pre>
-
-<p>}</p>
-
-<p>// OAuth2.0認証に必要なパラメータを設定する処理
-&ndash; (void)setUpOAuth2AccountClientId:(NSString <em>)clientId clientSecret:(NSString </em>)clientSecret scope:(NSString <em>)scope authorizationURL:(NSString </em>)authorizationURL tokenURL:(NSString *)tokenURL {</p>
-
-<pre><code>[[LUKeychainAccess standardKeychainAccess] setObject:clientId forKey:@"clientId"];
-[[LUKeychainAccess standardKeychainAccess] setObject:clientSecret forKey:@"clientSecret"];
-[[LUKeychainAccess standardKeychainAccess] setObject:scope forKey:@"scope"];
-[[LUKeychainAccess standardKeychainAccess] setObject:authorizationURL forKey:@"authorizationURL"];
-[[LUKeychainAccess standardKeychainAccess] setObject:tokenURL forKey:@"tokenURL"];
-</code></pre>
-
-<p>}</p>
-
-<p>// OAuth2.0認証に必要なリクエストを生成する処理
-&ndash; (void)requestAccessToAccount:(void (^)(NSURL *preparedURL))withPreparedAuthorizationURLHandler {</p>
-
-<pre><code>NSString *clientId = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"clientId"];
-NSString *scope = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"scope"];
-NSString *authorizationURL = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"authorizationURL"];
-
-NSString *url = [[NSString stringWithFormat:@"%@?response_type=code&amp;client_id=%@&amp;redirect_uri=%@&amp;scope=%@&amp;data-requestvisibleactions=%@", authorizationURL, clientId, callback, scope, visibleactions];
-withPreparedAuthorizationURLHandler([NSURL URLWithString:url]);
-</code></pre>
-
-<p>}</p>
-
-<p>// OAuth2.0認証のリダイレクトURIの一致の有無を確認する処理
-&ndash; (BOOL)checkRedirectURI:(NSURLRequest *)request
-{</p>
-
-<pre><code>// HOSTの取得
-NSString *host = [[request URL] host];
-if ([host isEqualToString:@"localhost"]) {
-    return YES;
-} else {
-    return NO;
-}
-</code></pre>
-
-<p>}</p>
-
-<p>// アクセストークンを取得する処理
-&ndash; (void)getAccessToken:(NSURLRequest <em>)request completionHandler:(void (^)(NSString </em>accessToken))completionHandler {</p>
-
-<pre><code>NSString *host = [[request URL] host];
-if ([host isEqualToString:@"localhost"]) {
-    NSString* verifier = nil;
-    NSArray* urlParams = [[request URL] query] componentsSeparatedByString:@"&amp;"];
-    for (NSString* param in urlParams) {
-        NSArray* keyValue = [param componentsSeparatedByString:@"="];
-        NSString* key = [keyValue objectAtIndex:0];
-        if ([key isEqualToString:@"code"]) {
-            verifier = [keyValue objectAtIndex:1];
-            break;
-        }
-    }
-
-    if (verifier) {
-        NSString *clientId = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"clientId"];
-        NSString *clientSecret = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"clientSecret"];
-        NSString *tokenURL = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"tokenURL"];
-
-        // AFHTTPSessionManagerをインスタンス化
-        AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
-        // サーバエラー時のContent-Typeにtext/plainを許可(成功時にapplication/jsonが必要なので共に追加)
-        manager.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@"text/plain", @"application/json", nil];
-        // パラメータの設定
-        NSDictionary *data = @{@"code": verifier, @"client_id": clientId, @"client_secret": clientSecret, @"redirect_uri": callback, @"grant_type": @"authorization_code"};
-
-        [manager POST:tokenURL parameters:data success:^(NSURLSessionDataTask *task, id responseObject) {
-            // 成功した場合
-            if(responseObject &amp;&amp; [responseObject count] &gt; 0) {
-                NSString *accessToken = responseObject[@"access_token"];
-                NSString *refreshToken = responseObject[@"refresh_token"];
-                [[LUKeychainAccess standardKeychainAccess] setObject:accessToken forKey:@"accessToken"];
-                [[LUKeychainAccess standardKeychainAccess] setObject:refreshToken forKey:@"refreshToken"];
-
-                // 処理が終了したときに実行(アクセストークンを返す)
-                completionHandler(accessToken);
-            }
-        } failure:^(NSURLSessionDataTask *task, NSError *error) {
-            // 失敗した場合
-            NSError *err;
-            NSData *data = [error userInfo] objectForKey:@"com.alamofire.serialization.response.error.data"];
-            if(data) {
-                // エラーの中身がある場合
-                [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingAllowFragments error:&amp;err];
-            }
-            // 失敗を返す
-            failure(err);
-        }];
-    }
-} else {
-    // HOST名が一致しない場合
-}
-</code></pre>
-
-<p>}</p>
-
-<p>// リフレッシュトークンから新しいアクセストークンを取得する処理
-&ndash; (void)getRefreshAccessToken:(void (^)(NSString <em>accessToken))success failure:(void (^)(NSError </em>error))failure {</p>
-
-<pre><code>NSString *clientId = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"clientId"];
-NSString *tokenURL = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"tokenURL"];
-NSString *refreshToken = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"refreshToken"];
-
-if(clientId &amp;&amp; tokenURL &amp;&amp; refreshToken) {
-    // 必須パラメータがある場合
-    // AFHTTPSessionManagerをインスタンス化
-    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
-    // サーバエラー時のContent-Typeにtext/plainを許可(成功時にapplication/jsonが必要なので共に追加)
-    manager.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@"text/plain", @"application/json", nil];
-
-    // パラメータの設定
-    NSDictionary *data = @{@"client_id": clientId, @"refresh_token": refreshToken, @"grant_type": @"refresh_token"};
-
-    [manager POST:tokenURL parameters:data success:^(NSURLSessionDataTask *task, id responseObject) {
-        // 成功した場合
-        if(responseObject &amp;&amp; [responseObject count] &gt; 0) {
-            NSString *accessToken = responseObject[@"access_token"];
-            NSString *refreshToken = responseObject[@"refresh_token"];
-            [[LUKeychainAccess standardKeychainAccess] setObject:accessToken forKey:@"accessToken"];
-            [[LUKeychainAccess standardKeychainAccess] setObject:refreshToken forKey:@"refreshToken"];
-
-            // 処理が終了したときに実行(アクセストークンを返す)
-            success(accessToken);
-        }
-    }, failure(NSURLSessionDataTask *task, NSError *error) {
-        // 失敗した場合
-        NSError *err;
-        NSData *data = [error userInfo] objectForKey:@"com.alamofire.serialization.response.error.data"];
-        if(data) {
-            // エラーの中身がある場合
-            [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingAllowFragments error:&amp;err];
-        }
-        // 失敗を返す
-        failure(err);
-    }];
-} else {
-    // 必須パラメータがない場合
-    // TODO: エラーオブジェクトを生成して返す
-    failure(nil);
-}
-</code></pre>
-
-<p>}</p>
-
-<p>@end</p>
-
-<p>```</p>
-
-<p>```objective-c</p>
-
-<p>// OAuth2Client.h</p>
-
-<h1>import &lt;Foundation/Foundation.h></h1>
-
-<p>@interface OAuth2Client : NSObject</p>
-
-<p>/// シングルトンのインスタンス取得
-+ (OAuth2Client *)sharedInstance;</p>
-
-<p>/<em><em>
- OAuth2.0認証に必要なパラメータを設定する処理
- @param clientId クライアントID
- @param clientSecret クライアントシークレット
- @param scope アクセス範囲
- @param authorizationURL OAuth2.0 認証先URL
- @param tokenURL OAuth2.0 トークン取得先URL
- </em>/
-&ndash; (void)setUpOAuth2AccountClientId:(NSString </em>)clientId clientSecret:(NSString <em>)clientSecret scope:(NSString </em>)scope authorizationURL:(NSString <em>)authorizationURL tokenURL:(NSString </em>)tokenURL;</p>
-
-<p>/<em><em>
- OAuth2.0認証に必要なリクエストを生成する処理
- @param withPreparedAuthorizationURLHandler OAuth2.0認証に必要なリクエストを返すBlock構文
- </em>/
-&ndash; (void)requestAccessToAccount:(void (^)(NSURL </em>preparedURL))withPreparedAuthorizationURLHandler;</p>
-
-<p>/<em><em>
- OAuth2.0認証のリダイレクトURIの一致の有無を確認する処理
- @param request リクエスト
- @return リダイレクトURIの一致の有無
- </em>/
-&ndash; (BOOL)checkRedirectURI:(NSURLRequest </em>)request;</p>
-
-<p>/<em><em>
- アクセストークンを取得する処理
- @param request アクセストークンの取得に必要なリクエスト
- @param completionHandler アクセストークンの取得処理が完了したら実行される処理
- </em>/
-&ndash; (void)getAccessToken:(NSURLRequest </em>)request completionHandler:(void (^)(NSString *accessToken))completionHandler;</p>
-
-<p>/<em><em>
- リフレッシュトークンから新しいアクセストークンを取得する処理
- @param success 処理が成功した場合に実行(返却データはアクセストークン)
- @param failure 処理が失敗した場合に実行(返却データはエラーオブジェクト)
- </em>/
-&ndash; (void)getRefreshAccessToken:(void (^)(NSString </em>accessToken))success failure:(void (^)(NSError *error))failure;</p>
-
-<p>```</p>
-
-<h4>呼び出し側のソース</h4>
-
-<p>呼び出し側のソースを記載します。</p>
-
-<p>```objective-c</p>
-
-<p>// ViewController.m</p>
-
-<h1>import &ldquo;ViewController.h&rdquo;</h1>
-
-<h1>import &ldquo;OAuth2Client.h&rdquo;</h1>
-
-<p>static NSString <em>const clientId = @&ldquo;&rdquo;;
-static NSString </em>const clientSecret = @&ldquo;&rdquo;;
-static NSString <em>const authorizationURL = @&ldquo;<a href="https://accounts.google.com/o/oauth2/auth">https://accounts.google.com/o/oauth2/auth</a>&rdquo;;
-static NSString </em>const tokenURL = @&ldquo;<a href="https://accounts.google.com/o/oauth2/token">https://accounts.google.com/o/oauth2/token</a>&rdquo;;
-static NSString *const scope = @&ldquo;<a href="https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar">https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar</a>&rdquo;;</p>
-
-<p>@interface ViewController ()<UIWebViewDelegate></p>
-
-<p>@property (weak, nonatomic) IBOutlet UIWebView <em>webView;
-@property (strong, nonatomic) NSMutableData </em>receivedData;
-@property (assign, nonatomic) BOOL *isLogin;</p>
-
-<p>@end</p>
-
-<p>@implementation ViewController</p>
-
-<ul>
-<li><p>(void)viewDidLoad {
-  [super viewDidLoad];</p>
-
-<p>  <em>webView.delegate = self;
-  NSUserDefaults <em>defaults = [NSUserDefaults standardUserDefaults];
-  if([defaults boolForKey:@&ldquo;isLogin&rdquo;]) {
-      // 既にOAuth2.0認証実行済みの場合
-      [[OAuth2Client sharedInstance] getRefreshAccessToken:^(NSString </em>accessToken) {
-          // 成功した場合
-          NSLog(@&ldquo;%@&rdquo;, accessToken);
-      } failure:^(NSError <em>error) {
-          // 失敗した場合
-          NSLog(@&ldquo;%@&rdquo;, error);
-      }];
-  } else {
-      // 初めてOAuth2.0認証を実行する場合
-      // OAuth2.0認証に必要な各種パラメータの設定
-      [[OAuth2Client sharedInstance] setUpOAuth2AccountClientId:clientId clientSecret:clientSecret scope:scope authorizationURL:authorizationURL tokenURL:tokenURL];
-      // OAuth2.0認証リクエスト
-      [[OAuth2Client sharedInstance] requestAccessToAccount:^(NSURL </em>preparedURL) {
-          // リクエスト
-          [</em>webView loadRequest:[NSURLRequest requestWithURL: preparedURL]];
-      }
-  }
-}</p></li>
-<li><p>(void)didReceiveMemoryWarning {
-  [super didReceiveMemoryWarning];
-}</p></li>
-<li><p>(BOOL)webView:(UIWebView <em>)webView shouldStartLoadWithRequest:(NSURLRequest </em>)request navigationType:(UIWebViewNavigationType)navigationType {</p>
-
-<p>  if([OAuth2Client sharedInstance] checkRedirectURI:request]]) {
-      [[OAuth2Client sharedInstance] getAccessToken:request completionHandler:^(NSString <em>accessToken){
-          // 処理が終了したら呼び出される
-          if(accessToken.length > 0) {
-              NSUserDefaults </em>defaults = [NSUserDefaults standardUserDefaults];
-              [defaults setBool:YES forKey:@&ldquo;isLogin&rdquo;];
-              [defaults synchronize];
-          }
-          [webView removeFromSuperview];
-      }];</p>
-
-<pre><code>  return NO;
-</code></pre>
-
-<p>  }</p>
-
-<p>  return YES;
-}</p></li>
-</ul>
-
-
-<p>@end</p>
-
-<p>```</p>
-
-<p>これで簡単ですが、OAuth2.0認証の自作ライブラリの開発が完了です。<br/>
-必要最低限の機能ですが、十分だと思います。<br/>
-(もう少し時間をかけてより良いものを作りたいと思います笑。)</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="http://technogerms.com/login-with-google-using-oauth-2-0-for-ios-xcode-objective-c/">Login with Google using OAuth 2.0 for iOS Xcode Objective-C</a></li>
-<li><a href="http://www.ari-hiro.com/blog/2012/12/30/oauth2-summary">OAuth2.0の備忘録的まとめ</a></li>
-<li><a href="http://qiita.com/asakahara/items/06abbc0209262d0051ef">iOSでアプリを削除してもデータを保持する方法</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
