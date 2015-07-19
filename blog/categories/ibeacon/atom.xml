@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iBeacon | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ibeacon/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-07-19T00:14:46+09:00</updated>
+  <updated>2015-07-20T01:20:53+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,227 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kontakt.ioのSmart Beaconのパラメータを書き換えてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/07/20/write-kontakt-beacon/"/>
+    <updated>2015-07-20T00:01:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/07/20/write-kontakt-beacon</id>
+    <content type="html"><![CDATA[<h4>Kontakt.ioのSmart Beaconのパラメータの書き換え方法</h4>
+
+<p>さて、続きを書いていきます。<br/>
+前回、Kontakt.ioのSmart Beaconを検知するところまで書きました。<br/>
+本記事では、必要に応じて、パラメータを変更する方法について書きたいと思います。</p>
+
+<p>手順は<a href="http://docs.kontakt.io/ios-sdk/quickstart/#beacon-configuration">Kontakt.ioの公式ページのBeacon Configuration</a>に書かれていますが、<code>/device/update</code>に引っかかったり、REST APIを叩こうとしたりすることもあるかもしれないので、紹介します。(筆者は初めきちんと読まずにいろいろと実行してしまいました&hellip;)</p>
+
+<p>では、早速書いていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>Objective-C編</h5>
+
+<p>さて、まずはObjective-Cです。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<p>@interface ViewController ()<KTKBluetoothManagerDelegate></p>
+
+<p>@property(strong, nonatomic) KTKBeaconManager <em>bm;
+@property(strong, nonatomic) KTKBeaconDevice </em>bd;
+@property(assign, nonatomic) BOOL flag;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];</p>
+
+<p>  <em>bm = [KTKBeaconManager new];
+  </em>bm.delegate = self;
+  _flag = NO;
+}</p></li>
+<li><p>(void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];</p>
+
+<p>  // iBeaconデバイスの検索開始
+  [_bm startFindingDevices];
+}</p></li>
+<li><p>(void)viewDidDisappear:(BOOL)animated {
+  [super viewDidDisappear:animated];</p>
+
+<p>  // iBeaconデバイスの検索停止
+  [_bm stopFindingDevices];
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning {
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<h1>pragma mark &ndash; KTKBluetoothManagerDelegate</h1>
+
+<ul>
+<li><p>(void)bluetoothManager:(KTKBluetoothManager <em>)bluetoothManager didChangeDevices:(NSSet </em>)devices {</p>
+
+<p>  if(!<em>bd) {
+      // 利用したいKTKBeaconDeviceが見つかっていない場合
+       NSArray <em>deviceArray = [devices allObjects];
+       for(id device in deviceArray) {
+          KTKBeaconDevice </em>beacon = device;
+          if([beacon.uniqueID isEqualToString:@&ldquo;****&rdquo;]) {
+              // 利用したいiBeaconを格納
+              </em>bd = beacon;
+          }
+       }
+  } else {
+      // 利用したいKTKBeaconDeviceが見つかった場合
+      KTKCharacteristicDescriptor <em>descriptor;
+      descriptor = [_bd characteristicDescriptorWithType:kKTKCharacteristicDescriptorTypeMajor];
+      NSError </em>err;
+      // iBeaconデバイスに接続
+      BOOL connected = [<em>bd connectWithPassword:@&ldquo;****&rdquo; andError:&amp;err];
+      if(connected &amp;&amp; !err) {
+          // 接続できた場合
+          // パラメータ値の取得
+          err = [</em>bd readValueForCharacteristicWithDescriptor:descriptor];
+          if(!err) {
+              NSString *valueString = [_bd stringForCharacteristicWithDescriptor:descriptor];
+              NSLog(@&ldquo;value: %@&rdquo;, valueString);</p>
+
+<pre><code>          if(!_flag) {
+              // パラメータの書き換え処理
+              err = [_bd writeString:@"20053" forCharacteristicWithDescriptor:descriptor];
+          }
+          // iBeaconデバイスから切断
+          [_bd disconnect];
+      }
+  }
+</code></pre>
+
+<p>  }
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>上記処理を実行後、Kontakt.ioの専用アプリで確認すれば、パラメータの値が変更されていることを確認できます。</p>
+
+<h5>Swift編</h5>
+
+<p>続いて、Swiftのコードも書いてみます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController, KTKBluetoothManagerDelegate {</p>
+
+<pre><code>let bm:KTKBeaconManager = KTKBeaconManager()
+var bd:KTKBeaconDevice? = KTKBeaconDevice()
+var flag:Bool = false
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    self.bm.delegate = self;
+}
+
+override func viewDidAppear(animated: Bool) {
+    super.viewDidAppear(animated)
+
+    // iBeaconデバイスの検索開始
+    bm.startFindingDevices()
+}
+
+override func viewDidDisappear(animated: Bool) {
+    super.viewDidDisappear(animated)
+
+    // iBeaconデバイスの検索停止
+    bm.stopFindingDevices()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func bluetoothManager(bluetoothManager: KTKBluetoothManager!, didChangeDevices devices: Set&lt;NSObject&gt;!) {
+    if self.bd?.uniqueID == "****" {
+        // 利用したいKTKBeaconDeviceが見つかった場合
+        let descriptor:KTKCharacteristicDescriptor = self.bd!.characteristicDescriptorWithType(kKTKCharacteristicDescriptorTypeMajor)
+        var err:NSError?
+        // iBeaconデバイスに接続
+        let connected:Bool = self.bd!.connectWithPassword("****", andError: &amp;err)
+        if connected {
+            // 接続できた場合
+            // パラメータ値の取得
+            err = self.bd!.readValueForCharacteristicWithDescriptor(descriptor)
+            if err == nil {
+                let valueString = self.bd!.stringForCharacteristicWithDescriptor(descriptor)
+                println("\(valueString)")
+                if self.flag == false {
+                    // パラメータの書き換え処理
+                    err = self.bd!.writeString("20053", forCharacteristicWithDescriptor: descriptor)
+                    self.flag = true;
+                }
+                // iBeaconデバイスから切断
+                self.bd?.disconnect()
+            }
+        }
+    } else {
+        // 利用したいKTKBeaconDeviceが見つかっていない場合
+        let deviceArray:[AnyObject] = Array(devices)
+        for device in deviceArray  {
+            let beacon:KTKBeaconDevice = device as! KTKBeaconDevice
+            if beacon.uniqueID == "****" {
+                // 利用したいiBeaconを格納
+                self.bd = beacon
+            }
+        }
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>こちらも専用アプリでパラメータ値が書き換わっていることを確認できました。<br/>
+Kontakt.ioの制御特性を活かしたサービスを企画できる可能性を感じました。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Kontakt.ioのSmart Beaconを使ってみた]]></title>
@@ -919,251 +1140,6 @@ iBeaconはiOS先行でサービスを始めることが多いと思うので、i
 <p>と言ったところで本日はここまで。</p>
 
 <p><a href="https://github.com/grandbig/altBeaconSample">本記事のレポジトリはこちら</a></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iBeacon完全攻略！？]]></title>
-    <link href="http://grandbig.github.io/blog/2015/04/29/ibeacon-review/"/>
-    <updated>2015-04-29T21:51:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/04/29/ibeacon-review</id>
-    <content type="html"><![CDATA[<h4>iBeaconを復習しよう！</h4>
-
-<p>本日はこれまでも何度か取り上げてきたiBeaconについて改めて復習してみたいと思います。<br/>
-今回はiOS端末でのiBeaconの発信/受信に特化して書きます。</p>
-
-<p>これまでの関連記事は以下です。</p>
-
-<ul>
-<li><a href="http://grandbig.github.io/blog/2014/04/12/io7-dot-1-de-ibeacon/">噂のiOS7.1でiBeaconを試してみよう！！</a></li>
-<li><a href="http://grandbig.github.io/blog/2014/09/22/ios8-de-ibeacon/">iOS8でiBeaconを試してみよう！！</a></li>
-<li><a href="http://grandbig.github.io/blog/2014/09/29/developing-ibeacon-app-by-using-swift/">Swiftを使って、iBeaconのCentralアプリを作ろう！！</a></li>
-<li><a href="http://grandbig.github.io/blog/2015/04/13/multi-ibeacon/">複数のiBeacon信号を利用してみよう！</a></li>
-</ul>
-
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>では、早速、まとめていきましょう。</p>
-
-<h4>iBeaconが利用可能な端末</h4>
-
-<ul>
-<li>OS: iOS7.0以上</li>
-<li>端末: iPhone4S以降, iPad(第３世代)以降, iPad mini以降, iPod touch(第５世代以降)
-※もちろんiPad Airでも利用可能</li>
-</ul>
-
-
-<h4>iOSごとのiBeacon機能の差異</h4>
-
-<p>まずは動作面での差異について</p>
-
-<ul>
-<li>iOS7.0.xの場合<br/>
-アプリをFG起動もしくはBG起動していないとiBeaconを検知することはできない</li>
-<li>iOS7.1.x以降の場合<br/>
-アプリを起動していない(停止状態の)場合でもiBeaconを検知可能</li>
-</ul>
-
-
-<p>次にプログラミング面での差異について</p>
-
-<p>プログラミング面ではCentral側にのみ多少の差異があります。<br/>
-iBeaconの検知には <strong>CoreLocation.framework</strong> を利用します。
-<strong>CoreLocation.framework</strong> は位置情報サービスを利用するためのフレームワークですが、iBeaconの領域監視メソッドが組み込まれています。<br/>
-もともと、ジオフェンスの領域監視メソッドが組み込まれていますので、それと同等に扱いたいというApple側の意図が見えます。</p>
-
-<p>具体的な差異について説明します。<br/>
-位置情報サービスの利用許可メソッドをiOS8から組み込む必要があります。</p>
-
-<p>```objective-c</p>
-
-<h1>import &ldquo;ViewController.h&rdquo;</h1>
-
-<p>@interface ViewController ()</p>
-
-<p>@property (strong, nonatomic) CLLocationManager <em>lm;
-@property (strong, nonatomic) NSUUID </em>proximityUUID;
-@property (strong, nonatomic) CLBeaconRegion <em>beaconRegion;
-@property (strong, nonatomic) CLBeacon </em>nearestBeacon;
-@property (strong, nonatomic) NSString *str;</p>
-
-<p>@end</p>
-
-<p>@implementation ViewController</p>
-
-<ul>
-<li><p>(void)viewDidLoad
-{
-  [super viewDidLoad];</p>
-
-<p>  if ([CLLocationManager isMonitoringAvailableForClass:[CLCircularRegion class]]) {
-      // iOS7.x以降の端末
-      // CLLocationManagerの初期化
-      self.lm = [[CLLocationManager alloc] init];
-      self.lm.delegate = self;</p>
-
-<pre><code>  // UUIDの設定
-  self.proximityUUID = [[NSUUID alloc] initWithUUIDString:@"8D4DB809-032F-4771-96F3-99BD5C25F924"];
-  // Bundle Identifierの取得
-  NSBundle *bundle = [NSBundle mainBundle];
-  NSString *bid = [bundle bundleIdentifier];
-  self.beaconRegion = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID identifier: bid];
-
-  if ([self.locationManager respondsToSelector:@selector(requestAlwaysAuthorization)]) {
-      // iOS8以上の場合
-      // 位置情報サービスを常に許可させて良いかどうかを尋ねるためのメソッド
-      [self.lm requestAlwaysAuthorization];
-  } else {
-      // iOS8未満の場合
-      // iBeacon領域の監視を開始
-      [self.lm startMonitoringForRegion: self.beaconRegion];
-  }
-</code></pre>
-
-<p>  } else {
-      // iOS6.x以前の端末
-      UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@&ldquo;確認&rdquo; message:@&ldquo;iBeacon機能を利用できない端末です。&rdquo; delegate: nil cancelButtonTitle: nil otherButtonTitles:@&ldquo;OK&rdquo;, nil];
-      // アラートを表示
-      [alert show];
-  }
-}</p></li>
-</ul>
-
-
-<p>// ユーザの位置情報の許可状態を確認するメソッド
-&ndash; (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
-{</p>
-
-<pre><code>if (status == kCLAuthorizationStatusAuthorizedAlways) {
-    // ユーザが位置情報の使用を常に許可している場合
-    // iBeacon領域の監視を開始
-    [self.lm startMonitoringForRegion: self.beaconRegion];
-} else {
-    // その他の場合
-    // 設定画面に遷移
-    NSURL *url = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
-    [[UIApplication sharedApplication] openURL:url];
-}
-</code></pre>
-
-<p>}</p>
-
-<p>@end
-```</p>
-
-<p>iOS7.xでは<code>startMonitoringForRegion</code>メソッドを実行した段階で<code>didChangeAuthorizationStatus</code>メソッドが呼ばれます。<br/>
-iOS8では、<code>requestAlwaysAuthorization</code>メソッドを実行(位置情報サービスを常に許可する場合のメソッド)しなければ、<code>didChangeAuthorizationStatus</code>メソッドが呼ばれないため、<code>startMonitoringForRegion</code>メソッドの実行タイミングを変える必要が出てきました。</p>
-
-<h4>iBeacon関連メソッドの実行順について(Centralの場合)</h4>
-
-<p>先ほどiBeaconの検知は <strong>CoreLocation.framework</strong> 内のメソッドとして組み込まれていると説明しました。では、他にどんなメソッドがあるのでしょうか。</p>
-
-<p><code>objective-c
-// 領域監視が開始された後に呼び出される処理
-- (void)locationManager:(CLLocationManager *)manager didStartMonitoringForRegion:(CLRegion *)region {
-}
-</code></p>
-
-<p><code>objective-c
-// 領域監視に失敗した場合に呼び出される処理
-- (void)locationManager:(CLLocationManager *)manager monitoringDidFailForRegion:(CLRegion *)region withError:(NSError *)error {
-}
-</code></p>
-
-<p><code>objective-c
-// 監視領域に入った場合に呼び出される処理
-- (void)locationManager:(CLLocationManager *)manager didEnterRegion:(CLRegion *)region {
-}
-</code></p>
-
-<p><code>objective-c
-// 監視領域から出た場合に呼び出される処理
-- (void)locationManager:(CLLocationManager *)manager didExitRegion:(CLRegion *)region {
-}
-</code></p>
-
-<p><code>objective-c
-// 監視領域に対する状態が変化した場合に呼び出される処理
-- (void)locationManager:(CLLocationManager *)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion *)region {
-}
-</code></p>
-
-<p><code>objective-c
-// iBeacon信号をレンジング検知した場合に呼び出される処理
-- (void)locationManager:(CLLocationManager *)manager didRangeBeacons:(NSArray *)beacons inRegion:(CLBeaconRegion *)region {
-}
-</code></p>
-
-<p>上記のメソッドを使えば十分なアプリが開発できるはずです。<br/>
-さて、ここで注意しておくべきなのは、<code>startRangingBeaconsInRegion</code>メソッドをどのタイミングで実行するかということです。</p>
-
-<p>基本的には、 <strong>監視領域に入ったタイミング</strong> で<code>startRangingBeaconsInRegion</code>メソッドを実行するのが普通かもしれません。<br/>
-しかし、この場合は注意が必要です。<br/>
-なぜなら、監視領域内でアプリを落として、再度起動した場合、<code>didEnterRegion</code>メソッドが実行されないからです。つまり、既に監視領域に入っている場合は <strong>監視領域に侵入したと見なされない</strong> ということです。<br/>
-よって、こういったケースがアプリの利用に打撃を与えるのであれば、 <strong>監視領域に入ったタイミング</strong> のみに<code>startRangingBeaconsInRegion</code>メソッドを置くわけにはいかないことになります。<br/>
-その場合は、<code>didDetermineState</code>メソッドで既に監視領域内にいる場合(<code>state</code>が<code>CLRegionStateInside</code>の場合)に<code>startRangingBeaconsInRegion</code>メソッドを実行するようにしましょう。</p>
-
-<h4>Peripheralの注意点</h4>
-
-<p>続いて、PeripheralとしてiOS端末を使う場合の注意点についてお話しておきます。<br/>
-iOS端末ではアプリをFG起動している間のみiBeacon信号の発信が可能です。<br/>
-アプリがBG起動になった場合、iBeacon信号の発信が止まってしまうため、数秒後にCentral側のiOS端末で<code>didExitRegion</code>メソッドが実行されます。<br/>
-なので、iOS端末でPeripheralの役割を担いたいのであれば、FG起動を続けることに問題がない使い方である場合に限ります。</p>
-
-<p>因みに、XcodeのBackground Modesで <strong>Act as a Bluetooth LE accessory</strong> を有効にしたとしても、BG起動中はiBeaconを発信することはできません。</p>
-
-<p>また、 <strong>CoreBluetooth.framework</strong> にはiOS端末がiBeacon発信状態(アドバタイジング状態)かを判別する<code>isAdvertising</code> プロパティが存在します。<br/>
-iBeaconを発信している状態でアプリをBG起動にした場合は<code>isAdvertising</code>は <strong>YES</strong> として返却されます。つまり、実際の状態と必ずしも一致するわけではないということです。</p>
-
-<h4>Centralの注意点</h4>
-
-<p>最後にCentralとしてiOS端末を使う場合の注意点についてお話しておきます。<br/>
-iOS端末でiBeaconのレンジング処理を行う場合、FG起動時にしかレンジング処理を実行できません。<br/>
-そのため、アプリの状態によらずレンジング処理が必要な仕様を実現することは不可能ということになります。</p>
-
-<p>一応、<code>didEnterRegion</code>メソッドや<code>didExitRegion</code>メソッドなどのデリゲートメソッドが実行された場合、約10秒間はアプリの状態によらずあらゆる処理が実行可能であるため、この間のみレンジング処理を実行して<code>major</code>, <code>minor</code>などの値を取得することは可能です。</p>
-
-<p>正しい動作検証を実施した上でiBeaconを扱うようにしましょう。</p>
-
-<h4>各種設定がOFFの場合のアラート表示について</h4>
-
-<p>さて、直接iBeaconとは関係がありませんが、iOS端末をPeripheralとして扱う場合は <strong>Bluetoothの設定</strong> をONにしておく必要があります。iOS端末をCentralとして扱う場合は <strong>Bluetoothの設定</strong> と <strong>位置情報サービスの設定</strong> をONにしておく必要があります。</p>
-
-<p>これらがOFFになっている場合、iBeaconの機能を利用することができないため、アプリ開発時にアラートを表示してユーザに知らせることを考えるかと思います。<br/>
-さらに、できれば設定画面に飛ばしたいと思いますよね？</p>
-
-<p><strong>位置情報サービス</strong> の場合は、iOS8であれば設定画面へのURLスキームが復活したため、問題ありません。(iOS7.xでは設定画面への遷移は諦めましょう。)<br/>
-<strong>Bluetooth</strong> の場合は <strong>CoreBluetooth.framework</strong> を利用していれば、難しくありません。(処理に <strong>CoreBluetooth.framework</strong> が不要なCentral側であっても設定画面に飛ばしたいのであれば、<code>import</code>する必要があります。)<br/>
-※ 具体的には<code>CBPeripheralManager</code>もしくは<code>CBCentralManager</code>の初期化時に<code>option</code>に<code>CBPeripheralManagerOptionShowPowerAlertKey</code>もしくは<code>CBCentralManagerOptionShowPowerAlertKey</code>を設定すれば良いです。</p>
-
-<p>以上がまとめとなります。<br/>
-ぜひぜひ参考にして頂ければと思います。<br/>
-本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

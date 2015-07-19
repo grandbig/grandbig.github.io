@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ios/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-07-19T00:14:46+09:00</updated>
+  <updated>2015-07-20T01:20:53+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,227 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kontakt.ioのSmart Beaconのパラメータを書き換えてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/07/20/write-kontakt-beacon/"/>
+    <updated>2015-07-20T00:01:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/07/20/write-kontakt-beacon</id>
+    <content type="html"><![CDATA[<h4>Kontakt.ioのSmart Beaconのパラメータの書き換え方法</h4>
+
+<p>さて、続きを書いていきます。<br/>
+前回、Kontakt.ioのSmart Beaconを検知するところまで書きました。<br/>
+本記事では、必要に応じて、パラメータを変更する方法について書きたいと思います。</p>
+
+<p>手順は<a href="http://docs.kontakt.io/ios-sdk/quickstart/#beacon-configuration">Kontakt.ioの公式ページのBeacon Configuration</a>に書かれていますが、<code>/device/update</code>に引っかかったり、REST APIを叩こうとしたりすることもあるかもしれないので、紹介します。(筆者は初めきちんと読まずにいろいろと実行してしまいました&hellip;)</p>
+
+<p>では、早速書いていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>Objective-C編</h5>
+
+<p>さて、まずはObjective-Cです。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<p>@interface ViewController ()<KTKBluetoothManagerDelegate></p>
+
+<p>@property(strong, nonatomic) KTKBeaconManager <em>bm;
+@property(strong, nonatomic) KTKBeaconDevice </em>bd;
+@property(assign, nonatomic) BOOL flag;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];</p>
+
+<p>  <em>bm = [KTKBeaconManager new];
+  </em>bm.delegate = self;
+  _flag = NO;
+}</p></li>
+<li><p>(void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];</p>
+
+<p>  // iBeaconデバイスの検索開始
+  [_bm startFindingDevices];
+}</p></li>
+<li><p>(void)viewDidDisappear:(BOOL)animated {
+  [super viewDidDisappear:animated];</p>
+
+<p>  // iBeaconデバイスの検索停止
+  [_bm stopFindingDevices];
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning {
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<h1>pragma mark &ndash; KTKBluetoothManagerDelegate</h1>
+
+<ul>
+<li><p>(void)bluetoothManager:(KTKBluetoothManager <em>)bluetoothManager didChangeDevices:(NSSet </em>)devices {</p>
+
+<p>  if(!<em>bd) {
+      // 利用したいKTKBeaconDeviceが見つかっていない場合
+       NSArray <em>deviceArray = [devices allObjects];
+       for(id device in deviceArray) {
+          KTKBeaconDevice </em>beacon = device;
+          if([beacon.uniqueID isEqualToString:@&ldquo;****&rdquo;]) {
+              // 利用したいiBeaconを格納
+              </em>bd = beacon;
+          }
+       }
+  } else {
+      // 利用したいKTKBeaconDeviceが見つかった場合
+      KTKCharacteristicDescriptor <em>descriptor;
+      descriptor = [_bd characteristicDescriptorWithType:kKTKCharacteristicDescriptorTypeMajor];
+      NSError </em>err;
+      // iBeaconデバイスに接続
+      BOOL connected = [<em>bd connectWithPassword:@&ldquo;****&rdquo; andError:&amp;err];
+      if(connected &amp;&amp; !err) {
+          // 接続できた場合
+          // パラメータ値の取得
+          err = [</em>bd readValueForCharacteristicWithDescriptor:descriptor];
+          if(!err) {
+              NSString *valueString = [_bd stringForCharacteristicWithDescriptor:descriptor];
+              NSLog(@&ldquo;value: %@&rdquo;, valueString);</p>
+
+<pre><code>          if(!_flag) {
+              // パラメータの書き換え処理
+              err = [_bd writeString:@"20053" forCharacteristicWithDescriptor:descriptor];
+          }
+          // iBeaconデバイスから切断
+          [_bd disconnect];
+      }
+  }
+</code></pre>
+
+<p>  }
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>上記処理を実行後、Kontakt.ioの専用アプリで確認すれば、パラメータの値が変更されていることを確認できます。</p>
+
+<h5>Swift編</h5>
+
+<p>続いて、Swiftのコードも書いてみます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController, KTKBluetoothManagerDelegate {</p>
+
+<pre><code>let bm:KTKBeaconManager = KTKBeaconManager()
+var bd:KTKBeaconDevice? = KTKBeaconDevice()
+var flag:Bool = false
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    self.bm.delegate = self;
+}
+
+override func viewDidAppear(animated: Bool) {
+    super.viewDidAppear(animated)
+
+    // iBeaconデバイスの検索開始
+    bm.startFindingDevices()
+}
+
+override func viewDidDisappear(animated: Bool) {
+    super.viewDidDisappear(animated)
+
+    // iBeaconデバイスの検索停止
+    bm.stopFindingDevices()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func bluetoothManager(bluetoothManager: KTKBluetoothManager!, didChangeDevices devices: Set&lt;NSObject&gt;!) {
+    if self.bd?.uniqueID == "****" {
+        // 利用したいKTKBeaconDeviceが見つかった場合
+        let descriptor:KTKCharacteristicDescriptor = self.bd!.characteristicDescriptorWithType(kKTKCharacteristicDescriptorTypeMajor)
+        var err:NSError?
+        // iBeaconデバイスに接続
+        let connected:Bool = self.bd!.connectWithPassword("****", andError: &amp;err)
+        if connected {
+            // 接続できた場合
+            // パラメータ値の取得
+            err = self.bd!.readValueForCharacteristicWithDescriptor(descriptor)
+            if err == nil {
+                let valueString = self.bd!.stringForCharacteristicWithDescriptor(descriptor)
+                println("\(valueString)")
+                if self.flag == false {
+                    // パラメータの書き換え処理
+                    err = self.bd!.writeString("20053", forCharacteristicWithDescriptor: descriptor)
+                    self.flag = true;
+                }
+                // iBeaconデバイスから切断
+                self.bd?.disconnect()
+            }
+        }
+    } else {
+        // 利用したいKTKBeaconDeviceが見つかっていない場合
+        let deviceArray:[AnyObject] = Array(devices)
+        for device in deviceArray  {
+            let beacon:KTKBeaconDevice = device as! KTKBeaconDevice
+            if beacon.uniqueID == "****" {
+                // 利用したいiBeaconを格納
+                self.bd = beacon
+            }
+        }
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>こちらも専用アプリでパラメータ値が書き換わっていることを確認できました。<br/>
+Kontakt.ioの制御特性を活かしたサービスを企画できる可能性を感じました。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Kontakt.ioのSmart Beaconを使ってみた]]></title>
@@ -808,376 +1029,6 @@ override func didReceiveMemoryWarning() {
 
 <p>これからSQLiteよりもRealmの方がスタンダートな保存方法となることでしょう。<br/>
 どんどん使い方を勉強していかなくては！！<br/>
-と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[OAuth2.0認証をUIWebView&WKWebViewで実施しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/06/06/custom-oauth-webview/"/>
-    <updated>2015-06-06T23:38:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/06/06/custom-oauth-webview</id>
-    <content type="html"><![CDATA[<h4>最適なWebViewを使って、OAuth2.0認証をしよう！</h4>
-
-<p>本日は、iOSのバージョン毎に最適なWebViewを使ってOAuth2.0認証を実施してみたいと思います。<br/>
-やはり、iOS8であればWKWebViewを使いたいですし、iOS7ではUIWebViewしか利用できないという現実があります。</p>
-
-<p>WKWebViewとUIWebViewの使い分け処理に関しては、<a href="http://techblog.yahoo.co.jp/ios/let-uiwebview-as-wkwebview/">let UIWebView as WKWebView</a>を参考にさせて頂きました。<br/>
-(あえてObjective-Cで書いています。)</p>
-
-<p>まずは、UIWebViewとWKWebViewの使い分け部分を説明していきます。</p>
-
-<p>共通インターフェースとして<code>WKWebViewProtocol.h</code>を作成します。<br/>
-共通化したい処理を書き出しています。</p>
-
-<p>```objective-c
-// WKWebViewProtocol.h</p>
-
-<h1>import &lt;UIKit/UIKit.h></h1>
-
-<h1>import &lt;WebKit/WebKit.h></h1>
-
-<p>@protocol WKWebViewProtocol <NSObject></p>
-
-<p>@property (nonatomic, readonly, copy) NSString <em>title;
-@property (nonatomic, readonly, copy) NSURL </em>URL;
-@property (nonatomic, readonly, getter=isLoading) BOOL loading;
-@property (nonatomic, readonly) BOOL canGoBack;
-@property (nonatomic, readonly) BOOL canGoForward;</p>
-
-<ul>
-<li>(void)loadRequest:(NSURLRequest *)request;</li>
-<li>(void)stopLoading;</li>
-<li>(void)evaluateJavaScript:(NSString <em>)javaScriptString completionHandler:(void (^)(id, NSError </em>))completionHandler;</li>
-<li>(void)goBack;</li>
-<li>(void)goForward;</li>
-</ul>
-
-
-<p>@end</p>
-
-<p>```</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>次にUIWebViewを拡張した<code>UIWebView+ProtocolConfirmed</code>クラスを作成します。<br/>
-基本的にWKWebViewに合わせる形で実装していきます。</p>
-
-<p>```objective-c
-// UIWebView+ProtocolConfirmed.h</p>
-
-<h1>import &lt;UIKit/UIKit.h></h1>
-
-<h1>import &ldquo;WKWebViewProtocol.h&rdquo;</h1>
-
-<p>@interface UIWebView(UIWebView_ProtocolConfirmed) <WKWebViewProtocol></p>
-
-<p>@end</p>
-
-<p>```</p>
-
-<p>```objective-c
-// UIWebView+ProtocolConfirmed.m</p>
-
-<h1>import &ldquo;UIWebView+ProtocolConfirmed.h&rdquo;</h1>
-
-<p>@implementation UIWebView(UIWebView_ProtocolConfirmed)</p>
-
-<p>// NSURLの取得
-&ndash; (NSURL *)URL
-{</p>
-
-<pre><code>NSString *URLString = [self stringByEvaluatingJavaScriptFromString:@"document.URL"];
-return [NSURL URLWithString:URLString];
-</code></pre>
-
-<p>}</p>
-
-<p>// ページのタイトルの取得
-&ndash; (NSString *)title
-{</p>
-
-<pre><code> return [self stringByEvaluatingJavaScriptFromString:@"document.title"];
-</code></pre>
-
-<p>}</p>
-
-<p>// JavaScriptの実行処理
-&ndash; (void)evaluateJavaScript:(NSString <em>)javaScriptString completionHandler:(void (^)(id, NSError </em>))completionHandler
-{</p>
-
-<pre><code>NSString *result = [self stringByEvaluatingJavaScriptFromString:javaScriptString];
-if(completionHandler) {
-    completionHandler(result, nil);
-}
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>最後にWKWebView側を実装します。<br/>
-と言っても、UIWebViewをWKWebViewに合わせるので、何も書くことはありません。</p>
-
-<p>```objective-c
-// WKWebView+ProtocolConfirmed.h</p>
-
-<h1>import &lt;WebKit/WebKit.h></h1>
-
-<h1>import &ldquo;WKWebViewProtocol.h&rdquo;</h1>
-
-<p>@interface WKWebView(WKWebView_ProtocolConfirmed) <WKWebViewProtocol></p>
-
-<p>@end</p>
-
-<p>```</p>
-
-<p>```objective-c
-// WKWebView+ProtocolConfirmed.m</p>
-
-<h1>import &ldquo;WKWebView+ProtocolConfirmed.h&rdquo;</h1>
-
-<p>@implementation WKWebView(WKWebView_ProtocolConfirmed)</p>
-
-<p>@end</p>
-
-<p>```</p>
-
-<p>では、実際に実装していきましょう。<br/>
-OAuth認証の処理に関しては、<a href="http://grandbig.github.io/blog/2015/06/01/custom-oauth/">OAuth2.0認証の処理を自作しよう！</a>を参考にしてください。</p>
-
-<p>```objective-c
-// ViewController.m</p>
-
-<h1>import &ldquo;ViewController.h&rdquo;</h1>
-
-<h1>import &ldquo;WKWebViewProtocol.h&rdquo;</h1>
-
-<h1>import &ldquo;WKWebView+ProtocolConfirmed.h&rdquo;</h1>
-
-<h1>import &ldquo;UIWebView+ProtocolConfirmed.h&rdquo;</h1>
-
-<h1>import &ldquo;OAuth2Client.h&rdquo;</h1>
-
-<p>static NSString <em>const clientId = @&ldquo;クライアントID&rdquo;;
-static NSString </em>const clientSecret = @&ldquo;クライアントシークレット&rdquo;;
-static NSString <em>const authorizationURL = @&ldquo;<a href="https://accounts.google.com/o/oauth2/auth">https://accounts.google.com/o/oauth2/auth</a>&rdquo;;
-static NSString </em>const tokenURL = @&ldquo;<a href="https://accounts.google.com/o/oauth2/token">https://accounts.google.com/o/oauth2/token</a>&rdquo;;
-static NSString *const scope = @&ldquo;<a href="https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar">https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar</a>&rdquo;;</p>
-
-<p>// UIWebViewおよびWKWebView関連のDelegateを読み込む
-@interface ViewController ()&lt;UIWebViewDelegate, WKUIDelegate, WKNavigationDelegate></p>
-
-<p>// UIWebViewとWKWebViewを一纏めにしたWebViewとして下記を定義
-@property(nonatomic, assign) id <WKWebViewProtocol> webView;
-@property (strong, nonatomic) NSMutableData <em>receivedData;
-@property (assign, nonatomic) BOOL </em>isLogin;</p>
-
-<p>@end</p>
-
-<p>@implementation ViewController</p>
-
-<ul>
-<li><p>(void)viewDidLoad {
-  [super viewDidLoad];</p>
-
-<p>  // WebViewを画面に追加する処理
-  [self createWebView];</p>
-
-<p>  NSUserDefaults <em>defaults = [NSUserDefaults standardUserDefaults];
-  if([defaults boolForKey:@&ldquo;isLogin&rdquo;]) {
-      // 既にOAuth2.0認証実行済みの場合
-      [[OAuth2Client sharedInstance] getRefreshAccessToken:^(NSString </em>accessToken) {
-          // 成功した場合
-          NSLog(@&ldquo;%@&rdquo;, accessToken);
-      } failure:^(NSError <em>error) {
-          // 失敗した場合
-          NSLog(@&ldquo;%@&rdquo;, error);
-      }];
-  } else {
-      // 初めてOAuth2.0認証を実行する場合
-      // OAuth2.0認証に必要な各種パラメータの設定
-      [[OAuth2Client sharedInstance] setUpOAuth2AccountClientId:clientId clientSecret:clientSecret scope:scope authorizationURL:authorizationURL tokenURL:tokenURL];
-      // OAuth2.0認証リクエスト
-      [[OAuth2Client sharedInstance] requestAccessToAccount:^(NSURL </em>preparedURL) {
-          // リクエスト
-          [_webView loadRequest:[NSURLRequest requestWithURL: preparedURL]];
-      }
-  }</p></li>
-</ul>
-
-
-<p>}</p>
-
-<ul>
-<li>(void)didReceiveMemoryWarning {
-  [super didReceiveMemoryWarning];
-}</li>
-</ul>
-
-
-<p>// WKWebViewまたはUIWebViewをViewに追加する処理
-&ndash; (void)createWebView {</p>
-
-<pre><code>if(NSClassFromString(@"WKWebView") != nil) {
-    // iOS8の場合
-    WKWebView *wkWebView = [[WKWebView alloc] initWithFrame:self.view.bounds];
-    wkWebView.navigationDelegate = self;
-    wkWebView.UIDelegate = self;
-    [self.view addSubview:wkWebView];
-    self.webView = wkWebView;
-} else {
-    // iOS7以下の場合
-    UIWebView *uiWebView = [[UIWebView alloc] initWithFrame:self.view.bounds];
-    uiWebView.delegate = self;
-    [self.view addSubview:uiWebView];
-    self.webView = uiWebView;
-}
-</code></pre>
-
-<p>}</p>
-
-<h1>pragma mark &ndash; UIWebViewDelegate</h1>
-
-<p>// ページの読込みが開始されたときに呼び出される処理
-&ndash; (void)webViewDidStartLoad:(UIWebView *)webView {</p>
-
-<pre><code>NSLog(@"webViewDidStartLoad");
-</code></pre>
-
-<p>}</p>
-
-<p>// ページを読み終わった後に呼び出される処理
-&ndash; (void)webViewDidFinishLoad:(UIWebView *)webView {</p>
-
-<pre><code>NSLog(@"webViewDidFinishLoad");
-</code></pre>
-
-<p>}</p>
-
-<p>// エラーが発生したときに呼び出される処理
-&ndash; (void)webView:(UIWebView <em>)webView didFailLoadWithError:(NSError </em>)error {</p>
-
-<pre><code>NSLog(@"didFailLoadWithError");
-</code></pre>
-
-<p>}</p>
-
-<p>// ページ遷移する前に呼び出される処理
-&ndash; (BOOL)webView:(UIWebView <em>)webView shouldStartLoadWithRequest:(NSURLRequest </em>)request navigationType:(UIWebViewNavigationType)navigationType {</p>
-
-<pre><code>NSLog(@"shouldStartLoadWithRequest");
-
-BOOL flag = [[OAuth2Client sharedInstance] checkRedirectURI:request];
-
-if(flag) {
-    [[OAuth2Client sharedInstance] getAccessToken:request completionHandler:^(NSString *accessToken){
-        // 処理が終了したら呼び出される
-        if(accessToken.length &gt; 0) {
-            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-            [defaults setBool:YES forKey:@"isLogin"];
-            [defaults synchronize];
-        }
-        [webView removeFromSuperview];
-    }];
-
-    // ページ遷移しない
-    return NO;
-}
-
-// ページ遷移する
-return YES;
-</code></pre>
-
-<p>}</p>
-
-<h1>pragma mark &ndash; WKNavigationDelegate</h1>
-
-<p>// ページの読込みが開始されたときに呼び出される処理
-&ndash; (void)webView:(WKWebView <em>)webView didStartProvisionalNavigation:(WKNavigation </em>)navigation
-{</p>
-
-<pre><code>NSLog(@"didStartProvisionalNavigation");
-</code></pre>
-
-<p>}</p>
-
-<p>// ページを読み終わった後に呼び出される処理
-&ndash; (void)webView:(WKWebView <em>)webView didFinishNavigation:(WKNavigation </em>)navigation
-{</p>
-
-<pre><code>NSLog(@"didFinishNavigation");
-</code></pre>
-
-<p>}</p>
-
-<p>// エラーが発生したときに呼び出される処理
-&ndash; (void)webView:(WKWebView <em>)webView didFailProvisionalNavigation:(WKNavigation </em>)navigation withError:(NSError *)error
-{</p>
-
-<pre><code>NSLog(@"didFailProvisionalNavigation");
-</code></pre>
-
-<p>}</p>
-
-<p>// ページ遷移する前に呼び出される処理
-&ndash; (void)webView:(WKWebView <em>)webView decidePolicyForNavigationAction:(WKNavigationAction </em>)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {</p>
-
-<pre><code>NSLog(@"decidePolicyForNavigationAction");
-NSURLRequest *request = navigationAction.request;
-
-BOOL flag = [[OAuth2Client sharedInstance] checkRedirectURI:request];
-
-if(flag) {
-    [[OAuth2Client sharedInstance] getAccessToken:request completionHandler:^(NSString *accessToken){
-        // 処理が終了したら呼び出される
-        if(accessToken.length &gt; 0) {
-            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-            [defaults setBool:YES forKey:@"isLogin"];
-            [defaults synchronize];
-        }
-        [webView removeFromSuperview];
-    }];
-
-    // ページ遷移しない
-    decisionHandler(WKNavigationActionPolicyCancel);
-}
-
-// ページ遷移する
-decisionHandler(WKNavigationActionPolicyAllow);
-</code></pre>
-
-<p>}</p>
-
-<p>@end</p>
-
-<p>```</p>
-
-<p>さあ、これでiOS8端末でもiOS7端末でも正しくOAuth認証画面が表示されるかと思います。<br/>
-もう今年にはiOS9が発表され、WKWebViewが当然のようになってくるとしたら、UIWebViewは不要になると思いますが、今のところはまだまだ必要でしょう。<br/>
 と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
