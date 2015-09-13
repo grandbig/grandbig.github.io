@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Google | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/google/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-09-13T22:43:00+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Google Sign-in SDK for iOSを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/09/13/google-sign-in/"/>
+    <updated>2015-09-13T02:34:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/09/13/google-sign-in</id>
+    <content type="html"><![CDATA[<h4>Google Sign-in SDKを使ったOAuth認証をやってみよう！</h4>
+
+<p>さて、本日はGoogle Sign-inを利用したOAuth認証をやってみようと思います。<br/>
+最近、<a href="https://console.developers.google.com">Google Developer Console</a>の画面も完全に一新されたことで、Googleが推奨するGoogle Sign-inを使うべきなのではと思い始めました。<br/>
+以前であれば、Google Developer ConsoleにOAuth2.0のiOSのクライアントIDを設定したときに、クライアントIDだけでなく、クライアントシークレットなども表示されていました。<br/>
+それが、 <strong>クライアントID</strong> と <strong>iOSのURLスキーム</strong> のみになっていました。</p>
+
+<p><img src="/images/google-sign-in-1.png" alt="Google Developer ConsoleのOAuth2.0 for iOS" /></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>そこで本記事では、Google Sign-in SDK for iOSを実際に実装してみたいと思います。</p>
+
+<h5>Google Sign-in SDK for iOSを実装しよう</h5>
+
+<p>当然のことながら、基本的なことは<a href="https://developers.google.com/identity/sign-in/ios/start-integrating">Googleの公式サイト</a>に書かれています。<br/>
+そのため、ソースコードの記述以外は箇条書きに割愛します。</p>
+
+<ol>
+<li>Podfileを作成して、SDKのインストールを記述しましょう
+<code>pod 'Google/SignIn'</code>をPodfileに書いて、<code>pod install</code>を実行しましょう</li>
+<li>Configuration Fileを作成して、プロジェクトに組み込みましょう
+App nameには <strong>Google Developer Consoleで作成したプロジェクト名</strong> を選択し、iOS Bundle IDには <strong>iOSのクライアントID内で設定したバンドルID</strong> を設定します。<br/>
+設定完了後、<code>GoogleService-Info.plist</code>をダウンロードできますので、それをXcodeのプロジェクトの組み込みます。</li>
+<li>XcodeのURL schemesに値を設定しましょう
+TARGETS > info > URL TypesにURL Typeを2つ追加します。各URL schemesには<code>GoogleService-Info.plist</code>に書かれた<code>REVERSED_CLIENT_ID</code>と<code>CLIENT_ID</code>を記載しましょう。</li>
+</ol>
+
+
+<p>これでソースコードを書くまでの準備が整いました。<br/>
+次にソースコードを書いていきます。</p>
+
+<p>```objective-c
+// AppDelegate.h</p>
+
+<h1>import &lt;UIKit/UIKit.h></h1>
+
+<h1>import &lt;Google/SignIn.h></h1>
+
+<p>@interface AppDelegate : UIResponder &lt;UIApplicationDelegate, GIDSignInDelegate></p>
+
+<p>@property (strong, nonatomic) UIWindow *window;</p>
+
+<p>@end
+```</p>
+
+<p>```objective-c
+// AppDelegate.m
+&ndash; (BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions {</p>
+
+<pre><code>// Override point for customization after application launch.
+
+NSError* configureError;
+[[GGLContext sharedInstance] configureWithError: &amp;configureError];
+NSAssert(!configureError, @"Error configuring Google services: %@", configureError);
+
+[GIDSignIn sharedInstance].delegate = self;
+
+return YES;
+</code></pre>
+
+<p>}</p>
+
+<p>&lt;省略></p>
+
+<ul>
+<li><p>(BOOL)application:(UIApplication <em>)application openURL:(NSURL </em>)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation {</p>
+
+<p>  return [[GIDSignIn sharedInstance] handleURL:url sourceApplication:sourceApplication annotation:annotation];
+}</p></li>
+</ul>
+
+
+<p>// Google Sign-inに成功した場合に呼び出される処理
+&ndash; (void)signIn:(GIDSignIn <em>)signIn didSignInForUser:(GIDGoogleUser </em>)user withError:(NSError *)error {</p>
+
+<pre><code>// Perform any operations on signed in user here.
+NSString *userId = user.userID;                  // For client-side use only!
+NSString *idToken = user.authentication.idToken; // Safe to send to the server
+NSString *name = user.profile.name;
+NSString *email = user.profile.email;
+
+NSLog(@"userId: %@, idToken: %@, name: %@, email: %@", userId, idToken, name, email);
+</code></pre>
+
+<p>}</p>
+
+<p>// Google Sign-inに失敗した場合に呼び出される処理
+&ndash; (void)signIn:(GIDSignIn <em>)signIn didDisconnectWithUser:(GIDGoogleUser </em>)user withError:(NSError *)error {</p>
+
+<pre><code>// Perform any operations when the user disconnects from app here.
+NSLog(@"error: %@", error);
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>```objective-c
+// ViewController.h</p>
+
+<h1>import &lt;UIKit/UIKit.h></h1>
+
+<h1>import &lt;Google/SignIn.h></h1>
+
+<p>@interface ViewController : UIViewController <GIDSignInUIDelegate></p>
+
+<p>@property (weak, nonatomic) IBOutlet GIDSignInButton *signInButton;</p>
+
+<p>@end</p>
+
+<p>```</p>
+
+<p>```objective-c
+// ViewController.m
+&ndash; (void)viewDidLoad {</p>
+
+<pre><code>[super viewDidLoad];
+// Do any additional setup after loading the view, typically from a nib.
+
+[GIDSignIn sharedInstance].uiDelegate = self;
+// 任意のスコープを設定
+[GIDSignIn sharedInstance].scopes = @[@"https://www.googleapis.com/auth/calendar", @"https://www.googleapis.com/auth/drive"];
+NSLog(@"scope: %@", [GIDSignIn sharedInstance].scopes);
+</code></pre>
+
+<p>}</p>
+
+<p>// エラーが発生した場合に呼び出される処理
+&ndash; (void)signInWillDispatch:(GIDSignIn <em>)signIn error:(NSError </em>)error {</p>
+
+<pre><code>NSLog(@"error: %@", error);
+</code></pre>
+
+<p>}</p>
+
+<p>// Google OAuth2認証画面を開始するときに実行される処理
+&ndash; (void)signIn:(GIDSignIn <em>)signIn presentViewController:(UIViewController </em>)viewController {</p>
+
+<pre><code>// OAuth2認証画面を表示する処理
+[self presentViewController:viewController animated:YES completion:nil];
+</code></pre>
+
+<p>}</p>
+
+<p>// Google OAuth2認証が完了したら実行される処理
+&ndash; (void)signIn:(GIDSignIn <em>)signIn dismissViewController:(UIViewController </em>)viewController {</p>
+
+<pre><code>// OAuth2認証の画面を閉じる処理
+[self dismissViewControllerAnimated:YES completion:nil];
+</code></pre>
+
+<p>}</p>
+
+<p>// Google Sign-inボタンをクリックした場合の処理(Storyboardで設定すること)
+&ndash; (IBAction)didTapSignIn:(id)sender {</p>
+
+<pre><code>// Google Sign-inを実行する処理
+[[GIDSignIn sharedInstance] signIn];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記を実行することで下記のようにOAuth2認証ができました。</p>
+
+<p><img src="/images/google-sign-in-2.png" alt="Google OAuth2認証開始画面" /><br/>
+<img src="/images/google-sign-in-3.png" alt="Google OAuth2認証の認証許可確認画面" /></p>
+
+<p>さて、いかがだったでしょうか？<br/>
+今回はひとまず、ここまでにしますが、今後はOAuth2認証後にGoogle Calendar APIやGoogle Driveの画面表示をしてみたいと思います。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

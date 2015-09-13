@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Push | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/push/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-09-13T22:43:00+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iOS8からのLocalNotification]]></title>
+    <link href="http://grandbig.github.io/blog/2014/11/09/localnotification-ios8/"/>
+    <updated>2014-11-09T17:05:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/11/09/localnotification-ios8</id>
+    <content type="html"><![CDATA[<h4>LocalNotificationでAction</h4>
+
+<p>今日はiOS8から追加されたLocalNotificationの新機能についてお話します。<br/>
+これまでのLocalNotificationは</p>
+
+<ul>
+<li>通知が通知エリアに表示される</li>
+<li>通知をタップすることでアプリを起動</li>
+</ul>
+
+
+<p>くらいの機能しかありませんでした。</p>
+
+<p>しかし、iOS8からは届いた通知に対して、ユーザが答えることができるようになりました。</p>
+
+<!-- more -->
+
+
+<p>例えば、下記のような感じですね。</p>
+
+<p><img src="/images/localnotification_1.png" alt="バナー表示" /><br/>
+<img src="/images/localnotification_2.png" alt="ダイアログ表示" /></p>
+
+<p>これまでLocalNotificationを使ってきた人であれば、実に簡単に実装ができます。<br/>
+それでは、実際にソースを見て行きましょう。</p>
+
+<p>```objective-c
+// AppDelegate.m
+&ndash; (BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions {</p>
+
+<pre><code>if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)]) {
+    [self registerUserNotificationSettings];
+}
+
+return YES;
+</code></pre>
+
+<p>}</p>
+
+<p>&lt;省略></p>
+
+<p>// アプリがBackground起動になったときに処理
+&ndash; (void)applicationDidEnterBackground:(UIApplication *)application {</p>
+
+<pre><code>// LocalNotificationの送信
+[self sendLocalNotificationForMessage:@"TEST"];
+</code></pre>
+
+<p>}</p>
+
+<p>&lt;省略></p>
+
+<p>// LocalNotificationでアクションを実行したときの処理
+&ndash; (void) application:(UIApplication <em>)application handleActionWithIdentifier:(NSString </em>)identifier forLocalNotification:(UILocalNotification *)notification completionHandler:(void (^)())completionHandler
+{</p>
+
+<pre><code>if ([identifier isEqualToString:@"ACCEPT"]) {
+    NSLog(@"Accepted");
+} else if([identifier isEqualToString:@"MAYBE"]) {
+    NSLog(@"Maybe");
+} else if([identifier isEqualToString:@"DECLINE"]) {
+    NSLog(@"Declined");
+}
+
+if(completionHandler) {
+    completionHandler();
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// Notificationの設定
+&ndash; (void)registerUserNotificationSettings
+{</p>
+
+<pre><code>// Actionの生成
+UIMutableUserNotificationAction *acceptAction = [[UIMutableUserNotificationAction alloc] init];
+acceptAction.identifier = @"ACCEPT";
+acceptAction.title = @"Accept";
+acceptAction.activationMode = UIUserNotificationActivationModeBackground;
+acceptAction.authenticationRequired = NO;
+acceptAction.destructive = NO;
+
+// Actionの生成
+UIMutableUserNotificationAction *acceptAction = [[UIMutableUserNotificationAction alloc] init];
+acceptAction.identifier = @"MAYBE";
+acceptAction.title = @"Maybe";
+acceptAction.activationMode = UIUserNotificationActivationModeBackground;
+acceptAction.authenticationRequired = NO;
+acceptAction.destructive = NO;
+
+// Actionの生成
+UIMutableUserNotificationAction *acceptAction = [[UIMutableUserNotificationAction alloc] init];
+acceptAction.identifier = @"DECLINE";
+acceptAction.title = @"Decline";
+acceptAction.activationMode = UIUserNotificationActivationModeBackground;
+acceptAction.authenticationRequired = NO;
+acceptAction.destructive = YES;
+
+// Categoryの作成
+UIMutableUserNotificationCategory *inviteCategory = [UIMutableUserNotificationCategory alloc] init];
+inviteCategory.identifier = @"INVITE_CATEGORY"; // CategoryのIDを設定
+[inviteCategory setActions:@[acceptAction, maybeAction, declineAction] forContext:UIUserNotificationActionContextDefault]; // ダイアログ表示
+[inviteCategory setActions:@[acceptAction, declineAction] forContext:UIUserNotificationActionContextMinimal]; // バナー表示
+
+NSSet *categories = [NSSet setWithObjects:inviteCategory, nil];
+UIUserNotificationSettings *notificationSettings = [UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|UIUserNotificationTypeBadge|UIUserNotificationTypeSound categories:categories];
+[[UIApplication sharedApplication] registerUserNotificationSettings:notificationSettings];
+</code></pre>
+
+<p>}</p>
+
+<p>// LocalNotificationを送信
+&ndash; (void)sendLocalNotificationForMessage:(NSString *)message
+{</p>
+
+<pre><code>UILocalNotification *localNotification = [UILocalNotification new];
+localNotification.alertBody = message;
+localNotification.fireDate = [NSDate date];
+localNotification.timeZone = [NSTimeZone localTimeZone];
+localNotification.soundName = UILocalNotificationDefaultSoundName;
+localNotification.category = @"INVITE_CATEGORY"; // Action表示させたいCategoryの設定
+[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>簡単に書けますね。<br/>
+ぱっと見た感じは、予めAction項目を作成しておく必要があるので、用途は限定的になりそうな気がしますね。<br/>
+と言っても、これまでよりユーザ操作のハンドリングの幅が広がるので、嬉しい限りですが&hellip;。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Silent Remote Notificationを試そう！]]></title>
+    <link href="http://grandbig.github.io/blog/2014/02/22/silentremotenotification/"/>
+    <updated>2014-02-22T00:06:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/02/22/silentremotenotification</id>
+    <content type="html"><![CDATA[<h3>iOS7で新たに追加されたSilent Remote Notificationを使ってみよう！！</h3>
+
+<p>本日はiOS7から新たに追加された<strong>Silent Remote Notification</strong>について紹介します。<br/>
+iOS6までで利用できたRemote Notificationと何が違うのかと言いますと、<strong>ユーザ端末のロック画面に表示させることなく</strong>通知することができるんです。<br/>
+つまり、<br/>
+Remote Notification: ユーザに何かを気づかせるためにプッシュする<br/>
+Silent Remote Notification: ユーザに気づかせることなくプッシュする<br/>
+ということです。</p>
+
+<p>これを見ると、『Silent Remote Notificationって使い道あるの？？』なんて思ってしまいそうですよね。これが意外とありそうなんです。<br/>
+例えば、<br/>
+・ユーザに気づかれずにアプリ内の情報を最新に更新する<br/>
+・ユーザに気づかれずにアプリ内のユーザ情報を取得する<br/>
+ことなどが考えられます。<br/>
+後者はユーザ視点からすると気になるかもしれませんが、『アプリの有用性をユーザに最大限に感じてもらうための方法』と考えて頂ければとても大切なことであると伝わるでしょうか。</p>
+
+<p>そんな様々な使い道がありそうなSilent Remote Notificationについて早速説明していきます。</p>
+
+<!--more-->
+
+
+<h4>ネイティブソースとXcode5の設定について</h4>
+
+<p>まずは、ネイティブソースとXcode5の設定から説明します。Xcode5でプロジェクトを作成したら、TARGETS > Capabilities > Background Modes > Remote notificationsにチェックを入れます。<br/>
+<img src="/images/xcode-silent-notifications1.png" alt="Xcode5での設定方法" /><br/>
+続いてはネイティブソースでプッシュの受取り口を作りましょう。</p>
+
+<p>```c
+// AppDelegate.hファイル
+@interfase AppDelegate : NSObject<UIApplicationDelegate> {</p>
+
+<pre><code>NSString *token;
+</code></pre>
+
+<p>}
+<code>
+</code>c
+// AppDelegate.mファイル
+// ①トークン値の取得
+&ndash; (void)application:(UIApplication <em>)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData </em>)devToken
+{</p>
+
+<pre><code>//デバイストークンから'&lt;','&gt;',' 'を削除して変数に保存
+self.token = [[[[devToken description] stringByReplacingOccurrencesOfString:@"&lt;"withString:@""] 
+                        stringByReplacingOccurrencesOfString:@"&gt;" withString:@""] 
+                        stringByReplacingOccurrencesOfString: @" " withString: @""];
+
+NSLog(@"deviceToken: %@", self.token);
+</code></pre>
+
+<p>}</p>
+
+<p>// ②通常のRemote Notificationが届いたときに通る処理
+&ndash; (void)application:(UIApplication <em>)application didReceiveRemoteNotification:(NSDictionary </em>)userInfo
+{</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}</p>
+
+<p>// ③Silent Remote Notificationが届いたときに通る処理
+&ndash; (void)application:(UIApplication <em>)application
+ didReceiveRemoteNotification:(NSDictionary </em>)userInfo
+  fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
+{</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```
+プッシュ通知を受け取ったとき、上記に書いたdidReceiveRemoteNotification処理が実行されます。コメントアウトにも書いていますが、③がSilent Remote Notificationが届いたときに通る処理です。<br/>
+ただし、Silent Remote NotificationはiOS7以上でないと対応していないのでiOS6の場合は通常のRemote Notification, Silent Remote Notificationに関わらず②のdidReceiveRemoteNotificationを通りますので、ご注意ください。<br/>
+あとは③に実行させたい処理を書けば、Silent Remote Notificationの実装は完了です。</p>
+
+<h4>動作確認用に簡単にプッシュ通知を送る処理を書こう</h4>
+
+<p>さて、ネイティブ側の実装はできましたが、本当にこれで送れるのか確認したいですよね？Node.jsのnode-apnモジュールを使えば驚くほど簡単に用意することができます。<br/>
+より簡単に作成するためにExpressモジュールを使って説明します。Expressモジュールの用意については<a href="https://gihyo.jp/dev/serial/01/nodejs/0003">第3回 Express.jsを使ったWebアプリケーションを構築</a>を参照ください。</p>
+
+<p>それではpushtestという名前のWebアプリの雛形を作成しましょう。<br/>
+<code>bash
+express -t ejs pushtest
+</code>
+次にpushtest配下で<br/>
+<code>bash
+npm install
+</code>
+を実行して必要なモジュールをインストールしましょう。さらに、node-apnモジュールもインストールしましょう。また後ほど利用するquerystringモジュールもインストールしておきましょう。<br/>
+<code>bash
+npm install apn
+npm install qs
+</code>
+これでモジュールが揃ったので、app.jsを編集しましょう。<br/>
+pushtest/routes/apns.jsを作成しておきます。(デフォルトで作成されるindex.jsかuser.jsをコピーしてファイル名を変更すればOKです)
+```js
+var express = require(&lsquo;express&rsquo;);
+var routes = require(&lsquo;./routes&rsquo;);
+var user = require(&lsquo;./routes/user&rsquo;);
+var apns = require(&lsquo;./routes/apns&rsquo;);// apns.jsの読み込みを追加
+var http = require(&lsquo;http&rsquo;);
+var path = require(&lsquo;path&rsquo;);</p>
+
+<p>var app = express();
+&hellip;
+app.get(&lsquo;/apns&rsquo;, apns.push);// GETリクエストを想定
+&hellip;
+```</p>
+
+<p>そしてお待ちかねのプッシュメイン処理をapns.jsに書いていきます。<br/>
+```js
+var apns = require(&lsquo;apn&rsquo;);
+var qs = require(&lsquo;qs&rsquo;);</p>
+
+<p>exports.push = function(req, res){</p>
+
+<pre><code>// ① GETパラメータからトークンを取得
+var arr = req.url.split("?");
+var obj = qs.parse(arr[1]);
+var token = obj.token;
+
+// ② プッシュ通知の設定
+var options = {
+    "cert": "./keys/cert.pem",
+    "key": "./keys/key.pem",
+    "gateway": "gateway.sandbox.push.apple.com"
+};
+var myDevice = apns.Device(token);
+var apnConnection = new apns.Connection(options);
+
+var note = new apns.Notification();
+note.contentAvailable = 1;
+
+apnConnection.pushNotification(note, myDevice);
+
+res.send("respond with a resource");
+</code></pre>
+
+<p>}
+```
+先ほどインストールしたqsはGETパラメータをオブジェクト化してくれる便りなモジュールです。詳しくは<a href="http://nodejs.org/api/querystring.html">Node.js Manual&amp;Documents</a>を参照してください。<br/>
+まず、①のようにトークン値を取得します。<br/>
+次に②のようにプッシュ通知を送るための設定を書きます。<a href="https://github.com/argon/node-apn">GitHubで公開されているReference</a>をほぼそのまま書くだけなので簡単です。<br/>
+注意しておきたいのはSilent Remote Notificationの場合は<strong>note.contentAvailable=1(note.newsstandAvailable=1でも可)</strong>を設定する必要があります。逆にbadge, alert, soundは不要です。これらを入れてもプッシュ通知ができないわけではないのですが、冒頭に述べた<strong>ユーザに気づかれずに</strong>という要件を満たせなくなります。</p>
+
+<p>因みに, optionsで設定しているcertとkeyは証明書の保存場所です。上記ソースで設定している場所はapp.jsと同じ階層にkeyフォルダがあることを指します。また、gatewayにはsandboxをつけることを忘れずに。(商用の場合はsandboxは不要です。develop用ではsandboxを設定するんです。)<br/>
+証明書(cert.pemとkey.pem)の作成は多くのサイトで説明されているのでここでは割愛します。</p>
+
+<p>ここまで準備ができたら、<br/>
+<code>bash
+node app.js
+</code>
+でWeb&amp;APサーバをローカルに起動しましょう。<br/>
+そして、『localhost:3000?token=トークン値』をブラウザのアドレス部分に打って、Silent Remote Notificationを送りましょう!!<br/>
+トークン値はネイティブソース内のdidRegisterForRemoteNotificationsWithDeviceToken関数でLogとして出力しているはずなので、コピーしましょう。</p>
+
+<p>届きましたでしょうか？</p>
+]]></content>
+  </entry>
+  
+</feed>

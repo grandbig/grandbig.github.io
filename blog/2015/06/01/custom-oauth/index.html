@@ -1,0 +1,906 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>OAuth2.0認証の処理を自作しよう！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="OAuth2.0認証処理を自分で作ろう！ Objective-C編 本日は、gtm-oauthやOAuth2Clientを使わずにOAuth2.0認証処理を自作してみます。 OAuth2.0認証を通すためのGoogle設定はiOSでGoogle OAuth認証がしたいを参照ください。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2015/06/01/custom-oauth/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">OAuth2.0認証の処理を自作しよう！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-01T00:56:00+09:00" pubdate data-updated="true">Jun 1<span>st</span>, 2015</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h4>OAuth2.0認証処理を自分で作ろう！ Objective-C編</h4>
+
+<p>本日は、<a href="https://code.google.com/p/gtm-oauth2/">gtm-oauth</a>や<a href="https://github.com/nxtbgthng/OAuth2Client">OAuth2Client</a>を使わずにOAuth2.0認証処理を自作してみます。</p>
+
+<p>OAuth2.0認証を通すためのGoogle設定は<a href="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/">iOSでGoogle OAuth認証がしたい</a>を参照ください。<br/>
+筆者が開発したライブラリは単純な下記処理のみ含んでいます。</p>
+
+<ul>
+<li>OAuth2.0認証に必要な各種パラメータをKeychain Servicesに保存</li>
+<li>アクセストークンを取得する処理</li>
+<li>リフレッシュトークンから新規アクセストークンを取得する処理</li>
+</ul>
+
+
+<p>ここで、Keychain Servicesを使うにあたって、<a href="https://github.com/TheLevelUp/LUKeychainAccess">LUKeychainAccess</a>を利用しています。<br/>
+これにより、複雑なKeychain ServicesをNSUserDefaultsの感覚で利用することができます。<br/>
+また、Googleへの問い合わせなどのHTTP/HTTPSリクエストに<a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>を利用しています。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>OAuth2.0認証ライブラリの作成</h4>
+
+<p>下記にソースをそのまま載せておきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// OAuth2Client.m</span>
+</span><span class='line'><span class="cp">#import &quot;OAuth2Client.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;LUKeychainAccess.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;AFNetworking.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="n">callback</span> <span class="o">=</span>  <span class="s">@&quot;http://localhost&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="n">visibleactions</span> <span class="o">=</span> <span class="s">@&quot;http://schemas.google.com/AddActivity&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">OAuth2Client</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// シングルトンのインスタンス取得</span>
+</span><span class='line'><span class="k">+</span> <span class="p">(</span><span class="n">OAuth2Client</span> <span class="o">*</span><span class="p">)</span><span class="nf">sharedInstance</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">static</span> <span class="n">OAuth2Client</span><span class="o">*</span> <span class="n">sharedInstance</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">static</span> <span class="n">dispatch_once_t</span> <span class="n">onceToken</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">dispatch_once</span><span class="p">(</span><span class="o">&amp;</span><span class="n">onceToken</span><span class="p">,</span> <span class="o">^</span><span class="p">{</span>
+</span><span class='line'>      <span class="n">sharedInstance</span> <span class="o">=</span> <span class="p">[</span><span class="n">OAuth2Client</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];]</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">sharedInstance</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// OAuth2.0認証に必要なパラメータを設定する処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">setUpOAuth2AccountClientId:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">clientId</span> <span class="nf">clientSecret:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">clientSecret</span> <span class="nf">scope:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">scope</span> <span class="nf">authorizationURL:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">authorizationURL</span> <span class="nf">tokenURL:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">tokenURL</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">setObject:</span><span class="n">clientId</span> <span class="nl">forKey:</span><span class="s">@&quot;clientId&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">setObject:</span><span class="n">clientSecret</span> <span class="nl">forKey:</span><span class="s">@&quot;clientSecret&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">setObject:</span><span class="n">scope</span> <span class="nl">forKey:</span><span class="s">@&quot;scope&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">setObject:</span><span class="n">authorizationURL</span> <span class="nl">forKey:</span><span class="s">@&quot;authorizationURL&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">setObject:</span><span class="n">tokenURL</span> <span class="nl">forKey:</span><span class="s">@&quot;tokenURL&quot;</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// OAuth2.0認証に必要なリクエストを生成する処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">requestAccessToAccount:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSURL</span> <span class="o">*</span><span class="n">preparedURL</span><span class="p">))</span><span class="nv">withPreparedAuthorizationURLHandler</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">clientId</span> <span class="o">=</span> <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;clientId&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">scope</span> <span class="o">=</span> <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;scope&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">authorizationURL</span> <span class="o">=</span> <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;authorizationURL&quot;</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">url</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="nl">stringWithFormat:</span><span class="s">@&quot;%@?response_type=code&amp;client_id=%@&amp;redirect_uri=%@&amp;scope=%@&amp;data-requestvisibleactions=%@&quot;</span><span class="p">,</span> <span class="n">authorizationURL</span><span class="p">,</span> <span class="n">clientId</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">visibleactions</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">withPreparedAuthorizationURLHandler</span><span class="p">([</span><span class="n">NSURL</span> <span class="nl">URLWithString:</span><span class="n">url</span><span class="p">]);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// OAuth2.0認証のリダイレクトURIの一致の有無を確認する処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">checkRedirectURI:</span><span class="p">(</span><span class="n">NSURLRequest</span> <span class="o">*</span><span class="p">)</span><span class="nv">request</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="c1">// HOSTの取得</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">host</span> <span class="o">=</span> <span class="p">[[</span><span class="n">request</span> <span class="n">URL</span><span class="p">]</span> <span class="n">host</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">([</span><span class="n">host</span> <span class="nl">isEqualToString:</span><span class="s">@&quot;localhost&quot;</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">YES</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">NO</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// アクセストークンを取得する処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">getAccessToken:</span><span class="p">(</span><span class="n">NSURLRequest</span> <span class="o">*</span><span class="p">)</span><span class="nv">request</span> <span class="nf">completionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">))</span><span class="nv">completionHandler</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">host</span> <span class="o">=</span> <span class="p">[[</span><span class="n">request</span> <span class="n">URL</span><span class="p">]</span> <span class="n">host</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">([</span><span class="n">host</span> <span class="nl">isEqualToString:</span><span class="s">@&quot;localhost&quot;</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSString</span><span class="o">*</span> <span class="n">verifier</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">NSArray</span><span class="o">*</span> <span class="n">urlParams</span> <span class="o">=</span> <span class="p">[[</span><span class="n">request</span> <span class="n">URL</span><span class="p">]</span> <span class="n">query</span><span class="p">]</span> <span class="nl">componentsSeparatedByString:</span><span class="s">@&quot;&amp;&quot;</span><span class="p">];</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="n">NSString</span><span class="o">*</span> <span class="n">param</span> <span class="k">in</span> <span class="n">urlParams</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">NSArray</span><span class="o">*</span> <span class="n">keyValue</span> <span class="o">=</span> <span class="p">[</span><span class="n">param</span> <span class="nl">componentsSeparatedByString:</span><span class="s">@&quot;=&quot;</span><span class="p">];</span>
+</span><span class='line'>          <span class="n">NSString</span><span class="o">*</span> <span class="n">key</span> <span class="o">=</span> <span class="p">[</span><span class="n">keyValue</span> <span class="nl">objectAtIndex:</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">([</span><span class="n">key</span> <span class="nl">isEqualToString:</span><span class="s">@&quot;code&quot;</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">verifier</span> <span class="o">=</span> <span class="p">[</span><span class="n">keyValue</span> <span class="nl">objectAtIndex:</span><span class="mi">1</span><span class="p">];</span>
+</span><span class='line'>              <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">verifier</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">NSString</span> <span class="o">*</span><span class="n">clientId</span> <span class="o">=</span> <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;clientId&quot;</span><span class="p">];</span>
+</span><span class='line'>          <span class="n">NSString</span> <span class="o">*</span><span class="n">clientSecret</span> <span class="o">=</span> <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;clientSecret&quot;</span><span class="p">];</span>
+</span><span class='line'>          <span class="n">NSString</span> <span class="o">*</span><span class="n">tokenURL</span> <span class="o">=</span> <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;tokenURL&quot;</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="c1">// AFHTTPSessionManagerをインスタンス化</span>
+</span><span class='line'>          <span class="n">AFHTTPSessionManager</span> <span class="o">*</span><span class="n">manager</span> <span class="o">=</span> <span class="p">[</span><span class="n">AFHTTPSessionManager</span> <span class="n">manager</span><span class="p">];</span>
+</span><span class='line'>          <span class="c1">// サーバエラー時のContent-Typeにtext/plainを許可(成功時にapplication/jsonが必要なので共に追加)</span>
+</span><span class='line'>          <span class="n">manager</span><span class="p">.</span><span class="n">responseSerializer</span><span class="p">.</span><span class="n">acceptableContentTypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSSet</span> <span class="nl">setWithObjects:</span><span class="s">@&quot;text/plain&quot;</span><span class="p">,</span> <span class="s">@&quot;application/json&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'>          <span class="c1">// パラメータの設定</span>
+</span><span class='line'>          <span class="n">NSDictionary</span> <span class="o">*</span><span class="n">data</span> <span class="o">=</span> <span class="err">@</span><span class="p">{</span><span class="s">@&quot;code&quot;</span><span class="o">:</span> <span class="n">verifier</span><span class="p">,</span> <span class="s">@&quot;client_id&quot;</span><span class="o">:</span> <span class="n">clientId</span><span class="p">,</span> <span class="s">@&quot;client_secret&quot;</span><span class="o">:</span> <span class="n">clientSecret</span><span class="p">,</span> <span class="s">@&quot;redirect_uri&quot;</span><span class="o">:</span> <span class="n">callback</span><span class="p">,</span> <span class="s">@&quot;grant_type&quot;</span><span class="o">:</span> <span class="s">@&quot;authorization_code&quot;</span><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="p">[</span><span class="n">manager</span> <span class="nl">POST:</span><span class="n">tokenURL</span> <span class="nl">parameters:</span><span class="n">data</span> <span class="nl">success:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURLSessionDataTask</span> <span class="o">*</span><span class="n">task</span><span class="p">,</span> <span class="kt">id</span> <span class="n">responseObject</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="c1">// 成功した場合</span>
+</span><span class='line'>              <span class="k">if</span><span class="p">(</span><span class="n">responseObject</span> <span class="o">&amp;&amp;</span> <span class="p">[</span><span class="n">responseObject</span> <span class="n">count</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>                  <span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span> <span class="o">=</span> <span class="n">responseObject</span><span class="p">[</span><span class="s">@&quot;access_token&quot;</span><span class="p">];</span>
+</span><span class='line'>                  <span class="n">NSString</span> <span class="o">*</span><span class="n">refreshToken</span> <span class="o">=</span> <span class="n">responseObject</span><span class="p">[</span><span class="s">@&quot;refresh_token&quot;</span><span class="p">];</span>
+</span><span class='line'>                  <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">setObject:</span><span class="n">accessToken</span> <span class="nl">forKey:</span><span class="s">@&quot;accessToken&quot;</span><span class="p">];</span>
+</span><span class='line'>                  <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">setObject:</span><span class="n">refreshToken</span> <span class="nl">forKey:</span><span class="s">@&quot;refreshToken&quot;</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>                  <span class="c1">// 処理が終了したときに実行(アクセストークンを返す)</span>
+</span><span class='line'>                  <span class="n">completionHandler</span><span class="p">(</span><span class="n">accessToken</span><span class="p">);</span>
+</span><span class='line'>              <span class="p">}</span>
+</span><span class='line'>          <span class="p">}</span> <span class="nl">failure:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURLSessionDataTask</span> <span class="o">*</span><span class="n">task</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="c1">// 失敗した場合</span>
+</span><span class='line'>              <span class="n">NSError</span> <span class="o">*</span><span class="n">err</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">NSData</span> <span class="o">*</span><span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">error</span> <span class="n">userInfo</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;com.alamofire.serialization.response.error.data&quot;</span><span class="p">];</span>
+</span><span class='line'>              <span class="k">if</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>                  <span class="c1">// エラーの中身がある場合</span>
+</span><span class='line'>                  <span class="p">[</span><span class="n">NSJSONSerialization</span> <span class="nl">JSONObjectWithData:</span><span class="n">data</span> <span class="nl">options:</span><span class="n">NSJSONReadingAllowFragments</span> <span class="nl">error:</span><span class="o">&amp;</span><span class="n">err</span><span class="p">];</span>
+</span><span class='line'>              <span class="p">}</span>
+</span><span class='line'>              <span class="c1">// 失敗を返す</span>
+</span><span class='line'>              <span class="n">failure</span><span class="p">(</span><span class="n">err</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}];</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// HOST名が一致しない場合</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// リフレッシュトークンから新しいアクセストークンを取得する処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">getRefreshAccessToken:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">))</span><span class="nv">success</span> <span class="nf">failure:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">))</span><span class="nv">failure</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">clientId</span> <span class="o">=</span> <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;clientId&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">tokenURL</span> <span class="o">=</span> <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;tokenURL&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">refreshToken</span> <span class="o">=</span> <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;refreshToken&quot;</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">clientId</span> <span class="o">&amp;&amp;</span> <span class="n">tokenURL</span> <span class="o">&amp;&amp;</span> <span class="n">refreshToken</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 必須パラメータがある場合</span>
+</span><span class='line'>      <span class="c1">// AFHTTPSessionManagerをインスタンス化</span>
+</span><span class='line'>      <span class="n">AFHTTPSessionManager</span> <span class="o">*</span><span class="n">manager</span> <span class="o">=</span> <span class="p">[</span><span class="n">AFHTTPSessionManager</span> <span class="n">manager</span><span class="p">];</span>
+</span><span class='line'>      <span class="c1">// サーバエラー時のContent-Typeにtext/plainを許可(成功時にapplication/jsonが必要なので共に追加)</span>
+</span><span class='line'>      <span class="n">manager</span><span class="p">.</span><span class="n">responseSerializer</span><span class="p">.</span><span class="n">acceptableContentTypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSSet</span> <span class="nl">setWithObjects:</span><span class="s">@&quot;text/plain&quot;</span><span class="p">,</span> <span class="s">@&quot;application/json&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// パラメータの設定</span>
+</span><span class='line'>      <span class="n">NSDictionary</span> <span class="o">*</span><span class="n">data</span> <span class="o">=</span> <span class="err">@</span><span class="p">{</span><span class="s">@&quot;client_id&quot;</span><span class="o">:</span> <span class="n">clientId</span><span class="p">,</span> <span class="s">@&quot;refresh_token&quot;</span><span class="o">:</span> <span class="n">refreshToken</span><span class="p">,</span> <span class="s">@&quot;grant_type&quot;</span><span class="o">:</span> <span class="s">@&quot;refresh_token&quot;</span><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="p">[</span><span class="n">manager</span> <span class="nl">POST:</span><span class="n">tokenURL</span> <span class="nl">parameters:</span><span class="n">data</span> <span class="nl">success:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURLSessionDataTask</span> <span class="o">*</span><span class="n">task</span><span class="p">,</span> <span class="kt">id</span> <span class="n">responseObject</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// 成功した場合</span>
+</span><span class='line'>          <span class="k">if</span><span class="p">(</span><span class="n">responseObject</span> <span class="o">&amp;&amp;</span> <span class="p">[</span><span class="n">responseObject</span> <span class="n">count</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span> <span class="o">=</span> <span class="n">responseObject</span><span class="p">[</span><span class="s">@&quot;access_token&quot;</span><span class="p">];</span>
+</span><span class='line'>              <span class="n">NSString</span> <span class="o">*</span><span class="n">refreshToken</span> <span class="o">=</span> <span class="n">responseObject</span><span class="p">[</span><span class="s">@&quot;refresh_token&quot;</span><span class="p">];</span>
+</span><span class='line'>              <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">setObject:</span><span class="n">accessToken</span> <span class="nl">forKey:</span><span class="s">@&quot;accessToken&quot;</span><span class="p">];</span>
+</span><span class='line'>              <span class="p">[[</span><span class="n">LUKeychainAccess</span> <span class="n">standardKeychainAccess</span><span class="p">]</span> <span class="nl">setObject:</span><span class="n">refreshToken</span> <span class="nl">forKey:</span><span class="s">@&quot;refreshToken&quot;</span><span class="p">];</span>
+</span><span class='line'>              
+</span><span class='line'>              <span class="c1">// 処理が終了したときに実行(アクセストークンを返す)</span>
+</span><span class='line'>              <span class="n">success</span><span class="p">(</span><span class="n">accessToken</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">},</span> <span class="n">failure</span><span class="p">(</span><span class="n">NSURLSessionDataTask</span> <span class="o">*</span><span class="n">task</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// 失敗した場合</span>
+</span><span class='line'>          <span class="n">NSError</span> <span class="o">*</span><span class="n">err</span><span class="p">;</span>
+</span><span class='line'>          <span class="n">NSData</span> <span class="o">*</span><span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">error</span> <span class="n">userInfo</span><span class="p">]</span> <span class="nl">objectForKey:</span><span class="s">@&quot;com.alamofire.serialization.response.error.data&quot;</span><span class="p">];</span>
+</span><span class='line'>          <span class="k">if</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="c1">// エラーの中身がある場合</span>
+</span><span class='line'>              <span class="p">[</span><span class="n">NSJSONSerialization</span> <span class="nl">JSONObjectWithData:</span><span class="n">data</span> <span class="nl">options:</span><span class="n">NSJSONReadingAllowFragments</span> <span class="nl">error:</span><span class="o">&amp;</span><span class="n">err</span><span class="p">];</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="c1">// 失敗を返す</span>
+</span><span class='line'>          <span class="n">failure</span><span class="p">(</span><span class="n">err</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}];</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 必須パラメータがない場合</span>
+</span><span class='line'>      <span class="c1">// TODO: エラーオブジェクトを生成して返す</span>
+</span><span class='line'>      <span class="n">failure</span><span class="p">(</span><span class="nb">nil</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// OAuth2Client.h</span>
+</span><span class='line'><span class="cp">#import &lt;Foundation/Foundation.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">OAuth2Client</span> : <span class="nc">NSObject</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// シングルトンのインスタンス取得</span>
+</span><span class='line'><span class="k">+</span> <span class="p">(</span><span class="n">OAuth2Client</span> <span class="o">*</span><span class="p">)</span><span class="nf">sharedInstance</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> OAuth2.0認証に必要なパラメータを設定する処理</span>
+</span><span class='line'><span class="cm"> @param clientId クライアントID</span>
+</span><span class='line'><span class="cm"> @param clientSecret クライアントシークレット</span>
+</span><span class='line'><span class="cm"> @param scope アクセス範囲</span>
+</span><span class='line'><span class="cm"> @param authorizationURL OAuth2.0 認証先URL</span>
+</span><span class='line'><span class="cm"> @param tokenURL OAuth2.0 トークン取得先URL</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">setUpOAuth2AccountClientId:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">clientId</span> <span class="nf">clientSecret:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">clientSecret</span> <span class="nf">scope:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">scope</span> <span class="nf">authorizationURL:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">authorizationURL</span> <span class="nf">tokenURL:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">tokenURL</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> OAuth2.0認証に必要なリクエストを生成する処理</span>
+</span><span class='line'><span class="cm"> @param withPreparedAuthorizationURLHandler OAuth2.0認証に必要なリクエストを返すBlock構文</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">requestAccessToAccount:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSURL</span> <span class="o">*</span><span class="n">preparedURL</span><span class="p">))</span><span class="nv">withPreparedAuthorizationURLHandler</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> OAuth2.0認証のリダイレクトURIの一致の有無を確認する処理</span>
+</span><span class='line'><span class="cm"> @param request リクエスト</span>
+</span><span class='line'><span class="cm"> @return リダイレクトURIの一致の有無</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">checkRedirectURI:</span><span class="p">(</span><span class="n">NSURLRequest</span> <span class="o">*</span><span class="p">)</span><span class="nv">request</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> アクセストークンを取得する処理</span>
+</span><span class='line'><span class="cm"> @param request アクセストークンの取得に必要なリクエスト</span>
+</span><span class='line'><span class="cm"> @param completionHandler アクセストークンの取得処理が完了したら実行される処理</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">getAccessToken:</span><span class="p">(</span><span class="n">NSURLRequest</span> <span class="o">*</span><span class="p">)</span><span class="nv">request</span> <span class="nf">completionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">))</span><span class="nv">completionHandler</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> リフレッシュトークンから新しいアクセストークンを取得する処理</span>
+</span><span class='line'><span class="cm"> @param success 処理が成功した場合に実行(返却データはアクセストークン)</span>
+</span><span class='line'><span class="cm"> @param failure 処理が失敗した場合に実行(返却データはエラーオブジェクト)</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">getRefreshAccessToken:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">))</span><span class="nv">success</span> <span class="nf">failure:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">))</span><span class="nv">failure</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>呼び出し側のソース</h4>
+
+<p>呼び出し側のソースを記載します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.m</span>
+</span><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;OAuth2Client.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">clientId</span> <span class="o">=</span> <span class="s">@&quot;&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">clientSecret</span> <span class="o">=</span> <span class="s">@&quot;&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">authorizationURL</span> <span class="o">=</span> <span class="s">@&quot;https://accounts.google.com/o/oauth2/auth&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">tokenURL</span> <span class="o">=</span> <span class="s">@&quot;https://accounts.google.com/o/oauth2/token&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">scope</span> <span class="o">=</span> <span class="s">@&quot;https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span><span class="o">&lt;</span><span class="n">UIWebViewDelegate</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">weak</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">UIWebView</span> <span class="o">*</span><span class="n">webView</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSMutableData</span> <span class="o">*</span><span class="n">receivedData</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">assign</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="o">*</span><span class="n">isLogin</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">ViewController</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">_webView</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">([</span><span class="n">defaults</span> <span class="nl">boolForKey:</span><span class="s">@&quot;isLogin&quot;</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 既にOAuth2.0認証実行済みの場合</span>
+</span><span class='line'>      <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">getRefreshAccessToken:</span><span class="o">^</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// 成功した場合</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">accessToken</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span> <span class="nl">failure:</span><span class="o">^</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// 失敗した場合</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}];</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 初めてOAuth2.0認証を実行する場合</span>
+</span><span class='line'>      <span class="c1">// OAuth2.0認証に必要な各種パラメータの設定</span>
+</span><span class='line'>      <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">setUpOAuth2AccountClientId:</span><span class="n">clientId</span> <span class="nl">clientSecret:</span><span class="n">clientSecret</span> <span class="nl">scope:</span><span class="n">scope</span> <span class="nl">authorizationURL:</span><span class="n">authorizationURL</span> <span class="nl">tokenURL:</span><span class="n">tokenURL</span><span class="p">];</span>
+</span><span class='line'>      <span class="c1">// OAuth2.0認証リクエスト</span>
+</span><span class='line'>      <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">requestAccessToAccount:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="n">preparedURL</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">// リクエスト</span>
+</span><span class='line'>          <span class="p">[</span><span class="n">_webView</span> <span class="nl">loadRequest:</span><span class="p">[</span><span class="n">NSURLRequest</span> <span class="nl">requestWithURL:</span> <span class="n">preparedURL</span><span class="p">]];</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">didReceiveMemoryWarning</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">didReceiveMemoryWarning</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">UIWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">shouldStartLoadWithRequest:</span><span class="p">(</span><span class="n">NSURLRequest</span> <span class="o">*</span><span class="p">)</span><span class="nv">request</span> <span class="nf">navigationType:</span><span class="p">(</span><span class="n">UIWebViewNavigationType</span><span class="p">)</span><span class="nv">navigationType</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">([</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">checkRedirectURI:</span><span class="n">request</span><span class="p">]])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">getAccessToken:</span><span class="n">request</span> <span class="nl">completionHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">){</span>
+</span><span class='line'>          <span class="c1">// 処理が終了したら呼び出される</span>
+</span><span class='line'>          <span class="k">if</span><span class="p">(</span><span class="n">accessToken</span><span class="p">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+</span><span class='line'>              <span class="p">[</span><span class="n">defaults</span> <span class="nl">setBool:</span><span class="n">YES</span> <span class="nl">forKey:</span><span class="s">@&quot;isLogin&quot;</span><span class="p">];</span>
+</span><span class='line'>              <span class="p">[</span><span class="n">defaults</span> <span class="n">synchronize</span><span class="p">];</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="p">[</span><span class="n">webView</span> <span class="n">removeFromSuperview</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">}];</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">return</span> <span class="n">NO</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">YES</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これで簡単ですが、OAuth2.0認証の自作ライブラリの開発が完了です。<br/>
+必要最低限の機能ですが、十分だと思います。<br/>
+(もう少し時間をかけてより良いものを作りたいと思います笑。)</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://technogerms.com/login-with-google-using-oauth-2-0-for-ios-xcode-objective-c/">Login with Google using OAuth 2.0 for iOS Xcode Objective-C</a></li>
+<li><a href="http://www.ari-hiro.com/blog/2012/12/30/oauth2-summary">OAuth2.0の備忘録的まとめ</a></li>
+<li><a href="http://qiita.com/asakahara/items/06abbc0209262d0051ef">iOSでアプリを削除してもデータを保持する方法</a></li>
+</ul>
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-01T00:56:00+09:00" pubdate data-updated="true">Jun 1<span>st</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/oauth2/'>oauth2</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2015/06/01/custom-oauth/" data-via="" data-counturl="http://grandbig.github.io/blog/2015/06/01/custom-oauth/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/05/24/android-volley/" title="Previous Post: Android Studioでvolley frameworkを利用するまで">&laquo; Android Studioでvolley frameworkを利用するまで</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/06/06/altbeacon-service/" title="Next Post: AndroidでBackgroundでiBeaconを検知しよう！">AndroidでBackgroundでiBeaconを検知しよう！ &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/09/13/google-sign-in/">Google Sign-in SDK for iOSを使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/31/ios9-ats/">iOS9 App Transport Securityについて</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/20/write-kontakt-beacon/">Kontakt.ioのSmart Beaconのパラメータを書き換えてみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/18/start-kontakt-beacon/">Kontakt.ioのSmart Beaconを使ってみた</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/22/android-realmbrowser/">AndroidでRealmで保存した値を確認しよう！</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (88)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (17)</a></li><li><a href='/blog/categories/webview'>webview (8)</a></li><li><a href='/blog/categories/android'>android (8)</a></li><li><a href='/blog/categories/ios8'>ios8 (8)</a></li><li><a href='/blog/categories/swift'>swift (8)</a></li><li><a href='/blog/categories/apurishen-qing'>アプリ申請 (5)</a></li><li><a href='/blog/categories/location'>location (5)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li><li><a href='/blog/categories/xcode'>xcode (5)</a></li><li><a href='/blog/categories/map'>map (4)</a></li><li><a href='/blog/categories/wkwebview'>WKWebView (4)</a></li><li><a href='/blog/categories/sqlite'>SQLite (4)</a></li><li><a href='/blog/categories/xcode6'>xcode6 (4)</a></li><li><a href='/blog/categories/passbook'>Passbook (3)</a></li></ul>
+</section>
+<aside>
+	<h3>About Takahiro</h3>
+	<p>
+	メカ出身のプログラマー<br />
+	故にLevelは-1<br />
+	主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)<br />
+	</p>
+	<a href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2015/06/01/custom-oauth/';
+        var disqus_url = 'http://grandbig.github.io/blog/2015/06/01/custom-oauth/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,1156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: iBeacon | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/ibeacon/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-09-13T22:43:00+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Kontakt.ioのSmart Beaconのパラメータを書き換えてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/07/20/write-kontakt-beacon/"/>
+    <updated>2015-07-20T00:01:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/07/20/write-kontakt-beacon</id>
+    <content type="html"><![CDATA[<h4>Kontakt.ioのSmart Beaconのパラメータの書き換え方法</h4>
+
+<p>さて、続きを書いていきます。<br/>
+前回、Kontakt.ioのSmart Beaconを検知するところまで書きました。<br/>
+本記事では、必要に応じて、パラメータを変更する方法について書きたいと思います。</p>
+
+<p>手順は<a href="http://docs.kontakt.io/ios-sdk/quickstart/#beacon-configuration">Kontakt.ioの公式ページのBeacon Configuration</a>に書かれていますが、<code>/device/update</code>に引っかかったり、REST APIを叩こうとしたりすることもあるかもしれないので、紹介します。(筆者は初めきちんと読まずにいろいろと実行してしまいました&hellip;)</p>
+
+<p>では、早速書いていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>Objective-C編</h5>
+
+<p>さて、まずはObjective-Cです。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<p>@interface ViewController ()<KTKBluetoothManagerDelegate></p>
+
+<p>@property(strong, nonatomic) KTKBeaconManager <em>bm;
+@property(strong, nonatomic) KTKBeaconDevice </em>bd;
+@property(assign, nonatomic) BOOL flag;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];</p>
+
+<p>  <em>bm = [KTKBeaconManager new];
+  </em>bm.delegate = self;
+  _flag = NO;
+}</p></li>
+<li><p>(void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];</p>
+
+<p>  // iBeaconデバイスの検索開始
+  [_bm startFindingDevices];
+}</p></li>
+<li><p>(void)viewDidDisappear:(BOOL)animated {
+  [super viewDidDisappear:animated];</p>
+
+<p>  // iBeaconデバイスの検索停止
+  [_bm stopFindingDevices];
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning {
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<h1>pragma mark &ndash; KTKBluetoothManagerDelegate</h1>
+
+<ul>
+<li><p>(void)bluetoothManager:(KTKBluetoothManager <em>)bluetoothManager didChangeDevices:(NSSet </em>)devices {</p>
+
+<p>  if(!<em>bd) {
+      // 利用したいKTKBeaconDeviceが見つかっていない場合
+       NSArray <em>deviceArray = [devices allObjects];
+       for(id device in deviceArray) {
+          KTKBeaconDevice </em>beacon = device;
+          if([beacon.uniqueID isEqualToString:@&ldquo;****&rdquo;]) {
+              // 利用したいiBeaconを格納
+              </em>bd = beacon;
+          }
+       }
+  } else {
+      // 利用したいKTKBeaconDeviceが見つかった場合
+      KTKCharacteristicDescriptor <em>descriptor;
+      descriptor = [_bd characteristicDescriptorWithType:kKTKCharacteristicDescriptorTypeMajor];
+      NSError </em>err;
+      // iBeaconデバイスに接続
+      BOOL connected = [<em>bd connectWithPassword:@&ldquo;****&rdquo; andError:&amp;err];
+      if(connected &amp;&amp; !err) {
+          // 接続できた場合
+          // パラメータ値の取得
+          err = [</em>bd readValueForCharacteristicWithDescriptor:descriptor];
+          if(!err) {
+              NSString *valueString = [_bd stringForCharacteristicWithDescriptor:descriptor];
+              NSLog(@&ldquo;value: %@&rdquo;, valueString);</p>
+
+<pre><code>          if(!_flag) {
+              // パラメータの書き換え処理
+              err = [_bd writeString:@"20053" forCharacteristicWithDescriptor:descriptor];
+          }
+          // iBeaconデバイスから切断
+          [_bd disconnect];
+      }
+  }
+</code></pre>
+
+<p>  }
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>上記処理を実行後、Kontakt.ioの専用アプリで確認すれば、パラメータの値が変更されていることを確認できます。</p>
+
+<h5>Swift編</h5>
+
+<p>続いて、Swiftのコードも書いてみます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController, KTKBluetoothManagerDelegate {</p>
+
+<pre><code>let bm:KTKBeaconManager = KTKBeaconManager()
+var bd:KTKBeaconDevice? = KTKBeaconDevice()
+var flag:Bool = false
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    self.bm.delegate = self;
+}
+
+override func viewDidAppear(animated: Bool) {
+    super.viewDidAppear(animated)
+
+    // iBeaconデバイスの検索開始
+    bm.startFindingDevices()
+}
+
+override func viewDidDisappear(animated: Bool) {
+    super.viewDidDisappear(animated)
+
+    // iBeaconデバイスの検索停止
+    bm.stopFindingDevices()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func bluetoothManager(bluetoothManager: KTKBluetoothManager!, didChangeDevices devices: Set&lt;NSObject&gt;!) {
+    if self.bd?.uniqueID == "****" {
+        // 利用したいKTKBeaconDeviceが見つかった場合
+        let descriptor:KTKCharacteristicDescriptor = self.bd!.characteristicDescriptorWithType(kKTKCharacteristicDescriptorTypeMajor)
+        var err:NSError?
+        // iBeaconデバイスに接続
+        let connected:Bool = self.bd!.connectWithPassword("****", andError: &amp;err)
+        if connected {
+            // 接続できた場合
+            // パラメータ値の取得
+            err = self.bd!.readValueForCharacteristicWithDescriptor(descriptor)
+            if err == nil {
+                let valueString = self.bd!.stringForCharacteristicWithDescriptor(descriptor)
+                println("\(valueString)")
+                if self.flag == false {
+                    // パラメータの書き換え処理
+                    err = self.bd!.writeString("20053", forCharacteristicWithDescriptor: descriptor)
+                    self.flag = true;
+                }
+                // iBeaconデバイスから切断
+                self.bd?.disconnect()
+            }
+        }
+    } else {
+        // 利用したいKTKBeaconDeviceが見つかっていない場合
+        let deviceArray:[AnyObject] = Array(devices)
+        for device in deviceArray  {
+            let beacon:KTKBeaconDevice = device as! KTKBeaconDevice
+            if beacon.uniqueID == "****" {
+                // 利用したいiBeaconを格納
+                self.bd = beacon
+            }
+        }
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>こちらも専用アプリでパラメータ値が書き換わっていることを確認できました。<br/>
+Kontakt.ioの制御特性を活かしたサービスを企画できる可能性を感じました。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Kontakt.ioのSmart Beaconを使ってみた]]></title>
+    <link href="http://grandbig.github.io/blog/2015/07/18/start-kontakt-beacon/"/>
+    <updated>2015-07-18T22:40:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/07/18/start-kontakt-beacon</id>
+    <content type="html"><![CDATA[<h4>Kontakt.ioのSmart Beaconを使ってみよう</h4>
+
+<p>さて、久しぶりの更新です。<br/>
+実は先日、以前から気になっていた<a href="https://store.kontakt.io/our-products/1-bluetooth-beacon.html">Kontakt.io Smart Beacon</a>を購入してみました。<br/>
+あまり海外の製品を購入することがないので、届くか心配でしたが、ばっちり自宅に届きました笑</p>
+
+<p>なぜ、Kontakt.ioのSmart Beaconに着目していたかというと、筆者が知る限り、最も発信出力(TxPower)を弱くすることが可能なBeaconだからです。<br/>
+<a href="https://support.kontakt.io/hc/en-gb/articles/201621521-Transmission-power-Range-and-RSSI">仕様書</a>を見てみると、出力を-30[dBm]にまで下げることができ、その電波距離は実に2[m]程度らしいです。</p>
+
+<p>また、SDKが充実しており、発信出力を自由に変更できるところもポイント高いですね。<br/>
+さて、今回は基本的な実装から見て行きましょう！(何回かに分けて記事にしようと思います。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>SDKをプロジェクトに追加</h4>
+
+<p>まずは、SDKを使える状態に持っていきます。</p>
+
+<h5>Objective-C編</h5>
+
+<p>CocoaPodsで提供されていますので、簡単です。</p>
+
+<ol>
+<li>Projectファイルと同じ階層に<code>Podfile</code>を作成します</li>
+<li><code>pod 'KontaktSDK'</code>と記載します</li>
+<li><code>pod install</code>を実行します</li>
+</ol>
+
+
+<p>以上でプロジェクトへの追加完了です。</p>
+
+<h5>Swift編</h5>
+
+<p>CocoaPods使いましょう！</p>
+
+<ol>
+<li>Projectファイルと同じ階層に<code>Podfile</code>を作成します</li>
+<li><code>pod 'KontaktSDK'</code>と記載します</li>
+<li><code>pod install</code>を実行します</li>
+<li>Bridging-Headerファイルを作成します
+<code>ProjectName-Bridging-Header.h</code>ファイルを作成し、Build Settings > Swift Compiler > Objective-C Bridging Headerにパスを設定</li>
+<li>Bridging-Headerファイルに必要なライブラリを<code>import</code>します</li>
+</ol>
+
+
+<p>下記は、Buid Settingsの設定です。<br/>
+<img src="/images/kontakt1.png" alt="Bridging-Headerファイルの設定" /></p>
+
+<p>下記はBridging-Headerファイルの中身です。</p>
+
+<p>```objective-c</p>
+
+<h1>ifndef KontaktSwiftTest_KontaktSwiftTest_Bridging_Header_h</h1>
+
+<h1>define KontaktSwiftTest_KontaktSwiftTest_Bridging_Header_h</h1>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<h1>import &lt;CoreLocation/CoreLocation.h></h1>
+
+<h1>import &lt;CoreBluetooth/CoreBluetooth.h></h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<h1>endif</h1>
+
+<p>```</p>
+
+<h4>Kontakt.ioのBeaconを検知してみよう</h4>
+
+<p>これで準備が整ったので、実際にソースを書いて、Beaconを検知してみましょう！</p>
+
+<h5>Objective-C編</h5>
+
+<p>ViewController.mにどんどん書いていきます。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<p>@interface ViewController ()<KTKLocationManagerDelegate></p>
+
+<p>@property(strong, nonatomic) KTKLocationManager *lm;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];</p>
+
+<p>  <em>lm = [KTKLocationManager new];
+  </em>lm.delegate = self;</p>
+
+<p>  if ([KTKLocationManager canMonitorBeacons]) {
+      KTKRegion *region = [KTKRegion alloc] init];
+      region.uuid = @&ldquo;AF41A130-E105-4F13-9483-316B7101B0A9&rdquo;;
+      [_lm setRegions:@[region]];]
+  }
+}</p></li>
+<li><p>(void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];</p>
+
+<p>  [_lm startMonitoringBeacons];
+}</p></li>
+<li><p>(void)viewDidDisappear:(BOOL)animated {
+  [super viewDidDisappear:animated];</p>
+
+<p>  [_lm stopMonitoringBeacons];
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning {
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<h1>pragma mark &ndash; KTKLocationManagerDelegate</h1>
+
+<ul>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didChangeState:(KTKLocationManagerState)state withError:(NSError </em>)error {
+  if(state == KTKLocationManagerStateFailed) {
+      NSLog(@&ldquo;Something went wrong with your Location Services settings. Check OS settings.&rdquo;);
+  }
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didEnterRegion:(KTKRegion </em>)region {
+  NSLog(@&ldquo;Enter region %@&rdquo;, region.uuid);
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didExitRegion:(KTKRegion </em>)region {
+  NSLog(@&ldquo;Exit region %@&rdquo;, region.uuid);
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didRangeBeacons:(NSArray </em>)beacons {
+  NSLog(@&ldquo;Ranged beacons count: %lu&rdquo;, [beacons count]);
+}</p></li>
+</ul>
+
+
+<p>@end</p>
+
+<p>```</p>
+
+<h5>Swift編</h5>
+
+<p><code>ViwController.swift</code>にどんどん書いていきます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController, KTKLocationManagerDelegate {</p>
+
+<pre><code>let lm:KTKLocationManager = KTKLocationManager()
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    if(KTKLocationManager.canMonitorBeacons()) {
+        let region:KTKRegion = KTKRegion()
+        region.uuid = "AF41A130-E105-4F13-9483-316B7101B0A9"
+        lm.setRegions([region])
+        self.lm.delegate = self
+    }
+}
+
+override func viewDidAppear(animated: Bool) {
+    super.viewDidAppear(animated)
+
+    lm.startMonitoringBeacons()
+}
+
+override func viewDidDisappear(animated: Bool) {
+    super.viewDidDisappear(animated)
+
+    lm.stopMonitoringBeacons()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func locationManager(locationManager: KTKLocationManager!, didChangeState state: KTKLocationManagerState, withError error: NSError!) {
+    if(state == .Failed) {
+        println("Something went wrong with your Location Services settings. Check OS settings.")
+    }
+}
+
+func locationManager(locationManager: KTKLocationManager!, didEnterRegion region: KTKRegion!) {
+    println("Enter region \(region.uuid)")
+}
+
+func locationManager(locationManager: KTKLocationManager!, didExitRegion region: KTKRegion!) {
+    println("Exit region \(region.uuid)")
+}
+
+func locationManager(locationManager: KTKLocationManager!, didRangeBeacons beacons: [AnyObject]!) {
+    println("Ranged beacons count: \(beacons.count)")
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これでKontakt.ioのSmart Beaconを検知することができるようになりました。<br/>
+次回はAPI連携して、Beaconのパラメータを変えてみたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[複数のiBeaconを検知しよう！(別UUIDの場合)]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region/"/>
+    <updated>2015-06-14T23:43:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region</id>
+    <content type="html"><![CDATA[<h4>複数のiBeacon(別UUIDのiBeacon)を検知する方法</h4>
+
+<p>さて、本日は別々のUUIDを持ったiBeacon信号を補足したいと思います。<br/>
+iBeaconは案外、電波が遠くまで飛ぶため、幾つかのUUIDを補足できるようにしておくことで、うまく<code>didEnterRegion</code>, <code>didExitRegion</code>を使い、レンジングでのみ取得可能な値を効果的に使うことができるかもしれません。<br/>
+今回はiOS8以上を対象に下記サンプルソースを書きました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@property (strong, nonatomic) CLLocationManager <em>locationManager;
+@property (strong, nonatomic) NSUUID </em>proximityUUID1, <em>proximityUUID2;
+@property (strong, nonatomic) CLBeaconRegion </em>beaconRegion1, <em>beaconRegion2;
+@property (strong, nonatomic) CLBeacon </em>nearestBeacon;
+@property (strong, nonatomic) NSString *str;</p>
+
+<p>@end</p>
+
+<ul>
+<li><p>(void)viewDidLoad
+{
+  [super viewDidLoad];</p>
+
+<p>  self.locationManager = [[CLLocationManager alloc] init];
+  self.locationManager.delegate = self;</p>
+
+<p>  self.proximityUUID1 = [[NSUUID alloc] initWithUUIDString:@&ldquo;8D4DB809-032F-4771-96F3-99BD5C25F924&rdquo;];
+  self.beaconRegion1 = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID1 identifier:@&ldquo;com.takahiro.ibeaconSample&rdquo;];
+  self.proximityUUID2 = [[NSUUID alloc] initWithUUIDString:@&ldquo;1AE93327-B172-4C5D-BBF7-F52B959FD4EB&rdquo;];
+  self.beaconRegion2 = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID1 identifier:@&ldquo;com.takahiro.ibeaconSample2&rdquo;];</p>
+
+<p>  [self.locationManager requestAlwaysAuthorization];
+}</p></li>
+</ul>
+
+
+<p>// ユーザの位置情報の許可状態を確認するメソッド
+&ndash; (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{</p>
+
+<pre><code>if (status == kCLAuthorizationStatusAuthorizedAlways) {
+    // Beaconのモニタリングを開始
+    [self.locationManager startMonitoringForRegion:self.beaconRegion1];
+    [self.locationManager startMonitoringForRegion:self.beaconRegion2];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// 指定した領域に入った場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didEnterRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>[self sendLocalNotificationForMessage:@"Enter Region"];
+</code></pre>
+
+<p>}</p>
+
+<p>// 指定した領域から出た場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didExitRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>[self sendLocalNotificationForMessage:@"Exit Region"];
+</code></pre>
+
+<p>}</p>
+
+<p>// iBeacon領域内に既にいるか/いないかの判定
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>switch (state) {
+    case CLRegionStateInside:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+            [self.locationManager startRangingBeaconsInRegion:self.beaconRegion1];
+            [self.locationManager startRangingBeaconsInRegion:self.beaconRegion2];
+        }
+        break;
+    case CLRegionStateOutside:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+        }
+        break;
+    case CLRegionStateUnknown:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+        }
+        break;
+    default:
+        break;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// Beacon信号を検出した場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didRangeBeacons:(NSArray </em>)beacons inRegion:(CLBeaconRegion *)region
+{</p>
+
+<pre><code>if (beacons.count &gt; 0) {
+    self.nearestBeacon = beacons.firstObject;
+    NSString *rangeMessage;
+
+    switch(self.nearestBeacon.proximity) {
+        case CLProximityImmediate:
+            rangeMessage = @"Range Immediate";
+            break;
+        case CLProximityNear:
+            rangeMessage = @"Range Near";
+            break;
+        case CLProximityFar:
+            rangeMessage = @"Range Far";
+            break;
+        default:
+            rangeMessage = @"Range Unknown";
+            break;
+    }
+
+    self.str = [[NSString alloc] initWithFormat:@"%f [m]", self.nearestBeacon.accuracy];
+    [self sendLocalNotificationForMessage:self.str];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// ローカルプッシュ
+&ndash; (void)sendLocalNotificationForMessage:(NSString *)message
+{</p>
+
+<pre><code>UILocalNotification *localNotification = [UILocalNotification new];
+localNotification.alertBody = message;
+localNotification.fireDate = [NSDate date];
+localNotification.soundName = nil;
+[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ローカルプッシュを可能にするために<code>AppDelegate.m</code>に下記書式を追加しましょう。</p>
+
+<p>```objective-c
+// AppDelegate.m
+&ndash; (BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions
+{</p>
+
+<pre><code>...
+
+if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)]) {
+    [[UIApplication sharedApplication] registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|UIUserNotificationTypeSound categories:nil]];
+}
+
+return YES;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントは<code>CLBeaconRegion</code>を作成するときに指定する<code>UUID</code>と<code>identifier</code>が共にユニークであることです。<br/>
+<code>UUID</code>のみを別々にしても<code>identifier</code>が同じだと別のiBeacon領域と見なされないので注意が必要です。</p>
+
+<p>別々のiBeacon領域が作成できれば、<code>didEnterRegion</code>, <code>didExitRegion</code>などのデリゲートメソッドはそれぞれのiBeacon領域に対して発生します。<br/>
+もし、比較的狭い空間で複数のiBeaconを設置して、アプリをFG起動しない前提で人流解析をしたい場合は複数のiBeacon領域(別々のUUIDを持ったiBeacon領域)を用意することも１つの手だと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[AndroidでBackgroundでiBeaconを検知しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/06/altbeacon-service/"/>
+    <updated>2015-06-06T22:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/06/altbeacon-service</id>
+    <content type="html"><![CDATA[<h4>AltBeaconでiBeacon検知(アプリBG起動編)</h4>
+
+<p>さて、以前、<a href="http://grandbig.github.io/blog/2015/05/16/altbeacon/">AltBeaconを使ってAndroidでiBeaconを検知しよう</a>で基本的な使い方を説明させて頂きました。<br/>
+今回はアプリをBackgroundで起動しているときにもiBeaconを検知できるようにしてみようと思います。<br/>
+Background起動だけであれば、Applicationクラスを使うことで実現できますが、<br/>
+Serviceクラスを使えば、アプリをBackgroundから削除したとしても動作させることができます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>では早速、ソースコードを見て行きましょう。</p>
+
+<p>```java
+// BeaconServiceクラス
+// Serviceを拡張し、BootstrapNotifierをインターフェースとしたBeaconServiceクラス
+public class BeaconService extends Service implements BootstrapNotifier {</p>
+
+<pre><code>public static final String TAG = org.altbeacon.beacon.service.BeaconService.class.getSimpleName();
+
+// iBeaconのデータを認識するためのParserフォーマット
+public static final String IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24";
+// BGで監視するiBeacon領域
+private RegionBootstrap regionBootstrap;
+// iBeacon検知用のマネージャー
+private BeaconManager beaconManager;
+// UUID設定用
+private Identifier identifier;
+// iBeacon領域
+private Region region;
+// 監視するiBeacon領域の名前
+private String beaconName;
+
+@Override
+public void onCreate() {
+    super.onCreate();
+
+    // iBeaconのデータを受信できるようにParserを設定
+    beaconManager = BeaconManager.getInstanceForApplication(this);
+    beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(IBEACON_FORMAT));
+    // BGでiBeacon領域を監視(モニタリング)するスキャン間隔を設定
+    beaconManager.setBackgroundBetweenScanPeriod(1000);
+
+    // UUIDの作成
+    identifier = Identifier.parse("A56BA1E1-C06E-4C08-8467-DB6F5BD04486");
+    // Beacon名の作成
+    beaconName = "MyBeacon-000206C6";
+    // major, minorの指定はしない
+    region = new Region(beaconName, identifier, null, null);
+    regionBootstrap = new RegionBootstrap(this, region);
+
+    beaconManager.setRangeNotifier(new RangeNotifier() {
+        @Override
+        public void didRangeBeaconsInRegion(Collection&lt;Beacon&gt; beacons, Region region) {
+            // 検出したビーコンの情報を全部Logに書き出す
+            for(Beacon beacon : beacons) {
+                Log.d(TAG, "UUID:" + beacon.getId1() + ", major:" + beacon.getId2() + ", minor:" + beacon.getId3() + ", Distance:" + beacon.getDistance() + ",RSSI" + beacon.getRssi() + ", TxPower" + beacon.getTxPower());
+            }
+        }
+    });
+}
+
+@Override
+public int onStartCommand(Intent intent, int flags, int startId) {
+    return super.onStartCommand(intent, flags, startId);
+}
+
+@Override
+public void onDestroy() {
+    super.onDestroy();
+}
+
+@Override
+public IBinder onBind(Intent intent) {
+    return null;
+}
+
+@Override
+public void didEnterRegion(Region region) {
+    // 領域侵入
+    Log.d(TAG, "Enter Region");
+    // アプリをFG起動させる
+    Intent intent = new Intent(this, MainActivity.class);
+    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    startActivity(intent);
+
+    try {
+        // レンジング開始
+        beaconManager.startRangingBeaconsInRegion(region);
+    } catch(RemoteException e) {
+        // 例外が発生した場合
+        e.printStackTrace();
+    }
+}
+
+@Override
+public void didExitRegion(Region region) {
+    // 領域退出
+    Log.d(TAG, "Exit Region");
+    try {
+        // レンジング停止
+        beaconManager.stopRangingBeaconsInRegion(region);
+    } catch() {
+        // 例外が発生した場合
+        e.printStackTrace();
+    }
+}
+
+@Override
+public void didDetermineStateForRegion(int i, Region region) {
+    // 領域に対する状態が変化
+    Log.d(TAG, "Determine State: " + i);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p><strong>領域進入時にアプリをFG起動</strong> させているので、アプリがFG起動したらiBeacon領域に侵入したと言えます。<br/>
+さあ、これでiOSとほぼ同じ挙動を実現できました。</p>
+
+<p>蛇足かもしれませんが、<code>MainActivity.java</code>でサービスを起動する部分も書いておきます。</p>
+
+<p>```java
+// MainActivity.java</p>
+
+<p>public class MainActivity extends ActionBarActivity {</p>
+
+<pre><code>@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    // サービス起動
+    startService(new Intent(MainActivity.this, BeaconService.class));
+}
+
+&lt;省略&gt;
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+
+<p>ソースコードは<a href="https://github.com/grandbig/altBeaconSample/tree/service">こちら</a>から。<br/>
+serviceブランチを参照ください。</p>
+
+<p>といったところで本日はここまで。</p>
+
+<p>参考:<br/>
+<a href="http://dev.classmethod.jp/smartphone/android-beacon-library-introduction-5/">[Android][iBeacon] Android Beacon Library パラっと解説 その5 [バックグラウンド領域監視]</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[AltBeaconを使ってAndroidでiBeaconを検知しよう]]></title>
+    <link href="http://grandbig.github.io/blog/2015/05/16/altbeacon/"/>
+    <updated>2015-05-16T19:12:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/05/16/altbeacon</id>
+    <content type="html"><![CDATA[<h4>AltBeaconを使って手軽にAndroidでiBeaconを検知しよう</h4>
+
+<p>本日はAndroidでのiBeacon検知をやってみようと思います。<br/>
+自作することも簡単だと聞きますが、Radius Networks社が出している<a href="https://github.com/AltBeacon/android-beacon-library">AltBeacon</a>が非常に便利なようです。</p>
+
+<p>何と言ってもiOSのCoreLocation.frameworkと同じ感覚で扱えるというのが強みでしょう。<br/>
+(iOSアプリエンジニアにとっては非常に助かります笑)</p>
+
+<p>さて、実際に実装方法を見て行きましょう。</p>
+
+<p>実装方法や設定に関しては、<a href="http://dev.classmethod.jp/series/android-x-ibeacon/">Developers.IO Android x iBeacon – シリーズ –</a>を踏襲させて頂きました。<br/>
+めちゃくちゃわかりやすいサイトなので、他のページも参考にすると良いです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>本記事のAndroid Studioのバージョンは1.2となります。</p>
+
+<p><img src="/images/altbeacon_1.png" alt="Android Studioバージョン" /></p>
+
+<h5>AltBeaconのライブラリを使うための準備</h5>
+
+<p>AltBeaconライブラリを導入します。</p>
+
+<p>１. Gradle Scripts > build.gradle(Module: app)の編集
+<code>compile 'org.altbeacon:android-beacon-library:2+'</code>を<code>dependencies</code>に追加</p>
+
+<p>```java
+apply plugin: &lsquo;com.android.application&rsquo;</p>
+
+<p>android {</p>
+
+<pre><code>&lt;省略&gt;
+</code></pre>
+
+<p>}</p>
+
+<p>dependencies {</p>
+
+<pre><code>compile fileTree(dir: 'libs', include: ['*.jar'])
+compile 'com.android.support:appcompat-v7:21.0.3'
+compile 'org.altbeacon:android-beacon-library:2+'
+</code></pre>
+
+<p>}
+```</p>
+
+<p>２. app > manifests > AndroidManifest.xmlの編集
+Bluetooth関連のpermissionを追加</p>
+
+<p>```xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;manifest xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>package="com.example.takahiro.altbeaconsample" &gt;
+
+&lt;!-- ここを追加 --&gt;
+&lt;uses-permission android:name="android.permission.BLUETOOTH"/&gt;
+&lt;uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/&gt;
+&lt;uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/&gt;
+
+&lt;application
+
+    &lt;省略&gt;
+
+&lt;/application&gt;
+</code></pre>
+
+<p></manifest>
+```</p>
+
+<h5>iBeaconの検知を実装</h5>
+
+<p>早速、iBeaconの検知(モニタリング)を実装します。</p>
+
+<p>```java
+package com.example.takahiro.altbeaconsample;</p>
+
+<p>import android.os.RemoteException;
+import android.support.v7.app.ActionBarActivity;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;</p>
+
+<p>// AltBeacon関連のライブラリをimport
+import org.altbeacon.beacon.BeaconConsumer;
+import org.altbeacon.beacon.BeaconManager;
+import org.altbeacon.beacon.BeaconParser;
+import org.altbeacon.beacon.Identifier;
+import org.altbeacon.beacon.MonitorNotifier;
+import org.altbeacon.beacon.Region;</p>
+
+<p>public class MainActivity extends ActionBarActivity implements BeaconConsumer {</p>
+
+<pre><code>// BeaconConsumerインターフェースを実装
+private static String TAG = "AltBeacon Sample";
+// BeaconManagerクラスの変数を定義
+private BeaconManager beaconManager;
+
+// iBeaconのデータを認識するためのParserフォーマット
+public static final String IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24";
+
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    // staticメソッドでBeaconManagerクラスのインスタンスを取得
+    beaconManager = BeaconManager.getInstanceForApplication(this);
+    // BeaconParseをBeaconManagerに設定
+    beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(IBEACON_FORMAT));
+}
+
+@Override
+public boolean onCreateOptionsMenu(Menu menu) {
+    // Inflate the menu; this adds items to the action bar if it is present.
+    getMenuInflater().inflate(R.menu.menu_main, menu);
+    return true;
+}
+
+@Override
+public boolean onOptionsItemSelected(MenuItem item) {
+    // Handle action bar item clicks here. The action bar will
+    // automatically handle clicks on the Home/Up button, so long
+    // as you specify a parent activity in AndroidManifest.xml.
+    int id = item.getItemId();
+
+    //noinspection SimplifiableIfStatement
+    if(id == R.id.action_settings) {
+        return true;
+    }
+
+    return super.onOptionsItemSelected(item);
+}
+
+@Override
+public void onBeaconServiceConnect() {
+    // BeaconManagerクラスのモニタリング通知受取り処理
+    beaconManager.setMonitorNotifier(new MonitorNotifier() {
+        @Override
+        public void didEnterRegion(Region region) {
+            // 領域進入時に実行
+            Log.d(TAG, "didEnterRegion");
+        }
+
+        @Override
+        public void didExitRegion(Region region) {
+            // 領域退出時に実行
+            Log.d(TAG, "didExitRegion");
+        }
+
+        @Override
+        public void didDetermineStateForRegion(int i, Region region) {
+            // 領域への侵入/退出のステータスが変化したときに実行
+            Log.d(TAG, "didDetermineStateForRegion");
+        }
+    });
+
+    try {
+        // UUIDの作成
+        Identifier identifier = Identifier.parse("434B4666-E4B2-4B78-8C13-901AFEE3DBB6");
+        // モニタリングの開始
+        beaconManager.startMonitoringBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+    } catch(RemoteException e) {
+        // 例外が発生した場合の処理
+        e.printStackTrace();
+    }
+}
+
+@Override
+protected void onPause() {
+    super.onPause();
+    beaconManager.unbind(this);
+}
+
+@Override
+protected void onResume() {
+    super.onPause();
+    beaconManager.bind(this);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントは下記です。</p>
+
+<ul>
+<li>iBeacon検知のためにBeaconParserを定義して、BeaconLayoutに設定</li>
+<li><code>startMonitoringBeaconsInRegion</code>する際の引数であるRegionへの定義
+各引数は<code>Region("監視対象ID", "UUID", "major", "minor")</code>のようになっています。<br/>
+<strong>監視対象ID</strong> さえ設定すれば、iBeaconを検知可能です。UUID, major, minorを設定すると、該当するiBeaconのみ検知するようになります。</li>
+</ul>
+
+
+<h5>iBeaconで距離計測</h5>
+
+<p>次にiBeaconの距離計測をしてみましょう。<br/>
+今回は領域観測をして、領域に入ったタイミングで距離計測を開始し、領域を出たタイミングで距離計測を停止します。</p>
+
+<p>```java</p>
+
+<p>&lt;省略></p>
+
+<p>@Override
+public void onBeaconServiceConnect() {</p>
+
+<pre><code>// BeaconManagerクラスのモニタリング設定
+beaconManager.setMonitorNotifier(new MonitorNotifier() {
+    @Override
+    public void didEnterRegion(Region region) {
+        // 領域侵入時に実行
+        Log.d(TAG, "didEnterRegion");
+
+        try {
+            // レンジングの開始
+            beaconManager.startRangingBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+        } catch(RemoteException e) {
+            // 例外が発生した場合
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void didExitRegion(Region region) {
+        // 領域退出時に実行
+        Log.d(TAG, "didExitRegion");
+
+        try {
+            // レンジングの停止
+            beaconManager.stopRangingBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+        } catch(RemoteException e) {
+            // 例外が発生した場合
+            e.printStackTrace();
+        }
+    }
+}
+
+// BeaconManagerクラスのレンジング設定
+beaconManager.setRangeNotifier(new RangeNotifier() {
+    @Override
+    public void didRangeBeaconsInRegion(Collection&lt;Beacon&gt; beacons, Region region) {
+        // 検出したビーコンの情報を全部Logに書き出す
+        for(Beacon beacon : beacons) {
+            Log.d(TAG, "UUID:" + beacon.getId1() + ", major:" + beacon.getId2() + ", minor:" + beacon.getId3() + ", Distance:" + beacon.getDistance() + ",RSSI" + beacon.getRssi() + ", TxPower" + beacon.getTxPower());
+        }
+    }
+}
+
+try {
+    // モニタリングの開始
+    beaconManager.startMonitoringBeaconsInRegion(new Region("unique-id-001", identifier, null, null));
+} catch(RemoteException e) {
+    e.printStackTrace();
+}
+</code></pre>
+
+<p>}</p>
+
+<p>&lt;省略></p>
+
+<p>```</p>
+
+<p>AltBeaconライブラリはだいぶ使いやすいですね！<br/>
+iBeaconはiOS先行でサービスを始めることが多いと思うので、iOSの仕様に合わせてプログラミングを組めるのはエンジニアとしてありがたいですね。<br/>
+(Androidユーザが多いとは言えない日本にとっては、Android特有の機能を設けることは工数的に優先すべきではなかったりしますしね。趣味として取り入れたい気持ちはありますが&hellip;。)</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<p><a href="https://github.com/grandbig/altBeaconSample">本記事のレポジトリはこちら</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

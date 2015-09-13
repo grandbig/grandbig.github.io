@@ -1,0 +1,933 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="FMDBを使ってSQLiteに画像を保存してみる さて、当たり前なようでやったことがなかったのでやってみました。
+たぶんもっとキレイな方法があると思うのですが、なぜかできず&hellip;。できた方法を説明します。 SQLiteにデータを保存 まず下記のメソッドを実装します。 1
+2
+3
+4
+5 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/page/3/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/05/07/sqlite-img/">FMDBを使ってSQLiteに画像を保存しよう！</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-05-07T00:37:00+09:00" pubdate data-updated="true">May 7<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/05/07/sqlite-img/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>FMDBを使ってSQLiteに画像を保存してみる</h4>
+
+<p>さて、当たり前なようでやったことがなかったのでやってみました。<br/>
+たぶんもっとキレイな方法があると思うのですが、なぜかできず&hellip;。できた方法を説明します。</p>
+
+<h5>SQLiteにデータを保存</h5>
+
+<p>まず下記のメソッドを実装します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// DBに接続</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nf">dbConnect:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">dbName</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSArray</span> <span class="o">*</span><span class="n">paths</span> <span class="o">=</span> <span class="n">NSSearchPathForDirectoriesInDomains</span><span class="p">(</span> <span class="n">NSDocumentDirectory</span><span class="p">,</span> <span class="n">NSUserDomainMask</span><span class="p">,</span> <span class="n">YES</span> <span class="p">);</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">dir</span> <span class="o">=</span> <span class="p">[</span><span class="n">paths</span> <span class="nl">objectAtIndex:</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">FMDatabase</span> <span class="o">*</span><span class="n">db</span> <span class="o">=</span> <span class="p">[</span><span class="n">FMDatabase</span> <span class="nl">databaseWithPath:</span><span class="p">[</span><span class="n">dir</span> <span class="nl">stringByAppendingPathComponent:</span><span class="n">dbName</span><span class="p">]];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// テーブルの作成</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">createTable:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">dbName</span> <span class="nf">tableName:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">tableName</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">FMDatabase</span> <span class="o">*</span><span class="n">db</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span> <span class="nl">dbConnect:</span><span class="n">dbName</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">sql</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;create table if not exists %@ (id INTEGER PRIMARY KEY, title TEXT, imgData TEXT)&quot;</span><span class="p">,</span> <span class="n">tableName</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="n">open</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="nl">executeUpdate:</span><span class="n">sql</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="n">close</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/05/07/sqlite-img/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/04/30/multi-mac-develop/">複数のMacでiOS端末の実機検証を可能にするためには！？</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-30T18:55:00+09:00" pubdate data-updated="true">Apr 30<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/04/30/multi-mac-develop/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>証明書と鍵を書きだそう！</h4>
+
+<p>本日は複数のMacでiOS端末の実機検証をするための手順について説明します。</p>
+
+<p>まず、開発者用の証明書を書き出しましょう。<br/>
+証明書はキーチェーンアクセスから確認できます。<br/>
+キーチェーンアクセスアプリを起動すると、下記画面が表示されます。</p>
+
+<p><img src="/images/multi_mac_1.png" alt="キーチェーンアクセスの画面" /></p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/04/30/multi-mac-develop/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/04/29/ibeacon-review/">iBeacon完全攻略！？</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-29T21:51:00+09:00" pubdate data-updated="true">Apr 29<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/04/29/ibeacon-review/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>iBeaconを復習しよう！</h4>
+
+<p>本日はこれまでも何度か取り上げてきたiBeaconについて改めて復習してみたいと思います。<br/>
+今回はiOS端末でのiBeaconの発信/受信に特化して書きます。</p>
+
+<p>これまでの関連記事は以下です。</p>
+
+<ul>
+<li><a href="http://grandbig.github.io/blog/2014/04/12/io7-dot-1-de-ibeacon/">噂のiOS7.1でiBeaconを試してみよう！！</a></li>
+<li><a href="http://grandbig.github.io/blog/2014/09/22/ios8-de-ibeacon/">iOS8でiBeaconを試してみよう！！</a></li>
+<li><a href="http://grandbig.github.io/blog/2014/09/29/developing-ibeacon-app-by-using-swift/">Swiftを使って、iBeaconのCentralアプリを作ろう！！</a></li>
+<li><a href="http://grandbig.github.io/blog/2015/04/13/multi-ibeacon/">複数のiBeacon信号を利用してみよう！</a></li>
+</ul>
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/04/29/ibeacon-review/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/04/25/apple-watch/">Apple Watch Sportを購入しました</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-25T12:58:00+09:00" pubdate data-updated="true">Apr 25<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/04/25/apple-watch/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>Apple Watch Sport</h4>
+
+<p>先日とうとう発売されたApple Watch Sportについて書きたいと思います。<br/>
+本記事ではApple Watch Sportの開封および初期設定の手順について説明するに留め、プログラミングは今後に回したいと思います。</p>
+
+<p>まず、Apple Watch Sportは他のApple製品と同じで真っ白な箱に入ってきました。<br/>
+写真だと見づらいですが、箱に『Apple Watch』と書かれています。</p>
+
+<p><img src="/images/apple_watch1.png" alt="Apple Watch Sportの箱" /></p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/04/25/apple-watch/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/04/25/ble-measure-3-0-0/">BLEMeasure Ver3.0(iPhoneアプリを申請しました(4))</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-25T11:50:00+09:00" pubdate data-updated="true">Apr 25<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/04/25/ble-measure-3-0-0/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>BLEMeasure Ver3.0の紹介</h4>
+
+<p>約1年ぶりに本アプリのバージョンアップに着手しました。<br/>
+主な改善点・修正点としては下記です。</p>
+
+<ul>
+<li>デザイン, UIの変更</li>
+<li>マルチiBeaconの検知機能の実装</li>
+<li>iOS8対応</li>
+<li>iPhone6およびiPhone6 Plus対応</li>
+<li>バグFix</li>
+</ul>
+
+
+<p><del>※現在、アップデート申請中のため、公開されていません。</del><br/>
+<del>(公開され次第、合わせてブログを更新する予定です。)</del><br/>
+2015/05/28にめでたく公開されました！！<br/>
+本記事を書いてから、実に1ヶ月もの時間を要したのですが、そこには新たに判明した事柄があったためです。<br/>
+そこについて本記事に追記させて頂きます。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/04/25/ble-measure-3-0-0/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/04/13/multi-ibeacon/">複数のiBeacon信号を利用してみよう！</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-13T00:28:00+09:00" pubdate data-updated="true">Apr 13<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/04/13/multi-ibeacon/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>複数のiBeaconを検知する方法</h4>
+
+<p>さて、本日はさらっと複数のiBeacon信号の検知について考えてみたいと思います。<br/>
+(これまでできるだろうという考えではあったものの、実際に試してみたことがなかったのでメモ書きです。)<br/>
+Central側ではiBeacon信号をキャッチしたときに、そのオブジェクトを配列の形で取得することができます。<br/>
+具体的には、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Beacon信号を検出した場合</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didRangeBeacons:</span><span class="p">(</span><span class="n">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nv">beacons</span> <span class="nf">inRegion:</span><span class="p">(</span><span class="n">CLBeaconRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">beacons</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">beacons</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のように <strong>beacons</strong> が <strong>NSArray</strong> の型で返ってきていますよね。<br/>
+単純にこれを使ってやればよいのです。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/04/13/multi-ibeacon/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/04/12/crosswalk-test/">CROSSWALKの性能を確かめよう！</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-12T16:50:00+09:00" pubdate data-updated="true">Apr 12<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/04/12/crosswalk-test/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>CROSSWALKは果たして優秀なのか！？</h4>
+
+<p>以前、CROSSWALKについて紹介させて頂きました。<br/>
+メリット/デメリットはいろいろなサイトで紹介されていますが、実際に性能はどうなのか気になりますよね？<br/>
+そこで今回は幾つかの端末を用いて試験をしてみました。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/04/12/crosswalk-test/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/04/05/doxygen/">Xcode6.2で使ってみようDoxygen</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-05T14:07:00+09:00" pubdate data-updated="true">Apr 5<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/04/05/doxygen/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>Doxygen</h4>
+
+<p>さて、本日はDoxygenについて書こうと思います。<br/>
+筆者はAppleライクなリファレンスを生成できる<a href="https://github.com/tomaz/appledoc">appledoc</a>を利用していましたが、なぜかXcode6.2でうまく生成できないことやAppleの公式リファレンスのデザインが以前より大幅に変更されたことから<a href="http://www.doxygen.jp/">Doxygen</a>を使うことにしました。</p>
+
+<p>DoxygenはC++, C, Java, Objective-C, Python, IDL, Fortran, VHDL, PHP, C#のためのドキュメントジェネレータツールです。<br/>
+独特のリファレンススタイルであるものの、下記3点のメリットがあると公式サイトに書かれています。</p>
+
+<ul>
+<li>ドキュメントとソースコードの一貫性を保つことが容易</li>
+<li>文書化されていないソースファイルから、 コードの構造を抽出するように設定可能</li>
+<li>Doxygen を「乱用 (abuse)」して、 通常のドキュメントを作成可能</li>
+</ul>
+
+
+<p>では、早速使ってみることにしましょう。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/04/05/doxygen/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/04/05/inheritance-and-expansion/">Objective-Cにおける継承とカテゴリ</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-04-05T01:10:00+09:00" pubdate data-updated="true">Apr 5<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/04/05/inheritance-and-expansion/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>Objective-Cの継承とカテゴリについて</h4>
+
+<p>さて、本日は今更ですが、Objective-Cの継承とカテゴリについて書きたいと思います。<br/>
+理由は、最近、自分だけではなく、 <strong>『第三者が見てもわかりやすいクラス』</strong> を作ることを意識し始めたからです。<br/>
+本当に今更ですね笑。</p>
+
+<p>アジェンダは下記です。</p>
+
+<ul>
+<li>Objective-Cの継承</li>
+<li>Objective-Cのカテゴリ</li>
+<li>シングルトンパターンでの継承</li>
+<li>シングルトンパターンのクラスを継承したクラスのカテゴリ</li>
+</ul>
+
+
+<p>では、早速見て行きましょう。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/04/05/inheritance-and-expansion/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/03/28/crosswalk/">Android StudioでCROSSWALKを使おう！</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-03-28T13:57:00+09:00" pubdate data-updated="true">Mar 28<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/03/28/crosswalk/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>Androidでハイブリッドアプリを作ろう</h4>
+
+<p>以前、iOSではiOS8からWKWebViewという新しいWebViewが追加されたことを説明しました。<br/>
+では、Androidはどうなのでしょうか？</p>
+
+<p>Androidは4.3までWebKitベースのWebViewをアプリに組み込んでいました。<br/>
+しかし、Android4.4より、ChromiumベースのWebViewとなりました。ここで、大きく異なるのはレンダリングエンジンが <strong>Blink</strong> になったというところです。<br/>
+また、Android4.4まではChromiumがバージョンアップされたとしても、各メーカーがAndroidのOSバージョンアップを提供しなければ、最新のWebViewを利用することができませんでした。</p>
+
+<p>この現状を見たのかGoogleはAndroid5.0以降、WebViewをOSから切り離し、Google Play経由でバージョンアップ可能としました。<br/>
+よって、メーカーがOSのバージョンアップをする/しないに関わらず、Google側の意志で最新のWebViewをユーザに提供可能となったのです。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/03/28/crosswalk/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/4/">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/2/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/09/13/google-sign-in/">Google Sign-in SDK for iOSを使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/31/ios9-ats/">iOS9 App Transport Securityについて</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/20/write-kontakt-beacon/">Kontakt.ioのSmart Beaconのパラメータを書き換えてみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/18/start-kontakt-beacon/">Kontakt.ioのSmart Beaconを使ってみた</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/22/android-realmbrowser/">AndroidでRealmで保存した値を確認しよう！</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (88)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (17)</a></li><li><a href='/blog/categories/webview'>webview (8)</a></li><li><a href='/blog/categories/android'>android (8)</a></li><li><a href='/blog/categories/ios8'>ios8 (8)</a></li><li><a href='/blog/categories/swift'>swift (8)</a></li><li><a href='/blog/categories/apurishen-qing'>アプリ申請 (5)</a></li><li><a href='/blog/categories/location'>location (5)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li><li><a href='/blog/categories/xcode'>xcode (5)</a></li><li><a href='/blog/categories/map'>map (4)</a></li><li><a href='/blog/categories/wkwebview'>WKWebView (4)</a></li><li><a href='/blog/categories/sqlite'>SQLite (4)</a></li><li><a href='/blog/categories/xcode6'>xcode6 (4)</a></li><li><a href='/blog/categories/passbook'>Passbook (3)</a></li></ul>
+</section>
+<aside>
+	<h3>About Takahiro</h3>
+	<p>
+	メカ出身のプログラマー<br />
+	故にLevelは-1<br />
+	主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)<br />
+	</p>
+	<a href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+</aside>
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
