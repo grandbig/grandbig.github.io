@@ -5,12 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>一定時間内は画面タップをさせない！ - Takahiro Octopress Blog</title>
+  <title>iOS8でrequestLocationが使える！？ - Takahiro Octopress Blog</title>
   <meta name="author" content="Takahiro">
 
   
-  <meta name="description" content="SVProgressHUDとNSTimerを使う さて、本日はさくっとメモしておきます。
-できると思っていて当然できた話なので、本当にメモです笑。 AFNetworkingなどでどこかしらのサーバに通信している間、画面をユーザに触らせたくないことがあるかもしれません。 &hellip;">
+  <meta name="description" content="実はiOS8.4.1でrequestLocationが使える さて、今回はたまたま気づいたバグ？の紹介です。
+皆様、ご存知の通り, iOS9から requestLocation なるものがCoreLocation.frameworkに追加されました。
+これにより、 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +21,7 @@
   <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
 
   
-  <link rel="canonical" href="http://grandbig.github.io/blog/2015/05/09/timer-progresshud/">
+  <link rel="canonical" href="http://grandbig.github.io/blog/2015/09/20/requestlocation/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -81,7 +82,7 @@
   
   <header>
     
-      <h1 class="entry-title">一定時間内は画面タップをさせない！</h1>
+      <h1 class="entry-title">iOS8でrequestLocationが使える！？</h1>
     
     
       <p class="meta">
@@ -97,7 +98,7 @@
   
 
 
-<time datetime="2015-05-09T23:37:00+09:00" pubdate data-updated="true">May 9<span>th</span>, 2015</time>
+<time datetime="2015-09-20T01:21:00+09:00" pubdate data-updated="true">Sep 20<span>th</span>, 2015</time>
         
          | <a href="#disqus_thread">Comments</a>
         
@@ -106,13 +107,14 @@
   </header>
 
 
-<div class="entry-content"><h4>SVProgressHUDとNSTimerを使う</h4>
+<div class="entry-content"><h4>実はiOS8.4.1でrequestLocationが使える</h4>
 
-<p>さて、本日はさくっとメモしておきます。<br/>
-できると思っていて当然できた話なので、本当にメモです笑。</p>
+<p>さて、今回はたまたま気づいたバグ？の紹介です。<br/>
+皆様、ご存知の通り, iOS9から <strong>requestLocation</strong> なるものがCoreLocation.frameworkに追加されました。<br/>
+これにより、1回だけ現在地を取得する処理を自作せずにframeworkに任せることができるようになりました。</p>
 
-<p><a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>などでどこかしらのサーバに通信している間、画面をユーザに触らせたくないことがあるかもしれません。<br/>
-そんなときはローディングウィンドウを<a href="https://github.com/TransitApp/SVProgressHUD">SVProgressHUD</a>で表示し、 <strong>NSTimer</strong> を使って時間で操ります。</p>
+<p>しかし、iOS9からとアナウンスされているものの、実は <strong>iOS8.4.1</strong> でも利用できました。<br/>
+コードは下記になります。</p>
 
 <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
@@ -167,12 +169,33 @@
 <span class='line-number'>34</span>
 <span class='line-number'>35</span>
 <span class='line-number'>36</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
-</span><span class='line'><span class="cp">#import &quot;SVProgressHUD.h&quot;</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.m</span>
+</span><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
+</span><span class='line'><span class="cp">#import &lt;CoreLocation/CoreLocation.h&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span> <span class="o">&lt;</span><span class="n">CLLocationManagerDelegate</span><span class="o">&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSTimer</span> <span class="o">*</span><span class="n">timer</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CLLocationManager</span> <span class="o">*</span><span class="n">lm</span><span class="p">;</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">@end</span>
 </span><span class='line'>
@@ -180,33 +203,53 @@
 </span><span class='line'>
 </span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span> <span class="p">{</span>
 </span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">lm</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CLLocationManager</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">lm</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">lm</span> <span class="n">requestWhenInUseAuthorization</span><span class="p">];</span>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">didReceiveMemoryWarning</span> <span class="p">{</span>
 </span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">didReceiveMemoryWarning</span><span class="p">];</span>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">IBAction</span><span class="p">)</span><span class="nf">showLoadWindow:</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nv">sender</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">// ローディングウィンドウの表示</span>
-</span><span class='line'>  <span class="p">[</span><span class="n">SVProgressHUD</span> <span class="nl">showWithStatus:</span><span class="s">@&quot;Loading...&quot;</span> <span class="nl">maskType:</span><span class="n">SVProgressHUDMaskTypeGradient</span><span class="p">];</span>
-</span><span class='line'>  <span class="c1">// タイマーの設定</span>
-</span><span class='line'>  <span class="n">_timer</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSTimer</span> <span class="nl">scheduledTimerWithTimeInterval:</span><span class="mf">5.0</span> <span class="nl">target:</span><span class="n">self</span> <span class="nl">selector:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">hiddenWindow:</span><span class="p">)</span> <span class="nl">userInfo:</span><span class="nb">nil</span> <span class="nl">repeats:</span><span class="n">NO</span><span class="p">];</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didChangeAuthorizationStatus:</span><span class="p">(</span><span class="n">CLAuthorizationStatus</span><span class="p">)</span><span class="nv">status</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">kCLAuthorizationStatusNotDetermined</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// ユーザが位置情報の使用を許可していない</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;kCLAuthorizationStatusNotDetermined&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">kCLAuthorizationStatusAuthorizedAlways</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// ユーザが位置情報の使用を常に許可している場合</span>
+</span><span class='line'>   <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;kCLAuthorizationStatusAuthorizedAlways&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">kCLAuthorizationStatusAuthorizedWhenInUse</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// ユーザが位置情報の使用を使用中のみ許可している場合</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;kCLAuthorizationStatusAuthorizedWhenInUse&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
-</span><span class='line'><span class="cm">/**</span>
-</span><span class='line'><span class="cm"> タイマー対象メソッド(ローディングウィンドウを非表示にする処理)</span>
-</span><span class='line'><span class="cm"> @param timer タイマー</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">hiddenWindow:</span><span class="p">(</span><span class="n">NSTimer</span> <span class="o">*</span><span class="p">)</span><span class="nv">timer</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="p">[</span><span class="n">SVProgressHUD</span> <span class="n">dismiss</span><span class="p">];</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didUpdateLocations:</span><span class="p">(</span><span class="n">NSArray</span><span class="o">&lt;</span><span class="n">CLLocation</span> <span class="o">*&gt;</span> <span class="o">*</span><span class="p">)</span><span class="nv">locations</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 位置情報の取得に成功した場合</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">locations</span><span class="p">.</span><span class="n">firstObject</span><span class="p">);</span>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
-</span><span class='line'><span class="k">@end</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didFailWithError:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 位置情報の取得に失敗した場合</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">IBAction</span><span class="p">)</span><span class="nf">getLocation:</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nv">sender</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">([</span><span class="n">self</span><span class="p">.</span><span class="n">lm</span> <span class="nl">respondsToSelector:</span><span class="k">@selector</span><span class="p">(</span><span class="n">requestLocation</span><span class="p">)])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// iOS9.x以上の場合</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">lm</span> <span class="n">requestLocation</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// iOS8.x以下の場合</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;iOS8.xです&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>よし、できた！ってところでメモ書き終了。</p>
+<p>騙されたと思って試してみてください。<br/>
+なぜかiOS8.4.1でも<code>requestLocation</code>が実行されますので。</p>
 
 <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
@@ -216,6 +259,8 @@
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
+
+
 
 </div>
 
@@ -239,12 +284,12 @@
   
 
 
-<time datetime="2015-05-09T23:37:00+09:00" pubdate data-updated="true">May 9<span>th</span>, 2015</time>
+<time datetime="2015-09-20T01:21:00+09:00" pubdate data-updated="true">Sep 20<span>th</span>, 2015</time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/ios/'>ios</a>
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/location/'>location</a>
   
 </span>
 
@@ -253,7 +298,7 @@
     
       <div class="sharing">
   
-  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2015/05/09/timer-progresshud/" data-via="" data-counturl="http://grandbig.github.io/blog/2015/05/09/timer-progresshud/" >Tweet</a>
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2015/09/20/requestlocation/" data-via="" data-counturl="http://grandbig.github.io/blog/2015/09/20/requestlocation/" >Tweet</a>
   
   
   <div class="g-plusone" data-size="medium"></div>
@@ -266,10 +311,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2015/05/07/sqlite-img/" title="Previous Post: FMDBを使ってSQLiteに画像を保存しよう！">&laquo; FMDBを使ってSQLiteに画像を保存しよう！</a>
+        <a class="basic-alignment left" href="/blog/2015/09/13/google-sign-in/" title="Previous Post: Google Sign-In SDK for iOSを使ってみよう！">&laquo; Google Sign-In SDK for iOSを使ってみよう！</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2015/05/10/storyboard-navigationbar/" title="Next Post: StoryboardでNavigationBarを表示する">StoryboardでNavigationBarを表示する &raquo;</a>
       
     </p>
   </footer>
@@ -358,8 +401,8 @@
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://grandbig.github.io/blog/2015/05/09/timer-progresshud/';
-        var disqus_url = 'http://grandbig.github.io/blog/2015/05/09/timer-progresshud/';
+        var disqus_identifier = 'http://grandbig.github.io/blog/2015/09/20/requestlocation/';
+        var disqus_url = 'http://grandbig.github.io/blog/2015/09/20/requestlocation/';
         var disqus_script = 'embed.js';
       
     (function () {
