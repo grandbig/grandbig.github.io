@@ -1,0 +1,1161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: oauth2 | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/oauth2/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-09-22T23:15:42+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[OAuth2.0認証の処理を自作しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/01/custom-oauth/"/>
+    <updated>2015-06-01T00:56:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/01/custom-oauth</id>
+    <content type="html"><![CDATA[<h4>OAuth2.0認証処理を自分で作ろう！ Objective-C編</h4>
+
+<p>本日は、<a href="https://code.google.com/p/gtm-oauth2/">gtm-oauth</a>や<a href="https://github.com/nxtbgthng/OAuth2Client">OAuth2Client</a>を使わずにOAuth2.0認証処理を自作してみます。</p>
+
+<p>OAuth2.0認証を通すためのGoogle設定は<a href="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/">iOSでGoogle OAuth認証がしたい</a>を参照ください。<br/>
+筆者が開発したライブラリは単純な下記処理のみ含んでいます。</p>
+
+<ul>
+<li>OAuth2.0認証に必要な各種パラメータをKeychain Servicesに保存</li>
+<li>アクセストークンを取得する処理</li>
+<li>リフレッシュトークンから新規アクセストークンを取得する処理</li>
+</ul>
+
+
+<p>ここで、Keychain Servicesを使うにあたって、<a href="https://github.com/TheLevelUp/LUKeychainAccess">LUKeychainAccess</a>を利用しています。<br/>
+これにより、複雑なKeychain ServicesをNSUserDefaultsの感覚で利用することができます。<br/>
+また、Googleへの問い合わせなどのHTTP/HTTPSリクエストに<a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>を利用しています。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>OAuth2.0認証ライブラリの作成</h4>
+
+<p>下記にソースをそのまま載せておきます。</p>
+
+<p>```objective-c</p>
+
+<p>// OAuth2Client.m</p>
+
+<h1>import &ldquo;OAuth2Client.h&rdquo;</h1>
+
+<h1>import &ldquo;LUKeychainAccess.h&rdquo;</h1>
+
+<h1>import &ldquo;AFNetworking.h&rdquo;</h1>
+
+<p>static NSString <em>callback =  @&ldquo;<a href="http://localhost">http://localhost</a>&rdquo;;
+static NSString </em>visibleactions = @&ldquo;<a href="http://schemas.google.com/AddActivity">http://schemas.google.com/AddActivity</a>&rdquo;;</p>
+
+<p>@implementation OAuth2Client</p>
+
+<p>// シングルトンのインスタンス取得
++ (OAuth2Client *)sharedInstance {</p>
+
+<pre><code>static OAuth2Client* sharedInstance = nil;
+static dispatch_once_t onceToken;
+dispatch_once(&amp;onceToken, ^{
+    sharedInstance = [OAuth2Client alloc] init];]
+});
+
+return sharedInstance;
+</code></pre>
+
+<p>}</p>
+
+<p>// OAuth2.0認証に必要なパラメータを設定する処理
+&ndash; (void)setUpOAuth2AccountClientId:(NSString <em>)clientId clientSecret:(NSString </em>)clientSecret scope:(NSString <em>)scope authorizationURL:(NSString </em>)authorizationURL tokenURL:(NSString *)tokenURL {</p>
+
+<pre><code>[[LUKeychainAccess standardKeychainAccess] setObject:clientId forKey:@"clientId"];
+[[LUKeychainAccess standardKeychainAccess] setObject:clientSecret forKey:@"clientSecret"];
+[[LUKeychainAccess standardKeychainAccess] setObject:scope forKey:@"scope"];
+[[LUKeychainAccess standardKeychainAccess] setObject:authorizationURL forKey:@"authorizationURL"];
+[[LUKeychainAccess standardKeychainAccess] setObject:tokenURL forKey:@"tokenURL"];
+</code></pre>
+
+<p>}</p>
+
+<p>// OAuth2.0認証に必要なリクエストを生成する処理
+&ndash; (void)requestAccessToAccount:(void (^)(NSURL *preparedURL))withPreparedAuthorizationURLHandler {</p>
+
+<pre><code>NSString *clientId = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"clientId"];
+NSString *scope = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"scope"];
+NSString *authorizationURL = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"authorizationURL"];
+
+NSString *url = [[NSString stringWithFormat:@"%@?response_type=code&amp;client_id=%@&amp;redirect_uri=%@&amp;scope=%@&amp;data-requestvisibleactions=%@", authorizationURL, clientId, callback, scope, visibleactions];
+withPreparedAuthorizationURLHandler([NSURL URLWithString:url]);
+</code></pre>
+
+<p>}</p>
+
+<p>// OAuth2.0認証のリダイレクトURIの一致の有無を確認する処理
+&ndash; (BOOL)checkRedirectURI:(NSURLRequest *)request
+{</p>
+
+<pre><code>// HOSTの取得
+NSString *host = [[request URL] host];
+if ([host isEqualToString:@"localhost"]) {
+    return YES;
+} else {
+    return NO;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// アクセストークンを取得する処理
+&ndash; (void)getAccessToken:(NSURLRequest <em>)request completionHandler:(void (^)(NSString </em>accessToken))completionHandler {</p>
+
+<pre><code>NSString *host = [[request URL] host];
+if ([host isEqualToString:@"localhost"]) {
+    NSString* verifier = nil;
+    NSArray* urlParams = [[request URL] query] componentsSeparatedByString:@"&amp;"];
+    for (NSString* param in urlParams) {
+        NSArray* keyValue = [param componentsSeparatedByString:@"="];
+        NSString* key = [keyValue objectAtIndex:0];
+        if ([key isEqualToString:@"code"]) {
+            verifier = [keyValue objectAtIndex:1];
+            break;
+        }
+    }
+
+    if (verifier) {
+        NSString *clientId = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"clientId"];
+        NSString *clientSecret = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"clientSecret"];
+        NSString *tokenURL = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"tokenURL"];
+
+        // AFHTTPSessionManagerをインスタンス化
+        AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+        // サーバエラー時のContent-Typeにtext/plainを許可(成功時にapplication/jsonが必要なので共に追加)
+        manager.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@"text/plain", @"application/json", nil];
+        // パラメータの設定
+        NSDictionary *data = @{@"code": verifier, @"client_id": clientId, @"client_secret": clientSecret, @"redirect_uri": callback, @"grant_type": @"authorization_code"};
+
+        [manager POST:tokenURL parameters:data success:^(NSURLSessionDataTask *task, id responseObject) {
+            // 成功した場合
+            if(responseObject &amp;&amp; [responseObject count] &gt; 0) {
+                NSString *accessToken = responseObject[@"access_token"];
+                NSString *refreshToken = responseObject[@"refresh_token"];
+                [[LUKeychainAccess standardKeychainAccess] setObject:accessToken forKey:@"accessToken"];
+                [[LUKeychainAccess standardKeychainAccess] setObject:refreshToken forKey:@"refreshToken"];
+
+                // 処理が終了したときに実行(アクセストークンを返す)
+                completionHandler(accessToken);
+            }
+        } failure:^(NSURLSessionDataTask *task, NSError *error) {
+            // 失敗した場合
+            NSError *err;
+            NSData *data = [error userInfo] objectForKey:@"com.alamofire.serialization.response.error.data"];
+            if(data) {
+                // エラーの中身がある場合
+                [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingAllowFragments error:&amp;err];
+            }
+            // 失敗を返す
+            failure(err);
+        }];
+    }
+} else {
+    // HOST名が一致しない場合
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// リフレッシュトークンから新しいアクセストークンを取得する処理
+&ndash; (void)getRefreshAccessToken:(void (^)(NSString <em>accessToken))success failure:(void (^)(NSError </em>error))failure {</p>
+
+<pre><code>NSString *clientId = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"clientId"];
+NSString *tokenURL = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"tokenURL"];
+NSString *refreshToken = [[LUKeychainAccess standardKeychainAccess] objectForKey:@"refreshToken"];
+
+if(clientId &amp;&amp; tokenURL &amp;&amp; refreshToken) {
+    // 必須パラメータがある場合
+    // AFHTTPSessionManagerをインスタンス化
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    // サーバエラー時のContent-Typeにtext/plainを許可(成功時にapplication/jsonが必要なので共に追加)
+    manager.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@"text/plain", @"application/json", nil];
+
+    // パラメータの設定
+    NSDictionary *data = @{@"client_id": clientId, @"refresh_token": refreshToken, @"grant_type": @"refresh_token"};
+
+    [manager POST:tokenURL parameters:data success:^(NSURLSessionDataTask *task, id responseObject) {
+        // 成功した場合
+        if(responseObject &amp;&amp; [responseObject count] &gt; 0) {
+            NSString *accessToken = responseObject[@"access_token"];
+            NSString *refreshToken = responseObject[@"refresh_token"];
+            [[LUKeychainAccess standardKeychainAccess] setObject:accessToken forKey:@"accessToken"];
+            [[LUKeychainAccess standardKeychainAccess] setObject:refreshToken forKey:@"refreshToken"];
+
+            // 処理が終了したときに実行(アクセストークンを返す)
+            success(accessToken);
+        }
+    }, failure(NSURLSessionDataTask *task, NSError *error) {
+        // 失敗した場合
+        NSError *err;
+        NSData *data = [error userInfo] objectForKey:@"com.alamofire.serialization.response.error.data"];
+        if(data) {
+            // エラーの中身がある場合
+            [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingAllowFragments error:&amp;err];
+        }
+        // 失敗を返す
+        failure(err);
+    }];
+} else {
+    // 必須パラメータがない場合
+    // TODO: エラーオブジェクトを生成して返す
+    failure(nil);
+}
+</code></pre>
+
+<p>}</p>
+
+<p>@end</p>
+
+<p>```</p>
+
+<p>```objective-c</p>
+
+<p>// OAuth2Client.h</p>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<p>@interface OAuth2Client : NSObject</p>
+
+<p>/// シングルトンのインスタンス取得
++ (OAuth2Client *)sharedInstance;</p>
+
+<p>/<em><em>
+ OAuth2.0認証に必要なパラメータを設定する処理
+ @param clientId クライアントID
+ @param clientSecret クライアントシークレット
+ @param scope アクセス範囲
+ @param authorizationURL OAuth2.0 認証先URL
+ @param tokenURL OAuth2.0 トークン取得先URL
+ </em>/
+&ndash; (void)setUpOAuth2AccountClientId:(NSString </em>)clientId clientSecret:(NSString <em>)clientSecret scope:(NSString </em>)scope authorizationURL:(NSString <em>)authorizationURL tokenURL:(NSString </em>)tokenURL;</p>
+
+<p>/<em><em>
+ OAuth2.0認証に必要なリクエストを生成する処理
+ @param withPreparedAuthorizationURLHandler OAuth2.0認証に必要なリクエストを返すBlock構文
+ </em>/
+&ndash; (void)requestAccessToAccount:(void (^)(NSURL </em>preparedURL))withPreparedAuthorizationURLHandler;</p>
+
+<p>/<em><em>
+ OAuth2.0認証のリダイレクトURIの一致の有無を確認する処理
+ @param request リクエスト
+ @return リダイレクトURIの一致の有無
+ </em>/
+&ndash; (BOOL)checkRedirectURI:(NSURLRequest </em>)request;</p>
+
+<p>/<em><em>
+ アクセストークンを取得する処理
+ @param request アクセストークンの取得に必要なリクエスト
+ @param completionHandler アクセストークンの取得処理が完了したら実行される処理
+ </em>/
+&ndash; (void)getAccessToken:(NSURLRequest </em>)request completionHandler:(void (^)(NSString *accessToken))completionHandler;</p>
+
+<p>/<em><em>
+ リフレッシュトークンから新しいアクセストークンを取得する処理
+ @param success 処理が成功した場合に実行(返却データはアクセストークン)
+ @param failure 処理が失敗した場合に実行(返却データはエラーオブジェクト)
+ </em>/
+&ndash; (void)getRefreshAccessToken:(void (^)(NSString </em>accessToken))success failure:(void (^)(NSError *error))failure;</p>
+
+<p>```</p>
+
+<h4>呼び出し側のソース</h4>
+
+<p>呼び出し側のソースを記載します。</p>
+
+<p>```objective-c</p>
+
+<p>// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;OAuth2Client.h&rdquo;</h1>
+
+<p>static NSString <em>const clientId = @&ldquo;&rdquo;;
+static NSString </em>const clientSecret = @&ldquo;&rdquo;;
+static NSString <em>const authorizationURL = @&ldquo;<a href="https://accounts.google.com/o/oauth2/auth">https://accounts.google.com/o/oauth2/auth</a>&rdquo;;
+static NSString </em>const tokenURL = @&ldquo;<a href="https://accounts.google.com/o/oauth2/token">https://accounts.google.com/o/oauth2/token</a>&rdquo;;
+static NSString *const scope = @&ldquo;<a href="https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar">https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar</a>&rdquo;;</p>
+
+<p>@interface ViewController ()<UIWebViewDelegate></p>
+
+<p>@property (weak, nonatomic) IBOutlet UIWebView <em>webView;
+@property (strong, nonatomic) NSMutableData </em>receivedData;
+@property (assign, nonatomic) BOOL *isLogin;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];</p>
+
+<p>  <em>webView.delegate = self;
+  NSUserDefaults <em>defaults = [NSUserDefaults standardUserDefaults];
+  if([defaults boolForKey:@&ldquo;isLogin&rdquo;]) {
+      // 既にOAuth2.0認証実行済みの場合
+      [[OAuth2Client sharedInstance] getRefreshAccessToken:^(NSString </em>accessToken) {
+          // 成功した場合
+          NSLog(@&ldquo;%@&rdquo;, accessToken);
+      } failure:^(NSError <em>error) {
+          // 失敗した場合
+          NSLog(@&ldquo;%@&rdquo;, error);
+      }];
+  } else {
+      // 初めてOAuth2.0認証を実行する場合
+      // OAuth2.0認証に必要な各種パラメータの設定
+      [[OAuth2Client sharedInstance] setUpOAuth2AccountClientId:clientId clientSecret:clientSecret scope:scope authorizationURL:authorizationURL tokenURL:tokenURL];
+      // OAuth2.0認証リクエスト
+      [[OAuth2Client sharedInstance] requestAccessToAccount:^(NSURL </em>preparedURL) {
+          // リクエスト
+          [</em>webView loadRequest:[NSURLRequest requestWithURL: preparedURL]];
+      }
+  }
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning {
+  [super didReceiveMemoryWarning];
+}</p></li>
+<li><p>(BOOL)webView:(UIWebView <em>)webView shouldStartLoadWithRequest:(NSURLRequest </em>)request navigationType:(UIWebViewNavigationType)navigationType {</p>
+
+<p>  if([OAuth2Client sharedInstance] checkRedirectURI:request]]) {
+      [[OAuth2Client sharedInstance] getAccessToken:request completionHandler:^(NSString <em>accessToken){
+          // 処理が終了したら呼び出される
+          if(accessToken.length > 0) {
+              NSUserDefaults </em>defaults = [NSUserDefaults standardUserDefaults];
+              [defaults setBool:YES forKey:@&ldquo;isLogin&rdquo;];
+              [defaults synchronize];
+          }
+          [webView removeFromSuperview];
+      }];</p>
+
+<pre><code>  return NO;
+</code></pre>
+
+<p>  }</p>
+
+<p>  return YES;
+}</p></li>
+</ul>
+
+
+<p>@end</p>
+
+<p>```</p>
+
+<p>これで簡単ですが、OAuth2.0認証の自作ライブラリの開発が完了です。<br/>
+必要最低限の機能ですが、十分だと思います。<br/>
+(もう少し時間をかけてより良いものを作りたいと思います笑。)</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://technogerms.com/login-with-google-using-oauth-2-0-for-ios-xcode-objective-c/">Login with Google using OAuth 2.0 for iOS Xcode Objective-C</a></li>
+<li><a href="http://www.ari-hiro.com/blog/2012/12/30/oauth2-summary">OAuth2.0の備忘録的まとめ</a></li>
+<li><a href="http://qiita.com/asakahara/items/06abbc0209262d0051ef">iOSでアプリを削除してもデータを保持する方法</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftでGoogle OAuth2認証をしよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/03/15/gtm-oauth2-in-swift/"/>
+    <updated>2015-03-15T22:20:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/03/15/gtm-oauth2-in-swift</id>
+    <content type="html"><![CDATA[<h4>Swift版 OAuth2認証</h4>
+
+<p>本日は<a href="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/">iOSでGoogle OAuth認証がしたい</a>のSwift版を紹介したいと思います。<br/>
+Google Play Consoleでの設定やGoogleから配布されているOAuth2認証に必要なソースのダウンロード方法については上記の記事に任せるとして、具体的なソース部分を紹介します。</p>
+
+<p>では早速、Objective-CのソースをSwiftで書きなおしたものを下記に載せます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>var auth:GTMOAuth2Authentication!
+let kKeychainItemName:NSString! = "GOAuthTest"
+let scope:NSString! = "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/calendar"
+let clientId:NSString! = "Googleから発行されたクライアントID"
+let clientSecret:NSString! = "Googleから発行されたクライアントシークレット"
+let hasLoggedIn:NSString! = "hasLoggedInKey"
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+}
+
+override func viewDidAppear(animated: Bool) {
+    self.startLogIn()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func startLogIn() {
+    var defaults:NSUserDefaults? = NSUserDefaults.standardUserDefaults()
+    var hasLoggedInFlag:Bool! = defaults?.boolForKey(hasLoggedIn)
+
+    if(hasLoggedInFlag == true) {
+        // 認証したことがある場合
+        self.auth = GTMOAuth2ViewControllerTouch.authForGoogleFromKeychainForName("Google", clientID: clientId, clientSecret: clientSecret)
+
+        // アクセストークンの取得
+        self.authorizeRequest()
+    } else {
+        // 認証したことがない場合
+        var gvc:GTMOAuth2ViewControllerTouch! = GTMOAuth2ViewControllerTouch(scope: scope, clientID: clientId, clientSecret: clientSecret, keychainItemName: "Google", delegate: self, finishedSelector: "viewController:finishedWithAuth:error:")
+        self.presentViewController(gvc, animated: true, completion: nil)
+    }
+}
+
+func viewController(viewController:GTMOAuth2ViewControllerTouch!, finishedWithAuth:GTMOAuth2Authentication!, error:NSError?) {
+    if(error != nil) {
+        // 認証失敗
+    } else {
+        // 認証成功
+        self.auth = finishedWithAuth
+        var defaults = NSUserDefaults.standardUserDefaults()
+        defaults.setBool(true, forKey: hasLoggedIn)
+        defaults.synchronize()
+
+        // アクセストークンの取得
+        self.authorizeRequest()
+    }
+
+    // 認証画面を閉じる
+    viewController.dismissViewControllerAnimated(true, completion: nil)
+}
+
+func authorizeRequest() {
+    println(self.auth)
+    var req:NSMutableURLRequest! = NSMutableURLRequest(URL: self.auth.tokenURL)
+    self.auth.authorizeRequest(req, completionHandler: { (error) -&gt; Void in
+        println(self.auth)
+    })
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>今回のソースは<a href="https://github.com/grandbig/gtm-oauth2-swift">GitHub</a>にアップしています。<br/>
+興味があればどしどし使ってみてください。<br/>
+ということで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[gtm-oauth2を使ってGoogle APIをiOSで叩きたい！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/01/14/ios-google-oauth2-2/"/>
+    <updated>2015-01-14T00:09:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/01/14/ios-google-oauth2-2</id>
+    <content type="html"><![CDATA[<h4>iOSネイティブアプリでGoogle APIを叩く方法</h4>
+
+<p>以前、 <strong>gtm-oauth2</strong> を使ったiOSでのOAuth2認証について説明しました。<br/>
+(<a href="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/">iOSでGoogle OAuth認証がしたい</a>を参照のこと)<br/>
+今回はOAuth2認証の後の話、そうGoogle APIを叩くメソッドの実装について説明します。</p>
+
+<h5>ユーザ情報の取得</h5>
+
+<p>まずは、ユーザ情報の取得を実装します。<br/>
+下記のように、画面上のGETボタンをタップしたときにユーザ情報を取得するという処理を実装してみます。</p>
+
+<!-- more -->
+
+
+<p><img src="/images/gtm-oauth2-1.png" alt="GETボタンでユーザ情報を取得" /></p>
+
+<p>念のため、OAuth2認証の処理は下記になります。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;GTMOAuth2Authentication.h&rdquo;</h1>
+
+<h1>import &ldquo;GTMOAuth2ViewControllerTouch.h&rdquo;</h1>
+
+<p>static NSString <em>const clientId = @&ldquo;</em><strong><strong><strong><em>&rdquo;;
+static NSString </em>const clientSecret = @&ldquo;</strong></strong></strong><em><em><em>&rdquo;;
+static NSString </em>const redirectURI = @&ldquo;urn:ietf:wg:oauth:2.0:oob&rdquo;;
+static NSString </em>const scope = @&ldquo;<a href="https://www.googleapis.com/auth/plus.login">https://www.googleapis.com/auth/plus.login</a> <a href="https://www.googleapis.com/auth/userinfo.email">https://www.googleapis.com/auth/userinfo.email</a>&rdquo;;
+static NSString </em>const kKeychainItemName = @&ldquo;Google&rdquo;;
+static NSString *const hasLoggedIn = @&ldquo;hasLoggedIn&rdquo;;</p>
+
+<p>@interface ViewController ()</p>
+
+<p>@property (nonatomic, retain) GTMOAuth2Authentication <em>auth;
+@property (nonatomic, strong) NSString </em>accessToken;</p>
+
+<p>&ndash;(void) startLogin;</p>
+
+<p>@end</p>
+
+<p>&lt; 省略 ></p>
+
+<p>// OAuth認証の開始
+&ndash; (void)startLogin
+{</p>
+
+<pre><code>// 既に認証をしたかどうか確認
+NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+BOOL hasLoggedin = [defaults boolForKey:hasLoggedIn];
+
+if(hasLoggedin == YES) {
+    // 認証済みの場合
+    self.auth = [GTMOAuth2ViewControllerTouch authForGoogleFromKeychainForName:kKeychainItemName
+                                                                      clientID:clientId
+                                                                  clientSecret:clientSecret];
+
+    // アクセストークンの取得
+    [self authorizeRequest];
+} else {
+    // 未認証の場合
+    GTMOAuth2ViewControllerTouch *gvc = [[GTMOAuth2ViewControllerTouch alloc] initWithScope:scope
+                                                                                   clientID:clientId
+                                                                               clientSecret:clientSecret
+                                                                           keychainItemName:kKeychainItemName
+                                                                                   delegate:self
+                                                                           finishedSelector:@selector(viewController:finishedWithAuth:error:)];
+    // 認証画面の表示
+    [self presentViewController:gvc animated:YES completion:nil];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// 認証後に実行する処理
+&ndash; (void)viewController:(GTMOAuth2ViewControllerTouch *)viewController</p>
+
+<pre><code>  finishedWithAuth:(GTMOAuth2Authentication *)auth
+             error:(NSError *)error
+</code></pre>
+
+<p>{</p>
+
+<pre><code>if(error != nil) {
+    // 認証失敗
+} else {
+    // 認証成功
+    self.auth = auth;
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setBool:YES forKey:hasLoggedIn];
+    [defaults synchronize];
+
+    // アクセストークンの取得
+    [self authorizeRequest];
+}
+
+// 認証画面を閉じる
+[viewController dismissViewControllerAnimated:YES completion:nil];
+</code></pre>
+
+<p>}</p>
+
+<p>// アクセストークンの取得処理
+&ndash; (void)authorizeRequest
+{</p>
+
+<pre><code>NSLog(@"%@", self.auth);
+NSMutableURLRequest *req = [[NSMutableURLRequest alloc] initWithURL:self.auth.tokenURL];
+[self.auth authorizeRequest:req completionHandler:^(NSError *error) {
+    NSLog(@"%@", self.auth);
+    if(self.auth.accessToken) {
+        self.accessToken = self.auth.accessToken;
+    }
+}];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これにユーザ情報の取得処理を実装します。</p>
+
+<p>```objective-c
+// ViewController.m
+// GETボタンをタップしてユーザ情報を取得
+&ndash; (IBAction)getBtnAction:(id)sender {</p>
+
+<pre><code>NSError *err = nil;
+NSDictionary *res = [self httpGetRequest:@"https://www.googleapis.com/oauth2/v2/userinfo" timeout:10 error:&amp;err];
+NSLog(@"res: %@", res);
+</code></pre>
+
+<p>}</p>
+
+<p>// GETリクエスト処理
+&ndash; (NSDictionary <em>)httpGetRequest:(NSString </em>)url</p>
+
+<pre><code>                     timeout:(NSInteger)timeout
+                       error:(NSError **)error
+</code></pre>
+
+<p>{</p>
+
+<pre><code>NSDictionary *result = nil;
+
+if(url) {
+    NSError *err = nil;
+    NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:[NSURL URLWithString:urlEscapeStr] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:timeout];
+
+    // ヘッダーにアクセストークンをセット
+    NSString *token = [NSString stringWithFormat:@"OAuth %@", self.accessToken];
+    [request setValue:token forHTTPHeaderField:@"Authorization"];
+
+    NSURLResponse *response = nil;
+    NSData *res = [NSURLConnection sendSynchronousRequest:request returningResponse:&amp;response error:&amp;err];
+
+    // ステータスコードの取得
+    NSInteger statusCode = [(NSHTTPURLResponse *)response statusCode];
+    if (err || statusCode &gt;= 400) {
+        *error = err;
+    } else {
+        NSError *error = nil;
+        result = [NSJSONSerialization JSONObjectWithData:res options:NSJSONReadingAllowFragments error:&amp;error];
+    }
+}
+
+return result;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これでユーザ情報が取得できるはずです。<br/>
+ポイントは</p>
+
+<ul>
+<li>初めのOAuth2認証でユーザ情報を取得できるようにscopeを設定していること</li>
+<li>リクエスト時にヘッダーにアクセストークンをセットしていること</li>
+</ul>
+
+
+<p>です。</p>
+
+<p>因みに、上記の処理では本来、URLエンコードをするべきですが、GETリクエストパラメータを含まないことから省略しています。</p>
+
+<p>参考:<br/>
+・<a href="http://kernhack.hatenablog.com/entry/2013/11/24/164828">gtm-oauth2でOAuth認証してgoogleのAPIを使う</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOSでGoogle OAuth認証がしたい〜OAuth2Clientを使う〜]]></title>
+    <link href="http://grandbig.github.io/blog/2014/07/17/ios-google-oauth2-2/"/>
+    <updated>2014-07-17T00:08:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/07/17/ios-google-oauth2-2</id>
+    <content type="html"><![CDATA[<h3>OAuth2Clientを利用したOAuth認証をやってみる</h3>
+
+<p>前回は<strong>gtm-oauth2</strong>ライブラリを利用したOAuth認証について説明しました。<br/>
+このライブラリは非常に使いやすく、WebViewの実装もやってくれるので楽です。<br/>
+ただ、１つだけ気になるのが、『このアプリが次のリクエストを許可しています』画面で<strong>承認するボタン</strong>を押した後に下記のような画面が出てしまうことです。<br/>
+<img src="/images/goauth2-1.png" alt="気になる画面" /><br/>
+これは格好悪いですね&hellip;。できれば、この画面を出したくない&hellip;。<br/>
+そもそもこの画面が表示される理由は、redirectURIに<strong>urn:ietf:wg:oauth:2.0:oob</strong>を設定した場合だそうです。<br/>
+詳しくは<a href="http://d.hatena.ne.jp/iad_otomamay/20130213/1360753743">山本大＠クロノスの日記 &ndash; GoogleAPI利用のためにOAuth2.0を使う</a>を確認してください。<br/>
+gtm-oauth2ではredirectURIを開発者側で設定することなく、ライブラリが自動でやってくれるため、どうにもできないんですね&hellip;。<br/>
+ま、ドメインのあるアドレスも持ってないですけど&hellip;。</p>
+
+<p>そこで、<strong>OAuth2Client</strong>を使ってみることにしました。</p>
+
+<!--more-->
+
+
+<h4>OAuth2Clientを使おう！！</h4>
+
+<p>CocoaPodsを使った導入方法から説明します。(CocoaPodsインストールしている前提です。)<br/>
+1: .xcodeprojファイルと同じ階層にPodfileを作成します。<br/>
+2: Podfileの中身は『pod &lsquo;NXOAuth2Client&rsquo;, &lsquo;~>1.2.2'』の１行のみです。<br/>
+3: pod install<br/>
+4: 作成された.xcworkspaceファイルを開く</p>
+
+<p>たったこれだけのことでOAuth2Clientを使う準備が整いました。</p>
+
+<p>では、続けて、画面を追加していきましょう。<br/>
+今回は下記2つのUIViewControllerを追加しました。<br/>
+・OAuth認証用の画面<br/>
+・OAuth認証後に表示するメイン画面<br/>
+<img src="/images/goauth2-2.png" alt="画面構成" /></p>
+
+<p>OAuth認証後に表示するメイン画面はアプリの用途によって異なると思うので、割愛して、OAuth認証用の画面について説明します。</p>
+
+<p>LoginViewController.mファイル<br/>
+```</p>
+
+<h1>import &ldquo;LoginViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;NXOAuth2.h&rdquo;</h1>
+
+<p>// OAuthのConfigureに必要な値の設定
+static NSString <em>const clientId = @&ldquo;Google Consoleで登録したクライアントID&rdquo;;
+static NSString </em>const clientSecret = @&ldquo;Google Consoleで登録したクライアントシークレット&rdquo;;
+static NSString <em>const redirectURI = @&ldquo;urn:ietf:wg:oauth:2.0:oob&rdquo;;
+static NSString </em>const authorizationURL = @&ldquo;<a href="https://accounts.google.com/o/oauth2/auth">https://accounts.google.com/o/oauth2/auth</a>&rdquo;;
+static NSString <em>const tokenURL = @&ldquo;<a href="https://accounts.google.com/o/oauth2/token">https://accounts.google.com/o/oauth2/token</a>&rdquo;;
+static NSString </em>const scope = @&ldquo;<a href="https://www.googleapis.com/auth/userinfo.profile">https://www.googleapis.com/auth/userinfo.profile</a>&rdquo;;
+static NSString <em>const accountType = @&ldquo;Google API&rdquo;;
+static NSString </em>const keyChainGroup = @&ldquo;Google&rdquo;;
+static NSString <em>const successPagePrefix = @&ldquo;Success&rdquo;;
+static NSString </em>const hasLoggedIn = @&ldquo;hasLoggedIn&rdquo;;</p>
+
+<p>@interface LoginViewController () <UIWebViewDelegate>
+@property (weak, nonatomic) IBOutlet UIWebView *loginWebView;</p>
+
+<p>@end</p>
+
+<p>&lt;省略></p>
+
+<ul>
+<li><p>(void)viewDidLoad
+{
+  [super viewDidLoad];</p>
+
+<p>  // WebViewのDelegate Protocolを利用するために設定
+  self.loginWebView.delegate = self;</p>
+
+<p>  // OAuth認証の処理
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  BOOL flag = [defaults boolForKey:hasLoggedIn];</p>
+
+<p>  if(!flag) {
+      // 一度もOAuth認証を通っていない場合
+      [self setupOAuth2AccountStore];
+      [self requestOAuth2Access];
+  } else {
+      // 一度はOAuth認証を通した場合
+      [self requestOAuth2ProtectedDetails];
+  }
+}</p></li>
+<li><p>(void)setupOAuth2AccountStore
+{
+  // OAuth認証のための準備。各パラメータ値を設定
+  [[NXOAuth2AccountStore sharedStore] setClientID:clientId
+                                          secret:clientSecret
+                                           scope:[NSSet setWithObject:scope]
+                                authorizationURL:[NSURL URLWithString:authorizationURL]
+                                        tokenURL:[NSURL URLWithString:tokenURL]
+                                     redirectURL:[NSURL URLWithString:redirectURI]
+                                   keyChainGroup:keyChainGroup
+                                  forAccountType:accountType];</p>
+
+<p>  // OAuth認証が成功したときに受け取るNotification
+  [[NSNotificationCenter defaultCenter] addObserverForName:NXOAuth2AccountStoreAccountsDidChangeNotification
+                                                    object:[NXOAuth2AccountStore sharedStore]
+                                                     queue:nil
+                                                usingBlock:^(NSNotification <em>aNotification){
+                                                    if (aNotification.userInfo) {
+                                                      NSLog(@&ldquo;Success!! We have an access token.&rdquo;);
+                                                      NSUserDefaults </em>defaults = [NSUserDefaults standardUserDefaults];
+                                                      [defaults setBool:YES forKey:hasLoggedIn];
+                                                      [self requestOAuth2ProtectedDetails];
+                                                    } else {
+                                                      NSLog(@&ldquo;Success!! We lost an access token.&rdquo;);
+                                                    }
+                                                }];</p>
+
+<p>  // OAuth認証に失敗したときに受け取るNotification
+  [[NSNotificationCenter defaultCenter] addObserverForName:NXOAuth2AccountStoreDidFailToRequestAccessNotification
+                                                    object:[NXOAuth2AccountStore sharedStore]
+                                                     queue:nil
+                                                usingBlock:^(NSNotification <em>aNotification){
+                                                    NSError </em>error = [aNotification.userInfo objectForKey:NXOAuth2AccountStoreErrorKey];
+                                                    NSLog(@&ldquo;error: %@&rdquo;, error.localizedDescription);
+                                                }];
+}</p></li>
+</ul>
+
+
+<p>// Googleログイン画面をUIWebViewに表示する処理
+&ndash; (void)requestOAuth2Access
+{</p>
+
+<pre><code>[[NXOAuth2AccountStore sharedStore] requestAccessToAccountWithType:accountType
+                               withPreparedAuthorizationURLHandler:^(NSURL *preparedURL){
+                                   [self.loginWebView loadRequest:[NSURLRequest requestWithURL:preparedURL]];
+                               }];
+</code></pre>
+
+<p>}</p>
+
+<p>// アクセストークンやリフレッシュトークンを取得するための処理
+&ndash; (void)handleOAuth2AccessResult:(NSString *)accessResult
+{</p>
+
+<pre><code>BOOL success = [accessResult rangeOfString:successPagePrefix options:NSCaseInsensitiveSearch].location != NSNotFound;
+
+if(success) {
+    // OAuth認証の画面で承認するを選択した場合
+    NSString * arguments = accessResult;
+    if ([arguments hasPrefix:successPagePrefix]) {
+        arguments = [arguments substringFromIndex:successPagePrefix.length + 1];
+    }
+
+    NSString *redirectURL = [NSString stringWithFormat:@"%@?%@", redirectURI, arguments];
+
+    [NXOAuth2AccountStore sharedStore] handleRedirectURL:[NSURL URLWithString:redirectURL]];]
+} else {
+    // OAuth認証の画面で承認しなかった場合
+    // 再度、Googleログインページに遷移させる
+    [self requestOAuth2Access];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// OAuth認証後にユーザ情報取得のAPIを投げる処理
+&ndash; (void)requestOAuth2ProtectedDetails
+{</p>
+
+<pre><code>NXOAuth2AccountStore *store = [NXOAuth2AccountStore sharedStore];
+NSArray *accounts = [store accountsWithAccountType:accountType];
+
+[NXOAuth2Request performMethod:@"GET"
+                    onResource:[NSURL URLWithString:@"https://www.googleapis.com/oauth2/v1/userinfo"]
+               usingParameters:nil
+                   withAccount:accounts[0]
+           sendProgressHandler:^(unsigned long long bytesSend, unsigned long long bytesTotal) {
+           }
+               responseHandler:^(NSURLResponse *response, NSData *responseData, NSError *error){
+                   if (responseData) {
+                       NSError *error;
+                       NSDictionary *userInfo = [NSJSONSerialization JSONObjectWithData:responseData options:NSJSONReadingMutableContainers error:&amp;error];
+                       NSLog(@"%@", userInfo);
+                   }
+                   if(error) {
+                       NSLog(@"%@", error.localizedDescription);
+                   }
+               }];
+</code></pre>
+
+<p>}</p>
+
+<h1>pragma mark &ndash; UIWebViewDelegate</h1>
+
+<p>// ページが読み終わった後に処理
+&ndash; (void)webViewDidFinishLoad:(UIWebView *)webView
+{</p>
+
+<pre><code>if ([webView.request.URL.absoluteString rangeOfString:authorizationURL options:NSCaseInsensitiveSearch].location != NSNotFound) {
+    self.loginWebView.hidden = NO;
+} else {
+    self.loginWebView.hidden = YES;
+
+    NSString *pageTitle = [webView stringByEvaluatingJavaScriptFromString:@"document.title"];
+    NSLog(@"pageTitle: %@", pageTitle);
+
+    [self handleOAuth2AccessResult:pageTitle];
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>重要なことはwebViewDidFinishLoadの中で見せたくない画面を隠せるように実装していることです。<br/>
+これがgtm-oauth2ライブラリではできなかったことですね。<br/>
+また、gtm-oauth2ライブラリと同じく、OAuth2Clientライブラリも「アクセストークンが期限切れになった場合にリフレッシュトークンを投げることで新しいアクセストークンを取得する処理」を実装しています。そのため、自身で実装するよりも工数を削減することができます。</p>
+
+<p>Googleだけでなく、twitter, facebookなどのOAuth認証でも利用できますので、ぜひお試しあれ！！</p>
+
+<p>参考<br/>
+・<a href="http://www.idmworks.com/blog/entry/getting-started-with-oauth2client-on-ios">IDMWORKS : BLOG</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOSでGoogle OAuth認証がしたい]]></title>
+    <link href="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/"/>
+    <updated>2014-07-13T00:17:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2</id>
+    <content type="html"><![CDATA[<h3>iOSネイティブアプリにGoogle OAuth認証機能を実装する方法</h3>
+
+<p>Google OAuth認証はWebアプリであれば多くの情報が載っているのですが、なぜかiOSネイティブアプリになると情報が全然見つからない&hellip;。<br/>
+ということでその方法をまとめてみることにした。</p>
+
+<p>まず、ネット上で検索してみるとiOSでOAuth認証をするためのライブラリは幾つか作られているようでした。<br/>
+その中でも、Googleが提供している<strong>gtm-oauth2</strong>がよく使われているらしい。<br/>
+ま、Googleが提供しているのであれば、安心して使えるだろうということで、ここでは<strong>gtm-oauth2</strong>を使った方法で説明します。</p>
+
+<!--more-->
+
+
+<h4>設定編</h4>
+
+<p>開発に入る前に<a href="https://console.developers.google.com/project">Google Console</a>で設定する必要があります。<br/>
+1: OAuthのClientIDを作成する<br/>
+左メニューからAPIS &amp; AUTH > Credentialsを選択します。<br/>
+OAuthと書かれた下に<strong>Create new Client ID</strong>というボタンがあります。これをクリックするとポップアップが出てきます。このポップアップの中で必要な選択と入力は下記画像のようになります。<br/>
+<img src="/images/goauth5.png" alt="Create new Client ID" /><br/>
+すると、下記画像のように<strong>CLIENT ID</strong>と<strong>CLIENT SECRET</strong>が表示されます。<br/>
+<img src="/images/goauth6.png" alt="Client ID &amp; Client Secret" /></p>
+
+<p>2: Consent Screenを設定する<br/>
+次にConsent Screenを設定します。これを設定しないとErrorが発生してしまいます。<br/>
+左メニューからAPIS &amp; AUTH > Consent Screenを選択します。<br/>
+下記画像のように<strong>EMAIL ADDRESS</strong>と<strong>PRODUCT NAME</strong>の２箇所を入力してSaveボタンをクリックしましょう。<br/>
+<img src="/images/goauth7.png" alt="Consent Screenの設定" /></p>
+
+<p>3: 利用するAPIを設定する<br/>
+最後に利用したいAPIの設定をONにしておきましょう。<br/>
+左メニューからAPIS &amp; AUTH > APIsを選択します。<br/>
+下記画像のように利用したいAPIのSTATUSをONにしましょう。<br/>
+<img src="/images/goauth8.png" alt="APIをONにする" /></p>
+
+<p>これで設定は完了です。<br/>
+続いて開発の説明に入ります。</p>
+
+<h4>開発編</h4>
+
+<p>1: GoogleからソースをGET<br/>
+早速、Googleが配布しているソースをもらいに行きます。<br/>
+<a href="https://code.google.com/p/gtm-oauth2/source/checkout">Googleのgtm-oauth2サイト</a>でも書かれているようにsvnを使って、ソースを落とします。<br/>
+ソースを保存する場所を決めたら、その配下で下記コマンドを実行。</p>
+
+<p><code>
+svn checkout http://gtm-oauth2.googlecode.com/svn/trunk/ gtm-oauth2-read-only
+</code></p>
+
+<p>もしかしたら、途中でRejectかtemporaryかpermanentか聞かれるかもしれません。筆者はtemporaryにしました。<br/>
+ソースを落とした後は<a href="https://code.google.com/p/gtm-oauth2/wiki/Introduction">公式ドキュメント</a>に書かれている通り、進めていきます。</p>
+
+<p>2: ダウンロードしたソースを自身のXcodeプロジェクトに追加<br/>
+OAuth認証機能を実装したいXcodeプロジェクトを作成します。ここにOAuthに必要なソースを追加します。<br/>
+必要なソースは<br/>
+・GTMOAuth2Authentication.h/m<br/>
+・GTMOAuth2SignIn.h/m<br/>
+・GTMHTTPFetcher.h/m<br/>
+・GTMOAuth2ViewControllerTouch.h/m<br/>
+・GTMOAuth2ViewTouch.xib<br/>
+です。<br/>
+格納場所は下記画像を見てください。<br/>
+<img src="/images/goauth1.png" alt="必要なソースの格納場所" /></p>
+
+<p>ほとんどの人がXcode5.1.1でプロジェクトを作ると思うのですが、デフォルトARC対応プロジェクトとなっていると思います。<br/>
+そのため、<strong>コンパイルオプション</strong>と<strong>Other Linker Flags</strong>を設定する必要があります。<br/>
+<img src="/images/goauth2.png" alt="コンパイルオプションの設定" /><br/>
+<img src="/images/goauth3.png" alt="Other Linker Flagsの設定" /></p>
+
+<p>3: Googleからダウンロードしたソースを使うために必要なFrameworkをプロジェクトに追加する<br/>
+Security.frameworkとSystemConfiguration.frameworkを追加します。<br/>
+<img src="/images/goauth4.png" alt="必要なframeworkを追加" /></p>
+
+<p>4: ソースを書く<br/>
+OAuth認証機能を実装するUIViewControllerをプロジェクトに追加しましょう。ここでは名前をViewControllerとします。<br/>
+ViewController.mファイルのソース<br/>
+```</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;GTMOAuth2Authentication.h&rdquo;</h1>
+
+<h1>import &ldquo;GTMOAuth2ViewControllerTouch.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@property (nonatomic, retain) GTMOAuth2Authentication *auth;</p>
+
+<p>&ndash;(void) startLogin;</p>
+
+<p>@end
+static NSString <em>const kKeychainItemName = @&ldquo;GOAuthTest&rdquo;;
+static NSString </em>const scope = @&ldquo;<a href="https://www.googleapis.com/auth/calendar">https://www.googleapis.com/auth/calendar</a>&rdquo;;// Calendar APIを利用する場合のscope
+static NSString <em>const clientId = @&ldquo;xxxxxxxx.apps.googleusercontent.com&rdquo;;// 発行されたClient IDを設定
+static NSString </em>const clientSecret = @&ldquo;xxxxxxxx&rdquo;;// 発行されたClient Secretを設定
+static NSString *const hasLoggedIn = @&ldquo;hasLoggedInKey&rdquo;;// NSUserDefaultに保存するための文字列</p>
+
+<p>&lt;省略></p>
+
+<ul>
+<li>(void)viewDidAppear:(BOOL)animated
+{
+  // アプリ起動してOAuth認証動作を開始する
+  [self startLogin];
+}</li>
+</ul>
+
+
+<p>// OAuth認証の開始
+&ndash; (void)startLogin
+{</p>
+
+<pre><code>// 既に認証をしたかどうか確認
+NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+BOOL hasLoggedin = [defaults boolForKey:hasLoggedIn];
+
+if(hasLoggedin == YES) {
+    // 認証したことがある場合
+    self.auth = [GTMOAuth2ViewControllerTouch authForGoogleFromKeychainForName:kKeychainItemName
+                                                                      clientID:clientId
+                                                                  clientSecret:clientSecret];
+    // アクセストークンの取得
+    [self authorizeRequest];
+} else {
+    // 認証したことがない場合
+    GTMOAuth2ViewControllerTouch *gvc = [[GTMOAuth2ViewControllerTouch alloc] initWithScope:scope
+                                                                                   clientID:clientId
+                                                                               clientSecret:clientSecret
+                                                                           keychainItemName:kKeychainItemName
+                                                                                   delegate:self
+                                                                           finishedSelector:@selector(viewController:finishedWithAuth:error:)
+    ];
+    // 認証画面の表示
+    [self presentViewController:gvc animated:YES completion:nil];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// 認証後に実行する処理
+&ndash; (void)viewController:(GTMOAuth2ViewControllerTouch *)viewController</p>
+
+<pre><code>  finishedWithAuth:(GTMOAuth2Authentication *)auth
+             error:(NSError *)error
+</code></pre>
+
+<p>{</p>
+
+<pre><code>if(error != nil) {
+    // 認証失敗
+} else {
+    // 認証成功
+    self.auth = auth;
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setBool:YES forKey:hasLoggedIn];
+    [defaults synchronize];
+
+    // アクセストークンの取得
+    [self authorizeRequest];
+}
+
+// 認証画面を閉じる
+[viewController dismissViewControllerAnimated:YES completion:nil];
+</code></pre>
+
+<p>}</p>
+
+<p>// アクセストークンの取得処理
+&ndash; (void)authorizeRequest
+{</p>
+
+<pre><code>NSLog(@"%@", self.auth);
+NSMutableURLRequest *req = [NSMutableURLRequest alloc] initWithURL:self.auth.tokenURL];
+[self.auth authorizeRequest:req completionHandler:^(NSError *error) {
+    NSLog(@"%@", self.auth);
+}];
+</code></pre>
+
+<p>}
+```
+5. 実機で動作を確認<br/>
+ソースが書けたら、実際にアプリを起動して見てみましょう。<br/>
+認証画面が表示されます。<br/>
+<img src="/images/goauth9.png" alt="認証画面" /></p>
+
+<p>メールアドレスとパスワードを入力すると、認証の許可画面が表示されます。<br/>
+<img src="/images/goauth10.png" alt="許可画面" /><br/>
+許可をすると、開発者の作成する画面に戻ります。</p>
+
+<p>さて、いかがだったでしょうか？<br/>
+今回はGoogle APIの利用まで書いていませんが、OAuthができてしまえば、そんなに難しくはないでしょう。たぶん笑</p>
+
+<p>参考:<br/>
+・<a href="http://kernhack.hatenablog.com/entry/2013/11/24/164828">gtm-oauth2でOAuth認証してgoogleのAPIを使う</a><br/>
+・<a href="http://stackoverflow.com/questions/18677244/error-invalid-client-no-application-name">invalid_client no application name &ndash; Stack Overflow</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

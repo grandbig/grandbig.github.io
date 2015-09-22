@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: BackgroundFetch | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/backgroundfetch/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2015-09-22T23:15:42+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Background FetchとBackground Transferについて]]></title>
+    <link href="http://grandbig.github.io/blog/2014/05/18/backgroundfetch2/"/>
+    <updated>2014-05-18T21:43:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/05/18/backgroundfetch2</id>
+    <content type="html"><![CDATA[<h3>Background FetchとBackground Transferの違いについて</h3>
+
+<p>今回はBackground FetchとBackground Transferについて筆者が混同していたことについて書こうと思います。Background Fetchのできることや使いどころは<a href="http://grandbig.github.io/blog/2014/05/13/backgroundfetch1/">前回</a>書きましたので、そちらをご覧下さい。<br/>
+もともと筆者がBackground Transferに着目した理由はBackground Fetchでは不可能な長い時間の処理を実現させたいからでした。Background Transferでは見事にその想いを実現できる！！っと思っていました。<br/>
+しかし、どうやら根本的に理解が間違っていたようなのです&hellip;。</p>
+
+<!--more-->
+
+
+<p>Background Transferは<strong>時間制限なし</strong>, <strong>アプリケーションの状態によらない転送が可能な設定がある</strong>という特徴があります。そして設定可能なタスクは<br/>
+・NSURLSessionDataTask: Background起動時には使えないのでちょっとした通信に利用<br/>
+・NSURLSessionDownloadTask: 大容量のダウンロード処理だけでなく、処理時間が長い可能性のある通信でも利用可能<br/>
+・NSURLSessionUploadTask: 大容量のアップロード処理で利用<br/>
+の3つがあります。</p>
+
+<p>筆者はBackground Fetchの30秒制限では実行不可能な長めの処理をBackground Transferで実行しようとしたのですが、これがなかなかうまくいかないんですね。<strong>1回の実行</strong>であれば、Background Transferで問題ありません。ただ、<strong>繰り返し処理を実行</strong>したいのであればBackground Transferは向いていません。というかそういった処理は組めないようなんです&hellip;。</p>
+
+<p>Background fetchとBackground Transferを組み合わせた場合、下記のような処理になるでしょう。<br/>
+AppDelegate.mファイル内のコード<br/>
+```objective-c
+&ndash; (void)application:(UIApplication *)application performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
+{</p>
+
+<pre><code>NSURLRequest* request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"http://localhost:3000"]];
+NSURLSessionDownloadTask* downloadTask = [session downloadTaskWithRequest:request];
+[downloadTask resume];
+
+completionHandler(UIBackgroundFetchResultNewData);
+</code></pre>
+
+<p>}</p>
+
+<p>&ndash;(void)URLSession:(NSURLSession <em>)session downloadTask:(NSURLSessionDownloadTask </em>)downloadTask didFinishDownloadingToURL:(NSURL *)location
+{</p>
+
+<pre><code>// 通信結果を受け取った後に処理を書くメソッド
+</code></pre>
+
+<p>}
+```
+これを実行すると、completionHandlerでBackground fetch内での処理が終了したと見なされ、didFinishDownloadingToURLを通過しませんでした。<br/>
+よって、アプリがBackground起動のときにOSが判断したちょうど良いタイミングで実行してくれるBackground Fetchではやはり長い処理を実行することはできないと言えます。<br/>
+確かにBackground Transferで検索して出てくるサンプルは大体、ボタンを押した後に実行される感じだったんですよね&hellip;。</p>
+
+<p>もしかしたら方法があるかもしれませんが、今のところ手詰まりな感じです。ってことで今日はここまで。</p>
+
+<p>参考:<br/>
+<a href="http://www.gaprot.jp/pickup/ios7/vol1/">第 1 回・iOS7でバックグラウンド実行＆通信をしてみよう！</a><br/>
+<a href="http://mediaprobe.co.jp/blog/clips/2014/01/09/ios-7-2/">iOS 7のための開発ノウハウ #2：大容量ファイルのバックグラウンド転送</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Background fetch completionHandlerの実行タイミングについて]]></title>
+    <link href="http://grandbig.github.io/blog/2014/05/13/backgroundfetch1/"/>
+    <updated>2014-05-13T22:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/05/13/backgroundfetch1</id>
+    <content type="html"><![CDATA[<h3>Background Fetchで気をつけること</h3>
+
+<p>本日はBackground fetchについて書きたいと思います。時間の都合上、何回かに分けて書く予定です笑<br/>
+Background fetchは既に皆さんもご存知の通りiOS7から加わった新機能です。通常、アプリをBackground起動にしたとき、アプリ内処理に許される時間は5秒間です。iOS6まではBackground起動中に継続して処理可能な機能は決まっていました。(位置情報の取得, 音楽の再生, 電話の3つ)<br/>
+従って、これまでは<strong>beginBackgroundTaskWithExpirationHandler</strong>と<strong>setKeepAliveTimeout</strong>を用いて最大10分間の処理を継続して実行していました。(しかし、iOS7ではこの方法ができないらしいです。)<br/>
+これに対してBackground fetchは30秒の制限はあるものの、OSが実行すべきと思ったタイミングで複数回実行されます。継続して実行する必要はないものの、どこかのタイミングで実行しておきたいというときには有効に使うことができるでしょう。</p>
+
+<!--more-->
+
+
+<p>まず、『Background fetchの利用を許可するまでの手順』などの基本的な部分についてはいろいろなサイトで説明されているので、例えば<a href="http://blog.yug1224.com/2013/09/29/backgroundfetch/">こちら</a>のサイトなどを参考にして下さい。<br/>
+では早速、本日のお題である<strong>completionHandlerの実行タイミング</strong>の説明です。これはBackground fetchの処理が終了したことをiOSに知らせるために必ず書く必要があります。もし、書かなかった場合はデバッグ時に<br/>
+<strong>Warning: Application delegate received call to -application:performFetchWithCompletionHandler: but the completion handler was never called.</strong><br/>
+というWarningメッセージが表示されます。<br/>
+また、処理が終了したことをiOSが判断できないため、<br/>
+<strong>permittedBackgroundDuration: 30.000000 reason: backgroundContentFetching owner pid:33 preventSuspend  preventThrottleDownUI  preventIdleSleep  preventSuspendOnSleep</strong><br/>
+とアプリ起動中にエラーを出すことになります。(これはOrganizerのDebug Logsから確認することができます。)</p>
+
+<p>そして重要なのは<strong>completionHandlerは処理の最後に書く</strong>ということです。<br/>
+しかも<strong>一本筋のフローの中での最後</strong>という意味です。<br/>
+例えば、<br/>
+AppDelegate.mファイル<br/>
+```objective-c
+&ndash; (void)application:(UIApplication *)application performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
+{</p>
+
+<pre><code>[self testMethod];
+
+completionHandler(UIBackgroundFetchResultNewData);
+</code></pre>
+
+<p>}</p>
+
+<ul>
+<li>(void)testMethod
+{
+  dispatch_queue_t globalQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+  dispatch_async(globalQueue, ^{
+      NSLog(@&ldquo;別スレッド処理の開始&rdquo;);
+      [NSThread sleepForTimeInterval:5.0f];
+      NSLog(@&ldquo;別スレッド処理の終了&rdquo;);
+  });
+}
+```
+このような処理があったとします。<br/>
+この場合、デバッグしてみるとわかるのですが、testMethodの最後の<strong>NSLog(@&ldquo;別スレッド処理の終了&rdquo;);</strong>は実行されません。<br/>
+これは先にcompletionHandler(UIBackgroundFetchResultNewData);が実行されてしまうためです。</li>
+</ul>
+
+
+<p>そういった意味で<strong>一本筋のフローの中での最後にcompletionHandlerの処理を書く</strong>ということです。</p>
+
+<p>このようにBackground fetchの実行タイミングは非常に重要になります。<br/>
+といったところで本日はここまで。</p>
+
+<p>参考:<br/>
+<a href="http://qiita.com/griffin_stewie/items/8371c09059b3ba7bb202">Background fetchを試してみた</a><br/>
+<a href="http://miyano-harikyu.jp/sola/devlog/2013/11/21/post-108/">iOSでバックグラウンドタスク</a><br/>
+<a href="http://wonderpla.net/blog/engineer/BackgroundFetch/">iOS7のバックグラウンド処理〜Background Fetch</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
