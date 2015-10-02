@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-09-23T14:02:14+09:00</updated>
+  <updated>2015-10-02T22:48:08+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,100 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[AFNetworking 2.6.0でやってみよう自己証明書でのSSL通信]]></title>
+    <link href="http://grandbig.github.io/blog/2015/10/02/afnetworking2-dot-6-0/"/>
+    <updated>2015-10-02T22:21:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/10/02/afnetworking2-dot-6-0</id>
+    <content type="html"><![CDATA[<h4>AFNetworking2.5.xまでの自己証明書でのSSL通信</h4>
+
+<p>これまで<a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>2.5.xを使ってきた筆者ですが、開発中は当然のことながら自己証明書を利用することがあります。<br/>
+まずはこれまでの書き方を<code>AFHTTPSessionManager</code>を例に確認してみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AFHTTPSessionManagerをインスタンス化</span>
+</span><span class='line'><span class="n">AFHTTPSessionManager</span> <span class="o">*</span><span class="n">manager</span> <span class="o">=</span> <span class="p">[</span><span class="n">AFHTTPSessionManager</span> <span class="n">manager</span><span class="p">];</span>
+</span><span class='line'><span class="n">manager</span><span class="p">.</span><span class="n">securityPolicy</span><span class="p">.</span><span class="n">allowInvalidCertificates</span> <span class="o">=</span> <span class="n">YES</span><span class="p">;</span>
+</span><span class='line'><span class="n">manager</span><span class="p">.</span><span class="n">responseSerializer</span><span class="p">.</span><span class="n">acceptableContentTypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSSet</span> <span class="nl">setWithObjects:</span><span class="s">@&quot;text/plain&quot;</span><span class="p">,</span> <span class="s">@&quot;application/json&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>そうです。<br/>
+自己証明書を許可するのに、<code>manager.securityPolicy.allowInvalidCertificates = YES;</code>と書いていました。</p>
+
+<p>しかし、2015/08/18に <strong>2.6.0</strong> が登場した途端、ネット上で大騒ぎに&hellip;笑。<br/>
+<a href="https://github.com/AFNetworking/AFNetworking/releases">2.6.0のRelease Note</a>を見てみると、 <strong>Full Certificate Chain Validation has been removed from AFSecurityPolicy.</strong> なんて一言が&hellip;。</p>
+
+<p>いろいろと困ったのですが、筆者の場合は次のやり方でうまくいきました。</p>
+
+<h4>AFNetworking2.6.0での自己証明書 SSL通信</h4>
+
+<p>はい。2.6.0では下記のように書きました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AFHTTPSessionManagerをインスタンス化</span>
+</span><span class='line'><span class="n">AFHTTPSessionManager</span> <span class="o">*</span><span class="n">manager</span> <span class="o">=</span> <span class="p">[</span><span class="n">AFHTTPSessionManager</span> <span class="n">manager</span><span class="p">];</span>
+</span><span class='line'><span class="n">manager</span><span class="p">.</span><span class="n">securityPolicy</span><span class="p">.</span><span class="n">allowInvalidCertificates</span> <span class="o">=</span> <span class="n">YES</span><span class="p">;</span>
+</span><span class='line'><span class="n">manager</span><span class="p">.</span><span class="n">securityPolicy</span><span class="p">.</span><span class="n">validatesDomainName</span> <span class="o">=</span> <span class="n">NO</span><span class="p">;</span>
+</span><span class='line'><span class="n">manager</span><span class="p">.</span><span class="n">responseSerializer</span><span class="p">.</span><span class="n">acceptableContentTypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSSet</span> <span class="nl">setWithObjects:</span><span class="s">@&quot;text/plain&quot;</span><span class="p">,</span> <span class="s">@&quot;application/json&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>何が変わったかお気づきでしょうか？<br/>
+そうです。<br/>
+<code>manager.securityPolicy.validatesDomainName = NO;</code>を追加したのです。</p>
+
+<h4>まとめ</h4>
+
+<p>iOS9からATS設定が追加されたこともあり、HTTPSが推奨されています。<br/>
+しかも、正式な証明書が開発・商用関係なく使われていくことでしょう。<br/>
+なので、こういった更新は納得感ありますが、なかなか開発者には辛いところもありますよね。<br/>
+とは言え、AppleやGoogleが決めていくことにはついていった方が良いよな〜といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Xcodeが正常かチェックしましょう！]]></title>
@@ -5328,230 +5422,6 @@ Swiftではどんな要素を含むArray型なのかを示し、どんなkeyで�
 値がない場合には空オブジェクトを返すAPIである場合には問題ないと思います。</p>
 
 <p>だんだんとSwiftの基礎含めて理解が進んできた気がします。<br/>
-と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Swiftの基礎を理解しよう！(2)]]></title>
-    <link href="http://grandbig.github.io/blog/2015/05/17/swift-base-2/"/>
-    <updated>2015-05-17T17:48:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/05/17/swift-base-2</id>
-    <content type="html"><![CDATA[<h4>Swiftの型</h4>
-
-<p>続いて、基本的な内容を見ていきます。<br/>
-SwiftはObjective-Cと型の表現が変わりました。<br/>
-よく使う型を見て行きましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">var</span> <span class="nl">intValue:</span><span class="n">Int</span> <span class="o">=</span> <span class="mi">3</span>
-</span><span class='line'><span class="n">var</span> <span class="nl">doubleValue:</span><span class="n">Double</span> <span class="o">=</span> <span class="mf">1.234</span>
-</span><span class='line'><span class="n">var</span> <span class="nl">floatValue:</span><span class="n">Float</span> <span class="o">=</span> <span class="mf">5.678</span>
-</span><span class='line'><span class="n">var</span> <span class="nl">boolValue:</span><span class="n">Bool</span> <span class="o">=</span> <span class="n">true</span>
-</span><span class='line'><span class="n">var</span> <span class="nl">stringValue:</span><span class="n">String</span> <span class="o">=</span> <span class="s">&quot;abcdefg&quot;</span>
-</span><span class='line'><span class="n">var</span> <span class="nl">charValue:</span><span class="n">Character</span> <span class="o">=</span> <span class="s">&quot;a&quot;</span>
-</span><span class='line'><span class="n">var</span> <span class="n">intArray</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">120</span><span class="p">,</span> <span class="mi">6</span><span class="p">]</span>
-</span><span class='line'><span class="n">var</span> <span class="n">stringArray</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;abc&quot;</span><span class="p">,</span> <span class="s">&quot;123&quot;</span><span class="p">]</span>
-</span><span class='line'><span class="n">var</span> <span class="n">testDictionary</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;job&quot;</span><span class="o">:</span> <span class="s">&quot;programmer&quot;</span><span class="p">,</span> <span class="s">&quot;skillNum&quot;</span><span class="o">:</span> <span class="mi">5</span><span class="p">]</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>因みにこれをObjective-Cで書くと</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">NSInteger</span> <span class="n">intValue</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
-</span><span class='line'><span class="n">CGFloat</span> <span class="n">doubleValue</span> <span class="o">=</span> <span class="mf">1.234</span><span class="p">;</span>
-</span><span class='line'><span class="n">CGFloat</span> <span class="n">floatValue</span> <span class="o">=</span> <span class="mf">5.678</span><span class="p">;</span>
-</span><span class='line'><span class="kt">BOOL</span> <span class="n">boolValue</span> <span class="o">=</span> <span class="n">YES</span><span class="p">;</span>
-</span><span class='line'><span class="n">NSString</span> <span class="o">*</span><span class="n">stringValue</span> <span class="o">=</span> <span class="s">@&quot;abcdefg&quot;</span><span class="p">;</span>
-</span><span class='line'><span class="kt">char</span> <span class="n">charValue</span> <span class="o">=</span> <span class="s">&quot;a&quot;</span>
-</span><span class='line'><span class="n">NSArray</span> <span class="o">*</span><span class="n">intArray</span> <span class="o">=</span> <span class="err">@</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">120</span><span class="p">,</span> <span class="mi">6</span><span class="p">];</span>
-</span><span class='line'><span class="n">NSArray</span> <span class="o">*</span><span class="n">stringArray</span> <span class="o">=</span> <span class="err">@</span><span class="p">[</span><span class="s">@&quot;abc&quot;</span><span class="p">,</span> <span class="s">@&quot;123&quot;</span><span class="p">];</span>
-</span><span class='line'><span class="n">NSDictionary</span> <span class="o">*</span><span class="n">testDictionary</span> <span class="o">=</span> <span class="err">@</span><span class="p">{</span><span class="s">@&quot;job&quot;</span><span class="o">:</span> <span class="s">@&quot;programmer&quot;</span><span class="p">,</span> <span class="s">@&quot;skillNum&quot;</span><span class="o">:</span> <span class="err">@</span><span class="mi">5</span><span class="p">};</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>CGFloatで定義された<code>doubleValue</code>と<code>floatValue</code>は<code>double</code>, <code>float</code>をそれぞれ書くこともできます。<br/>
-(ここは32bit, 64bit問題のため、安全側に倒すために<code>CGFloat</code>に統一して書いています。)</p>
-
-<h4>Swiftでクラスを作成</h4>
-
-<p>さて、新たにSwiftファイルを追加して、カスタムクラスを実装してみましょう。<br/>
-まずは、Objective-Cと同様で、左メニューのフォルダを右クリックして、『New File』を選択します。</p>
-
-<p><img src="http://grandbig.github.io/images/swift_add_new_class.png" alt="New File" /></p>
-
-<p>そして、iOS > Source > Swift Fileを選択します。</p>
-
-<p><img src="http://grandbig.github.io/images/choose_swift_file.png" alt="Add Swift File" /></p>
-
-<p>Objective-Cと違って、どのクラスを継承するか否かを決めるフェーズはありません。<br/>
-ファイル名と保存場所を決めるのみです。</p>
-
-<p><img src="http://grandbig.github.io/images/create_swift_file.png" alt="Save Swift File" /></p>
-
-<p>作成されるファイルの内容は下記になります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ここにカスタムクラスを実装していきましょう。<br/>
-例えば下記のようなクラスを作ります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">class</span> <span class="nl">Engineer:</span><span class="n">NSObject</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">// プロパティの定義</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">level:</span><span class="n">Int</span> <span class="o">=</span> <span class="mi">1</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">businessTitle:</span><span class="n">String</span> <span class="o">=</span> <span class="s">&quot;新米エンジニア&quot;</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">skill:</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;Swift&quot;</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// メソッドの定義</span>
-</span><span class='line'>  <span class="c1">// レベルアップ処理</span>
-</span><span class='line'>  <span class="n">func</span> <span class="n">levelUp</span><span class="p">()</span> <span class="o">-&gt;</span><span class="n">Int</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="n">level</span><span class="o">++</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// 新規スキルをセットする処理</span>
-</span><span class='line'>  <span class="n">func</span> <span class="n">addNewSkills</span><span class="p">(</span><span class="nl">newSkill:</span><span class="n">String</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">skill</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">newSkill</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// 新たな肩書をセットする処理</span>
-</span><span class='line'>  <span class="n">func</span> <span class="n">updateBusinessTitle</span><span class="p">(</span><span class="nl">title:</span><span class="n">String</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">businessTitle</span> <span class="o">=</span> <span class="n">title</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記のクラスでは <strong>NSObject</strong> クラスを継承しています。逆に言えばEngineerクラスのスーパークラスは <strong>NSObject</strong> クラスということです。<br/>
-Engineerクラスには<code>level</code>, <code>businessTitle</code>, <code>skill</code>という3つのプロパティを定義しています。(全てに初期値を与えています。)<br/>
-また、<code>levelUp()</code>, <code>addNewSkills(newSkill:String)</code>, <code>updateBusinessTitle(title:String)</code>の3つのクラス・メソッドを定義しています。</p>
-
-<p>では、実際にカスタムクラスを使ってみましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 呼び出す側のswiftファイル(ViewController.swift)</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// カスタムクラスの初期化</span>
-</span><span class='line'>      <span class="n">var</span> <span class="nl">engineer:</span><span class="n">Engineer</span> <span class="o">=</span> <span class="n">Engineer</span><span class="p">()</span>
-</span><span class='line'>      <span class="c1">// プロパティの初期値をログ出力</span>
-</span><span class='line'>      <span class="n">println</span><span class="p">(</span><span class="s">&quot;Engineer level : \(engineer.level), businessTitle : \(engineer.businessTitle), skill : \(engineer.skill)&quot;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// 各メソッドを実行</span>
-</span><span class='line'>      <span class="n">engineer</span><span class="p">.</span><span class="n">levelUp</span><span class="p">()</span>
-</span><span class='line'>      <span class="n">engineer</span><span class="p">.</span><span class="n">addNewSkills</span><span class="p">(</span><span class="s">&quot;Objective-C&quot;</span><span class="p">)</span>
-</span><span class='line'>      <span class="n">engineer</span><span class="p">.</span><span class="n">updateBusinessTitle</span><span class="p">(</span><span class="s">&quot;iOSアプリエンジニア&quot;</span><span class="p">)</span>
-</span><span class='line'>      <span class="c1">// プロパティをログに再出力</span>
-</span><span class='line'>      <span class="n">println</span><span class="p">(</span><span class="s">&quot;Engineer level : \(engineer.level), businessTitle : \(engineer.businessTitle), skill : \(engineer.skill)&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ここで気になるのが、自作したクラスを使うときに<code>import</code>をしていないという点です。<br/>
-同プロジェクト内のクラスは<code>import</code>の必要がないということらしいです。<br/>
-なので、自作したクラスをCocoaPodでインストールした場合は<code>import</code>の必要があると思われます。</p>
-
-<p>基本的なところで微妙にObjective-Cと異なる部分があるので注意が必要ですね。<br/>
 と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
