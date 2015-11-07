@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-11-08T01:16:14+09:00</updated>
+  <updated>2015-11-08T02:49:59+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,121 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Google Sign-In SDK for iOSがアップデートされました！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/11/08/google-sign-in-update/"/>
+    <updated>2015-11-08T01:31:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/11/08/google-sign-in-update</id>
+    <content type="html"><![CDATA[<h3>Google Sign-In SDK for iOSを利用する理由</h3>
+
+<p>本日は再び、Google Sign-In SDK for iOSについてお話したいと思います。<br/>
+筆者は業務でも積極的にGoogle Sign-In SDK for iOSを使っています。<br/>
+理由は、</p>
+
+<ul>
+<li><a href="https://itunes.apple.com/jp/app/google/id284815942?mt=8">Google</a>, <a href="https://itunes.apple.com/jp/app/google+/id447119634?mt=8">Google+</a>アプリを入れているユーザはアカウントを入力しなくてもOAuth認証が可能</li>
+<li>クライアント側で手軽にOAuth認証を実装できる</li>
+</ul>
+
+
+<p>といった2つがあります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>前者は特にユーザの手間を省けるので、非常に有用だと考えています。<br/>
+例え、1つの端末内で複数のアカウントを使っていても、ユーザが選択できる形でOAuth認証をすることができます。</p>
+
+<p><img src="http://grandbig.github.io/images/google-sign-in-update-1.png" alt="OAuth認証" /></p>
+
+<p>もちろんGoogle, Google+共にインストールされていない端末であったとしても、メールアドレスとパスワードを入力する従来の方法で問題なくOAuth認証を通すことができます。</p>
+
+<p>後者は以前紹介した手順(<a href="http://grandbig.github.io/blog/2015/09/13/google-sign-in/">Google Sign-In SDK for iOSを使ってみよう！</a>を参照のこと)を踏むだけで、簡単に実装することができます。<br/>
+OAuth認証で得られるトークン(アクセストークンやIDトークン)は端末ローカルで保存することも多いため、サーバサイドよりもクライアントサイドでOAuth認証を通す方が良い場合もあります。<br/>
+あとは、サーバを自身で持てない場合もクライアントサイドで処理が済むので、非常に良いですね。</p>
+
+<h3>Google Sign-In SDK for iOSがアップデートされて、さらに使いやすくなりました！</h3>
+
+<p>上記で説明した通り、非常に実装が簡単でユーザにとっても利益のあるSDKではあるものの、微妙に使いにくい側面も持っていました。<br/>
+それは、IDトークンを取得するタイミングが<code>[[GoogleSinIn sharedInstance] signIn];</code>と<code>[[GoogleSignIn sharedInstance] signInSilently];</code>の2つのみだったからです。<br/>
+IDトークンはアクセストークンと同じく、有効期限が <strong>発行されてから1時間</strong> と定義されているため、IDトークンを利用する場合は割りと頻繁に更新情報を取得する必要があります。<br/>
+しかし、先ほど2つのメソッドはアプリ起動後に <strong>ユーザがログイン済みか否かを判断した上で実行するメソッド</strong> であるため、頻繁に利用するシーンには不向きと言えます。(アプリ初回起動後とそれ以外との判断を自身で定義したフラグなどで管理する必要があるため)</p>
+
+<p>それが先日公開されたv2.4.0から(<a href="https://developers.google.com/identity/sign-in/ios/release">Release Notes</a>を参照のこと)変更が加わりました。<br/>
+具体的には、</p>
+
+<ul>
+<li><code>- (void) getAccessTokenWithHandler:</code>がdeprecatedとなり、<code>- (void) getTokensWithHandler:</code>が代わりに追加</li>
+<li><code>- (void) refreshAccessTokenWithHandler:</code>がdeprecatedとなり、<code>- (void) refreshTokensWithHandler:</code>が代わりに追加</li>
+</ul>
+
+
+<p>の2点です。</p>
+
+<p>これまでアクセストークンを取得するために利用していた<code>getAccessTokenWithHandler</code>ではアクセストークンのみを返却していましたが、<code>getTokenWithHandler</code>では<code>GIDAuthentication</code>オブジェクトごと返却してくれるようになったため、アクセストークンだけでなく、IDトークンも取得することができるようになりました。</p>
+
+<p>また、<code>refreshAccessTokenWithHandler</code>ではアクセストークンのみをリフレッシュするものでしたが、<code>refreshTokenWithHandler</code>ではアクセストークンとIDトークンをリフレッシュしてくれるようになりました。</p>
+
+<p>IDトークンはアクセストークンと同じ1時間だけ有効なトークンなので、自然と更新タイミングはアクセストークンと同じになります。<br/>
+アクセストークンのみを使うのであれば、<code>getAccessTokenWithHandler</code>と<code>refreshAccessTokenWithHandler</code>で良かったのですが、IDトークンも使うとなると<code>getTokensWithHandler</code>および<code>refreshTokensWithHandler</code>でないと成り立ちません。</p>
+
+<h3>OAuth認証を通して取得する各種トークンについて</h3>
+
+<p>Google OAuth認証では様々なトークンが飛び交います。ここではそれぞれのトークンの利用用途について少し触れておきたいと思います。</p>
+
+<ul>
+<li>one-time code<br/>
+これはアクセストークンを取得するための一時的なトークンです。<br/>
+今回のSDKとは直接からみませんが、<a href="https://developers.google.com/identity/sign-in/web/server-side-flow?hl=ja">
+Google Sign-In for server-side apps</a>に書かれている通りで、サーバサイドでアクセストークンを取得するために利用します。</li>
+<li>access-token<br/>
+これは各種APIを利用するために必要なトークンです。<br/>
+API実行時にヘッダーにこのトークンを渡すことで、認証されたことを伝えることができます。(ヘッダーに入れていない場合はunauthorized errorが発生します。)</li>
+<li>refresh-token<br/>
+これはアクセストークンをリフレッシュするために利用するトークンです。<br/>
+アクセストークンは有効期限が1時間なので、継続的にAPIを実行するためには、きちんとアクセストークンをリフレッシュする必要があります。</li>
+<li>id-token<br/>
+JWT(Json Web Token)と呼ばれるデータ形式で、ユーザのユニークな識別子が入っています。<br/>
+各種サービス間でのID連携するときに利用します。<br/>
+例えば、GREEにログインするときにYahoo!アカウントを使ってログインした場合に、ユーザの基本情報(名前やメールアドレス)が自動で入力されていることがあると思います。<br/>
+そういった連携を組み込みたい場合に使います。</li>
+</ul>
+
+
+<p>今回、id-tokenを調べる上で、OpenID Connectの考え方に触れました。これまで全く気にしてこなかった内容なのですが、かなり大事であることがわかりました。<br/>
+これについてもどこかで記事を書ければ良いなと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<p>参考:<br/>
+* <a href="http://webos-goodies.jp/archives/how_to_migrate_from_openid_to_openid_connect.html">Google アカウントの認証を OpenID から OpenID Connect に移行する方法</a><br/>
+* <a href="http://www.slideshare.net/kura_lab/openid-connect-id">OpenID Connect 入門 〜コンシューマーにおけるID連携のトレンド〜</a><br/>
+* <a href="http://oauth.jp/blog/2015/01/06/oauth2-multiple-response-type/">OAuth 2.0 の Response Type 全パターン</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[CLGeocoderによるジオコーディングについて]]></title>
@@ -3784,302 +3899,6 @@ SQLiteでいうところのテーブルを生成しているイメージでし�
 </script>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[複数のiBeaconを検知しよう！(別UUIDの場合)]]></title>
-    <link href="http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region/"/>
-    <updated>2015-06-14T23:43:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region</id>
-    <content type="html"><![CDATA[<h4>複数のiBeacon(別UUIDのiBeacon)を検知する方法</h4>
-
-<p>さて、本日は別々のUUIDを持ったiBeacon信号を補足したいと思います。<br/>
-iBeaconは案外、電波が遠くまで飛ぶため、幾つかのUUIDを補足できるようにしておくことで、うまく<code>didEnterRegion</code>, <code>didExitRegion</code>を使い、レンジングでのみ取得可能な値を効果的に使うことができるかもしれません。<br/>
-今回はiOS8以上を対象に下記サンプルソースを書きました。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.m</span>
-</span><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CLLocationManager</span> <span class="o">*</span><span class="n">locationManager</span><span class="p">;</span>
-</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSUUID</span> <span class="o">*</span><span class="n">proximityUUID1</span><span class="p">,</span> <span class="o">*</span><span class="n">proximityUUID2</span><span class="p">;</span>
-</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CLBeaconRegion</span> <span class="o">*</span><span class="n">beaconRegion1</span><span class="p">,</span> <span class="o">*</span><span class="n">beaconRegion2</span><span class="p">;</span>
-</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CLBeacon</span> <span class="o">*</span><span class="n">nearestBeacon</span><span class="p">;</span>
-</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSString</span> <span class="o">*</span><span class="n">str</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">@end</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CLLocationManager</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">proximityUUID1</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSUUID</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithUUIDString:</span><span class="s">@&quot;8D4DB809-032F-4771-96F3-99BD5C25F924&quot;</span><span class="p">];</span>
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">beaconRegion1</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CLBeaconRegion</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithProximityUUID:</span> <span class="n">self</span><span class="p">.</span><span class="n">proximityUUID1</span> <span class="nl">identifier:</span><span class="s">@&quot;com.takahiro.ibeaconSample&quot;</span><span class="p">];</span>
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">proximityUUID2</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSUUID</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithUUIDString:</span><span class="s">@&quot;1AE93327-B172-4C5D-BBF7-F52B959FD4EB&quot;</span><span class="p">];</span>
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">beaconRegion2</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CLBeaconRegion</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithProximityUUID:</span> <span class="n">self</span><span class="p">.</span><span class="n">proximityUUID1</span> <span class="nl">identifier:</span><span class="s">@&quot;com.takahiro.ibeaconSample2&quot;</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="n">requestAlwaysAuthorization</span><span class="p">];</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// ユーザの位置情報の許可状態を確認するメソッド</span>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didChangeAuthorizationStatus:</span><span class="p">(</span><span class="n">CLAuthorizationStatus</span><span class="p">)</span><span class="nv">status</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">kCLAuthorizationStatusAuthorizedAlways</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// Beaconのモニタリングを開始</span>
-</span><span class='line'>      <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">startMonitoringForRegion:</span><span class="n">self</span><span class="p">.</span><span class="n">beaconRegion1</span><span class="p">];</span>
-</span><span class='line'>      <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">startMonitoringForRegion:</span><span class="n">self</span><span class="p">.</span><span class="n">beaconRegion2</span><span class="p">];</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// 指定した領域に入った場合</span>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didEnterRegion:</span><span class="p">(</span><span class="n">CLRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="s">@&quot;Enter Region&quot;</span><span class="p">];</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// 指定した領域から出た場合</span>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didExitRegion:</span><span class="p">(</span><span class="n">CLRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="s">@&quot;Exit Region&quot;</span><span class="p">];</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// iBeacon領域内に既にいるか/いないかの判定</span>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didDetermineState:</span><span class="p">(</span><span class="n">CLRegionState</span><span class="p">)</span><span class="nv">state</span> <span class="nf">forRegion:</span><span class="p">(</span><span class="n">CLRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="k">switch</span> <span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">case</span> <span class="nl">CLRegionStateInside:</span>
-</span><span class='line'>          <span class="k">if</span><span class="p">([</span><span class="n">region</span> <span class="nl">isMemberOfClass:</span><span class="p">[</span><span class="n">CLBeaconRegion</span> <span class="n">class</span><span class="p">]]</span> <span class="o">&amp;&amp;</span> <span class="p">[</span><span class="n">CLLocationManager</span> <span class="n">isRangingAvailable</span><span class="p">]){</span>
-</span><span class='line'>              <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">startRangingBeaconsInRegion:</span><span class="n">self</span><span class="p">.</span><span class="n">beaconRegion1</span><span class="p">];</span>
-</span><span class='line'>              <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">startRangingBeaconsInRegion:</span><span class="n">self</span><span class="p">.</span><span class="n">beaconRegion2</span><span class="p">];</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>      <span class="k">case</span> <span class="nl">CLRegionStateOutside:</span>
-</span><span class='line'>          <span class="k">if</span><span class="p">([</span><span class="n">region</span> <span class="nl">isMemberOfClass:</span><span class="p">[</span><span class="n">CLBeaconRegion</span> <span class="n">class</span><span class="p">]]</span> <span class="o">&amp;&amp;</span> <span class="p">[</span><span class="n">CLLocationManager</span> <span class="n">isRangingAvailable</span><span class="p">]){</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>      <span class="k">case</span> <span class="nl">CLRegionStateUnknown:</span>
-</span><span class='line'>          <span class="k">if</span><span class="p">([</span><span class="n">region</span> <span class="nl">isMemberOfClass:</span><span class="p">[</span><span class="n">CLBeaconRegion</span> <span class="n">class</span><span class="p">]]</span> <span class="o">&amp;&amp;</span> <span class="p">[</span><span class="n">CLLocationManager</span> <span class="n">isRangingAvailable</span><span class="p">]){</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>      <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Beacon信号を検出した場合</span>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didRangeBeacons:</span><span class="p">(</span><span class="n">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nv">beacons</span> <span class="nf">inRegion:</span><span class="p">(</span><span class="n">CLBeaconRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">beacons</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">nearestBeacon</span> <span class="o">=</span> <span class="n">beacons</span><span class="p">.</span><span class="n">firstObject</span><span class="p">;</span>
-</span><span class='line'>      <span class="n">NSString</span> <span class="o">*</span><span class="n">rangeMessage</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="k">switch</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">nearestBeacon</span><span class="p">.</span><span class="n">proximity</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">case</span> <span class="nl">CLProximityImmediate:</span>
-</span><span class='line'>              <span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Immediate&quot;</span><span class="p">;</span>
-</span><span class='line'>              <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>          <span class="k">case</span> <span class="nl">CLProximityNear:</span>
-</span><span class='line'>              <span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Near&quot;</span><span class="p">;</span>
-</span><span class='line'>              <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>          <span class="k">case</span> <span class="nl">CLProximityFar:</span>
-</span><span class='line'>              <span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Far&quot;</span><span class="p">;</span>
-</span><span class='line'>              <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>          <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>              <span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Unknown&quot;</span><span class="p">;</span>
-</span><span class='line'>              <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">str</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;%f [m]&quot;</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">nearestBeacon</span><span class="p">.</span><span class="n">accuracy</span><span class="p">];</span>
-</span><span class='line'>      <span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="n">self</span><span class="p">.</span><span class="n">str</span><span class="p">];</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// ローカルプッシュ</span>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">sendLocalNotificationForMessage:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">message</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="n">UILocalNotification</span> <span class="o">*</span><span class="n">localNotification</span> <span class="o">=</span> <span class="p">[</span><span class="n">UILocalNotification</span> <span class="n">new</span><span class="p">];</span>
-</span><span class='line'>  <span class="n">localNotification</span><span class="p">.</span><span class="n">alertBody</span> <span class="o">=</span> <span class="n">message</span><span class="p">;</span>
-</span><span class='line'>  <span class="n">localNotification</span><span class="p">.</span><span class="n">fireDate</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSDate</span> <span class="n">date</span><span class="p">];</span>
-</span><span class='line'>  <span class="n">localNotification</span><span class="p">.</span><span class="n">soundName</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">[[</span><span class="n">UIApplication</span> <span class="n">sharedApplication</span><span class="p">]</span> <span class="nl">scheduleLocalNotification:</span><span class="n">localNotification</span><span class="p">];</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ローカルプッシュを可能にするために<code>AppDelegate.m</code>に下記書式を追加しましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.m</span>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">application:</span><span class="p">(</span><span class="n">UIApplication</span> <span class="o">*</span><span class="p">)</span><span class="nv">application</span> <span class="nf">didFinishLaunchingWithOptions:</span><span class="p">(</span><span class="n">NSDictionary</span> <span class="o">*</span><span class="p">)</span><span class="nv">launchOptions</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="p">...</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">if</span> <span class="p">([</span><span class="n">UIApplication</span> <span class="nl">instancesRespondToSelector:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">registerUserNotificationSettings:</span><span class="p">)])</span> <span class="p">{</span>
-</span><span class='line'>      <span class="p">[[</span><span class="n">UIApplication</span> <span class="n">sharedApplication</span><span class="p">]</span> <span class="nl">registerUserNotificationSettings:</span><span class="p">[</span><span class="n">UIUserNotificationSettings</span> <span class="nl">settingsForTypes:</span><span class="n">UIUserNotificationTypeAlert</span><span class="o">|</span><span class="n">UIUserNotificationTypeSound</span> <span class="nl">categories:</span><span class="nb">nil</span><span class="p">]];</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">return</span> <span class="n">YES</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ポイントは<code>CLBeaconRegion</code>を作成するときに指定する<code>UUID</code>と<code>identifier</code>が共にユニークであることです。<br/>
-<code>UUID</code>のみを別々にしても<code>identifier</code>が同じだと別のiBeacon領域と見なされないので注意が必要です。</p>
-
-<p>別々のiBeacon領域が作成できれば、<code>didEnterRegion</code>, <code>didExitRegion</code>などのデリゲートメソッドはそれぞれのiBeacon領域に対して発生します。<br/>
-もし、比較的狭い空間で複数のiBeaconを設置して、アプリをFG起動しない前提で人流解析をしたい場合は複数のiBeacon領域(別々のUUIDを持ったiBeacon領域)を用意することも１つの手だと思います。</p>
-
-<p>と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
 
 ]]></content>
   </entry>

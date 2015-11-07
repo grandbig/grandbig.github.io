@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Google | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/google/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-11-08T01:16:48+09:00</updated>
+  <updated>2015-11-08T02:49:59+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,121 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Google Sign-In SDK for iOSがアップデートされました！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/11/08/google-sign-in-update/"/>
+    <updated>2015-11-08T01:31:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/11/08/google-sign-in-update</id>
+    <content type="html"><![CDATA[<h3>Google Sign-In SDK for iOSを利用する理由</h3>
+
+<p>本日は再び、Google Sign-In SDK for iOSについてお話したいと思います。<br/>
+筆者は業務でも積極的にGoogle Sign-In SDK for iOSを使っています。<br/>
+理由は、</p>
+
+<ul>
+<li><a href="https://itunes.apple.com/jp/app/google/id284815942?mt=8">Google</a>, <a href="https://itunes.apple.com/jp/app/google+/id447119634?mt=8">Google+</a>アプリを入れているユーザはアカウントを入力しなくてもOAuth認証が可能</li>
+<li>クライアント側で手軽にOAuth認証を実装できる</li>
+</ul>
+
+
+<p>といった2つがあります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>前者は特にユーザの手間を省けるので、非常に有用だと考えています。<br/>
+例え、1つの端末内で複数のアカウントを使っていても、ユーザが選択できる形でOAuth認証をすることができます。</p>
+
+<p><img src="/images/google-sign-in-update-1.png" alt="OAuth認証" /></p>
+
+<p>もちろんGoogle, Google+共にインストールされていない端末であったとしても、メールアドレスとパスワードを入力する従来の方法で問題なくOAuth認証を通すことができます。</p>
+
+<p>後者は以前紹介した手順(<a href="http://grandbig.github.io/blog/2015/09/13/google-sign-in/">Google Sign-In SDK for iOSを使ってみよう！</a>を参照のこと)を踏むだけで、簡単に実装することができます。<br/>
+OAuth認証で得られるトークン(アクセストークンやIDトークン)は端末ローカルで保存することも多いため、サーバサイドよりもクライアントサイドでOAuth認証を通す方が良い場合もあります。<br/>
+あとは、サーバを自身で持てない場合もクライアントサイドで処理が済むので、非常に良いですね。</p>
+
+<h3>Google Sign-In SDK for iOSがアップデートされて、さらに使いやすくなりました！</h3>
+
+<p>上記で説明した通り、非常に実装が簡単でユーザにとっても利益のあるSDKではあるものの、微妙に使いにくい側面も持っていました。<br/>
+それは、IDトークンを取得するタイミングが<code>[[GoogleSinIn sharedInstance] signIn];</code>と<code>[[GoogleSignIn sharedInstance] signInSilently];</code>の2つのみだったからです。<br/>
+IDトークンはアクセストークンと同じく、有効期限が <strong>発行されてから1時間</strong> と定義されているため、IDトークンを利用する場合は割りと頻繁に更新情報を取得する必要があります。<br/>
+しかし、先ほど2つのメソッドはアプリ起動後に <strong>ユーザがログイン済みか否かを判断した上で実行するメソッド</strong> であるため、頻繁に利用するシーンには不向きと言えます。(アプリ初回起動後とそれ以外との判断を自身で定義したフラグなどで管理する必要があるため)</p>
+
+<p>それが先日公開されたv2.4.0から(<a href="https://developers.google.com/identity/sign-in/ios/release">Release Notes</a>を参照のこと)変更が加わりました。<br/>
+具体的には、</p>
+
+<ul>
+<li><code>- (void) getAccessTokenWithHandler:</code>がdeprecatedとなり、<code>- (void) getTokensWithHandler:</code>が代わりに追加</li>
+<li><code>- (void) refreshAccessTokenWithHandler:</code>がdeprecatedとなり、<code>- (void) refreshTokensWithHandler:</code>が代わりに追加</li>
+</ul>
+
+
+<p>の2点です。</p>
+
+<p>これまでアクセストークンを取得するために利用していた<code>getAccessTokenWithHandler</code>ではアクセストークンのみを返却していましたが、<code>getTokenWithHandler</code>では<code>GIDAuthentication</code>オブジェクトごと返却してくれるようになったため、アクセストークンだけでなく、IDトークンも取得することができるようになりました。</p>
+
+<p>また、<code>refreshAccessTokenWithHandler</code>ではアクセストークンのみをリフレッシュするものでしたが、<code>refreshTokenWithHandler</code>ではアクセストークンとIDトークンをリフレッシュしてくれるようになりました。</p>
+
+<p>IDトークンはアクセストークンと同じ1時間だけ有効なトークンなので、自然と更新タイミングはアクセストークンと同じになります。<br/>
+アクセストークンのみを使うのであれば、<code>getAccessTokenWithHandler</code>と<code>refreshAccessTokenWithHandler</code>で良かったのですが、IDトークンも使うとなると<code>getTokensWithHandler</code>および<code>refreshTokensWithHandler</code>でないと成り立ちません。</p>
+
+<h3>OAuth認証を通して取得する各種トークンについて</h3>
+
+<p>Google OAuth認証では様々なトークンが飛び交います。ここではそれぞれのトークンの利用用途について少し触れておきたいと思います。</p>
+
+<ul>
+<li>one-time code<br/>
+これはアクセストークンを取得するための一時的なトークンです。<br/>
+今回のSDKとは直接からみませんが、<a href="https://developers.google.com/identity/sign-in/web/server-side-flow?hl=ja">
+Google Sign-In for server-side apps</a>に書かれている通りで、サーバサイドでアクセストークンを取得するために利用します。</li>
+<li>access-token<br/>
+これは各種APIを利用するために必要なトークンです。<br/>
+API実行時にヘッダーにこのトークンを渡すことで、認証されたことを伝えることができます。(ヘッダーに入れていない場合はunauthorized errorが発生します。)</li>
+<li>refresh-token<br/>
+これはアクセストークンをリフレッシュするために利用するトークンです。<br/>
+アクセストークンは有効期限が1時間なので、継続的にAPIを実行するためには、きちんとアクセストークンをリフレッシュする必要があります。</li>
+<li>id-token<br/>
+JWT(Json Web Token)と呼ばれるデータ形式で、ユーザのユニークな識別子が入っています。<br/>
+各種サービス間でのID連携するときに利用します。<br/>
+例えば、GREEにログインするときにYahoo!アカウントを使ってログインした場合に、ユーザの基本情報(名前やメールアドレス)が自動で入力されていることがあると思います。<br/>
+そういった連携を組み込みたい場合に使います。</li>
+</ul>
+
+
+<p>今回、id-tokenを調べる上で、OpenID Connectの考え方に触れました。これまで全く気にしてこなかった内容なのですが、かなり大事であることがわかりました。<br/>
+これについてもどこかで記事を書ければ良いなと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<p>参考:<br/>
+* <a href="http://webos-goodies.jp/archives/how_to_migrate_from_openid_to_openid_connect.html">Google アカウントの認証を OpenID から OpenID Connect に移行する方法</a><br/>
+* <a href="http://www.slideshare.net/kura_lab/openid-connect-id">OpenID Connect 入門 〜コンシューマーにおけるID連携のトレンド〜</a><br/>
+* <a href="http://oauth.jp/blog/2015/01/06/oauth2-multiple-response-type/">OAuth 2.0 の Response Type 全パターン</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Google Sign-In SDK for iOSを使ってみよう！]]></title>
