@@ -4,7 +4,7 @@
   <title><![CDATA[Category: iBeacon | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ibeacon/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-11-09T01:12:12+09:00</updated>
+  <updated>2015-11-16T00:35:14+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,120 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOSで検知可能なiBeaconの数について(別UUIDの場合)]]></title>
+    <link href="http://grandbig.github.io/blog/2015/11/16/multi-ibeacon-region-2/"/>
+    <updated>2015-11-16T00:15:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/11/16/multi-ibeacon-region-2</id>
+    <content type="html"><![CDATA[<h4>iOSで検知可能なCLBeaconRegionの数について</h4>
+
+<p>さて、今日は久しぶりにiBeaconについて書きます。<br/>
+以前、<a href="http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region/">複数のiBeaconを検知しよう！(別UUIDの場合)</a>で別UUIDの複数のiBeaconを検知する方法について書きました。<br/>
+今回は、その限界数について見ていきたいと思います。</p>
+
+<p><a href="https://developer.apple.com/jp/documentation/LocationAwarenessPG.pdf">位置情報とマッププログラミングガイド</a>を読むと、地理的領域の観測は最大20個まで可能とされています。<br/>
+しかし、iBeacon領域の観測について最大数が書かれていませんでした。<br/>
+Googleで調べてもなかなか出てこなかったので、自分で調べることにしました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>結果から言うと、iBeacon領域の観測は <strong>最大20個</strong> まで可能でした。<br/>
+(地理的領域の観測と同じでした。)</p>
+
+<p>因みに、下記ソースで確認しています。</p>
+
+<p>```objective-c
+import UIKit
+import CoreLocation</p>
+
+<p>class ViewController: UIViewController, CLLocationManagerDelegate {</p>
+
+<pre><code>var lm:CLLocationManager?
+var uuids:[String]?
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    self.lm = CLLocationManager()
+    self.lm?.delegate = self
+
+    self.uuids = [ ここにUUIDの文字列を20個以上用意 ]
+
+    self.lm?.requestAlwaysAuthorization()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func locationManager(manager: CLLocationManager, didChangeAuthorizationStatus status: CLAuthorizationStatus) {
+    // 位置情報サービスの許可状態が変更した場合に呼び出される処理
+    if(status == .AuthorizedAlways) {
+        for(var i=0; i &lt; self.uuids.count; i++) {
+            let uuidString = self.uuids[i]
+            let uuid = NSUUID.init(UUIDString: uuidString)
+            let beaconRegion = CLBeaconRegion.init(proximityUUID: uuid!, identifier: ("beaconRegion"+String(i)))
+            self.lm?.startMonitoringForRegion(beaconRegion)
+        }
+    }
+}
+
+func locationManager(manager: CLLocationManager, didStartMonitoringForRegion region: CLRegion) {
+    // Regionのモニタリングが開始したときに呼び出される処理
+    print("\(region)")
+}
+
+func locationManager(manager: CLLocationManager, didDetermineState state: CLRegionState, forRegion region: CLRegion) {
+    // Regionに対する状態が変化したときに呼び出される処理
+    switch(state) {
+    case .Inside:
+        print("Inside: \(region)")
+        break
+    case .Outside:
+        print("Outside: \(region)")
+        break
+    case .Unknown:
+        print("Unknown: \(region)")
+        break
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p><code>viewDidLoad</code>内でuuidsの初期化を行っていますが、ここで20個UUIDを設定すると、<code>didDetermineState</code>内でログが20回出力されました。<br/>
+しかし、21個以上UUIDを設定した場合は、先ほどと同じく20回のログ出力となり、21個目以降に設定したUUIDに関してはログ出力されませんでした。<br/>
+つまり、先に設定したUUIDが有効で、21個目以降のUUIDは無効ということになります。</p>
+
+<p>複数のUUIDを大量に使う際には気をつけましょう。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iBeaconはバッテリを使う？使わない？]]></title>
@@ -765,186 +879,6 @@ return YES;
 もし、比較的狭い空間で複数のiBeaconを設置して、アプリをFG起動しない前提で人流解析をしたい場合は複数のiBeacon領域(別々のUUIDを持ったiBeacon領域)を用意することも１つの手だと思います。</p>
 
 <p>と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[AndroidでBackgroundでiBeaconを検知しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/06/06/altbeacon-service/"/>
-    <updated>2015-06-06T22:00:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/06/06/altbeacon-service</id>
-    <content type="html"><![CDATA[<h4>AltBeaconでiBeacon検知(アプリBG起動編)</h4>
-
-<p>さて、以前、<a href="http://grandbig.github.io/blog/2015/05/16/altbeacon/">AltBeaconを使ってAndroidでiBeaconを検知しよう</a>で基本的な使い方を説明させて頂きました。<br/>
-今回はアプリをBackgroundで起動しているときにもiBeaconを検知できるようにしてみようと思います。<br/>
-Background起動だけであれば、Applicationクラスを使うことで実現できますが、<br/>
-Serviceクラスを使えば、アプリをBackgroundから削除したとしても動作させることができます。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>では早速、ソースコードを見て行きましょう。</p>
-
-<p>```java
-// BeaconServiceクラス
-// Serviceを拡張し、BootstrapNotifierをインターフェースとしたBeaconServiceクラス
-public class BeaconService extends Service implements BootstrapNotifier {</p>
-
-<pre><code>public static final String TAG = org.altbeacon.beacon.service.BeaconService.class.getSimpleName();
-
-// iBeaconのデータを認識するためのParserフォーマット
-public static final String IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24";
-// BGで監視するiBeacon領域
-private RegionBootstrap regionBootstrap;
-// iBeacon検知用のマネージャー
-private BeaconManager beaconManager;
-// UUID設定用
-private Identifier identifier;
-// iBeacon領域
-private Region region;
-// 監視するiBeacon領域の名前
-private String beaconName;
-
-@Override
-public void onCreate() {
-    super.onCreate();
-
-    // iBeaconのデータを受信できるようにParserを設定
-    beaconManager = BeaconManager.getInstanceForApplication(this);
-    beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(IBEACON_FORMAT));
-    // BGでiBeacon領域を監視(モニタリング)するスキャン間隔を設定
-    beaconManager.setBackgroundBetweenScanPeriod(1000);
-
-    // UUIDの作成
-    identifier = Identifier.parse("A56BA1E1-C06E-4C08-8467-DB6F5BD04486");
-    // Beacon名の作成
-    beaconName = "MyBeacon-000206C6";
-    // major, minorの指定はしない
-    region = new Region(beaconName, identifier, null, null);
-    regionBootstrap = new RegionBootstrap(this, region);
-
-    beaconManager.setRangeNotifier(new RangeNotifier() {
-        @Override
-        public void didRangeBeaconsInRegion(Collection&lt;Beacon&gt; beacons, Region region) {
-            // 検出したビーコンの情報を全部Logに書き出す
-            for(Beacon beacon : beacons) {
-                Log.d(TAG, "UUID:" + beacon.getId1() + ", major:" + beacon.getId2() + ", minor:" + beacon.getId3() + ", Distance:" + beacon.getDistance() + ",RSSI" + beacon.getRssi() + ", TxPower" + beacon.getTxPower());
-            }
-        }
-    });
-}
-
-@Override
-public int onStartCommand(Intent intent, int flags, int startId) {
-    return super.onStartCommand(intent, flags, startId);
-}
-
-@Override
-public void onDestroy() {
-    super.onDestroy();
-}
-
-@Override
-public IBinder onBind(Intent intent) {
-    return null;
-}
-
-@Override
-public void didEnterRegion(Region region) {
-    // 領域侵入
-    Log.d(TAG, "Enter Region");
-    // アプリをFG起動させる
-    Intent intent = new Intent(this, MainActivity.class);
-    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-    startActivity(intent);
-
-    try {
-        // レンジング開始
-        beaconManager.startRangingBeaconsInRegion(region);
-    } catch(RemoteException e) {
-        // 例外が発生した場合
-        e.printStackTrace();
-    }
-}
-
-@Override
-public void didExitRegion(Region region) {
-    // 領域退出
-    Log.d(TAG, "Exit Region");
-    try {
-        // レンジング停止
-        beaconManager.stopRangingBeaconsInRegion(region);
-    } catch() {
-        // 例外が発生した場合
-        e.printStackTrace();
-    }
-}
-
-@Override
-public void didDetermineStateForRegion(int i, Region region) {
-    // 領域に対する状態が変化
-    Log.d(TAG, "Determine State: " + i);
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p><strong>領域進入時にアプリをFG起動</strong> させているので、アプリがFG起動したらiBeacon領域に侵入したと言えます。<br/>
-さあ、これでiOSとほぼ同じ挙動を実現できました。</p>
-
-<p>蛇足かもしれませんが、<code>MainActivity.java</code>でサービスを起動する部分も書いておきます。</p>
-
-<p>```java
-// MainActivity.java</p>
-
-<p>public class MainActivity extends ActionBarActivity {</p>
-
-<pre><code>@Override
-protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
-
-    // サービス起動
-    startService(new Intent(MainActivity.this, BeaconService.class));
-}
-
-&lt;省略&gt;
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>ソースコードは<a href="https://github.com/grandbig/altBeaconSample/tree/service">こちら</a>から。<br/>
-serviceブランチを参照ください。</p>
-
-<p>といったところで本日はここまで。</p>
-
-<p>参考:<br/>
-<a href="http://dev.classmethod.jp/smartphone/android-beacon-library-introduction-5/">[Android][iBeacon] Android Beacon Library パラっと解説 その5 [バックグラウンド領域監視]</a></p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
