@@ -9,9 +9,12 @@
   <meta name="author" content="Takahiro">
 
   
-  <meta name="description" content="証明書と鍵を書きだそう！ 本日は複数のMacでiOS端末の実機検証をするための手順について説明します。 まず、開発者用の証明書を書き出しましょう。
-証明書はキーチェーンアクセスから確認できます。
-キーチェーンアクセスアプリを起動すると、下記画面が表示されます。 (adsbygoogle = &hellip;">
+  <meta name="description" content="FMDBを使ってSQLiteに画像を保存してみる さて、当たり前なようでやったことがなかったのでやってみました。
+たぶんもっとキレイな方法があると思うのですが、なぜかできず&hellip;。できた方法を説明します。 SQLiteにデータを保存 まず下記のメソッドを実装します。 1
+2
+3
+4
+5 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +82,111 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/05/07/sqlite-img/">FMDBを使ってSQLiteに画像を保存しよう！</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-05-07T00:37:00+09:00" pubdate data-updated="true">May 7<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/05/07/sqlite-img/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>FMDBを使ってSQLiteに画像を保存してみる</h4>
+
+<p>さて、当たり前なようでやったことがなかったのでやってみました。<br/>
+たぶんもっとキレイな方法があると思うのですが、なぜかできず&hellip;。できた方法を説明します。</p>
+
+<h5>SQLiteにデータを保存</h5>
+
+<p>まず下記のメソッドを実装します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// DBに接続</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nf">dbConnect:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">dbName</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSArray</span> <span class="o">*</span><span class="n">paths</span> <span class="o">=</span> <span class="n">NSSearchPathForDirectoriesInDomains</span><span class="p">(</span> <span class="n">NSDocumentDirectory</span><span class="p">,</span> <span class="n">NSUserDomainMask</span><span class="p">,</span> <span class="n">YES</span> <span class="p">);</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">dir</span> <span class="o">=</span> <span class="p">[</span><span class="n">paths</span> <span class="nl">objectAtIndex:</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">FMDatabase</span> <span class="o">*</span><span class="n">db</span> <span class="o">=</span> <span class="p">[</span><span class="n">FMDatabase</span> <span class="nl">databaseWithPath:</span><span class="p">[</span><span class="n">dir</span> <span class="nl">stringByAppendingPathComponent:</span><span class="n">dbName</span><span class="p">]];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// テーブルの作成</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">createTable:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">dbName</span> <span class="nf">tableName:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">tableName</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">FMDatabase</span> <span class="o">*</span><span class="n">db</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span> <span class="nl">dbConnect:</span><span class="n">dbName</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">sql</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;create table if not exists %@ (id INTEGER PRIMARY KEY, title TEXT, imgData TEXT)&quot;</span><span class="p">,</span> <span class="n">tableName</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="n">open</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="nl">executeUpdate:</span><span class="n">sql</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">db</span> <span class="n">close</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/05/07/sqlite-img/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -692,74 +800,6 @@ Central側ではiBeacon信号をキャッチしたときに、そのオブジェ
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/03/28/start-android-studio/">Android Studioを始めてみよう！</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-03-28T13:13:00+09:00" pubdate data-updated="true">Mar 28<span>th</span>, 2015</time>
-        
-         | <a href="/blog/2015/03/28/start-android-studio/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>Android Studioとは</h2>
-
-<p>Googleが2013年のGoogle I/Oで発表したAndroidアプリ開発に最適化した開発統合環境です。<br/>
-iOSアプリ開発者であると、Macを使っている方がほとんどだと思うのですが、<br/>
-もちろんMacにもインストール可能です。<br/>
-Android Studioのインストールは<a href="http://developer.android.com/sdk/index.html">こちら</a>からできます。</p>
-
-<p>この記事時点での最新版は1.2です。<br/>
-では、早速、Android Studioを使ってみましょう。</p>
-
-<h3>プログラミングまでの準備</h3>
-
-<p>Android Studioを起動すると次のウィンドウが表示されます。<br/>
-<img src="/images/android_studio_1.png" alt="Android Studioを起動" /></p>
-
-<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/03/28/start-android-studio/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/6/">&larr; Older</a>
@@ -777,6 +817,10 @@ Android Studioのインストールは<a href="http://developer.android.com/sdk/
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/12/13/use-windows-azure/">超簡単Windows AzureでのWebサイト構築</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/12/13/ios9-wkwebview/">なぜか全然表示できないiOS9でのWebView(凡ミス)</a>
       </li>
     
@@ -790,10 +834,6 @@ Android Studioのインストールは<a href="http://developer.android.com/sdk/
     
       <li class="post">
         <a href="/blog/2015/11/08/kotlin-android-2/">Kotlinを使ってみよう！(1)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/11/08/google-sign-in-android/">Google Sign-In SDK for Androidを使ってみよう！</a>
       </li>
     
   </ul>
@@ -812,7 +852,7 @@ Android Studioのインストールは<a href="http://developer.android.com/sdk/
 </section>
 <section>
 	<h1>Top Categories</h1>
-		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (99)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/android'>android (12)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/swift'>swift (9)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li><li><a href='/blog/categories/location'>location (6)</a></li><li><a href='/blog/categories/apurishen-qing'>アプリ申請 (5)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li><li><a href='/blog/categories/sqlite'>SQLite (4)</a></li><li><a href='/blog/categories/wkwebview'>WKWebView (4)</a></li><li><a href='/blog/categories/map'>map (4)</a></li><li><a href='/blog/categories/xcode6'>xcode6 (4)</a></li><li><a href='/blog/categories/ios9'>ios9 (3)</a></li></ul>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (99)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/android'>android (12)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/swift'>swift (9)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li><li><a href='/blog/categories/location'>location (6)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li><li><a href='/blog/categories/apurishen-qing'>アプリ申請 (5)</a></li><li><a href='/blog/categories/xcode6'>xcode6 (4)</a></li><li><a href='/blog/categories/wkwebview'>WKWebView (4)</a></li><li><a href='/blog/categories/sqlite'>SQLite (4)</a></li><li><a href='/blog/categories/map'>map (4)</a></li><li><a href='/blog/categories/passbook'>Passbook (3)</a></li></ul>
 </section>
 <aside>
 	<h3>About Takahiro</h3>
