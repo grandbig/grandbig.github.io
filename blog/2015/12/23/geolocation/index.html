@@ -1,0 +1,472 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>今一度確かめようiOSにおけるHTML5 APIでの位置情報の取得 - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに こちらはiOS Second Stage Advent Calendar 23日目の記事です。 筆者はこれまで2年と少し技術ブログを投稿してきましたが、Advent Calendarへの投稿はこれが初めてとなります。
+どうぞよろしくお願いします。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2015/12/23/geolocation/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">今一度確かめようiOSにおけるHTML5 APIでの位置情報の取得</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-12-23T00:00:00+09:00" pubdate data-updated="true">Dec 23<span>rd</span>, 2015</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h4>はじめに</h4>
+
+<p>こちらはiOS Second Stage Advent Calendar 23日目の記事です。</p>
+
+<p>筆者はこれまで2年と少し技術ブログを投稿してきましたが、Advent Calendarへの投稿はこれが初めてとなります。<br/>
+どうぞよろしくお願いします。</p>
+
+<p>今回お話させて頂く内容はiOSアプリでの位置情報の取得に関することです。<br/>
+ほとんどの開発者の方は<code>CoreLocation.framework</code>を用いて位置情報の取得をされると思いますが、HTML5の<code>Geolocation API</code>を使っても位置情報の取得をすることができます。<br/>
+とは言え、なぜわざわざiOSのパートで <strong>HTML5</strong> による位置情報取得の話をするかと言うと1つ理由があるんです。<br/>
+その理由を紹介しつつ、現代のiOSによるHTML5の<code>Geolocation API</code>での位置情報取得について話したいと思います。</p>
+
+<!-- more -->
+
+
+<h4>2012年当時のGeolocation APIでの問題について</h4>
+
+<p>実は筆者は3年ほど前に、iOSアプリに <strong>『HTML5 Geolocation APIによる位置情報取得機能』</strong> を実装する機会がありました。<br/>
+そのアプリは2011年途中から開発が始まり、その間にiOSのバージョンも4.x→5.x→6.xと移り変わってきました。<br/>
+iOS 4.x〜5.xの際は順調に進んでいたのですが、2012/09/19にiOS6.0が公開されるやいなや状況が一変しました。<br/>
+というのもiOS6.0ではHTML5の<code>Geolocation API</code>による位置情報の取得に問題があったからなのです。</p>
+
+<p>そもそも、HTML5の<code>Geolocation API</code>は下記のように使います。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">navigator</span><span class="p">.</span><span class="nx">geolocation</span><span class="p">.</span><span class="nx">getCurrentPosition</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">position</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 位置情報の取得に成功した場合</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">lat</span> <span class="o">=</span> <span class="nx">position</span><span class="p">.</span><span class="nx">coords</span><span class="p">.</span><span class="nx">latitude</span><span class="p">,</span>
+</span><span class='line'>      <span class="nx">lng</span> <span class="o">=</span> <span class="nx">position</span><span class="p">.</span><span class="nx">coords</span><span class="p">.</span><span class="nx">longitude</span><span class="p">,</span>
+</span><span class='line'>      <span class="nx">acc</span> <span class="o">=</span> <span class="nx">position</span><span class="p">.</span><span class="nx">coords</span><span class="p">.</span><span class="nx">accuracy</span><span class="p">;</span>
+</span><span class='line'><span class="p">},</span> <span class="kd">function</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 位置情報の取得に失敗した場合</span>
+</span><span class='line'>  <span class="k">switch</span><span class="p">(</span><span class="nx">error</span><span class="p">.</span><span class="nx">code</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">case</span> <span class="mi">1</span><span class="o">:</span>
+</span><span class='line'>          <span class="nx">alert</span><span class="p">(</span><span class="s2">&quot;位置情報が許可されていません。&quot;</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">case</span> <span class="mi">2</span><span class="o">:</span>
+</span><span class='line'>          <span class="nx">alert</span><span class="p">(</span><span class="s2">&quot;デバイスの位置がわかりません。&quot;</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">case</span> <span class="mi">3</span><span class="o">:</span>
+</span><span class='line'>          <span class="nx">alert</span><span class="p">(</span><span class="s2">&quot;アイムアウトしました。&quot;</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">},</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// オプションの設定</span>
+</span><span class='line'>  <span class="nx">enableHighAccuracy</span><span class="o">:</span> <span class="kc">true</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">timeout</span><span class="o">:</span> <span class="mi">6000</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">maximumAge</span><span class="o">:</span> <span class="mi">60000</span>
+</span><span class='line'><span class="p">});</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>特に見て欲しいのが、オプションの設定の <strong>maximumAge</strong> です。<br/>
+<strong>maximumAge</strong> は位置情報の有効期限を示す設定なのですが、iOS6.xでは <strong>maximumAge</strong> を0で設定しないと、継続的な位置情報の取得ができませんでした。<br/>
+これはあくまでも一例なのですが、iOS6.0が出てきた当初は、下記のように悲痛な叫びが散見していました。</p>
+
+<ul>
+<li><a href="https://discussionsjapan.apple.com/thread/10126475?tstart=0">iOS6でGeolocation APIが動かない？</a></li>
+<li><a href="https://discussions.apple.com/thread/4313850?start=30&amp;tstart=0">Geolocation doesn&rsquo;t work with iOS6 web apps!</a></li>
+</ul>
+
+
+<p>当時はGeolocation APIでの位置情報は利用に耐えないということで見送りましたが、現在のiOS9におけるGeolocation APIでの動作はどうなっているのでしょうか？</p>
+
+<h4>現代のiOSでのGeolocation APIはどうなっている？</h4>
+
+<p>さて、iOS9.xでは果たして<code>Geolocation API</code>の挙動はどうなっているのでしょうか？<br/>
+今回はこの挙動を確かめるために下記機能を持ったアプリを開発し、実験を試みました。</p>
+
+<p>【アプリの機能】</p>
+
+<ul>
+<li><code>Geolocation API</code>による位置情報取得機能を実装</li>
+<li><code>CoreLocation.framework</code>による位置情報取得機能を実装</li>
+<li>上記2つの位置情報をローカルストレージに保存(<code>RealmSwift</code>を利用)</li>
+</ul>
+
+
+<p>WEBフロントのソースコードは<a href="https://github.com/grandbig/GeoLocationSample">GitHubのGeoLocationSample</a>に公開しました。<br/>
+iOSアプリのソースコードは<a href="https://github.com/grandbig/GeoLocation_iOS">GitHubのGeoLocation_iOS</a>に公開しました。</p>
+
+<p>【実験したい内容】</p>
+
+<ul>
+<li>開発アプリを用いて幾つか位置情報を取得する</li>
+<li><code>Geolocation API</code>で取得した位置情報の評価(キャッシュの有無を調査)</li>
+<li><code>Geolocation API</code>と<code>CoreLocation.framework</code>で取得した値を比較</li>
+</ul>
+
+
+<p>【結果】</p>
+
+<p>実験結果を一部抽出してGoogleマップにプロットしてみました。<br/>
+<img src="/images/geolocation_plot.png" alt="結果のプロット" /></p>
+
+<ul>
+<li><code>Geolocation API</code>と<code>CoreLocation.framework</code>では精度のに大きな違いが出ないことがほとんど</li>
+<li>地下鉄の駅に到着した際に取得するとWi-Fiのアクセスポイントをひろうため、精度に違いが出ないことが多い
+
+<ul>
+<li>精度が65 [m] の場合、Wi-Fiのアクセスポイントをひろっています。</li>
+</ul>
+</li>
+<li><code>Geolocation API</code>はiOS9ではキャッシュの有効・無効が機能していた</li>
+</ul>
+
+
+<p>因みに、AppleがiOS9からATS設定を組み込んだように、世の中ではHTTPSを使うことが当たり前になってきています。<br/>
+(というよりも商用サービスでHTTPを使わないことが当たり前になってきていると言いますか&hellip;)</p>
+
+<p>実は、<code>Geolocation API</code>でも下記のような警告が出ました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">getCurrentPosition</span><span class="p">()</span> <span class="nx">and</span> <span class="nx">watchPosition</span><span class="p">()</span> <span class="nx">are</span> <span class="nx">deprecated</span> <span class="nx">on</span> <span class="nx">insecure</span> <span class="nx">origins</span><span class="p">,</span> <span class="nx">and</span> <span class="nx">support</span> <span class="nx">will</span> <span class="nx">be</span> <span class="nx">removed</span> <span class="k">in</span> <span class="nx">the</span> <span class="nx">future</span><span class="p">.</span> <span class="nx">You</span> <span class="nx">should</span> <span class="nx">consider</span> <span class="nx">switching</span> <span class="nx">your</span> <span class="nx">application</span> <span class="nx">to</span> <span class="nx">a</span> <span class="nx">secure</span> <span class="nx">origin</span><span class="p">,</span> <span class="nx">such</span> <span class="nx">as</span> <span class="nx">HTTPS</span><span class="p">.</span> <span class="nx">See</span> <span class="nx">https</span><span class="o">:</span><span class="c1">//goo.gl/rStTGz for more details.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>それぞれの使いどころは！？</h4>
+
+<p>iOS9での実験を経て、精度として問題がないことがわかりました。<br/>
+ではどんなときに<code>Geolocation API</code>を使って、どんなときに<code>CoreLocation.framework</code>を使えば良いのでしょうか？<br/>
+筆者はざっくりと下記のパターン分けを考えています。</p>
+
+<p>【<code>Geolocation API</code>を使う場合】</p>
+
+<ul>
+<li>ネイティブでの実装よりもWEBでの実装に慣れている場合</li>
+<li>位置情報の利用シーンがアプリのフォアグラウンド起動時のみの場合</li>
+<li>現在地の位置情報を1回取得すれば良い場合(取得までの時間がかからない)</li>
+</ul>
+
+
+<p>【<code>CoreLocation.framework</code>を使う場合】</p>
+
+<ul>
+<li>位置情報の利用シーンがアプリのバックグラウンド起動時も含む場合</li>
+<li>位置情報の連続的な取得が必要な場合</li>
+<li>現在地の位置情報を1回取得する際に多少時間がかかっても良い場合(<code>requestLocation</code>では約10秒かかる)</li>
+</ul>
+
+
+<p>もちろん、iOSに限った話ですし、Androidでの挙動も確かめる必要があります。<br/>
+旧Androidの場合、WebViewがAndroid OSに依存しているため、<code>Geolocation API</code>の対応具合にバラつきがある可能性もあります。(それこそ、バグを含んでしまっている場合、ユーザがOSバージョンアップしないと解決できないことにも成りかねません。)<br/>
+とは言え、AndroidもWebViewがOSから分離されましたし、旧Androidであっても、CROSSWALKを使う方法もあるので、やりようはありますし、HTML5 APIの実用性もどんどん上がっていくことでしょう。<br/>
+もしかしたら、これから益々、ネイティブとハイブリッドの使い分けを考える時代になるかもしれません。</p>
+
+<h4>まとめ</h4>
+
+<p>久々に見てみるといろいろ変わってるな&hellip;。<br/>
+といったところでiOS Second Stage Advent Calendar 23日目の記事は終了となります。<br/>
+ありがとうございました！<br/>
+(また来年、帰ってくるかも!?)</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-12-23T00:00:00+09:00" pubdate data-updated="true">Dec 23<span>rd</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/web/'>web</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2015/12/23/geolocation/" data-via="" data-counturl="http://grandbig.github.io/blog/2015/12/23/geolocation/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/12/13/use-windows-azure/" title="Previous Post: 超簡単Windows AzureでのWebサイト構築">&laquo; 超簡単Windows AzureでのWebサイト構築</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/12/23/geolocation/">今一度確かめようiOSにおけるHTML5 APIでの位置情報の取得</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/12/13/use-windows-azure/">超簡単Windows AzureでのWebサイト構築</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/12/13/ios9-wkwebview/">なぜか全然表示できないiOS9でのWebView(凡ミス)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/29/react-tutorial-by-using-atom/">Atomエディタを使ってReact.jsを試してみた</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/16/multi-ibeacon-region-2/">iOSで検知可能なiBeaconの数について(別UUIDの場合)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (100)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/android'>android (12)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/swift'>swift (9)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li><li><a href='/blog/categories/location'>location (6)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li><li><a href='/blog/categories/apurishen-qing'>アプリ申請 (5)</a></li><li><a href='/blog/categories/xcode6'>xcode6 (4)</a></li><li><a href='/blog/categories/wkwebview'>WKWebView (4)</a></li><li><a href='/blog/categories/sqlite'>SQLite (4)</a></li><li><a href='/blog/categories/map'>map (4)</a></li><li><a href='/blog/categories/passbook'>Passbook (3)</a></li></ul>
+</section>
+<aside>
+	<h3>About Takahiro</h3>
+	<p>
+	メカ出身のプログラマー<br />
+	故にLevelは-1<br />
+	主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)<br />
+	</p>
+	<a href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2015/12/23/geolocation/';
+        var disqus_url = 'http://grandbig.github.io/blog/2015/12/23/geolocation/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-12-13T02:52:31+09:00</updated>
+  <updated>2015-12-23T13:29:42+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,189 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[今一度確かめようiOSにおけるHTML5 APIでの位置情報の取得]]></title>
+    <link href="http://grandbig.github.io/blog/2015/12/23/geolocation/"/>
+    <updated>2015-12-23T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/12/23/geolocation</id>
+    <content type="html"><![CDATA[<h4>はじめに</h4>
+
+<p>こちらはiOS Second Stage Advent Calendar 23日目の記事です。</p>
+
+<p>筆者はこれまで2年と少し技術ブログを投稿してきましたが、Advent Calendarへの投稿はこれが初めてとなります。<br/>
+どうぞよろしくお願いします。</p>
+
+<p>今回お話させて頂く内容はiOSアプリでの位置情報の取得に関することです。<br/>
+ほとんどの開発者の方は<code>CoreLocation.framework</code>を用いて位置情報の取得をされると思いますが、HTML5の<code>Geolocation API</code>を使っても位置情報の取得をすることができます。<br/>
+とは言え、なぜわざわざiOSのパートで <strong>HTML5</strong> による位置情報取得の話をするかと言うと1つ理由があるんです。<br/>
+その理由を紹介しつつ、現代のiOSによるHTML5の<code>Geolocation API</code>での位置情報取得について話したいと思います。</p>
+
+<!-- more -->
+
+
+<h4>2012年当時のGeolocation APIでの問題について</h4>
+
+<p>実は筆者は3年ほど前に、iOSアプリに <strong>『HTML5 Geolocation APIによる位置情報取得機能』</strong> を実装する機会がありました。<br/>
+そのアプリは2011年途中から開発が始まり、その間にiOSのバージョンも4.x→5.x→6.xと移り変わってきました。<br/>
+iOS 4.x〜5.xの際は順調に進んでいたのですが、2012/09/19にiOS6.0が公開されるやいなや状況が一変しました。<br/>
+というのもiOS6.0ではHTML5の<code>Geolocation API</code>による位置情報の取得に問題があったからなのです。</p>
+
+<p>そもそも、HTML5の<code>Geolocation API</code>は下記のように使います。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">navigator</span><span class="p">.</span><span class="nx">geolocation</span><span class="p">.</span><span class="nx">getCurrentPosition</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">position</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 位置情報の取得に成功した場合</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">lat</span> <span class="o">=</span> <span class="nx">position</span><span class="p">.</span><span class="nx">coords</span><span class="p">.</span><span class="nx">latitude</span><span class="p">,</span>
+</span><span class='line'>      <span class="nx">lng</span> <span class="o">=</span> <span class="nx">position</span><span class="p">.</span><span class="nx">coords</span><span class="p">.</span><span class="nx">longitude</span><span class="p">,</span>
+</span><span class='line'>      <span class="nx">acc</span> <span class="o">=</span> <span class="nx">position</span><span class="p">.</span><span class="nx">coords</span><span class="p">.</span><span class="nx">accuracy</span><span class="p">;</span>
+</span><span class='line'><span class="p">},</span> <span class="kd">function</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 位置情報の取得に失敗した場合</span>
+</span><span class='line'>  <span class="k">switch</span><span class="p">(</span><span class="nx">error</span><span class="p">.</span><span class="nx">code</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">case</span> <span class="mi">1</span><span class="o">:</span>
+</span><span class='line'>          <span class="nx">alert</span><span class="p">(</span><span class="s2">&quot;位置情報が許可されていません。&quot;</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">case</span> <span class="mi">2</span><span class="o">:</span>
+</span><span class='line'>          <span class="nx">alert</span><span class="p">(</span><span class="s2">&quot;デバイスの位置がわかりません。&quot;</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">case</span> <span class="mi">3</span><span class="o">:</span>
+</span><span class='line'>          <span class="nx">alert</span><span class="p">(</span><span class="s2">&quot;アイムアウトしました。&quot;</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">},</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// オプションの設定</span>
+</span><span class='line'>  <span class="nx">enableHighAccuracy</span><span class="o">:</span> <span class="kc">true</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">timeout</span><span class="o">:</span> <span class="mi">6000</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">maximumAge</span><span class="o">:</span> <span class="mi">60000</span>
+</span><span class='line'><span class="p">});</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>特に見て欲しいのが、オプションの設定の <strong>maximumAge</strong> です。<br/>
+<strong>maximumAge</strong> は位置情報の有効期限を示す設定なのですが、iOS6.xでは <strong>maximumAge</strong> を0で設定しないと、継続的な位置情報の取得ができませんでした。<br/>
+これはあくまでも一例なのですが、iOS6.0が出てきた当初は、下記のように悲痛な叫びが散見していました。</p>
+
+<ul>
+<li><a href="https://discussionsjapan.apple.com/thread/10126475?tstart=0">iOS6でGeolocation APIが動かない？</a></li>
+<li><a href="https://discussions.apple.com/thread/4313850?start=30&amp;tstart=0">Geolocation doesn&rsquo;t work with iOS6 web apps!</a></li>
+</ul>
+
+
+<p>当時はGeolocation APIでの位置情報は利用に耐えないということで見送りましたが、現在のiOS9におけるGeolocation APIでの動作はどうなっているのでしょうか？</p>
+
+<h4>現代のiOSでのGeolocation APIはどうなっている？</h4>
+
+<p>さて、iOS9.xでは果たして<code>Geolocation API</code>の挙動はどうなっているのでしょうか？<br/>
+今回はこの挙動を確かめるために下記機能を持ったアプリを開発し、実験を試みました。</p>
+
+<p>【アプリの機能】</p>
+
+<ul>
+<li><code>Geolocation API</code>による位置情報取得機能を実装</li>
+<li><code>CoreLocation.framework</code>による位置情報取得機能を実装</li>
+<li>上記2つの位置情報をローカルストレージに保存(<code>RealmSwift</code>を利用)</li>
+</ul>
+
+
+<p>WEBフロントのソースコードは<a href="https://github.com/grandbig/GeoLocationSample">GitHubのGeoLocationSample</a>に公開しました。<br/>
+iOSアプリのソースコードは<a href="https://github.com/grandbig/GeoLocation_iOS">GitHubのGeoLocation_iOS</a>に公開しました。</p>
+
+<p>【実験したい内容】</p>
+
+<ul>
+<li>開発アプリを用いて幾つか位置情報を取得する</li>
+<li><code>Geolocation API</code>で取得した位置情報の評価(キャッシュの有無を調査)</li>
+<li><code>Geolocation API</code>と<code>CoreLocation.framework</code>で取得した値を比較</li>
+</ul>
+
+
+<p>【結果】</p>
+
+<p>実験結果を一部抽出してGoogleマップにプロットしてみました。<br/>
+<img src="http://grandbig.github.io/images/geolocation_plot.png" alt="結果のプロット" /></p>
+
+<ul>
+<li><code>Geolocation API</code>と<code>CoreLocation.framework</code>では精度のに大きな違いが出ないことがほとんど</li>
+<li>地下鉄の駅に到着した際に取得するとWi-Fiのアクセスポイントをひろうため、精度に違いが出ないことが多い
+
+<ul>
+<li>精度が65 [m] の場合、Wi-Fiのアクセスポイントをひろっています。</li>
+</ul>
+</li>
+<li><code>Geolocation API</code>はiOS9ではキャッシュの有効・無効が機能していた</li>
+</ul>
+
+
+<p>因みに、AppleがiOS9からATS設定を組み込んだように、世の中ではHTTPSを使うことが当たり前になってきています。<br/>
+(というよりも商用サービスでHTTPを使わないことが当たり前になってきていると言いますか&hellip;)</p>
+
+<p>実は、<code>Geolocation API</code>でも下記のような警告が出ました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">getCurrentPosition</span><span class="p">()</span> <span class="nx">and</span> <span class="nx">watchPosition</span><span class="p">()</span> <span class="nx">are</span> <span class="nx">deprecated</span> <span class="nx">on</span> <span class="nx">insecure</span> <span class="nx">origins</span><span class="p">,</span> <span class="nx">and</span> <span class="nx">support</span> <span class="nx">will</span> <span class="nx">be</span> <span class="nx">removed</span> <span class="k">in</span> <span class="nx">the</span> <span class="nx">future</span><span class="p">.</span> <span class="nx">You</span> <span class="nx">should</span> <span class="nx">consider</span> <span class="nx">switching</span> <span class="nx">your</span> <span class="nx">application</span> <span class="nx">to</span> <span class="nx">a</span> <span class="nx">secure</span> <span class="nx">origin</span><span class="p">,</span> <span class="nx">such</span> <span class="nx">as</span> <span class="nx">HTTPS</span><span class="p">.</span> <span class="nx">See</span> <span class="nx">https</span><span class="o">:</span><span class="c1">//goo.gl/rStTGz for more details.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>それぞれの使いどころは！？</h4>
+
+<p>iOS9での実験を経て、精度として問題がないことがわかりました。<br/>
+ではどんなときに<code>Geolocation API</code>を使って、どんなときに<code>CoreLocation.framework</code>を使えば良いのでしょうか？<br/>
+筆者はざっくりと下記のパターン分けを考えています。</p>
+
+<p>【<code>Geolocation API</code>を使う場合】</p>
+
+<ul>
+<li>ネイティブでの実装よりもWEBでの実装に慣れている場合</li>
+<li>位置情報の利用シーンがアプリのフォアグラウンド起動時のみの場合</li>
+<li>現在地の位置情報を1回取得すれば良い場合(取得までの時間がかからない)</li>
+</ul>
+
+
+<p>【<code>CoreLocation.framework</code>を使う場合】</p>
+
+<ul>
+<li>位置情報の利用シーンがアプリのバックグラウンド起動時も含む場合</li>
+<li>位置情報の連続的な取得が必要な場合</li>
+<li>現在地の位置情報を1回取得する際に多少時間がかかっても良い場合(<code>requestLocation</code>では約10秒かかる)</li>
+</ul>
+
+
+<p>もちろん、iOSに限った話ですし、Androidでの挙動も確かめる必要があります。<br/>
+旧Androidの場合、WebViewがAndroid OSに依存しているため、<code>Geolocation API</code>の対応具合にバラつきがある可能性もあります。(それこそ、バグを含んでしまっている場合、ユーザがOSバージョンアップしないと解決できないことにも成りかねません。)<br/>
+とは言え、AndroidもWebViewがOSから分離されましたし、旧Androidであっても、CROSSWALKを使う方法もあるので、やりようはありますし、HTML5 APIの実用性もどんどん上がっていくことでしょう。<br/>
+もしかしたら、これから益々、ネイティブとハイブリッドの使い分けを考える時代になるかもしれません。</p>
+
+<h4>まとめ</h4>
+
+<p>久々に見てみるといろいろ変わってるな&hellip;。<br/>
+といったところでiOS Second Stage Advent Calendar 23日目の記事は終了となります。<br/>
+ありがとうございました！<br/>
+(また来年、帰ってくるかも!?)</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[超簡単Windows AzureでのWebサイト構築]]></title>
@@ -3332,169 +3515,6 @@ UIWebViewは他と比べて、低い点数となっています。<br/>
 
 
 <p>と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS8でrequestLocationが使える！？]]></title>
-    <link href="http://grandbig.github.io/blog/2015/09/20/requestlocation/"/>
-    <updated>2015-09-20T01:21:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/09/20/requestlocation</id>
-    <content type="html"><![CDATA[<h4>実はiOS8.4.1でrequestLocationが使える</h4>
-
-<p>さて、今回はたまたま気づいたバグ？の紹介です。<br/>
-皆様、ご存知の通り, iOS9から <strong>requestLocation</strong> なるものがCoreLocation.frameworkに追加されました。<br/>
-これにより、1回だけ現在地を取得する処理を自作せずにframeworkに任せることができるようになりました。</p>
-
-<p>しかし、iOS9からとアナウンスされているものの、実は <strong>iOS8.4.1</strong> でも利用できました。<br/>
-コードは下記になります。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.m</span>
-</span><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
-</span><span class='line'><span class="cp">#import &lt;CoreLocation/CoreLocation.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span> <span class="o">&lt;</span><span class="n">CLLocationManagerDelegate</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CLLocationManager</span> <span class="o">*</span><span class="n">lm</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">@end</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">@implementation</span> <span class="nc">ViewController</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span> <span class="p">{</span>
-</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">lm</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CLLocationManager</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">lm</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">lm</span> <span class="n">requestWhenInUseAuthorization</span><span class="p">];</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">didReceiveMemoryWarning</span> <span class="p">{</span>
-</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">didReceiveMemoryWarning</span><span class="p">];</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didChangeAuthorizationStatus:</span><span class="p">(</span><span class="n">CLAuthorizationStatus</span><span class="p">)</span><span class="nv">status</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">kCLAuthorizationStatusNotDetermined</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// ユーザが位置情報の使用を許可していない</span>
-</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;kCLAuthorizationStatusNotDetermined&quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">kCLAuthorizationStatusAuthorizedAlways</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// ユーザが位置情報の使用を常に許可している場合</span>
-</span><span class='line'>   <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;kCLAuthorizationStatusAuthorizedAlways&quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">kCLAuthorizationStatusAuthorizedWhenInUse</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// ユーザが位置情報の使用を使用中のみ許可している場合</span>
-</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;kCLAuthorizationStatusAuthorizedWhenInUse&quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didUpdateLocations:</span><span class="p">(</span><span class="n">NSArray</span><span class="o">&lt;</span><span class="n">CLLocation</span> <span class="o">*&gt;</span> <span class="o">*</span><span class="p">)</span><span class="nv">locations</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">// 位置情報の取得に成功した場合</span>
-</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">locations</span><span class="p">.</span><span class="n">firstObject</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didFailWithError:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">// 位置情報の取得に失敗した場合</span>
-</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">IBAction</span><span class="p">)</span><span class="nf">getLocation:</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nv">sender</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">if</span><span class="p">([</span><span class="n">self</span><span class="p">.</span><span class="n">lm</span> <span class="nl">respondsToSelector:</span><span class="k">@selector</span><span class="p">(</span><span class="n">requestLocation</span><span class="p">)])</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// iOS9.x以上の場合</span>
-</span><span class='line'>      <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">lm</span> <span class="n">requestLocation</span><span class="p">];</span>
-</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// iOS8.x以下の場合</span>
-</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;iOS8.xです&quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>騙されたと思って試してみてください。<br/>
-なぜかiOS8.4.1でも<code>requestLocation</code>が実行されますので。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

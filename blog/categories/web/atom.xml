@@ -4,7 +4,7 @@
   <title><![CDATA[Category: web | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/web/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-12-13T02:53:06+09:00</updated>
+  <updated>2015-12-23T13:30:17+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,173 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[今一度確かめようiOSにおけるHTML5 APIでの位置情報の取得]]></title>
+    <link href="http://grandbig.github.io/blog/2015/12/23/geolocation/"/>
+    <updated>2015-12-23T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/12/23/geolocation</id>
+    <content type="html"><![CDATA[<h4>はじめに</h4>
+
+<p>こちらはiOS Second Stage Advent Calendar 23日目の記事です。</p>
+
+<p>筆者はこれまで2年と少し技術ブログを投稿してきましたが、Advent Calendarへの投稿はこれが初めてとなります。<br/>
+どうぞよろしくお願いします。</p>
+
+<p>今回お話させて頂く内容はiOSアプリでの位置情報の取得に関することです。<br/>
+ほとんどの開発者の方は<code>CoreLocation.framework</code>を用いて位置情報の取得をされると思いますが、HTML5の<code>Geolocation API</code>を使っても位置情報の取得をすることができます。<br/>
+とは言え、なぜわざわざiOSのパートで <strong>HTML5</strong> による位置情報取得の話をするかと言うと1つ理由があるんです。<br/>
+その理由を紹介しつつ、現代のiOSによるHTML5の<code>Geolocation API</code>での位置情報取得について話したいと思います。</p>
+
+<!-- more -->
+
+
+<h4>2012年当時のGeolocation APIでの問題について</h4>
+
+<p>実は筆者は3年ほど前に、iOSアプリに <strong>『HTML5 Geolocation APIによる位置情報取得機能』</strong> を実装する機会がありました。<br/>
+そのアプリは2011年途中から開発が始まり、その間にiOSのバージョンも4.x→5.x→6.xと移り変わってきました。<br/>
+iOS 4.x〜5.xの際は順調に進んでいたのですが、2012/09/19にiOS6.0が公開されるやいなや状況が一変しました。<br/>
+というのもiOS6.0ではHTML5の<code>Geolocation API</code>による位置情報の取得に問題があったからなのです。</p>
+
+<p>そもそも、HTML5の<code>Geolocation API</code>は下記のように使います。</p>
+
+<p>```javascript
+navigator.geolocation.getCurrentPosition(function(position) {</p>
+
+<pre><code>// 位置情報の取得に成功した場合
+var lat = position.coords.latitude,
+    lng = position.coords.longitude,
+    acc = position.coords.accuracy;
+</code></pre>
+
+<p>}, function(error) {</p>
+
+<pre><code>// 位置情報の取得に失敗した場合
+switch(error.code) {
+    case 1:
+        alert("位置情報が許可されていません。");
+        break;
+    case 2:
+        alert("デバイスの位置がわかりません。");
+        break;
+    case 3:
+        alert("アイムアウトしました。");
+        break;
+}
+</code></pre>
+
+<p>}, {</p>
+
+<pre><code>// オプションの設定
+enableHighAccuracy: true,
+timeout: 6000,
+maximumAge: 60000
+</code></pre>
+
+<p>});
+```</p>
+
+<p>特に見て欲しいのが、オプションの設定の <strong>maximumAge</strong> です。<br/>
+<strong>maximumAge</strong> は位置情報の有効期限を示す設定なのですが、iOS6.xでは <strong>maximumAge</strong> を0で設定しないと、継続的な位置情報の取得ができませんでした。<br/>
+これはあくまでも一例なのですが、iOS6.0が出てきた当初は、下記のように悲痛な叫びが散見していました。</p>
+
+<ul>
+<li><a href="https://discussionsjapan.apple.com/thread/10126475?tstart=0">iOS6でGeolocation APIが動かない？</a></li>
+<li><a href="https://discussions.apple.com/thread/4313850?start=30&amp;tstart=0">Geolocation doesn&rsquo;t work with iOS6 web apps!</a></li>
+</ul>
+
+
+<p>当時はGeolocation APIでの位置情報は利用に耐えないということで見送りましたが、現在のiOS9におけるGeolocation APIでの動作はどうなっているのでしょうか？</p>
+
+<h4>現代のiOSでのGeolocation APIはどうなっている？</h4>
+
+<p>さて、iOS9.xでは果たして<code>Geolocation API</code>の挙動はどうなっているのでしょうか？<br/>
+今回はこの挙動を確かめるために下記機能を持ったアプリを開発し、実験を試みました。</p>
+
+<p>【アプリの機能】</p>
+
+<ul>
+<li><code>Geolocation API</code>による位置情報取得機能を実装</li>
+<li><code>CoreLocation.framework</code>による位置情報取得機能を実装</li>
+<li>上記2つの位置情報をローカルストレージに保存(<code>RealmSwift</code>を利用)</li>
+</ul>
+
+
+<p>WEBフロントのソースコードは<a href="https://github.com/grandbig/GeoLocationSample">GitHubのGeoLocationSample</a>に公開しました。<br/>
+iOSアプリのソースコードは<a href="https://github.com/grandbig/GeoLocation_iOS">GitHubのGeoLocation_iOS</a>に公開しました。</p>
+
+<p>【実験したい内容】</p>
+
+<ul>
+<li>開発アプリを用いて幾つか位置情報を取得する</li>
+<li><code>Geolocation API</code>で取得した位置情報の評価(キャッシュの有無を調査)</li>
+<li><code>Geolocation API</code>と<code>CoreLocation.framework</code>で取得した値を比較</li>
+</ul>
+
+
+<p>【結果】</p>
+
+<p>実験結果を一部抽出してGoogleマップにプロットしてみました。<br/>
+<img src="/images/geolocation_plot.png" alt="結果のプロット" /></p>
+
+<ul>
+<li><code>Geolocation API</code>と<code>CoreLocation.framework</code>では精度のに大きな違いが出ないことがほとんど</li>
+<li>地下鉄の駅に到着した際に取得するとWi-Fiのアクセスポイントをひろうため、精度に違いが出ないことが多い
+
+<ul>
+<li>精度が65 [m] の場合、Wi-Fiのアクセスポイントをひろっています。</li>
+</ul>
+</li>
+<li><code>Geolocation API</code>はiOS9ではキャッシュの有効・無効が機能していた</li>
+</ul>
+
+
+<p>因みに、AppleがiOS9からATS設定を組み込んだように、世の中ではHTTPSを使うことが当たり前になってきています。<br/>
+(というよりも商用サービスでHTTPを使わないことが当たり前になってきていると言いますか&hellip;)</p>
+
+<p>実は、<code>Geolocation API</code>でも下記のような警告が出ました。</p>
+
+<p><code>
+getCurrentPosition() and watchPosition() are deprecated on insecure origins, and support will be removed in the future. You should consider switching your application to a secure origin, such as HTTPS. See https://goo.gl/rStTGz for more details.
+</code></p>
+
+<h4>それぞれの使いどころは！？</h4>
+
+<p>iOS9での実験を経て、精度として問題がないことがわかりました。<br/>
+ではどんなときに<code>Geolocation API</code>を使って、どんなときに<code>CoreLocation.framework</code>を使えば良いのでしょうか？<br/>
+筆者はざっくりと下記のパターン分けを考えています。</p>
+
+<p>【<code>Geolocation API</code>を使う場合】</p>
+
+<ul>
+<li>ネイティブでの実装よりもWEBでの実装に慣れている場合</li>
+<li>位置情報の利用シーンがアプリのフォアグラウンド起動時のみの場合</li>
+<li>現在地の位置情報を1回取得すれば良い場合(取得までの時間がかからない)</li>
+</ul>
+
+
+<p>【<code>CoreLocation.framework</code>を使う場合】</p>
+
+<ul>
+<li>位置情報の利用シーンがアプリのバックグラウンド起動時も含む場合</li>
+<li>位置情報の連続的な取得が必要な場合</li>
+<li>現在地の位置情報を1回取得する際に多少時間がかかっても良い場合(<code>requestLocation</code>では約10秒かかる)</li>
+</ul>
+
+
+<p>もちろん、iOSに限った話ですし、Androidでの挙動も確かめる必要があります。<br/>
+旧Androidの場合、WebViewがAndroid OSに依存しているため、<code>Geolocation API</code>の対応具合にバラつきがある可能性もあります。(それこそ、バグを含んでしまっている場合、ユーザがOSバージョンアップしないと解決できないことにも成りかねません。)<br/>
+とは言え、AndroidもWebViewがOSから分離されましたし、旧Androidであっても、CROSSWALKを使う方法もあるので、やりようはありますし、HTML5 APIの実用性もどんどん上がっていくことでしょう。<br/>
+もしかしたら、これから益々、ネイティブとハイブリッドの使い分けを考える時代になるかもしれません。</p>
+
+<h4>まとめ</h4>
+
+<p>久々に見てみるといろいろ変わってるな&hellip;。<br/>
+といったところでiOS Second Stage Advent Calendar 23日目の記事は終了となります。<br/>
+ありがとうございました！<br/>
+(また来年、帰ってくるかも!?)</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[超簡単Windows AzureでのWebサイト構築]]></title>
