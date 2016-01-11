@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2015-12-23T13:30:17+09:00</updated>
+  <updated>2016-01-12T00:08:38+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,316 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftでXCTestを使って単体テストとUIテストをしてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/01/11/xctest/"/>
+    <updated>2016-01-11T19:17:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/01/11/xctest</id>
+    <content type="html"><![CDATA[<h4>iOSアプリケーション開発でのテストとは</h4>
+
+<p>さて、本日はiOSアプリケーションを開発する際のテストについて書きたいと思います。<br/>
+元々、Objective-Cでは下記のテスト用のライブラリが使われてきました。</p>
+
+<ul>
+<li><a href="https://github.com/kiwi-bdd/Kiwi">Kiwi</a></li>
+<li><a href="https://github.com/gh-unit/gh-unit">GHUnit</a></li>
+<li><a href="https://github.com/specta/specta">Specta</a></li>
+</ul>
+
+
+<p>しかし、これらはあくまでもObjective-C時代にApple公式のテストフレームワークが充実する以前から活躍していたものです。今後、Swiftが普及するにつれて、これらのテストフレームワークもSwiftに最適化したものになっていくかもしれません。<br/>
+とは言え、AppleもいつまでもOSSのテストフレームワークがなければならない状況は避け、Xcode内で完結することを目指していくかもしれません。<br/>
+後ほど詳しく説明しますが、Xcode7からUIテストが新たに追加されたのも、その流れだと思っています。</p>
+
+<p>本日は特に <strong>XCTest</strong> に焦点をあてた、iOSにおけるテストについて見ていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>XCTestでUnit Test</h4>
+
+<p>早速、XCTestの使い方について見ていきましょう。<br/>
+Xcode7ではプロジェクトを新規作成する際にXCTest用のTargetを作成するか否かを選ぶことができます。<br/>
+初めにチェックを入れていない場合は、途中で追加することが可能ですが、単体テストをすることは大切なので、チェックはつけておきましょう。</p>
+
+<p><img src="/images/xctest_1.png" alt="プロジェクト作成時にXCTest用のTargetを作成" /></p>
+
+<p>今回テストするソースコードは下記のようなシンプルなものにします。</p>
+
+<p>```objective-c
+import UIKit
+import Alamofire</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func showWeather() {
+    self.getWeather{(description) -&gt; Void in
+        print(description)
+    }
+}
+
+func getWeather(closure:(String) -&gt; Void) {
+    Alamofire.request(.GET, "http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPIDを指定&gt;", parameters:
+        ["q":"Tokyo"]).response { (request, response, data, error) -&gt; Void in
+        if(error == nil) {
+            do {
+                let dataDict = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+                let weatherArray:[AnyObject] = dataDict["weather"] as! [AnyObject]
+                let weather:AnyObject = weatherArray[0]
+                let description:String = weather["description"] as! String
+
+                // アラートを表示
+                self.showAlert(description)
+            } catch {
+                print("例外が発生しました！")
+            }
+        }
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>今回は <strong>showWeather</strong> メソッドのUnit Testを書いていきます。<br/>
+上記コードを見て頂くと、 <strong>showWeather</strong> メソッドは <strong>Open Weather Map API</strong> を使って東京の天気を取得し、それをログとして出力していることがわかると思います。<br/>
+前半の <strong>Alamofire</strong> を使った通信処理はOSSライブラリを使っているわけで、この通信処理のテストがしたいわけではありません。<br/>
+筆者が実施したいテストは後半の <strong>Open Weather Map API</strong> を使って <strong>取得した天気情報をログに出力する</strong> 部分です。<br/>
+(本来はテストするまでもないのですが、テストの手法や考え方をメインに説明したいので、ソースは超簡単にしています。)</p>
+
+<p>それを踏まえた上で、実際にテストコードを書いてみましょう。<br/>
+&lt;Project名>Tests.swiftファイルを選択します。</p>
+
+<p>```objective-c
+import XCTest
+@testable import SimpleApplication</p>
+
+<p>class SimpleApplicationTests: XCTestCase {</p>
+
+<pre><code>override func setUp() {
+    super.setUp()
+}
+
+override func tearDown() {
+    super.tearDown()
+}
+
+func testShowWeather() {
+    class VCMock:ViewController {
+        override func getWeather(closure:(String) -&gt; Void) {
+            closure("test weather")
+        }
+    }
+
+    let vcm:VCMock = VCMock()
+    vcm.showWeather()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントは</p>
+
+<ol>
+<li>テストメソッドの定義<br/>
+テストメソッドは、 <strong>test + &lt;任意の文字列></strong> で命名しましょう。</li>
+<li>スタブの定義<br/>
+Swiftは <strong>manual mocking</strong> という手法を取ります。<br/>
+これはテスト対象クラスを継承したクラスを定義し、テストしたいメソッドをオーバーライドします。<br/>
+返却値等を固定文字列とすることで、スタブの作成となります。</li>
+</ol>
+
+
+<p>の2点です。</p>
+
+<p>では、このテストを実行してみます。</p>
+
+<p>まず、実行Targetに <strong>&lt;Project名>Tests</strong> を選択できるようにSchemeを編集します。</p>
+
+<p><img src="/images/xctest_2.png" alt="Manage Schemes..." /></p>
+
+<p><img src="/images/xctest_3.png" alt="Add Scheme" /></p>
+
+<p><img src="/images/xctest_4.png" alt="Choose Testsファイル" /></p>
+
+<p><img src="/images/xctest_5.png" alt="Set Scheme" /><br/>
+実行するSchemeを <strong>&lt;Project名>Tests</strong> に設定し、実行デバイスをシミュレータにします。<br/>
+(実機ではテスト実行できないからです。)</p>
+
+<p><img src="/images/xctest_6.png" alt="Testを実行" /><br/>
+Xcodeメニュー > Product > Test を選択してテストを実行します。</p>
+
+<p><img src="/images/xctest_7.png" alt="テスト結果の確認" /><br/>
+左メニューおよびコード上からテスト結果を確認できます。</p>
+
+<p>メソッドが増えるごとにテストメソッドを増やしていきましょう。<br/>
+テストファイルはクラス別に作成しておくと、第三者から見ても見やすいと思います。</p>
+
+<h4>XCTestでUI Test</h4>
+
+<p>続いて、Xcode7から追加されたUI Testの方法を見ていきたいと思います。<br/>
+冒頭で説明した通り、プロジェクト作成時に <strong>include UI Tests</strong> を選択しておくことで、 <strong>&lt;Project名>UITests.swift</strong> ファイルが作成されます。</p>
+
+<p>では、UI Test用に少しコードを修正してみます。</p>
+
+<p>```objective-c
+import UIKit
+import Alamofire</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+@IBAction func getWeatherAction(sender: AnyObject) {
+    self.getWeather { (description) -&gt; Void in
+        self.showAlert(description)
+    }
+}
+
+func getWeather(closure:(String) -&gt; Void) {
+    Alamofire.request(.GET, "http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPIDを指定&gt;", parameters:
+        ["q":"Tokyo"]).response { (request, response, data, error) -&gt; Void in
+        if(error == nil) {
+            do {
+                let dataDict = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+                let weatherArray:[AnyObject] = dataDict["weather"] as! [AnyObject]
+                let weather:AnyObject = weatherArray[0]
+                let description:String = weather["description"] as! String
+
+                // アラートを表示
+                self.showAlert(description)
+            } catch {
+                print("例外が発生しました！")
+            }
+        }
+    }
+}
+
+func showAlert(message:String) {
+    let alertController:UIAlertController = UIAlertController(title: "確認", message: message, preferredStyle: .Alert)
+    let okAction:UIAlertAction = UIAlertAction(title: "OK", style: .Default) { (alert) -&gt; Void in
+        // OKを選択したときに実行される処理
+    }
+    alertController.addAction(okAction)
+
+    presentViewController(alertController, animated: true, completion: nil)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これに伴い、画面にボタンを配置しました。<br/>
+このボタンをタップすると、天気情報をアラートで表示してくれます。</p>
+
+<p><img src="/images/xctest_8.png" alt="ボタンを配置" /></p>
+
+<p><img src="/images/xctest_9.png" alt="アラートを表示" /></p>
+
+<p>では、UI Testのテストコードを作成します。<br/>
+UI Testの場合は、Xcodeの <strong>UI recording</strong> 機能を使って、手作業でコードを修正していきます。</p>
+
+<p><img src="/images/xctest_10.png" alt="UI recording 開始ボタンをタップ" /></p>
+
+<p><img src="/images/xctest_11.png" alt="UI recording 終了ボタンをタップ" /></p>
+
+<p>すると、下記のようなコードが生成されました。</p>
+
+<p>```objective-c
+func testShowWeatherAlert() {</p>
+
+<pre><code>let app = XCUIApplication()
+app.buttons["GET Weather"].tap()
+app.alerts["\U78ba\U8a8d"].collectionViews.buttons["OK"].tap()
+</code></pre>
+
+<p>}
+```</p>
+
+<p>しかし、このままではエラーが表示されるはずです。<br/>
+理由はアラートのタイトルを日本語にしていたため、ASCIIコードで表示されてしまっているからです。<br/>
+もし、指し示しているASCIIコードが理解できないようであれば、<a href="http://web-apps.nbookmark.com/ascii-converter/">ASCIIコード変換機</a>を使ってください。</p>
+
+<p>ASCIIコード部分を修正した結果が下記となります。</p>
+
+<p>```objective-c
+func testShowWeatherAlert() {</p>
+
+<pre><code>let app = XCUIApplication()
+app.buttons["GET Weather"].tap()
+app.alerts["確認"].collectionViews.buttons["OK"].tap()
+</code></pre>
+
+<p>}
+```</p>
+
+<p>テストコードが作成できましたので、実行Targetに &lt;Project名>UITests を選択できるようにSchemeを編集します。</p>
+
+<p><img src="/images/xctest_12.png" alt="Manage Schemes..." /></p>
+
+<p><img src="/images/xctest_13.png" alt="Add Scheme" /></p>
+
+<p><img src="/images/xctest_14.png" alt="Choose Testsファイル" /></p>
+
+<p><img src="/images/xctest_15.png" alt="Set Scheme" /><br/>
+実行するSchemeを &lt;Project名>UITests に設定し、実行デバイスをシミュレータにします。<br/>
+(実機ではテスト実行できないからです。)</p>
+
+<p><img src="/images/xctest_6.png" alt="Testを実行" /><br/>
+Xcodeメニュー > Product > Test を選択してテストを実行します。</p>
+
+<p><img src="/images/xctest_16.png" alt="テスト結果の確認" /><br/>
+左メニューおよびコード上からテスト結果を確認できます。</p>
+
+<p>Unit Testと同様にメソッドが増えるごとにテストメソッドを増やしていきましょう。<br/>
+テストファイルはクラス別に作成しておくと、第三者から見ても見やすいと思います。</p>
+
+<p>いかがだったでしょうか？<br/>
+今回は超簡単なサンプルコードで基本的なことについて説明しましたが、今後深く使っていくことで躓くこともあるかもしれません。<br/>
+その際にはまたブログにて説明したいと思います。<br/>
+ぜひ、単体テストとUIテストを駆使して、バグの少ないアプリを作っていきたいものです。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSアプリ開発で役立つオープンソースライブラリのまとめサイト]]></title>
@@ -640,239 +950,6 @@ AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
 <code>[AnyObject]</code>は <strong>要素がAnyObject(何でもあり)型</strong> のArray型への変換です。</p>
 
 <p>Alamofireとはやはり違った書き方となるので、iOSのターゲットなど要件に従って使い分けていくのが良いでしょう。<br/>
-と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Swift Alamofireライブラリを使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/05/24/swift-alamofire1/"/>
-    <updated>2015-05-24T00:40:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/05/24/swift-alamofire1</id>
-    <content type="html"><![CDATA[<h4>通信系ライブラリAlamofireの使い方を覚えよう！</h4>
-
-<p>さて、本日は <strong>Alamofire</strong> ライブラリの使い方を勉強します。<br/>
-<a href="https://github.com/Alamofire/Alamofire">Alamofire</a>はObjective-Cの超有名通信系ライブラリである<a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>のSwift版と思えばよいでしょう。</p>
-
-<h5>導入の仕方</h5>
-
-<p>まずは導入の仕方から見て行きましょう。<br/>
-CocoaPodsを使います。<br/>
-Podfileを作成し、下記の内容を記載しましょう。</p>
-
-<p>```objective-c
-source &lsquo;<a href="https://github.com/CocoaPods/Specs.git">https://github.com/CocoaPods/Specs.git</a>&rsquo;
-platform :ios, &lsquo;8.0&rsquo;
-use_frameworks!</p>
-
-<p>pod &lsquo;Alamofire&rsquo;, &lsquo;~> 1.2&rsquo;
-```</p>
-
-<p>これで<code>pod install</code>すればプロジェクトにAlamofireが追加されるはずです！<br/>
-後は利用したいswiftファイルで<code>import Alamofire</code>しましょう。<br/>
-SwiftライブラリをCocoaPodsでインストールすると対象iOSが8.0以上である必要が出てくるので、そこだけ注意しましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h5>GETリクエスト(パターン１)</h5>
-
-<p>続いて、GETリクエストのメソッドを書いてみます。<br/>
-以前の<a href="http://grandbig.github.io/blog/2015/02/12/afnetworking/">AFNetworking2.xでWeb-APIを叩いてみた！</a>でも利用した <strong>OpenWeatherMap API</strong> を例として使います。</p>
-
-<p><code>http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp</code>でリクエストして、<br/>
-下記のデータを返してもらうことを想定しています。</p>
-
-<p>```objective-c</p>
-
-<p>{</p>
-
-<pre><code>base:  "stations",
-clouds: {
-    all: 32
-},
-cod: 200,
-coord: {
-    lat: 35.69,
-    lon: 139.65
-},
-dt: 1432394992,
-id: 1850147,
-main: {
-    grnd_level: 1019.97,
-    humidity: 88,
-    pressure: 1019.97,
-    sea_level: 1024.92,
-    temp: 290.99,
-    temp_max: 290.99,
-    temp_min: 290.99
-},
-name: Tokyo,
-sys: {
-    country: "JP",
-    message: 0.0386,
-    sunrise: 1432323041,
-    sunset: 1432374314
-},
-weather: [
-    {
-        description: "scattered clouds",
-        icon: "03n",
-        id: 802,
-        main: "Clouds"
-    }
-],
-wind: {
-    deg: 198.001,
-    speed: 5.11
-}
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>では、GETリクエストを投げてみましょう。<br/>
-返却されたデータの取得方法についても記載します。<br/>
-幾つか書き方があるのですが、まずは１つ目の書き方です。</p>
-
-<p>```objective-c
-// GETリクエスト
-Alamofire.request(.GET, &ldquo;<a href="http://api.openweathermap.org/data/2.5/weather">http://api.openweathermap.org/data/2.5/weather</a>&rdquo;, parameters:[&ldquo;q&rdquo;:&ldquo;Tokyo,jp&rdquo;]).response { (request, response, data, error) in</p>
-
-<pre><code>if let data = data as? NSData {
-    // AnyObject型をNSData型に変換できた場合に通過
-    // NSData型をJSONの形に変換して、AnyObject?型の変数に格納
-    var obj: AnyObject? = NSJSONSerialization.JSONObjectWithData(data, options: NSJSONReadingOptions.AllowFragments, error: nil)
-
-    if let weatherArray = obj["weather"] as? [AnyObject] {
-        // objからweatherフィールドを取得。その際、Array型に変換できた場合に通過
-        if let weather = weatherArray[0] as? [String: AnyObject] {
-            // NSArray型のweatherArrayから要素0番目を取得。その際、Dictionary型に変換できた場合に通過
-            if let description = weather["description"] as? String {
-                // NSDictionary型のweatherからdescriptionフィールドを取得。その際、String型に変換できた場合に通過
-                println(description)
-            }
-
-            // NSDictionary型のweatherからdescriptionを指定して取得
-            var description2:String? = weather["description"] as? String
-            println(description2)
-        }
-    }
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>注意したいのは、responseで返却される<code>data</code>は <strong>NSData型</strong> ではなく、 <strong>AnyObject?型</strong> だということです。<br/>
-そのため、直接<code>NSJSONSerialization.JSONObjectWithData</code>の１つ目の引数に<code>data</code>を指定するとNSData型ではないことを示唆するエラーが出ます。<br/>
-なので、 <strong>NSData型</strong> に変換する必要があります。</p>
-
-<p>そして、NSData型のままでは各要素を取り出せないので、 <strong>(JSONの形をした)AnyObject?型</strong> に変換させましょう。<br/>
-(Dictionary型に変換しても良いのですが、既にJSONの形に変換されているので十分でしょう。)<br/>
-後は各フィールドの型に従って変換して取り出していくイメージで書きましょう。</p>
-
-<p>覚えておきたいのは、</p>
-
-<p>```objective-c
-if let 定数名 = 要素 as? 定数の型 {</p>
-
-<pre><code>// 指定した定数の型に変換できた場合に、この中を通過する(変換できなかった場合はnilを入れようとするので、この中を通過しない)
-</code></pre>
-
-<p>}
-```</p>
-
-<p>という変換の書き方です。<br/>
-Swiftの場合、JSONの取り扱いで思った以上にコードが長くなり、ネスト化してしまいます。<br/>
-それを防ぐため&amp;JavaScriptのような書き方を意識したライブラリがたくさん出ています。<br/>
-近いうち使ってみようと思います。</p>
-
-<p>また、変換時に<code>[AnyObject]</code>や<code>[String: AnyObject]</code>と書いているのは、<br/>
-前者が<code>Array型</code>に変換していて、後者は<code>Dictionary型</code>に変換しています。<br/>
-Swiftではどんな要素を含むArray型なのかを示し、どんなkeyでどんなvalueなのかをDictionary型として明示的に示す必要があります。</p>
-
-<p>もし、Objective-Cの<code>NSArray型</code>や<code>NSDictionary型</code>に変換する場合は中身の形式を考えずに<code>as</code>の後ろに続けて書けばOKです。</p>
-
-<h5>GETリクエスト(パターン２)</h5>
-
-<p>とは言え、少しネストが深いので、別のresoponse形式のパターンで試してみましょう。</p>
-
-<p>```objective-c
-// GETリクエスト
-Alamofire.request(.GET, &ldquo;<a href="http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp">http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp</a>&rdquo;).responseJSON { (<em>, </em>, JSON, _) in</p>
-
-<pre><code>if let weatherArray = JSON!["weather"] as? [AnyObject] {
-    // JSONからweatherフィールドを取得。その際、Array型に変換できた場合に通過
-    if let weather = weatherArray[0] as? [String: AnyObject] {
-        // NSArray型のweatherArrayから要素0番目を取得。その際、Dictionary型に変換できた場合に通過
-        if let description = weather["description"] as? String {
-            // NSDictionary型のweatherからdescriptionフィールドを取得。その際、String型に変換できた場合に通過
-            println(description)
-        }
-
-        // NSDictionary型のweatherからdescriptionを指定して取得
-        var description2:String? = weather["description"] as? String
-        println(description2)
-    }
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>これは、レスポンスメソッドに<code>responseJSON</code>を指定することで、<br/>
-1つ目に上げた<code>AnyObject?型 ⇒ NSData型</code>への変換と<code>NSData型 ⇒ JSONの形をしたAnyObject?型</code>への変換は不要となります。<br/>
-既に<code>responseJSON</code>の中でやってくれています。<br/>
-少しネストが浅くなりましたね！</p>
-
-<h5>GETリクエスト(パターン３)</h5>
-
-<p>まだ、ネストが深いって？<br/>
-よし！思い切ってネストをなくしましょう！</p>
-
-<p>```objective-c
-// GETリクエスト
-Alamofire.request(.GET, &ldquo;<a href="http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp">http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp</a>&rdquo;).response { (request, response, data, error) in</p>
-
-<pre><code>// AnyObject?型をNSData型に変換。さらにJSONの形をしたNSDictionary型に変換。
-let json = NSJSONSerialization.JSONObjectWithData(data as! NSData, options: NSJSONReadingOptions.MutableContainers, error: nil) as! [String: AnyObject]
-let weatherArray = json["weather"] as! [AnyObject]
-let weather = weatherArray[0] as! [String: AnyObject]
-let description = weather["description"] as! String
-println(description)
-</code></pre>
-
-<p>}
-```</p>
-
-<p>う〜ん。ネストは確かになくなったのですが、Unwrapの手法を <strong>Implicitly Unwrapped Optional</strong> にしたため、nilが発生した段階でエラーが発生して落ちます&hellip;。<br/>
-値がない場合には空オブジェクトを返すAPIである場合には問題ないと思います。</p>
-
-<p>だんだんとSwiftの基礎含めて理解が進んできた気がします。<br/>
 と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
