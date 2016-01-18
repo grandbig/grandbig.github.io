@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-01-17T23:05:34+09:00</updated>
+  <updated>2016-01-18T13:19:06+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,327 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftでGCDを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/01/18/semaphore/"/>
+    <updated>2016-01-18T09:26:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/01/18/semaphore</id>
+    <content type="html"><![CDATA[<h4>GCDとは</h4>
+
+<p>GCDとはGrand Central Dispatchの略で、iOSアプリでマルチスレッド処理を実行したいときに利用する手法です。<br/>
+書き方は独特ですが、慣れてしまえば、簡単に使いこなすことができると思います。<br/>
+今回は筆者が困ったときに使う方法について紹介していきます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>メインスレッドの処理を妨げたくないとき</h4>
+
+<p>iOSアプリでは描画はメインスレッドでしか実行できません。<br/>
+(もし、それ以外で実行しようとすれば、アプリがダウンしてしまいます。)</p>
+
+<p>筆者がアプリを開発しているときに、<br/>
+検証のため、ログをローカルストレージに保存したい場面がありました。<br/>
+ログ保存処理は一時的な検証のためであり、本来のメイン処理を妨げたくはありません。</p>
+
+<p>ログ保存処理は <strong>描画を含まない処理</strong> であるため、<br/>
+別にスレッドを立てて、そちらに任せてしまうことができます。<br/>
+これにより、メインスレッドに影響を及ぼすことなく、処理を実行することができます。</p>
+
+<p>下記にサンプルを載せます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>let queue:dispatch_queue_t = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    dispatch_async(queue) {() -&gt; Void in
+        // 別スレッドでの処理
+        // 例えば、Realmを使った保存処理などを書く(今回は省略します)
+    }
+
+    // アラート表示処理
+    let alertController:UIAlertController = UIAlertController(title: "確認", message: message, preferredStyle: .Alert)
+    let okAction:UIAlertAction = UIAlertAction(title: "OK", style: .Default) { (alert) -&gt; Void in
+        // OKを選択したときに実行される処理
+    }
+    alertController.addAction(okAction)
+    presentViewController(alertController, animated: true, completion: nil)
+}
+
+&lt;省略&gt;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>このように <strong>dispatch_async</strong> 内でRealmへのログ保存処理をすれば、<br/>
+別スレッドでの処理となるため、<br/>
+ログ保存処理を待たずにアラートの表示処理を実行することができます。</p>
+
+<p><strong>dispatch_get_global_queue</strong> とその引数などの詳細は<a href="https://github.com/mixi-inc/iOSTraining/wiki/8.2-Grand-Central-Dispatch">8.2 Grand Central Dispatch</a>に非常に詳しく書かれているので、ぜひご参照ください。</p>
+
+<h4>複数の非同期処理の情報で何か処理がしたいとき</h4>
+
+<p>例えば、複数種類のWeb APIを叩いて、それぞれから取得した情報を合算して、画面に表示したいとします。<br/>
+（別々にAPIを叩いて取得した情報を別々に返せば問題ない場面では当てはまらないので注意）</p>
+
+<p>そんなときは <strong>dispatch_group_async</strong> と <strong>dispatch_group_notify</strong> を使います。</p>
+
+<p>下記にサンプルを載せます。</p>
+
+<p>```objective-c</p>
+
+<h1>import UIKit</h1>
+
+<p>class ViewControlelr:UIViewController {</p>
+
+<pre><code>let queue:dispatch_queue_t = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+let group:dispatch_group_t = dispatch_group_create()
+
+&lt;省略&gt;
+
+/**
+指定都市の天気情報を取得する処理
+*/
+func getWeather(location:String, closure:(String) -&gt; Void) {
+    Alamofire.request(.GET, "http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPID&gt;", parameters: 
+        ["q":location]).response { (request, response, data, error) -&gt; Void in
+        if(error == nil) {
+            do {
+                let dataDict = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+                let weatherArray:[AnyObject] = dataDict["weather"] as! [AnyObject]
+                let weather:AnyObject = weatherArray[0]
+                let description:String = weather["description"] as! String
+                closure(description)
+            } catch {
+                print("例外が発生しました")
+            }
+        }
+    }
+}
+
+/**
+複数都市の天気情報を取得しログ出力する処理
+*/
+func getMultiLocationWeather() {
+    var tokyoWeather:String = "unknown"
+    var osakaWeather:String = "unknown"
+    var saitamaWeather:String = "unknown"
+
+    // グループに 「+1」
+    dispatch_group_enter(self.group)
+    dispatch_group_async(self.group, self.queue) { () -&gt; Void in
+        self.getWeather("Tokyo, jp", closure: { (weather) -&gt; Void in
+            tokyoWeather = weather
+            // グループに 「-1」
+            dispatch_group_leave(self.group)
+        })
+    }
+
+    // グループに 「+1」
+    dispatch_group_enter(self.group)
+    dispatch_group_async(self.group, self.queue) { () -&gt; Void in
+        self.getWeather("Osaka, jp", closure: { (weather) -&gt; Void in
+            osakaWeather = weather
+            // グループに 「-1」
+            dispatch_group_leave(self.group)
+        })
+    }
+
+    // グループに 「+1」
+    dispatch_group_enter(self.group)
+    dispatch_group_async(self.group, self.queue) { () -&gt; Void in
+        self.getWeather("Saitama, jp", closure: { (weather) -&gt; Void in
+            saitamaWeather = weather
+            // グループに 「-1」
+            dispatch_group_leave(self.group)
+        })
+    }
+
+    // 全ての処理が終わったら実行される
+    dispatch_group_notify(self.group, self.queue) { () -&gt; Void in
+        print("Tokyo: \(tokyoWeather), Osaka: \(osakaWeather), Saitama: \(saitamaWeather)")
+    }
+}
+
+&lt;省略&gt;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>以上のように、3つの非同期処理で取得した情報を使って、文章を作成し、ログ出力することができます。</p>
+
+<h4>非同期処理を同期処理にしたい(排他制御を使いたい)とき</h4>
+
+<p>さて、こちらは正直、筆者は利用したいと思ったことがありません。<br/>
+恐らく、かなり多機能なアプリで、極力多くの処理を並列に実行したい場合に必要なのかなと思ったりします。<br/>
+では、なぜ書くかというと、先日スタックオーバーフローを見て気になったからです。</p>
+
+<p>因みに、筆者のスタックオーバーフローユーザは<a href="http://ja.stackoverflow.com/users/8968/takahiro">こちら</a>です。</p>
+
+<p><a href="https://blog.katty.in/2365">Objective-Cで非同期処理を同期処理にする方法。</a>の例をSwiftで書き直します。</p>
+
+<p>```objective-c</p>
+
+<h1>import UIKit</h1>
+
+<p>class ViewController:UIViewController {</p>
+
+<pre><code>let semaphore:dispatch_semaphore_t = dispatch_semaphore_create(0)
+let queue:dispatch_queue_t = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+
+&lt;省略&gt;
+
+func printLog() {
+    dispatch_async(queue) { () -&gt; Void in
+        for(var i=0; i &lt; 5; i++) {
+            sleep(1)
+            print("Process: \(i)")
+        }
+        dispatch_semaphore_signal(self.semaphore)
+    }
+
+    print("wait...")
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER)
+    print("finish")
+}
+
+&lt;省略&gt;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>実行してみれば、下記のようにログ出力されることがわかるでしょう。</p>
+
+<p><code>objective-c
+wait...
+Process: 0
+Process: 1
+Process: 2
+Process: 3
+Process: 4
+finish
+</code></p>
+
+<p>非同期処理を待ってから、 <strong>finish</strong> とログ出力されていることがわかります。<br/>
+この例ではわかりやすさのため、 <strong>dispatch_async</strong> を使って、非同期処理を作り出しています。</p>
+
+<p>iOSアプリの開発でよく利用する非同期処理と言えば、通信処理ではないでしょうか？<br/>
+Swiftでは特に<a href="https://github.com/Alamofire/Alamofire">Alamofire</a>がよく利用されています。</p>
+
+<p>Alamofireを使って、上記と似たことをやろうとすると、下記のように書くかもしれません。</p>
+
+<p>```objective-c</p>
+
+<h1>import UIKit</h1>
+
+<p>class ViewController:UIViewController {</p>
+
+<pre><code>let semaphore:dispatch_semaphore_t = dispatch_semaphore_create(0)
+let queue:dispatch_queue_t = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+
+&lt;省略&gt;
+
+func getWeather() {
+    Alamofire.request(.GET, "http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPID&gt;", parameters:
+        [q: "Tokyo, jp"]).response { (request, response, data, error) -&gt; Void in
+            if(error == nil) {
+                do {
+                    let dataDict = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+                    let weatherArray:[AnyObject] = dataDict["weather"] as! [AnyObject]
+                    let weather:AnyObject = weatherArray[0]
+                    let description:String = weather["description"] as! String
+
+                    dispatch_semaphore_signal(semaphore)
+                } catch {
+                    print("例外が発生しました")
+                }
+            }
+        }
+
+    print("wait...")
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER)
+    print("finish")
+}
+
+&lt;省略&gt;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>しかしながら、これは実行しても <strong>finish</strong> とログを出力することはありません。<br/>
+理由は、<strong>dispatch_semaphore_wait</strong> を実行した後、メインスレッドを停止するのですが、<br/>
+<code>Alamofire</code>の <strong>response</strong> のクロージャ処理はメインスレッドで実行されるため、<br/>
+<strong>dispatch_semaphore_signal</strong> が実行されることがないからです。</p>
+
+<p>実際に<code>Alamofire</code>の<code>ResponseSerialization.swift</code> > <code>Request</code> クラスを見てみましょう。</p>
+
+<p>```objective-c
+public func response(</p>
+
+<pre><code>queue queue: dispatch_queue_t? = nil,
+completionHandler: (NSURLRequest?, NSHTTPURLResponse?, NSData?, NSError?) -&gt; Void)
+-&gt; Self
+</code></pre>
+
+<p>{</p>
+
+<pre><code>delegate.queue.addOperationWithBlock {
+    dispatch_async(queue ?? dispatch_get_main_queue()) {
+        completionHandler(self.request, self.response, self.delegate.data, self.delegate.error)
+    }
+}
+
+return self
+</code></pre>
+
+<p>}
+```</p>
+
+<p>となっていることがわかるはずです。</p>
+
+<p>さて、いかがでしたでしょうか？<br/>
+GCDは非常に便利な反面、迂闊に使うと思わぬ落とし穴にハマってしまうことがあります。<br/>
+とは言え、<br/>
+一度ハマってみないと身につかないのがプログラミングの世界だと思っているので、<br/>
+ぜひじゃんじゃん使ってハマってみて頂ければと思います笑</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[QuickでSwiftコードのUnitテストをしよう！]]></title>
@@ -931,154 +1252,6 @@ iOSではUIColorによる色設定を行うのですが、これがかなり特�
 もし、初めて知ったというサイトがあれば、ぜひ使ってみてください。<br/>
 必ず役に立つこと請け合いです！<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Swiftで継承とカテゴリってどうやってやるの！？]]></title>
-    <link href="http://grandbig.github.io/blog/2015/06/07/swift-inheritance-extension/"/>
-    <updated>2015-06-07T23:30:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/06/07/swift-inheritance-extension</id>
-    <content type="html"><![CDATA[<h4>Swiftで継承</h4>
-
-<p>まずはObjective-CとSwiftの継承の書き方の違いを見て行きましょう。</p>
-
-<p>早速、Objective-Cの継承ですが、</p>
-
-<p>```objective-c
-// ヘッダーファイル
-@interface SampleA:NSObject
-// プロパティの定義
-@property(strong, nonatomic) NSString *sampleString;
-// メソッドの定義
-&ndash; (void)sampleMethod;</p>
-
-<p>@end</p>
-
-<p>```</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>```objective-c
-// モデルファイル
-@interface SampleA()</p>
-
-<p>@end</p>
-
-<p>@implementation</p>
-
-<ul>
-<li>(void)sampleMethod {
-  &hellip;.
-}</li>
-</ul>
-
-
-<p>@end</p>
-
-<p>```</p>
-
-<p>といった形で書けます。</p>
-
-<p>これがSwiftだと、</p>
-
-<p>```objective-c
-// swiftファイル
-class SampleA:NSObject {</p>
-
-<pre><code>// プロパティの定義
-var sampleString:String = "サンプル"
-// メソッドの定義
-func sampleMethod {
-    ....
-}
-</code></pre>
-
-<p>}</p>
-
-<p>```</p>
-
-<p>とかなりシンプルに書けますね！</p>
-
-<h4>Swiftでカテゴリ</h4>
-
-<p>次にSwiftでObjective-Cで言うカテゴリを実装してみます。</p>
-
-<p>Objective-Cでは、</p>
-
-<p>```objective-c
-// ヘッダーファイル
-@interface NSError(ContextBase)</p>
-
-<ul>
-<li>(NSError <em>)createError:(NSString </em>)message code:(NSInteger)code;</li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>```objective-c
-// モデルファイル
-@implementation NSError(ContextBase)</p>
-
-<ul>
-<li><p>(NSError <em>)createError:(NSString </em>)message code:(NSInteger)code {
- NSDictionary <em>errorUserInfo = @{ NSLocalizedDescriptionKey:message };
- NSError </em>error = [[NSError alloc] initWithDomain:domain code:code userInfo:errorUserInfo];</p>
-
-<p> return error;
-}</p></li>
-</ul>
-
-
-<p>@end
-```</p>
-
-<p>と書いてきました。<br/>
-これがSwiftでは、</p>
-
-<p>```objective-c
-// Swiftファイル
-extension NSError {</p>
-
-<pre><code>func createError(message:String!, code:Int!) -&gt; NSError {
-    let errorUserInfo = [NSLocalizedDescriptionKey: message]
-    let error:NSError = NSError(domain: "jp.co.swiftSample", code: code, userInfo: errorUserInfo)
-
-    return error
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>と書けます。<br/>
-う〜んこれもシンプル！！<br/>
-Objective-Cで利用してきた継承はもちろんのこと、カテゴリも残っていて助かりますね！</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
