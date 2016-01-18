@@ -4,7 +4,7 @@
   <title><![CDATA[Category: android | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-01-18T13:19:06+09:00</updated>
+  <updated>2016-01-19T01:17:09+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,194 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android StudioでOkHttp3.0.1を使おう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/01/19/android-okhttp/"/>
+    <updated>2016-01-19T00:35:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/01/19/android-okhttp</id>
+    <content type="html"><![CDATA[<h4>Volleyではなく、OkHttpを使おう！</h4>
+
+<p>さて、本日は久しぶりにAndroidの話です。<br/>
+これまでAndroidの通信ライブラリとして活躍してきた <strong>Volley</strong> が敬遠されている傾向があります。<br/>
+と言うのも、Volleyが依存しているApache Http ClientがAPI Level22からdeprecatedになったためです。</p>
+
+<p>では、今後は何を使っていけば良いのでしょうか？<br/>
+もちろん開発者自身で通信処理を0から実装することも悪いことではないのですが、<br/>
+やはり、少しでも開発効率を良くするためにオープンソースを利用したいところですよね。</p>
+
+<p>そこで、昨今、皆が使っているものとして<a href="http://square.github.io/okhttp/">OkHttp</a>というものがあります。<br/>
+これは <strong>HTTP</strong> だけでなく、 <strong>HTTP/2</strong> も対応しているため、きちんと最新を追えているという安心感がある点も良い印象です。</p>
+
+<p>また、<a href="http://techlife.cookpad.com/entry/2015/06/25/093507">クックパッド開発者ブログ</a>でも <strong>OkHttp</strong> への移行を進める旨が書かれていますので、知っていて損はなさそうです。</p>
+
+<p>今回は、OKHttpを使ったサンプルを載せたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>OKHttpの導入</h4>
+
+<p>Android StudioにOKHttpを導入しましょう。<br/>
+導入は超簡単です。</p>
+
+<p>```java
+dependencies {</p>
+
+<pre><code>...
+compile 'com.squareup.okhttp3:okhttp:3.0.1'
+</code></pre>
+
+<p>}
+```</p>
+
+<p>はい。以上です。</p>
+
+<h4>OKHttpでGETリクエストを実行</h4>
+
+<p>さて、GETリクエストを実行してみましょう。<br/>
+今回は下記のようなサンプルアプリを作成しました。<br/>
+<img src="/images/android-okhttp.png" alt="サンプルアプリ" /></p>
+
+<p>まずは、<code>AsyncTask</code>を継承したクラスを下記のように作ります。</p>
+
+<p>```java
+package com.example.takahiro.simpleapplication;</p>
+
+<p>import android.os.AsyncTask;</p>
+
+<p>/<em>*
+ * Created by kato_takahiro on 2016/01/19.
+ </em>/
+public class MyAsyncTask extends AsyncTask&lt;Void, Void, String> {</p>
+
+<pre><code>// コンストラクタ
+public MyAsyncTask() {
+    super();
+}
+
+@Override
+protected String doInBackground(Void... params) {
+    return null;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>さて、<code>MainActivity.java</code>内で実行してみます。<br/>
+このとき、 <strong>GET Weather</strong> ボタンをタップしたときに天気情報を取得するものとします。</p>
+
+<p>```java
+public class MainActivity extends AppCompatActivity {</p>
+
+<pre><code>OkHttpClient client = new OkHttpClient();
+
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+    Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+    setSupportActionBar(toolbar);
+
+    &lt;省略&gt;
+
+    // GET Weatherボタンを取得して、クリック処理を実装
+    Button btn = (Button) findViewById(R.id.button);
+    btn.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            new MyAsyncTask() {
+                @Override
+                protected String doInBackground(Void... params) {
+                    String res = null;
+                    try {
+                        String result = run("http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPID&gt;&amp;q=Tokyo");
+                        JSONObject resJson = new JSONObject(result);
+                        JSONArray weathers = resJson.getJSONArray("weather");
+                        JSONObject weather = weathers.getJSONObject(0);
+                        String description = weather.getString("description");
+
+                        res = description;
+                    } catch(IOException e) {
+                        e.printStackTrace();
+                    } catch(JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                    return res;
+                }
+            }.execute();
+        }
+    }
+}
+
+// OKHttpを使った通信処理
+public String run(String url) throws IOException {
+    Request request = new Request.Builder()
+            .url(url)
+            .build();
+
+    Response response = client.newCall(request).execute();
+    return response.body().string();
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>忘れずに<code>AndroidManifest.xml</code>で通信許可しておきましょう。</p>
+
+<p>```java
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;manifest xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>package="com.example.takahiro.simpleapplication"&gt;
+
+&lt;uses-permission android:name="android.permission.INTERNET" &gt;&lt;/uses-permission&gt;
+
+&lt;省略&gt;
+</code></pre>
+
+<p></manifest>
+```</p>
+
+<p>まだ、GETしか試していませんが、割りと簡単に実装できますね。</p>
+
+<h4>注意点</h4>
+
+<p>初め、実装するにあたって、躓いたことを書いておきます。<br/>
+何となしに<code>OKHttp</code>を実装し、デバッグしたところ、<code>android.os.NetworkOnMainThreadException</code>が発生しました。</p>
+
+<p>これは、通信処理をメインスレッドで実行しようとしたために発生しました。<br/>
+そのため、<code>AsyncTask</code>を使って別スレッドで通信処理を実行するように改修する必要がありました。</p>
+
+<p>さて、今回は筆者用のメモの意味合いが強いのですが、Androidアプリの開発に関する記事も今度どんどん増やしていきたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Kotlinを使ってみよう！(1)]]></title>
@@ -828,110 +1016,6 @@ flashboot reboot
 <p>これで復旧させることができました。やったね!!</p>
 
 <p>と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[AndroidでRealmで保存した値を確認しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2015/06/22/android-realmbrowser/"/>
-    <updated>2015-06-22T00:23:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/06/22/android-realmbrowser</id>
-    <content type="html"><![CDATA[<h4>Android Realm Browserを使おう</h4>
-
-<p>さて、<a href="http://grandbig.github.io/blog/2015/06/20/android-realm/">前回の記事</a>で実装したRealmですが、値を確かめたいことがあると思います。<br/>
-その方法について見て行きましょう。</p>
-
-<p><a href="https://github.com/dmytrodanylyk/realm-browser">Android Realm Browser</a>を利用することでアプリ上で直接、値を確認することが可能です。</p>
-
-<p>実装手順</p>
-
-<p>１. GradleScripts > build.gradle(Module: app) のdependenciesを修正
-<code>compile 'com.github.dmytrodanylyk.realm-browser:library:0.0.2'</code>を<code>dependencies { ... }</code>に追加します。<br/>
-２. <code>RealmFilesActivity</code>を起動する処理を追加</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>```java
-// MainActivity.java
-public class MainActivity extends Activity {</p>
-
-<pre><code>@Override
-protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    setContentView(R.layout.activity_main);
-    ...
-    if(result.size() &gt; 0) {
-        ...
-        // Realmデータ閲覧用のActivityを起動
-        RealmBrowser.getInstance().addRealmModel(Engineer.class);
-        RealmFilesActivity.start(this);
-    } else {
-        ...
-    }
-}
-...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>さて、これでアプリを実行してみましょう。<br/>
-下記のような画面を見ることができるはずです。</p>
-
-<p><img src="/images/android-realmbrowser.png" alt="Realmデータ確認画面" /></p>
-
-<h4>ADBで確認する方法</h4>
-
-<p>他にも確認する方法があります。<br/>
-Android StudioをPC上で使えるように設定するにあたって、意識せずにADBというツールがインストールされています。<br/>
-このADBコマンドを利用することでデバイスの中身を直接見ることが可能となります。</p>
-
-<p>ADB設定手順</p>
-
-<p>１. <code>.bashrc</code>ファイルにADBツールのパスを設定
-<code>.bashrc</code>ファイルに<code>export PATH=$PATH:/Users/&lt;ユーザ名&gt;/Library/Android/sdk/platform-tools</code>とパスを設定しましょう。<br/>
-２. <code>.bashrc</code>ファイルの変更を反映
-<code>source ~/.bashrc</code>を実行</p>
-
-<p>これでADBコマンドを利用可能になりました。<br/>
-続いて下記手順で、Realmデータの中身を見て行きましょう。</p>
-
-<p><code>java
-$ adb shell
-$ run-as com.example.takahiro.realmsample
-$ cd files/
-$ cat default.realm
-</code></p>
-
-<p>日本語を保存している場合は文字化けして見えますが、保存されていることは確認できます。<br/>
-本当は<code>adb pull</code>コマンドを使ってPCに<code>default.realm</code>を持ってきて、Realm Browserアプリで中身を見たいのですが、<br/>
-今のところうまくコピーできず見れていません&hellip;。<br/>
-(因みに端末はNexus6を利用しています。)</p>
-
-<p>とりあえず、<code>Android Realm Browser</code>で見るしかないかな〜といったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

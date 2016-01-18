@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-01-18T13:19:06+09:00</updated>
+  <updated>2016-01-19T01:17:09+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,268 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android StudioでOkHttp3.0.1を使おう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/01/19/android-okhttp/"/>
+    <updated>2016-01-19T00:35:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/01/19/android-okhttp</id>
+    <content type="html"><![CDATA[<h4>Volleyではなく、OkHttpを使おう！</h4>
+
+<p>さて、本日は久しぶりにAndroidの話です。<br/>
+これまでAndroidの通信ライブラリとして活躍してきた <strong>Volley</strong> が敬遠されている傾向があります。<br/>
+と言うのも、Volleyが依存しているApache Http ClientがAPI Level22からdeprecatedになったためです。</p>
+
+<p>では、今後は何を使っていけば良いのでしょうか？<br/>
+もちろん開発者自身で通信処理を0から実装することも悪いことではないのですが、<br/>
+やはり、少しでも開発効率を良くするためにオープンソースを利用したいところですよね。</p>
+
+<p>そこで、昨今、皆が使っているものとして<a href="http://square.github.io/okhttp/">OkHttp</a>というものがあります。<br/>
+これは <strong>HTTP</strong> だけでなく、 <strong>HTTP/2</strong> も対応しているため、きちんと最新を追えているという安心感がある点も良い印象です。</p>
+
+<p>また、<a href="http://techlife.cookpad.com/entry/2015/06/25/093507">クックパッド開発者ブログ</a>でも <strong>OkHttp</strong> への移行を進める旨が書かれていますので、知っていて損はなさそうです。</p>
+
+<p>今回は、OKHttpを使ったサンプルを載せたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>OKHttpの導入</h4>
+
+<p>Android StudioにOKHttpを導入しましょう。<br/>
+導入は超簡単です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">dependencies</span> <span class="o">{</span>
+</span><span class='line'>  <span class="o">...</span>
+</span><span class='line'>  <span class="n">compile</span> <span class="err">&#39;</span><span class="n">com</span><span class="o">.</span><span class="na">squareup</span><span class="o">.</span><span class="na">okhttp3</span><span class="o">:</span><span class="nl">okhttp:</span><span class="mf">3.0</span><span class="o">.</span><span class="mi">1</span><span class="err">&#39;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>はい。以上です。</p>
+
+<h4>OKHttpでGETリクエストを実行</h4>
+
+<p>さて、GETリクエストを実行してみましょう。<br/>
+今回は下記のようなサンプルアプリを作成しました。<br/>
+<img src="http://grandbig.github.io/images/android-okhttp.png" alt="サンプルアプリ" /></p>
+
+<p>まずは、<code>AsyncTask</code>を継承したクラスを下記のように作ります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">takahiro</span><span class="o">.</span><span class="na">simpleapplication</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.os.AsyncTask</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Created by kato_takahiro on 2016/01/19.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyAsyncTask</span> <span class="kd">extends</span> <span class="n">AsyncTask</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">,</span> <span class="n">Void</span><span class="o">,</span> <span class="n">String</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// コンストラクタ</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="nf">MyAsyncTask</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kd">super</span><span class="o">();</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">protected</span> <span class="n">String</span> <span class="nf">doInBackground</span><span class="o">(</span><span class="n">Void</span><span class="o">...</span> <span class="n">params</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>さて、<code>MainActivity.java</code>内で実行してみます。<br/>
+このとき、 <strong>GET Weather</strong> ボタンをタップしたときに天気情報を取得するものとします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainActivity</span> <span class="kd">extends</span> <span class="n">AppCompatActivity</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">OkHttpClient</span> <span class="n">client</span> <span class="o">=</span> <span class="k">new</span> <span class="n">OkHttpClient</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">setContentView</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">layout</span><span class="o">.</span><span class="na">activity_main</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">Toolbar</span> <span class="n">toolbar</span> <span class="o">=</span> <span class="o">(</span><span class="n">Toolbar</span><span class="o">)</span> <span class="n">findViewById</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">toolbar</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">setSupportActionBar</span><span class="o">(</span><span class="n">toolbar</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// GET Weatherボタンを取得して、クリック処理を実装</span>
+</span><span class='line'>      <span class="n">Button</span> <span class="n">btn</span> <span class="o">=</span> <span class="o">(</span><span class="n">Button</span><span class="o">)</span> <span class="n">findViewById</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">button</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">btn</span><span class="o">.</span><span class="na">setOnClickListener</span><span class="o">(</span><span class="k">new</span> <span class="n">View</span><span class="o">.</span><span class="na">OnClickListener</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>          <span class="nd">@Override</span>
+</span><span class='line'>          <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onClick</span><span class="o">(</span><span class="n">View</span> <span class="n">view</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>              <span class="k">new</span> <span class="nf">MyAsyncTask</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>                  <span class="nd">@Override</span>
+</span><span class='line'>                  <span class="kd">protected</span> <span class="n">String</span> <span class="nf">doInBackground</span><span class="o">(</span><span class="n">Void</span><span class="o">...</span> <span class="n">params</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                      <span class="n">String</span> <span class="n">res</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>                      <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>                          <span class="n">String</span> <span class="n">result</span> <span class="o">=</span> <span class="n">run</span><span class="o">(</span><span class="s">&quot;http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPID&gt;&amp;q=Tokyo&quot;</span><span class="o">);</span>
+</span><span class='line'>                          <span class="n">JSONObject</span> <span class="n">resJson</span> <span class="o">=</span> <span class="k">new</span> <span class="n">JSONObject</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span><span class='line'>                          <span class="n">JSONArray</span> <span class="n">weathers</span> <span class="o">=</span> <span class="n">resJson</span><span class="o">.</span><span class="na">getJSONArray</span><span class="o">(</span><span class="s">&quot;weather&quot;</span><span class="o">);</span>
+</span><span class='line'>                          <span class="n">JSONObject</span> <span class="n">weather</span> <span class="o">=</span> <span class="n">weathers</span><span class="o">.</span><span class="na">getJSONObject</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'>                          <span class="n">String</span> <span class="n">description</span> <span class="o">=</span> <span class="n">weather</span><span class="o">.</span><span class="na">getString</span><span class="o">(</span><span class="s">&quot;description&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>                          <span class="n">res</span> <span class="o">=</span> <span class="n">description</span><span class="o">;</span>
+</span><span class='line'>                      <span class="o">}</span> <span class="k">catch</span><span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                          <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>                      <span class="o">}</span> <span class="k">catch</span><span class="o">(</span><span class="n">JSONException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                          <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>                      <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>                      <span class="k">return</span> <span class="n">res</span><span class="o">;</span>
+</span><span class='line'>                  <span class="o">}</span>
+</span><span class='line'>              <span class="o">}.</span><span class="na">execute</span><span class="o">();</span>
+</span><span class='line'>          <span class="o">}</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// OKHttpを使った通信処理</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">String</span> <span class="nf">run</span><span class="o">(</span><span class="n">String</span> <span class="n">url</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Request</span> <span class="n">request</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Request</span><span class="o">.</span><span class="na">Builder</span><span class="o">()</span>
+</span><span class='line'>              <span class="o">.</span><span class="na">url</span><span class="o">(</span><span class="n">url</span><span class="o">)</span>
+</span><span class='line'>              <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">Response</span> <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="na">newCall</span><span class="o">(</span><span class="n">request</span><span class="o">).</span><span class="na">execute</span><span class="o">();</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="na">body</span><span class="o">().</span><span class="na">string</span><span class="o">();</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>忘れずに<code>AndroidManifest.xml</code>で通信許可しておきましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">&lt;?</span><span class="n">xml</span> <span class="n">version</span><span class="o">=</span><span class="s">&quot;1.0&quot;</span> <span class="n">encoding</span><span class="o">=</span><span class="s">&quot;utf-8&quot;</span><span class="o">?&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">manifest</span> <span class="nl">xmlns:</span><span class="n">android</span><span class="o">=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
+</span><span class='line'>    <span class="n">package</span><span class="o">=</span><span class="s">&quot;com.example.takahiro.simpleapplication&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="o">&lt;</span><span class="n">uses</span><span class="o">-</span><span class="n">permission</span> <span class="nl">android:</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;android.permission.INTERNET&quot;</span> <span class="o">&gt;&lt;/</span><span class="n">uses</span><span class="o">-</span><span class="n">permission</span><span class="o">&gt;</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">manifest</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>まだ、GETしか試していませんが、割りと簡単に実装できますね。</p>
+
+<h4>注意点</h4>
+
+<p>初め、実装するにあたって、躓いたことを書いておきます。<br/>
+何となしに<code>OKHttp</code>を実装し、デバッグしたところ、<code>android.os.NetworkOnMainThreadException</code>が発生しました。</p>
+
+<p>これは、通信処理をメインスレッドで実行しようとしたために発生しました。<br/>
+そのため、<code>AsyncTask</code>を使って別スレッドで通信処理を実行するように改修する必要がありました。</p>
+
+<p>さて、今回は筆者用のメモの意味合いが強いのですが、Androidアプリの開発に関する記事も今度どんどん増やしていきたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SwiftでGCDを使ってみよう！]]></title>
@@ -4497,100 +4759,6 @@ Tools > Kotlin > Configure Kotlin in Project を選択すると、build.gradle(a
 <li><a href="http://qiita.com/shoma2da/items/31edef012f224f99323c">SwiftでAndroidアプリを作る!?</a></li>
 </ul>
 
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Debug View Hierarchy]]></title>
-    <link href="http://grandbig.github.io/blog/2015/10/18/debug-view-hierarchy/"/>
-    <updated>2015-10-18T23:54:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/10/18/debug-view-hierarchy</id>
-    <content type="html"><![CDATA[<h4>Debug View Hierarchyを使ってみよう！</h4>
-
-<p>今日はDebug View Hierarchyの使い方を見てみたいと思います。<br/>
-普段、めったにこの機能を使うことのない筆者ですが、使いどころを探る上でも少し見てみようと思います。</p>
-
-<h5>Debug View Hierarchyとは</h5>
-
-<p>Xcodeでデバッグした後に、アプリの画面の構造を確認することができる機能です。<br/>
-デバッグ後に表示されるバーの下図の赤枠で囲った部分をクリックしましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/debugViewHierarchy1.png" alt="Debug View Hierarchyの開始方法" /></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>すると、下図のような表示が見れるはずです。</p>
-
-<p><img src="http://grandbig.github.io/images/debugViewHierarchy2.png" alt="Debug View Hierarchyの初期図" /></p>
-
-<p>ここでは下図のツールバーを用いて、Debug View Hierarchyを使いこなしていきます。</p>
-
-<p><img src="http://grandbig.github.io/images/debugViewHierarchy3.png" alt="Debug View Hierarchyのツールバー" /></p>
-
-<p>左から</p>
-
-<ul>
-<li>Show clipped content<br/>
-紐付けられている画面の構造がわかる</li>
-<li>Show constraints<br/>
-各画面や部品に設定されたConstraintsがわかる</li>
-<li>Adjust the view mode<br/>
-Contents / Wireframes / Wireframes and Contentsを切り替えられる</li>
-<li>Orient to 2D<br/>
-2D / 3D表示を切り替えられる</li>
-<li>Zoom out<br/>
-Debug View Hierarchyの表示をズームアウトする</li>
-<li>Actual size<br/>
-Debug View Hierarchyを実際のサイズにズームする</li>
-<li>Zoom in<br/>
-Debug View Hierarchyの表示をズームインする</li>
-</ul>
-
-
-<p>となっています。</p>
-
-<h5>Debug View Hierarchyの使いどころ</h5>
-
-<p>筆者が躓いたときに使えるなと思ったパターンを列挙します。</p>
-
-<ol>
-<li><p>WKWebViewとネイティブ部品(ボタン, ラベルなど)を同一の画面に配置したとき
-WKWebViewはstoryboardから配置できず、ソースコードを書く必要があります。<br/>
-ネイティブ部品は通常、storyboardから配置するため、viewDidLoadが実行される頃にはself.viewに追加されています。<br/>
-なので、うっかり気づかずにネイティブ部品がWKWebViewに隠れてしまっていることがあります。<br/>
-なぜネイティブボタンが表示されないのかわからなかったときは <strong>Debug View Hierarchy</strong> を使うと良いでしょう。</p></li>
-<li><p>適切なConstraintsが各部品に設定されていないとき
-想定に反して、各部品が配置されないことがあったとき、まさに <strong>Debug View Hierarchy</strong> が使えます。<br/>
-理由がConstraintsである場合、想定した画面からはみ出していたりすることが確認できるでしょう。</p></li>
-</ol>
-
-
-<p>いかがだったでしょうか？<br/>
-これからは筆者も積極的にDebug View Hierarchyを使っていきたいと思います。<br/>
-と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
