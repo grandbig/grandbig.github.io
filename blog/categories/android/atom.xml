@@ -4,7 +4,7 @@
   <title><![CDATA[Category: android | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-01-19T01:17:09+09:00</updated>
+  <updated>2016-01-23T23:22:03+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,180 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kotlinを使ってみよう！(2) : OkHttp編]]></title>
+    <link href="http://grandbig.github.io/blog/2016/01/23/kotlin-okhttp/"/>
+    <updated>2016-01-23T16:47:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/01/23/kotlin-okhttp</id>
+    <content type="html"><![CDATA[<h4>今回のKotlinのお題は？</h4>
+
+<p>さて、久々にKotlinについて勉強をしたいと思います。<br/>
+今回のお題は<a href="http://grandbig.github.io/blog/2016/01/19/android-okhttp/">Android StudioでOkHttp3.0.1を使おう！</a>にしたいと思います。<br/>
+では、早速見ていきましょう！</p>
+
+<h4>KotlinでOkHttp3.0.1を使うソースを書いてみる</h4>
+
+<p>まずは、OkHttp3.0.1を使ったソースを書いてみます。<br/>
+OkHttpの導入はJavaと同じです。</p>
+
+<p>build.gradle(app)に下記を追加しましょう。</p>
+
+<p>```java
+dependencies {</p>
+
+<pre><code>...
+compile 'com.squareup.okhttp3:okhttp:3.0.1'
+</code></pre>
+
+<p>}
+```</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>Javaで紹介したときと同様に、Open Weather Map APIを使ったGETリクエストを利用します。<br/>
+OkHttpでは通信処理をメインスレッドで実行しようとするとエラーが発生してしまうので、<code>AsyncTask</code>を利用します。<br/>
+<code>AsyncTask</code>を継承したクラスを書きます。</p>
+
+<p>```java
+package com.example.takahiro.simpleapplication</p>
+
+<p>import android.os.AsyncTask</p>
+
+<p>open class MyAsyncTask : AsyncTask&lt;Void, Void, String>() {</p>
+
+<pre><code>override fun doInBackground(vararg params: Void): String? {
+    return null
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここでKotlinの書き方を説明しましょう。</p>
+
+<ul>
+<li><code>open</code>
+
+<ul>
+<li>他のクラスからの継承を許可するアノテーション</li>
+<li><code>MainActivity</code>で<code>doInBackground</code>メソッドをオーバーライドするために設定<br/>
+　</li>
+</ul>
+</li>
+<li><code>vararg</code>
+
+<ul>
+<li>可変長にしたい引数の名前に設定</li>
+<li><code>donInBackground</code>は引数が1つ以上設定可能な可変長なものを持つため利用</li>
+</ul>
+</li>
+</ul>
+
+
+<p>続いて、<code>MainActivity</code>を書いていきます。</p>
+
+<p>```java
+package com.example.takahiro.simpleapplication</p>
+
+<p>import android.os.AsyncTask
+&hellip;
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response</p>
+
+<p>class MainActivity:AppCompatActivity() {</p>
+
+<pre><code>internal var client = OkHttpClient()
+
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_main)
+    val toolbar = findViewById(R.id.toolbar) as Toolbar
+    setSupportActionBar(toolbar)
+
+    &lt;省略&gt;
+
+    // GET Weatherボタンを取得して、クリック処理を実装
+    val btn = findViewById(R.id.button) as Button
+    btn.setOnClickListener {
+        object: MyAsyncTask() {
+            override fun doInBackground(vararg params: Void): String {
+                var res: String = ""
+                try {
+                    res = run("http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPID&gt;&amp;q=Tokyo")
+                    val resJson = JsonObject(res)
+                    val weathers = resJson.getJSONArray("weather")
+                    val weather = weathers.getJsonObject(0)
+                    val description = weather.getString("description")
+                    Log.i("MainActivity", description)
+                    res = description
+                } catch(e: IOException) {
+                    e.printStackTrace()
+                } catch(e: JSONException) {
+                    e.printStackTrace()
+                }
+            }
+        }.execute()
+    }
+}
+
+fun run(url: String): String {
+    val request = Request.Builder().url(url).build()
+
+    val response = client.newCall(request).execute()
+    return response.body().string()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここでもKotlinの書き方を説明します。</p>
+
+<ul>
+<li><code>object</code>
+
+<ul>
+<li>匿名サブクラスのインスタンスの返却式</li>
+<li>setOnClickListenerの引数にMyAsyncTaskを匿名クラスとして指定するために利用</li>
+<li>Kotlinではインスタンス生成に<code>new</code>は利用しない</li>
+</ul>
+</li>
+</ul>
+
+
+<p>さて、いかがでしたでしょうか？<br/>
+KotlinはSwiftに近い書式で書けるため、筆者にとっては非常にわかりやすいです。<br/>
+ただ、Javaとの互換性が非常に高いため、やはりそれなりに覚えなくてはならないことがありますね。</p>
+
+<p>これからも少しずつではありますが、Kotlinを見ていきたいと思います。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android StudioでOkHttp3.0.1を使おう！]]></title>
@@ -913,109 +1087,6 @@ override fun onResume() {
 <li><a href="http://qiita.com/shoma2da/items/31edef012f224f99323c">SwiftでAndroidアプリを作る!?</a></li>
 </ul>
 
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android5.0から5.1にアップデートして文鎮化した事件簿]]></title>
-    <link href="http://grandbig.github.io/blog/2015/10/05/android-update-crash/"/>
-    <updated>2015-10-05T22:38:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/10/05/android-update-crash</id>
-    <content type="html"><![CDATA[<h4>Android OSのアップデートは恐ろしい</h4>
-
-<p>さて、本日はAndroid OSのアップデートに関するお話です。<br/>
-筆者は最近、Nexus6をAndroid5.0から5.1にアップデートしようとしたのですが、途中で失敗して端末が文鎮化するという悲劇が発生してしまったので、備忘録です。</p>
-
-<h5>文鎮化までの軌跡</h5>
-
-<p>まずは、如何にしてNexus6が文鎮化したかまで説明します。</p>
-
-<ol>
-<li>端末の通知センターからバージョンアップのためのデータをダウンロード</li>
-<li>端末を再起動して、インストールしますか？と聞かれるのでYESを選択</li>
-<li>アップデートに失敗しました。という文言と共に下図が&hellip;</li>
-</ol>
-
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p><img src="/images/android-update.png" alt="エラー発生" /></p>
-
-<ol>
-<li>嘘だろ&hellip;と思って端末の電源長押しで再起動
-永久、再起動ループに&hellip;</li>
-<li>電源 + 音量Downボタンを長押しでReboot起動
-すると下図のような感じで起動します。<br/>
-START, Recovery, Factory&hellip;などのメニューから仕掛けたい動作を選択できます。<br/>
-<img src="/images/android-update2.png" alt="Reboot起動" /></li>
-<li>順番に全部やっているけど、どれも無限ループに&hellip;</li>
-</ol>
-
-
-<p>はい！文鎮化しましたね。</p>
-
-<h4>文鎮化Nexus6を復旧するまでの軌跡</h4>
-
-<p>まさか文鎮化したNexus6を放っておくわけにはいきません。<br/>
-復旧させましょう！</p>
-
-<ol>
-<li>LOCKを外す
-<code>fastboot oem unlock</code>を実行して、端末のLOCKを解除しましょう。</li>
-<li><a href="https://developers.google.com/android/nexus/images?hl=ja">Google Developerサイト</a>からFactory Imageをダウンロード
-筆者は5.0.1 (LRX22C)を落としました。</li>
-<li>ダウンロードしたフォルダ内にzipファイルがあるので、解凍する</li>
-<li>下記のコマンドを実行</li>
-</ol>
-
-
-<p><code>
-fastboot flash bootloader bootloader-shamu-moto-apq8084-71.05.img
-fastboot reboot-bootloader
-sleep 5
-fastboot flash radio radio-shamu-d4.0-9625-02.55.04.img
-fastboot reboot-bootloader
-sleep 5
-cd "zipを解凍したフォルダ"
-fastboot flash boot boot.img
-fastboot flash cache cache.img
-fastboot flash recovery recovery.img
-fastboot flash system system.img
-fastboot flash userdata userdata.img
-flashboot reboot
-</code></p>
-
-<ol>
-<li>再起動したAndroidで初期設定</li>
-</ol>
-
-
-<p>これで復旧させることができました。やったね!!</p>
-
-<p>と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

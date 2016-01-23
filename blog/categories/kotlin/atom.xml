@@ -4,7 +4,7 @@
   <title><![CDATA[Category: kotlin | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/kotlin/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-01-19T01:17:09+09:00</updated>
+  <updated>2016-01-23T23:22:03+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,180 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kotlinを使ってみよう！(2) : OkHttp編]]></title>
+    <link href="http://grandbig.github.io/blog/2016/01/23/kotlin-okhttp/"/>
+    <updated>2016-01-23T16:47:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/01/23/kotlin-okhttp</id>
+    <content type="html"><![CDATA[<h4>今回のKotlinのお題は？</h4>
+
+<p>さて、久々にKotlinについて勉強をしたいと思います。<br/>
+今回のお題は<a href="http://grandbig.github.io/blog/2016/01/19/android-okhttp/">Android StudioでOkHttp3.0.1を使おう！</a>にしたいと思います。<br/>
+では、早速見ていきましょう！</p>
+
+<h4>KotlinでOkHttp3.0.1を使うソースを書いてみる</h4>
+
+<p>まずは、OkHttp3.0.1を使ったソースを書いてみます。<br/>
+OkHttpの導入はJavaと同じです。</p>
+
+<p>build.gradle(app)に下記を追加しましょう。</p>
+
+<p>```java
+dependencies {</p>
+
+<pre><code>...
+compile 'com.squareup.okhttp3:okhttp:3.0.1'
+</code></pre>
+
+<p>}
+```</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>Javaで紹介したときと同様に、Open Weather Map APIを使ったGETリクエストを利用します。<br/>
+OkHttpでは通信処理をメインスレッドで実行しようとするとエラーが発生してしまうので、<code>AsyncTask</code>を利用します。<br/>
+<code>AsyncTask</code>を継承したクラスを書きます。</p>
+
+<p>```java
+package com.example.takahiro.simpleapplication</p>
+
+<p>import android.os.AsyncTask</p>
+
+<p>open class MyAsyncTask : AsyncTask&lt;Void, Void, String>() {</p>
+
+<pre><code>override fun doInBackground(vararg params: Void): String? {
+    return null
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここでKotlinの書き方を説明しましょう。</p>
+
+<ul>
+<li><code>open</code>
+
+<ul>
+<li>他のクラスからの継承を許可するアノテーション</li>
+<li><code>MainActivity</code>で<code>doInBackground</code>メソッドをオーバーライドするために設定<br/>
+　</li>
+</ul>
+</li>
+<li><code>vararg</code>
+
+<ul>
+<li>可変長にしたい引数の名前に設定</li>
+<li><code>donInBackground</code>は引数が1つ以上設定可能な可変長なものを持つため利用</li>
+</ul>
+</li>
+</ul>
+
+
+<p>続いて、<code>MainActivity</code>を書いていきます。</p>
+
+<p>```java
+package com.example.takahiro.simpleapplication</p>
+
+<p>import android.os.AsyncTask
+&hellip;
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response</p>
+
+<p>class MainActivity:AppCompatActivity() {</p>
+
+<pre><code>internal var client = OkHttpClient()
+
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_main)
+    val toolbar = findViewById(R.id.toolbar) as Toolbar
+    setSupportActionBar(toolbar)
+
+    &lt;省略&gt;
+
+    // GET Weatherボタンを取得して、クリック処理を実装
+    val btn = findViewById(R.id.button) as Button
+    btn.setOnClickListener {
+        object: MyAsyncTask() {
+            override fun doInBackground(vararg params: Void): String {
+                var res: String = ""
+                try {
+                    res = run("http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPID&gt;&amp;q=Tokyo")
+                    val resJson = JsonObject(res)
+                    val weathers = resJson.getJSONArray("weather")
+                    val weather = weathers.getJsonObject(0)
+                    val description = weather.getString("description")
+                    Log.i("MainActivity", description)
+                    res = description
+                } catch(e: IOException) {
+                    e.printStackTrace()
+                } catch(e: JSONException) {
+                    e.printStackTrace()
+                }
+            }
+        }.execute()
+    }
+}
+
+fun run(url: String): String {
+    val request = Request.Builder().url(url).build()
+
+    val response = client.newCall(request).execute()
+    return response.body().string()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここでもKotlinの書き方を説明します。</p>
+
+<ul>
+<li><code>object</code>
+
+<ul>
+<li>匿名サブクラスのインスタンスの返却式</li>
+<li>setOnClickListenerの引数にMyAsyncTaskを匿名クラスとして指定するために利用</li>
+<li>Kotlinではインスタンス生成に<code>new</code>は利用しない</li>
+</ul>
+</li>
+</ul>
+
+
+<p>さて、いかがでしたでしょうか？<br/>
+KotlinはSwiftに近い書式で書けるため、筆者にとっては非常にわかりやすいです。<br/>
+ただ、Javaとの互換性が非常に高いため、やはりそれなりに覚えなくてはならないことがありますね。</p>
+
+<p>これからも少しずつではありますが、Kotlinを見ていきたいと思います。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Kotlinを使ってみよう！(1)]]></title>
