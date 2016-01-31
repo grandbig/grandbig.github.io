@@ -4,7 +4,7 @@
   <title><![CDATA[Category: android | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-01-31T01:13:17+09:00</updated>
+  <updated>2016-01-31T22:28:28+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -109,14 +109,99 @@ tools:showIn="@layout/activity_main"&gt;
 <p></RelativeLayout>
 ```</p>
 
-<p>3．表示ページ用に<code>page.xml</code>を作成<br/>
-とりあえず、ページを表示するために、新規XMLファイルを作成します。</p>
+<p>3．表示ページ用に<code>Fragment</code>を継承した<code>PageFragment</code>を作成<br/>
+メニューから<code>BlankFragment</code>を追加すると、ある程度デフォルトで処理を作成してくれます。<br/>
+まずは<code>PageFragment.java</code>ファイルは下記に一部修正しました。</p>
 
 <p>```java
-&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
-&lt;RelativeLayout xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+package com.example.takahiro.tablayoutapplication;</p>
 
-<pre><code>android:layout_width="match_parent" android:layout_height="match_parent"&gt;
+<p>import android.content.Context;
+import android.net.Uri;
+import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;</p>
+
+<p>public class PageFragment extends Fragment {</p>
+
+<pre><code>private static final String ARG_PARAM = "page";
+private String mParam;
+private OnFragmentInteractionListener mListener;
+
+// コンストラクタ
+public PageFragment() {
+}
+
+public static PageFragment newInstance(int page) {
+    PageFragment fragment = new PageFragment();
+    Bundle args = new Bundle();
+    args.putInt(ARG_PARAM, page);
+    fragment.setArguments(args);
+    return fragment;
+}
+
+@Override
+public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    if (getArguments() != null) {
+        mParam = getArguments().getString(ARG_PARAM);
+    }
+}
+
+@Override
+public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    Bundle savedInstanceState) {
+    // Inflate the layout for this fragment
+    int page = getArguments().getInt(ARG_PARAM, 0);
+    View view = inflater.inflate(R.layout.fragment_page, container, false);
+    (TextView)view.findViewById(R.id.textView)).setText("Page" + page);
+
+    return view;
+}
+
+public void onButtonPressed(Uri uri) {
+    if (mListener != null) {
+        mListener.onFragmentInteraction(uri);
+    }
+}
+
+@Override
+public void onAttach(Context context) {
+    super.onAttach(context);
+    if (context instanceof OnFragmentInteractionListener) {
+        mListener = (OnFragmentInteractionListener) context;
+    } else {
+        throw new RuntimeException(context.toString()
+            + " must implement OnFragmentInteractionListener");
+    }
+}
+
+@Override
+public void onDetach() {
+    super.onDetach();
+    mListener = null;
+}
+
+public interface OnFragmentInteractionListener {
+    void onFragmentInteraction(Uri uri);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いて、XMLファイルは下記です。</p>
+
+<p>```java
+&lt;FrameLayout xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>xmlns:tools="http://schemas.android.com/tools"
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+tools:context="com.example.takahiro.tablayoutapplication.PageFragment"&gt;
 
 &lt;TextView
     android:layout_width="wrap_content"
@@ -134,7 +219,7 @@ tools:showIn="@layout/activity_main"&gt;
 <p>4．<code>MainActivity.java</code>にTabLayoutとViewPagerを組み込み</p>
 
 <p>```java
-public class MainActivity extends AppCompatActivity implements ViewPager.OnPageChangeListener {</p>
+public class MainActivity extends AppCompatActivity implements ViewPager.OnPageChangeListener, PageFragment.OnFragmentInteractionListener {</p>
 
 <pre><code>@Override
 protected void onCreate(Bundle savedInstanceState) {
@@ -189,28 +274,8 @@ public void onPageSelected(int position) {
 public void onPageScrollStateChanged(int state) {
 }
 
-public static class PageFragment extends Fragment {
-
-    // コンストラクタ
-    public PageFragment() {
-    }
-
-    public static PageFragment newInstance(int page) {
-        Bundle args = new Bundle();
-        args.putInt("page", page);
-        PageFragment fragment = new PageFragment();
-        fragment.setArguments(args);
-        return fragment;
-    }
-
-    @Nullable
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        int page = getArguments().getInt("page", 0);
-        View view = inflater.inflate(R.layout.page1, container, false);
-        (TextView) view.findViewById(R.id.textView)).setText("Page " + page);
-        return view;
-    }
+@Override
+public void onFragmentInteraction(Uri uri) {
 }
 </code></pre>
 
