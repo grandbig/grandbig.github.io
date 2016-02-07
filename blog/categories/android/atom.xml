@@ -4,7 +4,7 @@
   <title><![CDATA[Category: android | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/android/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-02-06T12:15:57+09:00</updated>
+  <updated>2016-02-08T00:21:01+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,343 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Android Studioでの初回作成Activityから考えるログイン画面]]></title>
+    <link href="http://grandbig.github.io/blog/2016/02/07/android-login-activity/"/>
+    <updated>2016-02-07T22:38:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/02/07/android-login-activity</id>
+    <content type="html"><![CDATA[<h4>Androidアプリでのログイン画面を考えてみる</h4>
+
+<p>筆者はこれまでAndroidアプリでログイン画面を作成するとき、</p>
+
+<ul>
+<li>Person Name / E-mail / Phone などの必須入力項目用のText Fields</li>
+<li>Password / Password(Numeric) のパスワード入力用のText Fields</li>
+<li>ログインするためのアクション用のButton</li>
+</ul>
+
+
+<p>のみを配置することを考えていました。<br/>
+今回はAndroid Studioで初回プロジェクト作成時に<code>Login Activity</code>を選択することで、<br/>
+Google側の意図を読み取ってみようと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>Login画面のレイアウト</h4>
+
+<p>では、早速、Android Studioを起動して<code>Login Activity</code>を選択したプロジェクトを作成しましょう。<br/>
+(本ブログでは <strong>Android Studio 2.0 Beta2</strong> を利用しています。)</p>
+
+<p>プロジェクト作成時に<code>Add an Activity to Mobile</code>のところで<code>Login Activity</code>を選択してみましょう。</p>
+
+<p><img src="/images/login-activity-1.png" alt="Login Activityを選択する" /></p>
+
+<p>すると、下記のようなレイアウトファイルが作成されます。</p>
+
+<p>```java
+// activity_login.xml
+&lt;LinearLayout xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>xmlns:tools="http://schemas.android.com/tools"
+...
+tools:context="com.example.takahiro.loginapplicationsample.LoginActivity"&gt;
+
+&lt;!-- Login progress --&gt;
+&lt;ProgressBar
+    android:id="@+id/login_progress"
+    style="?android:attr/progressBarStyleLarge"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    android:visibility="gone" /&gt;
+
+&lt;ScrollView
+    android:id="@+id/login_form"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"&gt;
+
+    &lt;LinearLayout
+        android:id="@+id/email_login_form"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"&gt;
+
+        &lt;android.support.design.widget.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"&gt;
+
+            &lt;AutoCompleteTextView
+                android:id="@+id/email"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/prompt_email"
+                android:inputType="textEmailAddress"
+                android:maxLines="1"
+                android:singleLine="true" /&gt;
+
+        &lt;/android.support.design.widget.TextInputLayout&gt;
+
+        &lt;android.support.design.widget.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"&gt;
+
+            &lt;EditText
+                android:id="@+id/password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/prompt_password"
+                android:imeActionId="@+id/login"
+                android:imeActionLabel="@string/action_sign_in_short"
+                android:imeOptions="actionUnspecified"
+                android:inputType="textPassword"
+                android:maxLines="1"
+                android:singleLine="true" /&gt;
+
+        &lt;/android.support.design.widget.TextInputLayout&gt;
+
+        &lt;Button
+            android:id="@+id/email_sign_in_button"
+            style="?android:textAppearanceSmall"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/action_sign_in"
+            android:textStyle="bold" /&gt;
+
+    &lt;/LinearLayout&gt;
+&lt;/ScrollView&gt;
+</code></pre>
+
+<p></LinearLayout>
+```</p>
+
+<p>実際に画面はこのようになっています。<br/>
+<img src="/images/login-activity-2.png" alt="ログイン画面" /></p>
+
+<p>その成り立ちを見てみましょう。</p>
+
+<h5>ProgressBarが配置されている</h5>
+
+<p>まず、目についたのは<code>ProgressBar</code>です。<br/>
+ログインボタンをタップした後に、サーバへの問い合わせをすることが通常だと思います。<br/>
+サーバ通信後、データを受け取るまでにはそれなりに時間がかかる可能性があります。<br/>
+なので、ユーザにロード中であることを知らせる<code>ProgressBar</code>は必要であるということなのでしょう。</p>
+
+<h5>ScrollViewが配置されている</h5>
+
+<p>続いて、<code>ScrollView</code>に着目しました。<br/>
+デフォルトでは、EmailとPasswordに加えて、ログインボタンが設置されているのみですが、<br/>
+場合によってはユーザ名, 電話番号, 住所, クレジットカード番号などなど必要とされる項目が多くなる可能性があります。<br/>
+初めからそういったことを想定した作りになっているということでしょう。</p>
+
+<h5>TextInputLayoutが配置されている</h5>
+
+<p>そして、何と言っても、<code>android.support.design.widget.TextInputLayout</code>は目立つのではないでしょうか？<br/>
+これは <strong>Android Design Support Library</strong> に含まれるマテリアルデザインを体現したパーツとなります。<br/>
+<code>TextView</code>等を囲むことで、ユーザの入力アクションに合わせて、入力項目タイトルがスムーズに移動するデザインを実装することができます。<br/>
+いわゆる<a href="https://www.google.com/design/spec/components/text-fields.html#">Floating Label</a>というものですね。</p>
+
+<h5>AutoCompleteTextViewが使われている</h5>
+
+<p>今回はEmailの入力が必要とのことで、<code>AutoCompleteTextView</code>によるユーザ補助機能がついています。<br/>
+もちろん、<code>AutoCompleteTextView</code>をレイアウト上で設定しても補助機能を実装することはできず、<br/>
+<code>AndroidManifest.xml</code>で設定が必要です。</p>
+
+<p>```java
+// AndroidManifest.xml
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+&lt;manifest xmlns:android=&ldquo;<a href="http://schemas.android.com/apk/res/android">http://schemas.android.com/apk/res/android</a>&rdquo;</p>
+
+<pre><code>package="com.example.takahiro.loginapplicationsample"&gt;
+
+&lt;!-- To auto-complete the email text field in the login form with the user's emails --&gt;
+&lt;uses-permission android:name="android.permission.GET_ACCOUNTS" /&gt;
+&lt;uses-permission android:name="android.permission.READ_PROFILE" /&gt;
+&lt;uses-permission android:name="android.permission.READ_CONTACTS" /&gt;
+
+...
+</code></pre>
+
+<p></manifest>
+```</p>
+
+<p>このように<code>GET_ACCOUNTS</code>, <code>READ_PROFILE</code>, <code>READ_CONTACTS</code>の3つのパーミッションを設定します。<br/>
+これによって、下図のようにアプリ起動後に連絡先へのアクセス許可を求めるアラートを表示することができます。</p>
+
+<p><img src="/images/login-activity-3.png" alt="連絡先へのアクセス許可アラート" /></p>
+
+<h4>LoginActivityについて</h4>
+
+<p>続いて、<code>LoginActivity</code>はどのようになっているのか見ていきましょう。</p>
+
+<h5>LoaderManagerを利用</h5>
+
+<p><code>LoginActivity</code>では<code>LoaderManager</code>を利用しています。</p>
+
+<p>```java
+// LoginActivity.java
+public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<Cursor> {</p>
+
+<pre><code>...
+@Override
+public Loader&lt;Cursor&gt; onCreateLoader(int i, Bundle bundle) {
+    return new CursorLoader(this,
+        // Retrieve data rows for the device user's 'profile' contact.
+        Uri.withAppendedPath(ContactsContract.Profile.CONTENT_URI,
+            ContactsContract.Contacts.Data.CONTENT_DIRECTORY), ProfileQuery.PROJECTION,
+
+        // Select only email addresses.
+        ContactsContract.Contacts.Data.MIMETYPE +
+            " = ?", new String[]{ContactsContract.CommonDataKinds.Email
+        .CONTENT_ITEM_TYPE},
+
+        // Show primary email addresses first. Note that there won't be
+        // a primary email address if the user hasn't specified one.
+        ContactsContract.Contacts.Data.IS_PRIMARY + " DESC");
+}
+
+@Override
+public void onLoadFinished(Loader&lt;Cursor&gt; cursorLoader, Cursor cursor) {
+    List&lt;String&gt; emails = new ArrayList&lt;&gt;();
+    cursor.moveToFirst();
+    while (!cursor.isAfterLast()) {
+        emails.add(cursor.getString(ProfileQuery.ADDRESS));
+        cursor.moveToNext();
+    }
+
+    addEmailsToAutoComplete(emails);
+}
+
+@Override
+public void onLoaderReset(Loader&lt;Cursor&gt; cursorLoader) {
+
+}
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p><code>LoaderCallbacks&lt;Cursor&gt;</code>を <strong>implements</strong> しているのは、<br/>
+<code>onCreateLoader</code>, <code>onLoadFinished</code>でEmailのオートコンプリート機能を実装するためです。</p>
+
+<h5>showProgressメソッドの実装</h5>
+
+<p>レイアウトで実装した<code>ProgressBar</code>のアニメーションまで実装されています。<br/>
+また、AndroidのOSバージョンに合わせて適切な処理分けもされています。</p>
+
+<p>```java
+// LoginActivity.java
+@TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
+private void showProgress(final boolean show) {</p>
+
+<pre><code>// On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
+// for very easy animations. If available, use these APIs to fade-in
+// the progress spinner.
+if (Build.VERSION.SDK_INT &gt;= Build.VERSION_CODES.HONEYCOMB_MR2) {
+    int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
+
+    mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+    mLoginFormView.animate().setDuration(shortAnimTime).alpha(
+            show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
+        @Override
+        public void onAnimationEnd(Animator animation) {
+            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+        }
+    });
+
+    mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
+    mProgressView.animate().setDuration(shortAnimTime).alpha(
+            show ? 1 : 0).setListener(new AnimatorListenerAdapter() {
+        @Override
+        public void onAnimationEnd(Animator animation) {
+            mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+    });
+} else {
+    // The ViewPropertyAnimator APIs are not available, so simply show
+    // and hide the relevant UI components.
+    mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
+    mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>非同期通信処理の実装</h5>
+
+<p>ログイン処理は通常、必ずサーバ通信を伴います。<br/>
+そのため、バックグラウンドでの通信処理が必要となるんですが、それが既に側だけ実装されています。</p>
+
+<p>```java
+// LoginActivity.java
+public class UserLoginTask extends AsyncTask&lt;Void, Void, Boolean> {</p>
+
+<pre><code>private final String mEmail;
+private final String mPassword;
+
+UserLoginTask(String email, String password) {
+    mEmail = email;
+    mPassword = password;
+}
+
+@Override
+protected Boolean doInBackground(Void... params) {
+    // TODO: attempt authentication against a network service.
+
+    try {
+        // Simulate network access.
+        Thread.sleep(2000);
+    } catch (InterruptedException e) {
+        return false;
+    }
+
+    for (String credential : DUMMY_CREDENTIALS) {
+        String[] pieces = credential.split(":");
+        if (pieces[0].equals(mEmail)) {
+            // Account exists, return true if the password matches.
+            return pieces[1].equals(mPassword);
+        }
+    }
+
+    // TODO: register the new account here.
+    return true;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>さて、いかがだったでしょうか？<br/>
+レイアウトはまだしも、オートコンプリートの実装まで必要な場合は、自作するよりも、Android Studioでデフォルト実装してくれる<code>LoginActivity</code>の方が工数省略ができそうですよね！
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android Studio2.0: TabLayoutを使ってみよう！]]></title>
@@ -981,241 +1318,6 @@ public String run(String url) throws IOException {
 
 <p>さて、今回は筆者用のメモの意味合いが強いのですが、Androidアプリの開発に関する記事も今度どんどん増やしていきたいと思います。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Kotlinを使ってみよう！(1)]]></title>
-    <link href="http://grandbig.github.io/blog/2015/11/08/kotlin-android-2/"/>
-    <updated>2015-11-08T23:54:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/11/08/kotlin-android-2</id>
-    <content type="html"><![CDATA[<h3>Kotlinを勉強しよう</h3>
-
-<p>さて、本日はKotlinを勉強してみたいと思います。<br/>
-勉強の題材としては、<a href="http://grandbig.github.io/blog/2015/11/08/google-sign-in-android/">Google Sign-In SDK for Androidを使ってみよう！</a>で取り上げた <strong>Google Sign-In SDKによるOAuth2.0認証</strong> にしたいと思います。<br/>
-その中で筆者が抑えておくべきと思ったところを基礎からメモっていきます。</p>
-
-<p>(KotlinをAndroid Studioに導入する方法は以前書いた<a href="http://grandbig.github.io/blog/2015/10/25/kotlin-android/">Android StudioにKotlinを導入しよう！</a>を参照ください。)</p>
-
-<p>では、早速、見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>Kotlinで変数/定数の書き方</h4>
-
-<p>最も基本的なことですが、変数/定数の書き方から異なります。</p>
-
-<p>Javaの場合</p>
-
-<p><code>java
-private final String TAG = "MainActivity";  // 定数
-private GoogleApiClient mGoogleApiClient;   // 変数
-</code></p>
-
-<p>Kotlinの場合</p>
-
-<p><code>java
-private val TAG:Int = "MainActivity"                    // 定数
-private var mGoogleApiClient:GoogleApiClient? = null    // 変数
-</code></p>
-
-<p>ポイントは下記です。</p>
-
-<ul>
-<li>定数は<code>val</code>で変数は<code>var</code>を使う</li>
-<li>定数は、val 定数名:型名 = 値</li>
-<li>変数は、var 変数名:型名 = 値</li>
-<li>初期値未定の変数は型名の後ろに<code>?</code>をつけて、<code>null</code>を代入<br/>
-これをしないと『Property must be initialized or be abstract』エラーが発生する</li>
-</ul>
-
-
-<h4>Kotlinでのstatic定数の書き方</h4>
-
-<p>Kotlinでは<code>static</code>は使いません。</p>
-
-<p>Javaの場合</p>
-
-<p><code>java
-private static final String TAG = "MainActivity";
-private static final int RC_SIGN_IN = 9001;
-</code></p>
-
-<p>Kotlinの場合</p>
-
-<p>```java
-companion object {</p>
-
-<pre><code>val TAG = "MainActivity"
-val RC_SIGN_IN = 9001
-</code></pre>
-
-<p>}
-```</p>
-
-<h4>Kotlinでimplementの書き方</h4>
-
-<p>Google Sign-In SDKでOAuth2.0認証をする際に、<code>GoogleApiClient.OnConnectionFailedListener</code>と<code>View.OnClickListener</code>のインターフェースを継承していました。</p>
-
-<p>Javaの場合</p>
-
-<p>```java
-public class MainActivity extends AppCompatActivity implements GoogleApiClient.OnConnectionFailedListener, View.OnClickListener {</p>
-
-<pre><code>...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>Kotlinの場合</p>
-
-<p>```java
-class MainActivity : AppCompatActivity(), GoogleApiClient.OnConnectionFailedListener, View.OnClickListener {</p>
-
-<pre><code>...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>Kotlionでは<code>implements</code>ワードは書かずに<code>extends</code>したクラスの後ろに<code>,</code>区切りで書きます。</p>
-
-<h4>Kotlinでキャストの書き方</h4>
-
-<p>Google Sign-Inを実行するために置いていたボタンをソース上で取り出すときに<code>SignInButton</code>でキャストしていました。</p>
-
-<p>Javaの場合</p>
-
-<p><code>java
-SignInButton signInButton = (SignInButton) findViewById(R.id.button_sign_in);
-</code></p>
-
-<p>Kotlinの場合</p>
-
-<p><code>java
-var signInButton:SignInButton = findViewById(R.id.button_sign_in) as SignInButton
-</code></p>
-
-<p>Kotlinでは<code>as</code>を使ってキャストします。</p>
-
-<h4>KotlinでOverrideの書き方</h4>
-
-<p>Javaの場合</p>
-
-<p>```java
-@Override
-protected void onCreate(Bundle savedInstanceState) {</p>
-
-<pre><code>...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>Kotlinの場合</p>
-
-<p>```java
-override fun onCreate(savedInstanceState: Bundle?) {</p>
-
-<pre><code>...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>Kotlinでは、<code>@</code>は不要で<code>fun</code>の前に書きます。<br/>
-(Swiftと違って、<code>func</code>とは書かないんです。)</p>
-
-<h4>Kotlinでメソッドの戻り値の書き方</h4>
-
-<p>Javaの場合</p>
-
-<p>```java
-@Override
-public boolean onCreateOptionsMenu(Menu menu) {</p>
-
-<pre><code>...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>Kotlinの場合</p>
-
-<p>```java
-override fun onCreateOptionsMenu(menu: Menu): Boolean {</p>
-
-<pre><code>...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>『fun メソッド名(引数名: 引数の型): 戻り値の型』 と書きます。</p>
-
-<h4>Kotlinでswitch文の書き方</h4>
-
-<p>```java
-@Override
-public void onClick(View v) {</p>
-
-<pre><code>switch (v.getId()) {
-    case R.id.button_sign_in:
-        signIn();
-        break;
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>Kotlinの場合</p>
-
-<p>```java
-override fun onClick(view:View) {</p>
-
-<pre><code>when(view.id) {
-    R.id.button_sign_in -&gt; {
-        signIn()
-    }
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>Kotlinでは<code>switch</code>ワードを使いません。<code>when</code>を使います。<br/>
-<code>case 条件:</code>という書き方が<code>条件 -&gt;</code>になります。</p>
-
-<p>さて、今回気になったのはこんなところです。<br/>
-これからもどんどんKotlinでの書き方に慣れていきたいと思います。</p>
-
-<p>因みに、今回のソースは、<a href="https://github.com/grandbig/KotlinGoogleSignInSample">GitHub</a>に上げてあります。<br/>
-ご自由にお使いください。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
