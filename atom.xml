@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-02-29T23:55:01+09:00</updated>
+  <updated>2016-03-06T23:31:24+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,207 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[今更だけど使ってみようSwiftyJson]]></title>
+    <link href="http://grandbig.github.io/blog/2016/03/06/swiftyjson/"/>
+    <updated>2016-03-06T22:34:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/03/06/swiftyjson</id>
+    <content type="html"><![CDATA[<h4>SwiftyJsonの便利さを改めて確かめてみる</h4>
+
+<p>さて、筆者の個人的な諸事情により、なかなか時間が取れないため、<br/>
+完全に新しいことを書けないでいる今日このごろです。<br/>
+今更ながら書くか否か迷ったのですが、<br/>
+折角、習慣化しているブログ投稿をSTOPさせたくもないので、<br/>
+Swift屋にとっては当たり前となっているであろう<a href="https://github.com/SwiftyJSON/SwiftyJSON">SwiftyJson</a>について書こうと思います。<br/>
+何を隠そう、筆者は今までSwiftyJsonの存在は把握していたものの、<br/>
+自身で変換して書くことに拘っていたので触っていませんでした。<br/>
+がしかし、食わず嫌いは如何なものかということで触ってみることにしました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>CocoaPodsでインストール</h4>
+
+<p>まずは、インストールです。<br/>
+<code>CocoaPods</code>, <code>Carthage</code>, <code>Swift Package Manager</code>に対応した良心的なライブラリです。<br/>
+筆者はいつも通り<code>CocoaPods</code>を使います。<br/>
+今回も<code>Open Weather Map API</code>をサンプルに利用したいので<a href="https://github.com/Alamofire/Alamofire">Alamofire</a>も合わせてインストールします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">platform</span> <span class="o">:</span><span class="n">ios</span><span class="p">,</span> <span class="err">&#39;</span><span class="mf">8.0</span><span class="err">&#39;</span>
+</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="err">&#39;</span><span class="n">SwiftyJsonSample</span><span class="err">&#39;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Alamofire</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">3.0</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">SwiftyJSON</span><span class="err">&#39;</span><span class="p">,</span> <span class="o">:</span><span class="n">git</span> <span class="o">=&gt;</span> <span class="err">&#39;</span><span class="nl">https:</span><span class="c1">//github.com/SwiftyJSON/SwiftyJSON.git&#39;</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>SwiftyJsonで何が便利になったのか</h4>
+
+<p>さて、早速、<code>SwiftyJson</code>を使うことで何が便利になるのか見てみたいと思います。<br/>
+まずは、便利にする前のベースのコードをご覧下さい。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">Alamofire</span><span class="p">.</span><span class="n">request</span><span class="p">(.</span><span class="n">GET</span><span class="p">,</span> <span class="s">&quot;http://api.openweathermap.org/data/2.5/weather?APPID=&lt;あなた自身のAPPID&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nl">parameters:</span><span class="p">[</span><span class="s">&quot;q&quot;</span><span class="o">:</span><span class="n">location</span><span class="p">]).</span><span class="n">responseJSON</span> <span class="p">{</span> <span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span> <span class="k">in</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">isSuccess</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="n">value</span> <span class="o">=</span> <span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">value</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="c1">// 値の取得に失敗した場合</span>
+</span><span class='line'>              <span class="k">return</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="nl">weatherArray:</span><span class="n">AnyObject</span><span class="o">?</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s">&quot;weather&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="c1">// 値の取得に失敗した場合</span>
+</span><span class='line'>              <span class="k">return</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="n">weather</span> <span class="o">=</span> <span class="n">weatherArray</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="c1">// 値の取得に失敗した場合</span>
+</span><span class='line'>              <span class="k">return</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="n">description</span> <span class="o">=</span> <span class="n">weather</span><span class="p">[</span><span class="s">&quot;description&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="c1">// 値の取得に失敗した場合</span>
+</span><span class='line'>              <span class="k">return</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="n">print</span><span class="p">(</span><span class="n">description</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>前回の記事で紹介した<code>guard statement</code>を使うことでネストが浅くなっていますね。<br/>
+これはわかりやすさのために、バラけて書いたのですが、<br/>
+元々 <strong>description</strong> の値が欲しいのであれば、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">Alamofire</span><span class="p">.</span><span class="n">request</span><span class="p">(.</span><span class="n">GET</span><span class="p">,</span> <span class="s">&quot;http://api.openweathermap.org/data/2.5/weather?APPID=&lt;あなた自身のAPPID&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nl">parameters:</span><span class="p">[</span><span class="s">&quot;q&quot;</span><span class="o">:</span><span class="n">location</span><span class="p">]).</span><span class="n">responseJSON</span> <span class="p">{</span> <span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span> <span class="k">in</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">isSuccess</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="n">description</span> <span class="o">=</span> <span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">value</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;weather&quot;</span><span class="p">]</span><span class="o">??</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;description&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="c1">// 値の取得に失敗した場合</span>
+</span><span class='line'>              <span class="k">return</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="n">print</span><span class="p">(</span><span class="n">description</span><span class="o">!</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>とすればかなり短く書けます。<br/>
+しかしながら、素人にとって <strong>オプショナル型</strong> や <strong>アンラップ</strong> は相当わかりにくいと言えます。<br/>
+これが<code>SwiftyJson</code>を利用することで細かい上記のことを気にすることなく、<br/>
+WEBで扱うようにJSONを扱えます。<br/>
+もちろんSwiftでは重要なことなので、<br/>
+<a href="http://qiita.com/maiki055/items/b24378a3707bd35a31a8">どこよりも分かりやすいSwiftの&#8221;?&ldquo;と&rdquo;!&#8221;</a>を参考に正しく理解しましょう。</p>
+
+<p>さて、<code>SwiftyJson</code>を使うと次のように書けます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">Alamofire</span><span class="p">.</span><span class="n">request</span><span class="p">(.</span><span class="n">GET</span><span class="p">,</span> <span class="s">&quot;http://api.openweathermap.org/data/2.5/weather?APPID=&lt;あなた自身のAPPID&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nl">parameters:</span><span class="p">[</span><span class="s">&quot;q&quot;</span><span class="o">:</span><span class="n">location</span><span class="p">]).</span><span class="n">responseJSON</span> <span class="p">{</span> <span class="p">(</span><span class="n">response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span> <span class="k">in</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">isSuccess</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">value</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="k">return</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="n">let</span> <span class="n">json</span> <span class="o">=</span> <span class="n">JSON</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="n">description</span> <span class="o">=</span> <span class="n">json</span><span class="p">[</span><span class="s">&quot;weather&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;description&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="k">return</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="n">print</span><span class="p">(</span><span class="n">description</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>多少行数は増えているものの、<br/>
+<strong>オプショナル型</strong> の <strong>アンラップ化</strong> を気にせず書けていることがわかると思います。<br/>
+そう、まるでWEBでJSONを扱うかのように&hellip;。</p>
+
+<p>オプショナル型の値が内部にオプショナル型の値を持っているなど、<br/>
+<code>??</code>と書く状況を作りかねないことがあっても<code>SwiftyJson</code>では考えなくて良いんですね。<br/>
+う〜ん。便利。</p>
+
+<p>他にもたくさんの使い道があるため機会があれば積極的に利活用していこうと思います。<br/>
+また、これまでスルーしてきた他の便利ライブラリについてもちょくちょくその便利さを追求していこうと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Swift2.0で追加された新機能を見てみよう！]]></title>
@@ -5359,325 +5560,6 @@ Node.jsベースのBaaSを作れるオープンソース
 
 
 <p>とりあえず、Node.js意欲が湧いてきたので、何か作りたい！！</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[jazzyを使って、Swiftで書いたプロジェクトのリファレンスを自動生成しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/01/12/jazzy/"/>
-    <updated>2016-01-12T23:18:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/01/12/jazzy</id>
-    <content type="html"><![CDATA[<h4>jazzyとは</h4>
-
-<p>さて、本日は<a href="https://github.com/Realm/jazzy">jazzy</a>について書こうと思います。<br/>
-jazzyはSwiftで書いたプロジェクトのリファレンスを自動で生成できるツールです。<br/>
-最近、熱いMobile DatabaseであるRealmと同じチームが開発しているようです。<br/>
-今のところ、他に良さそうなツールはないんじゃないでしょうか？</p>
-
-<p>兎にも角にも、早速使ってみることにします。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h5>jazzyのインストール</h5>
-
-<p>jazzyのインストールは簡単です。<br/>
-下記コマンドを実行してください。</p>
-
-<p><code>sudo gem install jazzy</code></p>
-
-<h5>jazzyのコマンド</h5>
-
-<p><code>jazzy -h</code>を実行してコマンドを確認してみましょう。<br/>
-下記のような結果が得られるはずです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="nl">Usage:</span> <span class="n">jazzy</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">Options</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">o</span><span class="p">,</span> <span class="o">--</span><span class="n">output</span> <span class="n">FOLDER</span>              <span class="n">Folder</span> <span class="n">to</span> <span class="n">output</span> <span class="n">the</span> <span class="n">HTML</span> <span class="n">docs</span> <span class="n">to</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">c</span><span class="p">,</span> <span class="o">--</span><span class="p">[</span><span class="n">no</span><span class="o">-</span><span class="p">]</span><span class="n">clean</span>                 <span class="n">Delete</span> <span class="n">contents</span> <span class="n">of</span> <span class="n">output</span> <span class="n">directory</span> <span class="n">before</span> <span class="n">running</span><span class="p">.</span>
-</span><span class='line'>                                   <span class="nl">WARNING:</span> <span class="n">If</span> <span class="o">--</span><span class="n">output</span> <span class="n">is</span> <span class="n">set</span> <span class="n">to</span> <span class="o">~/</span><span class="n">Desktop</span><span class="p">,</span> <span class="n">this</span> <span class="n">will</span> <span class="n">delete</span> <span class="n">the</span> <span class="o">~/</span><span class="n">Desktop</span> <span class="n">directory</span><span class="p">.</span>
-</span><span class='line'>      <span class="o">--</span><span class="p">[</span><span class="n">no</span><span class="o">-</span><span class="p">]</span><span class="n">objc</span>                  <span class="n">Generate</span> <span class="n">docs</span> <span class="k">for</span> <span class="n">Objective</span><span class="o">-</span><span class="n">C</span><span class="p">.</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">umbrella</span><span class="o">-</span><span class="n">header</span> <span class="n">PATH</span>       <span class="n">Umbrella</span> <span class="n">header</span> <span class="k">for</span> <span class="n">your</span> <span class="n">Objective</span><span class="o">-</span><span class="n">C</span> <span class="n">framework</span><span class="p">.</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">framework</span><span class="o">-</span><span class="n">root</span> <span class="n">PATH</span>        <span class="n">The</span> <span class="n">root</span> <span class="n">path</span> <span class="n">to</span> <span class="n">your</span> <span class="n">Objective</span><span class="o">-</span><span class="n">C</span> <span class="n">framework</span><span class="p">.</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">sdk</span> <span class="p">[</span><span class="n">iphone</span><span class="o">|</span><span class="n">watch</span><span class="o">|</span><span class="n">appletv</span><span class="p">][</span><span class="n">os</span><span class="o">|</span><span class="n">simulator</span><span class="p">]</span><span class="o">|</span><span class="n">macosx</span>
-</span><span class='line'>                                   <span class="n">The</span> <span class="n">SDK</span> <span class="k">for</span> <span class="n">which</span> <span class="n">your</span> <span class="n">code</span> <span class="n">should</span> <span class="n">be</span> <span class="n">built</span><span class="p">.</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">config</span> <span class="n">PATH</span>                <span class="n">Configuration</span> <span class="n">file</span> <span class="p">(.</span><span class="n">yaml</span> <span class="n">or</span> <span class="p">.</span><span class="n">json</span><span class="p">)</span>
-</span><span class='line'>                                   <span class="nl">Default:</span> <span class="p">.</span><span class="n">jazzy</span><span class="p">.</span><span class="n">yaml</span> <span class="k">in</span> <span class="n">source</span> <span class="n">directory</span> <span class="n">or</span> <span class="n">ancestor</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">x</span> <span class="n">arg1</span><span class="p">,</span><span class="n">arg2</span><span class="p">,</span><span class="err">…</span><span class="n">argN</span><span class="p">,</span>              <span class="n">Arguments</span> <span class="n">to</span> <span class="n">forward</span> <span class="n">to</span> <span class="n">xcodebuild</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">xcodebuild</span><span class="o">-</span><span class="n">arguments</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">s</span> <span class="n">FILEPATH</span><span class="p">,</span>                     <span class="n">File</span> <span class="n">generated</span> <span class="n">from</span> <span class="n">sourcekitten</span> <span class="n">output</span> <span class="n">to</span> <span class="n">parse</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">sourcekitten</span><span class="o">-</span><span class="n">sourcefile</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">source</span><span class="o">-</span><span class="n">directory</span> <span class="n">DIRPATH</span>   <span class="n">The</span> <span class="n">directory</span> <span class="n">that</span> <span class="n">contains</span> <span class="n">the</span> <span class="n">source</span> <span class="n">to</span> <span class="n">be</span> <span class="n">documented</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">e</span><span class="p">,</span> <span class="o">--</span><span class="n">exclude</span> <span class="n">file1</span><span class="p">,</span><span class="n">file2</span><span class="p">,</span><span class="err">…</span><span class="n">fileN</span> <span class="n">Files</span> <span class="n">to</span> <span class="n">be</span> <span class="n">excluded</span> <span class="n">from</span> <span class="n">documentation</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">swift</span><span class="o">-</span><span class="n">version</span> <span class="n">VERSION</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">a</span><span class="p">,</span> <span class="o">--</span><span class="n">author</span> <span class="n">AUTHOR_NAME</span>         <span class="n">Name</span> <span class="n">of</span> <span class="n">author</span> <span class="n">to</span> <span class="n">attribute</span> <span class="k">in</span> <span class="n">docs</span> <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.</span> <span class="n">Realm</span><span class="p">)</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">u</span><span class="p">,</span> <span class="o">--</span><span class="n">author_url</span> <span class="n">URL</span>             <span class="n">Author</span> <span class="n">URL</span> <span class="n">of</span> <span class="n">this</span> <span class="n">project</span> <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.</span> <span class="nl">http:</span><span class="c1">//realm.io)</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">m</span><span class="p">,</span> <span class="o">--</span><span class="n">module</span> <span class="n">MODULE_NAME</span>         <span class="n">Name</span> <span class="n">of</span> <span class="n">module</span> <span class="n">being</span> <span class="n">documented</span><span class="p">.</span> <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.</span> <span class="n">RealmSwift</span><span class="p">)</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">module</span><span class="o">-</span><span class="n">version</span> <span class="n">VERSION</span>     <span class="n">module</span> <span class="n">version</span><span class="p">.</span> <span class="n">will</span> <span class="n">be</span> <span class="n">used</span> <span class="n">when</span> <span class="n">generating</span> <span class="n">docset</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">copyright</span> <span class="n">COPYRIGHT_MARKDOWN</span>
-</span><span class='line'>                                   <span class="n">copyright</span> <span class="n">markdown</span> <span class="n">rendered</span> <span class="n">at</span> <span class="n">the</span> <span class="n">bottom</span> <span class="n">of</span> <span class="n">the</span> <span class="n">docs</span> <span class="n">pages</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">readme</span> <span class="n">FILEPATH</span>            <span class="n">The</span> <span class="n">path</span> <span class="n">to</span> <span class="n">a</span> <span class="n">markdown</span> <span class="n">README</span> <span class="n">file</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">podspec</span> <span class="n">FILEPATH</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">docset</span><span class="o">-</span><span class="n">icon</span> <span class="n">FILEPATH</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">docset</span><span class="o">-</span><span class="n">path</span> <span class="n">DIRPATH</span>        <span class="n">The</span> <span class="n">relative</span> <span class="n">path</span> <span class="k">for</span> <span class="n">the</span> <span class="n">generated</span> <span class="n">docset</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">r</span><span class="p">,</span> <span class="o">--</span><span class="n">root</span><span class="o">-</span><span class="n">url</span> <span class="n">URL</span>               <span class="n">Absolute</span> <span class="n">URL</span> <span class="n">root</span> <span class="n">where</span> <span class="n">these</span> <span class="n">docs</span> <span class="n">will</span> <span class="n">be</span> <span class="n">stored</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">d</span><span class="p">,</span> <span class="o">--</span><span class="n">dash_url</span> <span class="n">URL</span>               <span class="n">Location</span> <span class="n">of</span> <span class="n">the</span> <span class="n">dash</span> <span class="n">XML</span> <span class="n">feed</span> <span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.</span> <span class="nl">http:</span><span class="c1">//realm.io/docsets/realm.xml)</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">g</span><span class="p">,</span> <span class="o">--</span><span class="n">github_url</span> <span class="n">URL</span>             <span class="n">GitHub</span> <span class="n">URL</span> <span class="n">of</span> <span class="n">this</span> <span class="n">project</span> <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.</span> <span class="nl">https:</span><span class="c1">//github.com/realm/realm-cocoa)</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">github</span><span class="o">-</span><span class="n">file</span><span class="o">-</span><span class="n">prefix</span> <span class="n">PREFIX</span>  <span class="n">GitHub</span> <span class="n">URL</span> <span class="n">file</span> <span class="n">prefix</span> <span class="n">of</span> <span class="n">this</span> <span class="n">project</span> <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.</span> <span class="nl">https:</span><span class="c1">//github.com/realm/realm-cocoa/tree/v0.87.1)</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">min</span><span class="o">-</span><span class="n">acl</span> <span class="p">[</span><span class="n">private</span> <span class="o">|</span> <span class="n">internal</span> <span class="o">|</span> <span class="n">public</span><span class="p">]</span>
-</span><span class='line'>                                   <span class="n">minimum</span> <span class="n">access</span> <span class="n">control</span> <span class="n">level</span> <span class="n">to</span> <span class="n">document</span>
-</span><span class='line'>      <span class="o">--</span><span class="p">[</span><span class="n">no</span><span class="o">-</span><span class="p">]</span><span class="n">skip</span><span class="o">-</span><span class="n">undocumented</span>     <span class="n">Don</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">document</span> <span class="n">declarations</span> <span class="n">that</span> <span class="n">have</span> <span class="n">no</span> <span class="n">documentation</span> <span class="n">comments</span><span class="p">.</span>
-</span><span class='line'>      <span class="o">--</span><span class="p">[</span><span class="n">no</span><span class="o">-</span><span class="p">]</span><span class="n">hide</span><span class="o">-</span><span class="n">documentation</span><span class="o">-</span><span class="n">coverage</span>
-</span><span class='line'>                                   <span class="n">Hide</span> <span class="s">&quot;(X% documented)&quot;</span> <span class="n">from</span> <span class="n">the</span> <span class="n">generated</span> <span class="n">documents</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">head</span> <span class="n">HTML</span>                  <span class="n">Custom</span> <span class="n">HTML</span> <span class="n">to</span> <span class="n">inject</span> <span class="n">into</span> <span class="o">&lt;</span><span class="n">head</span><span class="o">&gt;&lt;/</span><span class="n">head</span><span class="o">&gt;</span><span class="p">.</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">theme</span> <span class="p">[</span><span class="n">apple</span> <span class="o">|</span> <span class="n">fullwidth</span> <span class="o">|</span> <span class="n">DIRPATH</span><span class="p">]</span>
-</span><span class='line'>                                   <span class="n">Which</span> <span class="n">theme</span> <span class="n">to</span> <span class="n">use</span><span class="p">.</span> <span class="n">Specify</span> <span class="n">either</span> <span class="err">&#39;</span><span class="n">apple</span><span class="err">&#39;</span> <span class="p">(</span><span class="k">default</span><span class="p">),</span> <span class="err">&#39;</span><span class="n">fullwidth</span><span class="err">&#39;</span> <span class="n">or</span> <span class="n">the</span> <span class="n">path</span> <span class="n">to</span> <span class="n">your</span> <span class="n">mustache</span> <span class="n">templates</span> <span class="n">and</span> <span class="n">other</span> <span class="n">assets</span> <span class="k">for</span> <span class="n">a</span> <span class="n">custom</span> <span class="n">theme</span><span class="p">.</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">t</span><span class="p">,</span> <span class="o">--</span><span class="n">template</span><span class="o">-</span><span class="n">directory</span> <span class="n">DIRPATH</span> <span class="nl">DEPRECATED:</span> <span class="n">Use</span> <span class="o">--</span><span class="n">theme</span> <span class="n">instead</span><span class="p">.</span>
-</span><span class='line'>      <span class="o">--</span><span class="n">assets</span><span class="o">-</span><span class="n">directory</span> <span class="n">DIRPATH</span>   <span class="nl">DEPRECATED:</span> <span class="n">Use</span> <span class="o">--</span><span class="n">theme</span> <span class="n">instead</span><span class="p">.</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">v</span><span class="p">,</span> <span class="o">--</span><span class="n">version</span>                    <span class="n">Print</span> <span class="n">version</span> <span class="n">number</span>
-</span><span class='line'>  <span class="o">-</span><span class="n">h</span><span class="p">,</span> <span class="o">--</span><span class="n">help</span> <span class="p">[</span><span class="n">TOPIC</span><span class="p">]</span>               <span class="n">Available</span> <span class="nl">topics:</span>
-</span><span class='line'>                                      <span class="n">usage</span>   <span class="n">Command</span> <span class="n">line</span> <span class="n">options</span> <span class="p">(</span><span class="n">this</span> <span class="n">help</span> <span class="n">message</span><span class="p">)</span>
-</span><span class='line'>                                      <span class="n">config</span>  <span class="n">Configuration</span> <span class="n">file</span> <span class="n">options</span>
-</span><span class='line'>                                   <span class="p">...</span><span class="n">or</span> <span class="n">an</span> <span class="n">option</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.</span> <span class="s">&quot;dash&quot;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ヘルプを見て頂ければ、なんとなく概要をつかめると思いますが、特に重要なものを説明します。</p>
-
-<ol>
-<li><code>-o FOLDER</code><br/>
-リファレンスの出力場所を指定するコマンドです</li>
-<li><code>--min-acl [private | internal | public]</code><br/>
-リファレンスに出力するプロパティおよびメソッドの最低アクセス権限<br/>
-例えば、<code>--min-acl public</code>を指定した場合、<code>private</code>や<code>internal</code>指定されたプロパティやメソッドはリファレンスに出力されません。</li>
-<li><code>--skip-undocumented</code><br/>
-ドキュメントコメントが書かれていないプロパティやメソッドはリファレンスに出力しません。</li>
-<li><code>--author AUTHOR_NAME</code><br/>
-リファレンスに開発者を明記します。</li>
-<li><code>--author_url URL</code><br/>
-リファレンス上に表記される開発者名にURlリンクを付与します。</li>
-</ol>
-
-
-<h4>Swift2.0以降でのドキュメントコメントの書き方について</h4>
-
-<p>Swift2.0以降でのドキュメントコメントの書き方を見ていきます。<br/>
-<strong>jazzy</strong> を使うことを前提にした書き方のみ記述します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/**</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">UIViewControllerを継承したViewControllerクラス</span>
-</span><span class='line'><span class="cm">  </span>
-</span><span class='line'><span class="cm">*/</span>
-</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// MARK: Properties</span>
-</span><span class='line'>  <span class="c1">/// 文字列を格納するためのサンプル変数</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">sampleParam1:</span><span class="n">String</span><span class="o">?</span>
-</span><span class='line'>  <span class="c1">/// 数値を格納するためのサンプル定数</span>
-</span><span class='line'>  <span class="n">let</span> <span class="nl">sampleParam2:</span><span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="c1">// MARK: Method</span>
-</span><span class='line'>  <span class="cm">/**</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm"> ログを出力するメソッド</span>
-</span><span class='line'><span class="cm">         </span>
-</span><span class='line'><span class="cm"> - parameter message: ログ出力したいメッセージ</span>
-</span><span class='line'><span class="cm">                 </span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'>  <span class="n">func</span> <span class="n">sampleMethod</span><span class="p">(</span><span class="nl">message:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="cm">/**</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm"> trueフラグを返すメソッド</span>
-</span><span class='line'><span class="cm">         </span>
-</span><span class='line'><span class="cm"> - returns: trueフラグ</span>
-</span><span class='line'><span class="cm">                 </span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'>  <span class="n">func</span> <span class="n">sampleMethod2</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="n">true</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="cm">/**</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm"> メッセージを生成するメソッド</span>
-</span><span class='line'><span class="cm">          </span>
-</span><span class='line'><span class="cm"> - parameter message: 生成したいメッセージの一部分</span>
-</span><span class='line'><span class="cm"> - returns: 生成したメッセージ</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'>  <span class="n">func</span> <span class="n">sampleMethod3</span><span class="p">(</span><span class="nl">message:</span><span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">String</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="s">&quot;生成したメッセージ： \(message)&quot;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ポイントは、</p>
-
-<ul>
-<li>クラス名にドキュメントコメントを必ずつけること</li>
-<li>メソッドのDescriptionとParameterもしくはReturnとの間に1行をあけること</li>
-<li><code>:param:</code>や<code>:returns:</code>といった古い書き方をしないこと</li>
-</ul>
-
-
-<p>です。</p>
-
-<p>上記ポイントを踏まえた上で、<br/>
-<code>jazzy --min-acl internal --skip-undocumented -o jazzy_doc --author Takahiro --author_url https://grandbig.github.io/</code><br/>
-を実行してみましょう。<br/>
-オプションは必要に応じてつけてください。</p>
-
-<p>結果、下図のようなリファレンスが作成されます。</p>
-
-<p><img src="http://grandbig.github.io/images/jazzy_1.png" alt="トップページ" /><br/>
-こちらはトップページです。</p>
-
-<p><img src="http://grandbig.github.io/images/jazzy_2.png" alt="クラスの説明" /><br/>
-続いて、クラスを選択した際に表示されるクラスの説明ページ</p>
-
-<p><img src="http://grandbig.github.io/images/jazzy_3.png" alt="クラスのプロパティの説明" /><br/>
-各プロパティを選択すれば、その説明が表示されます。</p>
-
-<p><img src="http://grandbig.github.io/images/jazzy_4.png" alt="クラスのメソッドの説明" /><br/>
-各メソッドを選択すれば、その説明が表示されます。</p>
-
-<p>いかがだったでしょうか？<br/>
-リファレンスは第三者にソースコードを説明する上でも非常に重要なものです。<br/>
-初めから書式ルールに沿ってコードを書いておけば、自動生成ツールで速攻リファレンスを作れますので、ぜひぜひ把握しておきましょう。</p>
-
-<p>と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
