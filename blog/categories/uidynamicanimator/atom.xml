@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: UIDynamicAnimator | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/uidynamicanimator/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2016-04-03T18:15:46+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[UIDynamicAnimatorを使ったピンボールゲームを開発しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2013/10/30/create-pinball-game/"/>
+    <updated>2013-10-30T22:44:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/10/30/create-pinball-game</id>
+    <content type="html"><![CDATA[<h3>ネット上でUIDynamicAnimatorを使ったピンボールゲームが大人気！</h3>
+
+<p>先日、iOS7で新たに加わった機能であるUIDynamicAnimatorを使った簡単なアクションゲーム作りについて紹介しました。その後、どんどんこういった物理法則を用いたサンプルがネット上で溢れてくると踏んでいたのですが、まだあまり多くないのが現状です。英語ブログでの紹介はそこそこ増えてきているのですが、如何せん日本語ブログでの扱いは少ないんですよね&hellip;。<br/>
+そこで<a href="http://www.codigator.com/tutorials/uikit-dynamics-ios7-tutorial/">英語でTutorialとして紹介されたページ</a>からUIDynamicAnimatorを用いた簡単なゲームを紹介したいと思います。<br/>
+今回はピンボールゲームです。メインで扱うものは<br/>
+・UICollisionBehavior<br/>
+・UIPushBehavior<br/>
+の２つです。<br/>
+それでは早速説明していきましょう。</p>
+
+<!--more-->
+
+
+<h4>ソースを書こう！</h4>
+
+<p>新規プロジェクトとしてDynamicPractice1を作ります。<br/>
+1: 新規作成時に<strong>Empty Application</strong>を選択<br/>
+2: ProjectNameをDinamicPractice1とします。<br/>
+3: プロジェクトを右クリックしてNew File&hellip;からUIViewControllerを追加してください。<br/>
+4: AppDelegate.mファイルで追加したUIViewControllerをメインビューとして設定</p>
+
+<p>```
+// AppDelegate.mファイル</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<p>&hellip;
+&ndash; (BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions {</p>
+
+<pre><code>self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+self.window.backgroundColor = [UIColor whiteColor];
+[self.window makeKeyAndVisible];
+UIViewController *viewCtl = [[ViewController alloc] init];
+self.window.rootViewController = viewCtl;
+
+return YES;
+</code></pre>
+
+<p><code>
+さて、上記のように準備ができたら、メインビュー側ソースを書いていきましょう。  
+</code>
+// ViewController.hファイル</p>
+
+<p>@interface ViewController : UIViewController <UICollisionBehaviorDelegate> {</p>
+
+<pre><code>// iPhoneの世界に物理法則を加えるために必要
+IBOutlet UIDynamicAnimator *animator;
+IBOutlet UIPushBehavior *push;
+IBOutlet UICollisionBehavior *collision;
+
+// ピンボールゲームなのでスライダーバーとボールを用意
+// barもballもUIViewだとつまらないのでballは画像にしてみます
+IBOutlet UIView *bar;
+IBOutlet UIImageView *ball;
+</code></pre>
+
+<p>}
+```
+ヘッダーファイルに必要なものの定義が終わったので、続いてViewController.mファイルを書いていきます。</p>
+
+<p>```
+// ViewController.mファイル
+&ndash; (void)viewDidLoad {</p>
+
+<pre><code>[super viewDidLoad];
+// 物理法則を設定
+animator = [[UIDynamicAnimator alloc] initWithReferenceView:self.view];
+
+// ボールに画像を設定
+ball = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"sun.png"]];
+[self.view addSubview:ball];
+
+// スライダーバーを設定
+bar = [[UIView alloc] initWithFrame:CGRectMake(6, 534, 145, 12)];
+[bar setBackgroundColor:[UIColor blackColor]];
+[self.view addSubview:bar];
+
+// 初めにボールが下に落ちていくように設定
+push = [[UIPushBehavior alloc] initWithItems:@[ball] mode:UIPushBehaviorModeInstantaneous];
+[push setPushDirection:CGVectorMake(-0.2, 0.2)];
+
+// ボールが衝突を検知するように設定
+collision = [[UICollisionBehavior alloc] initWithItems:@[ball]];
+// スライダーバーを衝突の境界線として設定
+[collision addBoundaryWithIdentifier:@"bar" fromPoint:bar.frame.origin toPoint:CGPointMake(bar.frame.origin.x+bar.frame.size.width, bar.frame.origin.y)];
+// 天井を衝突の境界線として設定
+[collision addBoundaryWithIdentifier:@"top" fromPoint:CGPointMake(0, 0) toPoint:CGPointMake(self.view.frame.size.width ,0 )];
+// 左壁一帯を衝突の境界線として設定
+[collision addBoundaryWithIdentifier:@"left" fromPoint:CGPointZero toPoint:CGPointMake(0, self.view.frame.size.height)];
+// 右壁一帯を衝突の境界線として設定
+[collision addBoundaryWithIdentifier:@"right" fromPoint:CGPointMake(self.view.frame.size.width, 0) toPoint:CGPointMake(self.view.frame.size.width, self.view.frame.size.height)];
+
+collision.collisionDelegate = self;
+
+[animator addBehavior:push];
+[animator addBehavior:collision];
+</code></pre>
+
+<p>}</p>
+
+<p>// 衝突したときの処理を書きます
+&ndash; (void)collisionBehavior:(UICollisionBehavior*)behavior beganContactForItem:(id <UIDynamicItem>)item withBoundaryIdentifier:(id <NSCopying>)identifier atPoint:(CGPoint)p {</p>
+
+<pre><code>// スライダーバーとボールが衝突したとき
+if ([(NSString*)identifier isEqualToString:@"bar"]) {
+    [self-&gt;push setPushDirection:CGVectorMake(0.2, -0.2)];
+    [self-&gt;push setActive:YES];
+} else if([(NSString*)identifier isEqualToString:@"top"]) {
+    // 天井とボールが衝突したとき
+    [self-&gt;push setPushDirection:CGVectorMake(-0.8, 0.6)];
+    [self-&gt;push setActive:YES];
+} else if([(NSString*)identifier isEqualToString:@"left"]) {
+    // 左壁とボールが衝突したとき
+    [self-&gt;push setPushDirection:CGVectorMake(0.4, 0.4)];
+    [self-&gt;push setActive:YES];
+} else {
+    // 右壁とボールが衝突したとき
+    [self-&gt;push setPushDirection:CGVectorMake(-0.4, -0.4)];
+    [self-&gt;push setActive:YES];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// 以下はスライダーバーを動かす処理です
+&ndash;(void)touchesBegan:(NSSet <em>)touches withEvent:(UIEvent </em>)event {</p>
+
+<pre><code>[self-&gt;collision removeBoundaryWithIdentifier:@"bar"];
+UITouch *touch = [touches anyObject];
+CGPoint touchPoint = [touch locationInView:self.view];
+CGRect frame = bar.frame;
+[bar setCenter:CGPointMake(touchPoint.x, frame.origin.y + frame.size.height/2)];
+[self-&gt;collision addBoundaryWithIdentifier:@"bar" fromPoint:bar.frame.origin toPoint:CGPointMake(bar.frame.origin.x+bar.frame.size.width, bar.frame.origin.y)];
+</code></pre>
+
+<p>}
+```
+さて、ピンボールゲームの完成です。<br/>
+実際、UIPushBehaviorではなく、UIGravityBehaviorでも作れると思いますが、<strong>Gravity</strong>ってところから<strong>重力</strong>ってイメージだからUIPushBehaviorの方が自然なのかな〜。と思ったり思わなかったり&hellip;。</p>
+
+<p>筆者はボールをどんどん増やしてゲームの難易度をあげようかと思いましたが、これが難しい。<br/>
+物理法則をアプリの世界に作って、その物理法則を受ける世界に入れてあげるアイテムとしてballを追加しているというイメージなんですよね&hellip;。</p>
+
+<p>iOS7で対応する以前から物理法則をアプリに再現しているゲームは多々あったと思います。その中でこのクラスがどういった役割を果たしていくのか個人的に気になるところです。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOS7の新機能『UIDynamicAnimator』を使って簡単なアクションゲームを開発しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2013/10/19/create-action-game/"/>
+    <updated>2013-10-19T16:23:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2013/10/19/create-action-game</id>
+    <content type="html"><![CDATA[<h3>UIDynamicAnimator, UIGravityBehavior, UICollisionBehaviorなど新機能がiOS7に！！</h3>
+
+<p>今回はiOS7で新しく加わった新機能を使って簡単なアクションゲームを開発してみたいと思います。iOS7では物理法則に基づいたアニメーションを実装できるように<strong>UIDynamicAnimator, UIGravityBehavior, UICollisionBehavior, UIPushBehavior, UIAttachmentBehavior, UISnapBehavior, UIDynamicItemBehavior</strong>が追加されました。<br/>
+前々からアクションゲームを開発してみたいと思っていた筆者はこれを使わない手はないということで早速使ってみることにしました。</p>
+
+<!--more-->
+
+
+<h4>基本説明</h4>
+
+<p>・UIDynamicAnimator<br/>
+アプリに物理アニメーションを実装するためのコアとなるクラスです。アプリのViewに物理現象を発生させられる世界を設定するようなイメージですかね&hellip;。<br/>
+・UIGravityBehavior<br/>
+重力現象を設定したいときに使います。重力の強さや方向を設定することができます。<br/>
+・UICollisionBehavior<br/>
+物同士の衝突現象を設定したいときに使います。<br/>
+・UIPuchBehavior<br/>
+名前の通り押したような現象を設定したいときに使います。瞬間的に力を加えたり、継続的に力を加えたりできます。<br/>
+・UIAttachmentBehavior<br/>
+付着、接続などの現象を設定したいときに使います。<br/>
+・UISnapBehavior<br/>
+指定した点に吸い付けられるような設定をしたいときに使います。<br/>
+・UIDynamicItemBehavior<br/>
+指定したものの物理的特性を設定するために使います。</p>
+
+<h4>開発</h4>
+
+<p>では、早速、開発してみましょう。DynamicPractice.xcodeprojを作成します。いつも通りの手順ですが、以下におさらい。<br/>
+1: 「Empty Application」を選択してDynamicPracticeという名前をつけたプロジェクトを生成<br/>
+2: UIViewControllerを追加<br/>
+3: AppDelegate.mファイルでrootViewControllerに先ほど追加したUIViewControllerを設定</p>
+
+<p>さて、物理現象の実装に移りましょう。</p>
+
+<p>```
+// ViewController.hファイル
+@interface ViewController : UIViewController {</p>
+
+<pre><code>// ①
+IBOutlet UIDynamicAnimator *animator;
+IBOutlet UIGravityBehavior *gravity;
+IBOutlet UICollisionBehavior *collision;
+IBOutlet UIPushBehavior *push;
+// ②
+IBOutlet UIImageView *img;
+IBOutlet UIButton *jButton, *rButton, *lButton;
+</code></pre>
+
+<p>}</p>
+
+<p>// ③
+&ndash; (IBAction)JumpAction:(id)sender;
+&ndash; (IBAction)RightMoveAction:(id)sender;
+&ndash; (IBAction)LeftMoveAction:(id)sender;</p>
+
+<p>```</p>
+
+<p>① 今回利用する物理現象を定義<br/>
+② アクションをさせる画像を設定, ジャンプと左右移動をするためのボタンの定義, 移動/停止の判断フラグを設定<br/>
+③ ジャンプ, 左右移動時の処理をする関数を定義</p>
+
+<p>続いて上記の定義をDynamicPractice.xibに置く各ボタンと関係させます。(といってもボタンだけですが…)<br/>
+<img src="/images/xcode_dynamic1.png" alt="簡単にこんな画面を用意" /></p>
+
+<p>最後に具体的な各処理の実装をします。<br/>
+```
+// ViewController.mファイル
+&ndash; (void)viewDidLoad {</p>
+
+<pre><code>[super viewDidLoad];
+
+// ①
+animator = [UIDynamicAnimator alloc] initWithReferenceView:self.view];]
+
+img = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"***********.png"]];
+img.center = CGPointMake(100.0, 100.0);
+[self.view addSubview:img];
+
+// ②
+collision = [UICollisionBehavior alloc] initWithItems:@[img]];
+collision.translatesReferenceBoundsIntoBoundary = YES;
+
+// ③
+gravity = [[UIGravityBehavior alloc] initWithItems:@[img]];
+gravity.magnitude = 1.0f;
+gravity.gravityDirection = CGVectorMake(0.0f, 1.0f);
+
+// ④
+push = [[UIPushBehavior alloc] initWithItems:nil mode:UIPushBehaviorModeContinuous];
+
+// ⑤
+[animator addBehavior:gravity];
+[animator addBehavior:collision];
+[animator addBehavior:push];
+</code></pre>
+
+<p>}
+```
+① self.viewに物理現象の世界を加えられるように設定<br/>
+② 衝突現象をimgに設定。translatesReferenceBoundsIntoBoundaryでNOにするとimgがそのまま落ちていって悲しいことになります。<br/>
+③ 重力現象をimgに設定。強さと方向を設定します。初めは上からimgが降ってくる想定なので、X方向は0.0fでY方向に1.0fと設定します。<br/>
+④ 横移動で使うためにインスタンス化だけ先にしておきます。まだ使いたくないのでinitWithItemsにはnilを設定しています。<br/>
+⑤ gravity, collision, pushをanimatorに追加します。</p>
+
+<p>これでViewController読み込まれたら初期物理現象が設定されます。続いて各ボタンの処理を書きます。<br/>
+```
+// ViewController.mファイル
+// ①
+&ndash; (IBAction)JumpAction:(id)sender {</p>
+
+<pre><code>gravity.magnitude = 1.0f;
+gravity.gravityDirection = CGVectorMake(0.0f, -1.0f);
+[gravity addItem:img];
+
+[self performSelector:@selector(changeGravity) withObject:nil afterDelay:0.2];
+</code></pre>
+
+<p>}</p>
+
+<p>// ②
+&ndash; (void)changeGravity {</p>
+
+<pre><code>gravity.magnitude = 1.0f;
+gravity.gravityDirection = CGVectorMake(0.0f, 1.0f);
+[gravity addItem:img];
+</code></pre>
+
+<p>}</p>
+
+<p>// ③
+&ndash; (IBAction)RightMoveAction:(id)sender {</p>
+
+<pre><code>push.magnitude = 0.05f;
+push.pushDirection = CGVectorMake(1.0f, 0.0f);
+[push addItem:img];
+
+[self performSelector:@selector(stopPush) withObject:nil afterDelay:0.2];
+</code></pre>
+
+<p>}</p>
+
+<p>// ④
+&ndash; (IBAction)LeftMoveAction:(id)sender {</p>
+
+<pre><code>push.magnitude = 0.05f;
+push.pushDirection = CGVectorMake(-1.0f, 0.0f);
+[push addItem:img];
+
+[self performSelector:@selector(stopPush) withObject:nil afterDelay:0.2];
+</code></pre>
+
+<p>}</p>
+
+<p>// ⑤
+&ndash; (void)stopPush {</p>
+
+<pre><code>[push removeItem:img];
+</code></pre>
+
+<p>}
+```
+① これはJumpボタンをクリックしたときの処理です。重力を上向きに加えます。ただし、このまま放置すると天井まで登り続けるので、筆者は0.2秒後に通常重力をかけるようにしました。<br/>
+② ①実行後の0.2秒後に通常重量(下向きに重力)をかけるようにする処理です。<br/>
+③ 右移動の処理です。右向きに力を加えるために、インスタンス化だけしておいたpushに強さと方向を設定します。これも①同様、ずっと力をかけ続けると右端から動けなくなるので0.2秒後にストップ処理を実行するようにしました。<br/>
+④ ③と同じく左移動の処理です。<br/>
+⑤ ストップさせるためにpushの力を加えるItemからimgを外しています。</p>
+
+<p>以上で、ジャンプ、左右移動が可能な簡単なアクションゲームを開発することができます。</p>
+
+<p>因みに筆者がテストで作った画面はこんな感じです。<br/>
+<img src="/images/xcode_dynamic2.png" alt="簡易アクションゲーム" /></p>
+
+<p>さてさて、せっかくなのでうまくこういった機能を使ってもっと面白いものを開発したいものです。</p>
+
+<p>参考:
+<a href="http://dev.classmethod.jp/references/ios7-uidynamic-2/">iOS7 UI Dynamics</a><br/>
+<a href="http://www.slideshare.net/techblogyahoo/5-ios7-workshopmakeupui">魅せるUIの作り方</a></p>
+]]></content>
+  </entry>
+  
+</feed>

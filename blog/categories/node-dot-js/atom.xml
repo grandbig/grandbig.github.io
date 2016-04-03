@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: node.js | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/node-dot-js/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2016-04-03T18:15:46+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[nodebrewで複数のnodeをインストールしよう]]></title>
+    <link href="http://grandbig.github.io/blog/2014/01/19/howtonodebrew/"/>
+    <updated>2014-01-19T23:14:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/01/19/howtonodebrew</id>
+    <content type="html"><![CDATA[<h3>nodebrewでnodeをインストール</h3>
+
+<p>最近はNode.jsがかなりメジャーになってきた気がします。しかし、Node.jsは未だにバージョンが1.0に届いていないので、開発途中に最新バージョンが出てくることも十分あり得ます。そのたびにアンインストールをするわけにもいかないので複数のバージョンのNode.jsをインストールできるようにしておくと便利です。<br/>
+nvmを使う方法もあるのですが、筆者は簡単に設定ができるnodebrewを活用しています。</p>
+
+<!--more-->
+
+
+<h4>設定手順</h4>
+
+<p>早速、設定手順を説明します。<br/>
+1. nodebrewをインストール
+<code>
+curl -L git.io/nodebrew | perl - setup
+</code>
+2. .bash_profileにパスを追加
+<code>
+export PATH=$HOME/.nodebrew/current/bin:$PATH
+</code>
+3. .bash_profileを再読み込み
+<code>
+source ~/.bash_profile
+</code>
+4. nodeのインストール
+<code>
+nodebrew install-binary v0.10.24
+</code>
+ただし、v0.8.6以前はバイナリからインストールできないので、下記のようにインストールする必要があります。
+<code>
+nodebrew install v0.6.12
+</code>
+5. インストールされたnodeのバージョンを確認
+<code>
+nodebrew ls
+</code>
+6. 利用したいnodeを指定
+<code>
+nodebrew use v0.10.24
+</code></p>
+
+<p>以上。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[node-passbookではまったこと]]></title>
+    <link href="http://grandbig.github.io/blog/2014/01/06/node-passbook/"/>
+    <updated>2014-01-06T22:45:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/01/06/node-passbook</id>
+    <content type="html"><![CDATA[<h3>PassbookのPassを動的生成するためにnode-passbookを使ってみました</h3>
+
+<p>皆様、あけましておめでとうございます。2014年1回目のブログ更新です。<br/>
+今回は<strong>node-passbookではまったこと</strong>について紹介したいと思います。通常、はまらないことかもしれないのですが、筆者は2日半くらい悩みました。</p>
+
+<p>node-passbookは<a href="https://github.com/assaf/node-passbook">Github</a>上で公開されています。</p>
+
+<!--more-->
+
+
+<h4>node-passbookの設定</h4>
+
+<p>今回は、nodeのWebフレームワークであるExpressを使います。Expressの始め方については<a href="http://gihyo.jp/dev/serial/01/nodejs/0003">gihyo.jsさんのページ</a>を参考にしてください。Expressの準備が整っている前提で説明を始めたいと思います。</p>
+
+<p>まずはnode-passbookモジュールをインストールしましょう。<br/>
+<code>
+npm install passbook
+</code></p>
+
+<p>次に、app.jsを編集しましょう。
+```
+var express = require(&lsquo;express&rsquo;);
+var routes = require(&lsquo;./routes&rsquo;);
+var user = require(&lsquo;./routes/user&rsquo;);
+// passbook発行処理を書いたpass.jsをrequire
+var pass = require(&lsquo;./routes/pass&rsquo;);</p>
+
+<p>&lt;省略></p>
+
+<p>app.get(&lsquo;/&rsquo;, routes.index);
+app.get(&lsquo;/users&rsquo;, user.list);
+// passbookのpassをダウンロードするときのget
+app.get(&lsquo;/download&rsquo;, pass.download);
+// passbookのpassを作成するときのget
+app.get(&lsquo;/create&rsquo;, pass.create);</p>
+
+<p>&lt;省略></p>
+
+<p>```</p>
+
+<p>では、passbook発行処理を書いたpass.jsをroutes配下に作成します。
+```
+var fs = require(&lsquo;fs&rsquo;);
+var path = require(&lsquo;path&rsquo;);
+var createTemplate = require(&ldquo;passbook&rdquo;);</p>
+
+<p>exports.create = function(req, res) {</p>
+
+<pre><code>// Passbook作成
+var template = createTemplate('eventTicket', {
+    'passTypeIdentifier': 'pass.****.****.****',
+    'teamIdentifier': '***********',
+    'organizationName': 'Passbookテスト'
+});
+template.keys('./public/keys', 'test12345');
+var passbook = template.createPass({
+    serialNumber: 'abcdefc',
+    description: 'Passbookテスト用のチケットです。',
+    logoText: '参加チケット',
+    foregroundColor: 'rgb(255, 255, 255)',
+    backgroundColor: 'rgb(60, 65, 76)'
+});
+passbook.fields.webServiceURL = "https://example.com/passes";
+passbook.fields.authenticationToken = "vxwxd7J8AlNNFPS8k0a0FfUFtq0ewzFdc";
+passbook.fields.relevantDate = "2014-01-25T17:00+09:00";
+passbook.fields.barcode = {
+    message: "http://google.com",
+    format: "PKBarcodeFormatQR",
+    messageEncoding: "iso-8859-1",
+    altText: "ユーザID"
+};
+passbook.primaryFields.add([
+    {
+        "key" : "event",
+        "label" : "イベント",
+        "value" : "Passbookテスト"
+    }
+]);
+passbook.secondaryFields.add([
+    {
+        "key" : "loc",
+        "label" : "場所",
+        "value" : "東京近辺"
+    }
+]);
+passbook.backFields.add([
+    {
+        "key" : "message",
+        "label" : "メッセージ",
+        "value" : "Passbook盛り上げていきましょう！"
+    }
+]);
+passbook.loadImagesFrom("./public/images");
+
+var pkpassFile = fs.createWriteStream("mypass.pkpass");
+passbook.on("error", function(error) {
+    console.error(error);
+    process.exit(1);
+});
+passbook.pipe(pkpassFile);
+
+res.end();
+</code></pre>
+
+<p>};</p>
+
+<p>exports.download = function(req, res){</p>
+
+<pre><code>var file = './mypass.pkpass',
+    filestream = fs.createReadStream(file),
+    filename = path.basename(file),
+    mimetype = 'application/vnd.apple.pkpass';
+res.setHeader('Content-disposition', 'attachment; filename=' + filename);
+res.setHeader('Content-type', mimetype); 
+filestream.on('data', function(chunk) {
+    res.write(chunk);
+});
+filestream.on('end', function() {
+    res.end();
+});
+</code></pre>
+
+<p>};</p>
+
+<p>```
+さて、これでソースの準備は完了です。<br/>
+次の章では、筆者がはまった点について具体的に説明します。</p>
+
+<h4>証明書ではまりました</h4>
+
+<p>筆者は上記のソースを書き終わった時点で完了だと思ったのですが、iPhoneから落としてもうまくいきませんでした。<br/>
+うまくいかなかったときの現象は下記です。<br/>
+iOS6 ⇒ Pass自体は表示されるものの、追加ボタンを押しても追加されない<br/>
+iOS7 ⇒ Pass自体表示されない</p>
+
+<p>また、XcodeのOrganizerのコンソールでログを見たところ、<strong>Signature is missing</strong>と表示されてしまいました。<br/>
+悩んだ果てにnode-inspectorでデバッグして1つ1つ処理を確認したところ、<strong>node_modules/passbook/lib/pass.js</strong>の342〜350行目を見て気づきました。</p>
+
+<p>```
+ function signManifest(template, manifest, callback) {</p>
+
+<pre><code> var identifier = template.passTypeIdentifier().replace(/^pass./, "");
+
+ var args = [
+    "smime",
+    "-sign", "-binary",
+    "-signer",    Path.resolve(template.keysPath, identifier + ".pem"),
+    "-certfile",  Path.resolve(template.keysPath, "wwdr.pem"),
+    "-passin",    "pass:" + template.password
+];
+
+&lt;省略&gt;
+</code></pre>
+
+<p>```</p>
+
+<p>そう、pemファイルの名前が間違っていたのです。pemファイルの名前は<strong>passTypeIdentifier</strong>に設定する文字列から<strong>pass.</strong>を削除したものにしなくてはなりませんでした。</p>
+
+<p>やっぱりデバッグは大切ですね。</p>
+
+<p>参考ページ:<br/>
+<a href="http://blog.techfirm.co.jp/2012/10/23/node-js%E3%81%A7passbook%E3%82%B5%E3%83%BC%E3%83%90%E3%82%92%E3%81%A4%E3%81%8F%E3%81%A3%E3%81%A6%E3%81%BF%E3%82%8B1/">node.jsでPassbookサーバをつくってみる</a><br/>
+<a href="http://kataok.hatenablog.com/entry/2012/10/20/102125">Node.jsでPassbookを発行してみる</a></p>
+]]></content>
+  </entry>
+  
+</feed>

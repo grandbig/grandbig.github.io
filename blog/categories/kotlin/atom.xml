@@ -1,0 +1,674 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: kotlin | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/kotlin/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2016-04-03T18:15:46+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Kotlinを使ってみよう！(2) : OkHttp編]]></title>
+    <link href="http://grandbig.github.io/blog/2016/01/23/kotlin-okhttp/"/>
+    <updated>2016-01-23T16:47:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/01/23/kotlin-okhttp</id>
+    <content type="html"><![CDATA[<h4>今回のKotlinのお題は？</h4>
+
+<p>さて、久々にKotlinについて勉強をしたいと思います。<br/>
+今回のお題は<a href="http://grandbig.github.io/blog/2016/01/19/android-okhttp/">Android StudioでOkHttp3.0.1を使おう！</a>にしたいと思います。<br/>
+では、早速見ていきましょう！</p>
+
+<h4>KotlinでOkHttp3.0.1を使うソースを書いてみる</h4>
+
+<p>まずは、OkHttp3.0.1を使ったソースを書いてみます。<br/>
+OkHttpの導入はJavaと同じです。</p>
+
+<p>build.gradle(app)に下記を追加しましょう。</p>
+
+<p>```java
+dependencies {</p>
+
+<pre><code>...
+compile 'com.squareup.okhttp3:okhttp:3.0.1'
+</code></pre>
+
+<p>}
+```</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>Javaで紹介したときと同様に、Open Weather Map APIを使ったGETリクエストを利用します。<br/>
+OkHttpでは通信処理をメインスレッドで実行しようとするとエラーが発生してしまうので、<code>AsyncTask</code>を利用します。<br/>
+<code>AsyncTask</code>を継承したクラスを書きます。</p>
+
+<p>```java
+package com.example.takahiro.simpleapplication</p>
+
+<p>import android.os.AsyncTask</p>
+
+<p>open class MyAsyncTask : AsyncTask&lt;Void, Void, String>() {</p>
+
+<pre><code>override fun doInBackground(vararg params: Void): String? {
+    return null
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここでKotlinの書き方を説明しましょう。</p>
+
+<ul>
+<li><code>open</code>
+
+<ul>
+<li>他のクラスからの継承を許可するアノテーション</li>
+<li><code>MainActivity</code>で<code>doInBackground</code>メソッドをオーバーライドするために設定<br/>
+　</li>
+</ul>
+</li>
+<li><code>vararg</code>
+
+<ul>
+<li>可変長にしたい引数の名前に設定</li>
+<li><code>donInBackground</code>は引数が1つ以上設定可能な可変長なものを持つため利用</li>
+</ul>
+</li>
+</ul>
+
+
+<p>続いて、<code>MainActivity</code>を書いていきます。</p>
+
+<p>```java
+package com.example.takahiro.simpleapplication</p>
+
+<p>import android.os.AsyncTask
+&hellip;
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response</p>
+
+<p>class MainActivity:AppCompatActivity() {</p>
+
+<pre><code>internal var client = OkHttpClient()
+
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_main)
+    val toolbar = findViewById(R.id.toolbar) as Toolbar
+    setSupportActionBar(toolbar)
+
+    &lt;省略&gt;
+
+    // GET Weatherボタンを取得して、クリック処理を実装
+    val btn = findViewById(R.id.button) as Button
+    btn.setOnClickListener {
+        object: MyAsyncTask() {
+            override fun doInBackground(vararg params: Void): String {
+                var res: String = ""
+                try {
+                    res = run("http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPID&gt;&amp;q=Tokyo")
+                    val resJson = JsonObject(res)
+                    val weathers = resJson.getJSONArray("weather")
+                    val weather = weathers.getJsonObject(0)
+                    val description = weather.getString("description")
+                    Log.i("MainActivity", description)
+                    res = description
+                } catch(e: IOException) {
+                    e.printStackTrace()
+                } catch(e: JSONException) {
+                    e.printStackTrace()
+                }
+            }
+        }.execute()
+    }
+}
+
+fun run(url: String): String {
+    val request = Request.Builder().url(url).build()
+
+    val response = client.newCall(request).execute()
+    return response.body().string()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここでもKotlinの書き方を説明します。</p>
+
+<ul>
+<li><code>object</code>
+
+<ul>
+<li>匿名サブクラスのインスタンスの返却式</li>
+<li>setOnClickListenerの引数にMyAsyncTaskを匿名クラスとして指定するために利用</li>
+<li>Kotlinではインスタンス生成に<code>new</code>は利用しない</li>
+</ul>
+</li>
+</ul>
+
+
+<p>さて、いかがでしたでしょうか？<br/>
+KotlinはSwiftに近い書式で書けるため、筆者にとっては非常にわかりやすいです。<br/>
+ただ、Javaとの互換性が非常に高いため、やはりそれなりに覚えなくてはならないことがありますね。</p>
+
+<p>これからも少しずつではありますが、Kotlinを見ていきたいと思います。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Kotlinを使ってみよう！(1)]]></title>
+    <link href="http://grandbig.github.io/blog/2015/11/08/kotlin-android-2/"/>
+    <updated>2015-11-08T23:54:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/11/08/kotlin-android-2</id>
+    <content type="html"><![CDATA[<h3>Kotlinを勉強しよう</h3>
+
+<p>さて、本日はKotlinを勉強してみたいと思います。<br/>
+勉強の題材としては、<a href="http://grandbig.github.io/blog/2015/11/08/google-sign-in-android/">Google Sign-In SDK for Androidを使ってみよう！</a>で取り上げた <strong>Google Sign-In SDKによるOAuth2.0認証</strong> にしたいと思います。<br/>
+その中で筆者が抑えておくべきと思ったところを基礎からメモっていきます。</p>
+
+<p>(KotlinをAndroid Studioに導入する方法は以前書いた<a href="http://grandbig.github.io/blog/2015/10/25/kotlin-android/">Android StudioにKotlinを導入しよう！</a>を参照ください。)</p>
+
+<p>では、早速、見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>Kotlinで変数/定数の書き方</h4>
+
+<p>最も基本的なことですが、変数/定数の書き方から異なります。</p>
+
+<p>Javaの場合</p>
+
+<p><code>java
+private final String TAG = "MainActivity";  // 定数
+private GoogleApiClient mGoogleApiClient;   // 変数
+</code></p>
+
+<p>Kotlinの場合</p>
+
+<p><code>java
+private val TAG:Int = "MainActivity"                    // 定数
+private var mGoogleApiClient:GoogleApiClient? = null    // 変数
+</code></p>
+
+<p>ポイントは下記です。</p>
+
+<ul>
+<li>定数は<code>val</code>で変数は<code>var</code>を使う</li>
+<li>定数は、val 定数名:型名 = 値</li>
+<li>変数は、var 変数名:型名 = 値</li>
+<li>初期値未定の変数は型名の後ろに<code>?</code>をつけて、<code>null</code>を代入<br/>
+これをしないと『Property must be initialized or be abstract』エラーが発生する</li>
+</ul>
+
+
+<h4>Kotlinでのstatic定数の書き方</h4>
+
+<p>Kotlinでは<code>static</code>は使いません。</p>
+
+<p>Javaの場合</p>
+
+<p><code>java
+private static final String TAG = "MainActivity";
+private static final int RC_SIGN_IN = 9001;
+</code></p>
+
+<p>Kotlinの場合</p>
+
+<p>```java
+companion object {</p>
+
+<pre><code>val TAG = "MainActivity"
+val RC_SIGN_IN = 9001
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Kotlinでimplementの書き方</h4>
+
+<p>Google Sign-In SDKでOAuth2.0認証をする際に、<code>GoogleApiClient.OnConnectionFailedListener</code>と<code>View.OnClickListener</code>のインターフェースを継承していました。</p>
+
+<p>Javaの場合</p>
+
+<p>```java
+public class MainActivity extends AppCompatActivity implements GoogleApiClient.OnConnectionFailedListener, View.OnClickListener {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Kotlinの場合</p>
+
+<p>```java
+class MainActivity : AppCompatActivity(), GoogleApiClient.OnConnectionFailedListener, View.OnClickListener {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Kotlionでは<code>implements</code>ワードは書かずに<code>extends</code>したクラスの後ろに<code>,</code>区切りで書きます。</p>
+
+<h4>Kotlinでキャストの書き方</h4>
+
+<p>Google Sign-Inを実行するために置いていたボタンをソース上で取り出すときに<code>SignInButton</code>でキャストしていました。</p>
+
+<p>Javaの場合</p>
+
+<p><code>java
+SignInButton signInButton = (SignInButton) findViewById(R.id.button_sign_in);
+</code></p>
+
+<p>Kotlinの場合</p>
+
+<p><code>java
+var signInButton:SignInButton = findViewById(R.id.button_sign_in) as SignInButton
+</code></p>
+
+<p>Kotlinでは<code>as</code>を使ってキャストします。</p>
+
+<h4>KotlinでOverrideの書き方</h4>
+
+<p>Javaの場合</p>
+
+<p>```java
+@Override
+protected void onCreate(Bundle savedInstanceState) {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Kotlinの場合</p>
+
+<p>```java
+override fun onCreate(savedInstanceState: Bundle?) {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Kotlinでは、<code>@</code>は不要で<code>fun</code>の前に書きます。<br/>
+(Swiftと違って、<code>func</code>とは書かないんです。)</p>
+
+<h4>Kotlinでメソッドの戻り値の書き方</h4>
+
+<p>Javaの場合</p>
+
+<p>```java
+@Override
+public boolean onCreateOptionsMenu(Menu menu) {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Kotlinの場合</p>
+
+<p>```java
+override fun onCreateOptionsMenu(menu: Menu): Boolean {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>『fun メソッド名(引数名: 引数の型): 戻り値の型』 と書きます。</p>
+
+<h4>Kotlinでswitch文の書き方</h4>
+
+<p>```java
+@Override
+public void onClick(View v) {</p>
+
+<pre><code>switch (v.getId()) {
+    case R.id.button_sign_in:
+        signIn();
+        break;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Kotlinの場合</p>
+
+<p>```java
+override fun onClick(view:View) {</p>
+
+<pre><code>when(view.id) {
+    R.id.button_sign_in -&gt; {
+        signIn()
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Kotlinでは<code>switch</code>ワードを使いません。<code>when</code>を使います。<br/>
+<code>case 条件:</code>という書き方が<code>条件 -&gt;</code>になります。</p>
+
+<p>さて、今回気になったのはこんなところです。<br/>
+これからもどんどんKotlinでの書き方に慣れていきたいと思います。</p>
+
+<p>因みに、今回のソースは、<a href="https://github.com/grandbig/KotlinGoogleSignInSample">GitHub</a>に上げてあります。<br/>
+ご自由にお使いください。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android StudioにKotlinを導入しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/10/25/kotlin-android/"/>
+    <updated>2015-10-25T19:12:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/10/25/kotlin-android</id>
+    <content type="html"><![CDATA[<h4>AndroidアプリはKotlinで書く時代！？</h4>
+
+<p>さて、本日は久々にAndroidについて書きたいと思います。<br/>
+<strong>Kotlin</strong> はどの程度、世に普及しているのでしょうか？ほとんどのAndroidアプリ開発者はJavaで開発していると思うのですが、今後はiOSのObjective-C/Swiftのように開発言語としてJava/Kotlinを選択することになるかもしれません。</p>
+
+<p>KotlinはAndroid StudioのベースとなっているIntelliJを開発しているJetBrains社が開発したJVM言語であるため、Android Studioへの導入も簡単で親和性も高いらしいです。<br/>
+また、iOSアプリをSwiftで開発していた開発者は書き方が似ているKotlinの方が開発が幾分か楽かもしれません。<br/>
+コード補完や参照ジャンプなどの基本的なIDEサポートもあるのでAndroid Studioでも問題なくKotlinを使えるのではないでしょうか。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>Kotlinの導入方法</h4>
+
+<p>Kotlinの導入方法を書いていきます。と言ってもほとんどないです笑。</p>
+
+<p>【導入手順】</p>
+
+<p>1．Android Stuioを起動<br/>
+2．Android Studio > Preferences > Plugins > Install JetBrains plugin&hellip;を選択<br/>
+3．リストからKotlinを選択して、Install pluginを選択
+<img src="/images/kotlin_install_1.png" alt="Kotlinのインストール" /></p>
+
+<p>4．インストール完了後, Android Studioを再起動<br/>
+<img src="/images/kotlin_install_2.png" alt="Android Studioの再起動" /></p>
+
+<p>5．javaパッケージをkotlinパッケージにリネーム<br/>
+javaパッケージを右クリック > Refactor > Rename を選択<br/>
+最終的に下図のようになればOKです。<br/>
+<img src="/images/kotlin_install_3.png" alt="ペッケージ名の変更" /></p>
+
+<p>6．javaファイルをkotlinファイルに変換<br/>
+javaファイルを選択して、Code > Convert Java File to Kotlin File を選択<br/>
+MainActivity(メインファイル)だけでなくApplicationTestも変換しておきましょう。<br/>
+<img src="/images/kotlin_install_4.png" alt="kotlinファイルに変換" /></p>
+
+<p>7．build.gradle(app)をkotlin用に修正
+Tools > Kotlin > Configure Kotlin in Project を選択すると、build.gradle(app)ファイルにKotlin対応用の記述が自動で追加されます。<br/>
+筆者の場合は下記のような感じになりました。</p>
+
+<p>```java
+apply plugin: &lsquo;com.android.application&rsquo;
+apply plugin: &lsquo;kotlin-android&rsquo;</p>
+
+<p>android {</p>
+
+<pre><code>compileSdkVersion 21
+buildToolsVersion "22.0.1"
+
+defaultConfig {
+    applicationId "com.example.kato_takahiro.kotlinsample"
+    minSdkVersion 21
+    targetSdkVersion 21
+    versionCode 1
+    versionName "1.0"
+}
+buildTypes {
+    release {
+        minifyEnabled false
+        proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+    }
+}
+sourceSets {
+    main.java.srcDirs += 'src/main/kotlin'
+}
+</code></pre>
+
+<p>}</p>
+
+<p>dependencies {</p>
+
+<pre><code>compile fileTree(dir: 'libs', include: ['*.jar'])
+testCompile 'junit:junit:4.12'
+compile 'com.android.support:appcompat-v7:21.0.3'
+compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+</code></pre>
+
+<p>}
+buildscript {</p>
+
+<pre><code>ext.kotlin_version = '1.0.0-beta-1038'
+repositories {
+    mavenCentral()
+}
+dependencies {
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+}
+</code></pre>
+
+<p>}
+repositories {</p>
+
+<pre><code>mavenCentral()
+</code></pre>
+
+<p>}
+```</p>
+
+<p>8．ビルドしてデバッグ<br/>
+ここまでくれば設定は完了したはずなので、Build > Clean Projectしてエラーが発生しないかチェック<br/>
+問題なければ、実機を繋いでデバッグしちゃいましょう！</p>
+
+<h4>Kotlinでコードを書いてみよう！</h4>
+
+<p>さて、使えることにしただけでは何なので、以前書いた<a href="http://grandbig.github.io/blog/2015/05/16/altbeacon/">AltBeaconを使ってAndroidでiBeaconを検知しよう</a>をKotlinで書き直してみました。</p>
+
+<p>```java
+&lt;省略></p>
+
+<p>// AltBeacon関連のライブラリをimport
+import org.altbeacon.beacon.BeaconConsumer;
+import org.altbeacon.beacon.BeaconManager;
+import org.altbeacon.beacon.BeaconParser;
+import org.altbeacon.beacon.Identifier;
+import org.altbeacon.beacon.MonitorNotifier;
+import org.altbeacon.beacon.Region;</p>
+
+<p>class MainActivity : ActionBarActivity(), BeaconConsumer {</p>
+
+<pre><code>private val TAG = "AltBeacon Sample"
+
+// BeaconManagerクラスの変数を定義
+private var beaconManager: BeaconManager? = null
+
+public val IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
+
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_main)
+
+    // staticメソッドでBeaconManagerクラスのインスタンスを取得
+    beaconManager = BeaconManager.getInstanceForApplication(this)
+    // BeaconParseをBeaconManagerに設定
+    beaconManager!!.beaconParsers.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT))
+}
+
+override fun onCreateOptionsMenu(menu: Menu): Boolean {
+    // Inflate the menu; this adds items to the action bar if it is present.
+    menuInflater.inflate(R.menu.menu_main, menu)
+    return true
+}
+
+override fun onOptionsItemSelected(item: MenuItem): Boolean {
+    // Handle action bar item clicks here. The action bar will
+    // automatically handle clicks on the Home/Up button, so long
+    // as you specify a parent activity in AndroidManifest.xml.
+    val id = item.itemId
+
+    //noinspection SimplifiableIfStatement
+    if (id == R.id.action_settings) {
+        return true
+    }
+
+    return super.onOptionsItemSelected(item)
+}
+
+override fun onBeaconServiceConnect() {
+    // BeaconManagerクラスのモニタリング通知受取り処理
+    beaconManager!!.setMonitorNotifier(object : MonitorNotifier {
+        override fun didEnterRegion(region: Region) {
+            // 領域進入時に実行
+            Log.d(TAG, "didEnterRegion")
+        }
+
+        override fun didExitRegion(region: Region) {
+            // 領域退出時に実行
+            Log.d(TAG, "didExitRegion")
+        }
+
+        override fun didDetermineStateForRegion(i: Int, region: Region) {
+            // 領域への侵入/退出のステータスが変化したときに実行
+            Log.d(TAG, "didDetermineStateForRegion")
+        }
+    })
+
+    try {
+        // UUIDの作成
+        val identifier = Identifier.parse("434B4666-E4B2-4B78-8C13-901AFEE3DBB6")
+        // モニタリングの開始
+        beaconManager!!.startMonitoringBeaconsInRegion(Region("unique-id-001", identifier, null, null))
+    } catch (e: RemoteException) {
+        // 例外が発生した場合の処理
+        e.printStackTrace()
+    }
+}
+
+override fun onPause() {
+    super.onPause()
+    beaconManager!!.unbind(this)
+}
+
+override fun onResume() {
+    super.onPause()
+    beaconManager!!.bind(this)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>こう書いてみると、確かにSwiftに似ていますね。<br/>
+気になったのは下記の通りです。</p>
+
+<ul>
+<li>Swiftで言うところの<code>let</code>がKotlinでは<code>val</code>と書くこと</li>
+<li>Swiftで言うところの<code>delegate</code>の設定の仕方とKotlinで言うところの<code>implements</code>が同じ</li>
+<li>Kotlinで変数が<code>null</code>のときにメソッドを実行しないよう <strong>!!</strong> が必要</li>
+</ul>
+
+
+<p>これからはJavaだけでなく、Kotlinでも書けるように力を蓄えていきたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://qiita.com/shoma2da/items/31edef012f224f99323c">SwiftでAndroidアプリを作る!?</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
