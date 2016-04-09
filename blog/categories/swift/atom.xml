@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-04-09T23:00:15+09:00</updated>
+  <updated>2016-04-10T00:46:06+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,145 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[PromiseKitを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/04/09/swift-promisekit/"/>
+    <updated>2016-04-09T23:07:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/04/09/swift-promisekit</id>
+    <content type="html"><![CDATA[<h4>SwiftでPromiseライブラリを使ってみよう</h4>
+
+<p>さて、前回から引き続きSwiftでのPromiseライブラリについて見ていきたいと思います。<br/>
+今回はPromiseライブラリのSwift界隈で有名な <strong>PromiseKit</strong> について見ていきます。</p>
+
+<h4>PromiseKitのインストール</h4>
+
+<p>早速、 <strong>PromiseKit</strong> の導入について紹介します。<br/>
+筆者の場合、Xcode7.3を利用しているため、Swift2.2を扱うことになります。<br/>
+<a href="https://github.com/mxcl/PromiseKit">GitHub</a>で紹介されている下記の導入方法では <strong>2.2.1</strong> がインストールされます。<br/>
+しかし、このバージョンはSwift2.2に対応していないため、エラーが発生します。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>```objective-c
+use_frameworks!</p>
+
+<p>pod &ldquo;PromiseKit&rdquo;, &ldquo;~>2.0&rdquo;
+```</p>
+
+<p><a href="http://promisekit.org/">PromiseKitの公式ドキュメントページ</a>を見ると、Newsの項目でバージョン <strong>3.1.0</strong> でSwift2.2に対応したと書かれています。<br/>
+そこで、今回は、</p>
+
+<p>```objective-c
+use_frameworks!</p>
+
+<p>pod &ldquo;PromiseKit&rdquo;, &ldquo;3.1.0&rdquo;
+```</p>
+
+<p>とすることで、Xcode7.3でも問題なく、PromiseKitを扱えるようにしました。</p>
+
+<h4>PromiseKitで非同期処理を直列に書いてみよう</h4>
+
+<p>前回のBrightFutureで紹介した処理をPromiseKitで書いてみようと思います。<br/>
+まずは、非同期処理をPromiseKitを使って定義します。</p>
+
+<p>```objective-c
+func p(msg: String) &ndash;> Promise<String>{</p>
+
+<pre><code>let promise = Promise&lt;String&gt; { (fulfill, reject) in
+    let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+    dispatch_async(queue, { 
+        sleep(1)
+        dispatch_sync(dispatch_get_main_queue(), {
+            print(msg)
+            fulfill(msg)
+        })
+    })
+}
+
+return promise
+</code></pre>
+
+<p>}
+```</p>
+
+<p>では、これを呼び出してみましょう。</p>
+
+<p>```objective-c
+p(&ldquo;Hello&rdquo;).then { (msg1) &ndash;> Promise<String> in</p>
+
+<pre><code>return p("Good Evening")
+</code></pre>
+
+<p>}.then { (msg2) &ndash;> Promise<String> in</p>
+
+<pre><code>return p("Good Bye")
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ネストが浅い状態で複数の非同期処理を書くことができました。<br/>
+また、BrightFutureと大きな違いはなく書くことできました。</p>
+
+<h4>PromiseKitで非同期処理を並列に書いてみよう</h4>
+
+<p>続いて、複数の非同期処理を並列に実行する場合を考えてみます。<br/>
+順番に処理をする必要がなく、処理が完了したものから反映していきたい場合などに使いますね。</p>
+
+<p>非同期処理自体は先程と同じものを使います。<br/>
+では、並列に処理を呼び出してみましょう。</p>
+
+<p>```objective-c
+// 実行したい非同期処理を定義
+let p1 = ps.p_promiseKit(&ldquo;Method1&rdquo;)
+let p2 = ps.p_promiseKit(&ldquo;Method2&rdquo;)
+let p3 = ps.p_promiseKit(&ldquo;Method3&rdquo;)</p>
+
+<p>// まとめて非同期処理を実行
+when([p1, p2, p3]).then { (result: [String]) &ndash;> AnyPromise in</p>
+
+<pre><code>return AnyPromise(bound: Promise())
+</code></pre>
+
+<p>}
+```</p>
+
+<p>先に書いた直列処理では、1秒間隔でログが出力されたかと思います。<br/>
+ここでは同時に実行したため、ほぼ同時に3つのログが出力されたはずです。</p>
+
+<p>さて如何だったでしょうか？<br/>
+SwiftでもPromiseライブラリはたくさん出てきました。<br/>
+<a href="https://github.com/Thomvis/BrightFutures">BrightFuture</a>, <a href="https://github.com/mxcl/PromiseKit">PromiseKit</a>, <a href="https://github.com/ReactKit/SwiftTask">SwiftTask</a>のいずれを利用するかは開発者の判断になるかと思います。<br/>
+個人的にはPromiseKitはGitHub上に似た名称のブランチがたくさんあるのをどうにかして欲しいなと思ってたりします笑</p>
+
+<p>また、時間があるときにPromiseを使って何かやりたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[BrightFutureを使ってみよう！]]></title>
@@ -23,7 +162,7 @@
 <p>最近は更新頻度が落ちてしまっていますが、久々に更新します。<br/>
 (iPhoneSEが発表されたことですし笑)</p>
 
-<p>さて、本日はSwift版Promiseライブラリとしては最も有名な <strong>BrightFuture</strong> ライブラリを使ってみたいと思います。<br/>
+<p>さて、本日はSwift版Promiseライブラリとしては割と有名な <strong>BrightFuture</strong> ライブラリを使ってみたいと思います。<br/>
 筆者は、新しいことに取り組む際は、JSで例を見た方がわかりやすかったりするので、Node.jsのPromiseと交えながら紹介していきたいと思います。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
@@ -815,186 +954,6 @@ class ViewController: UIViewController, MyProtocol {</p>
 より安定したSwift製アプリを作成することができると想像するとワクワクしますね。</p>
 
 <p>といったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[『Swiftビギナーズ勉強会 第１３回』に参加してきました]]></title>
-    <link href="http://grandbig.github.io/blog/2016/02/20/swift-beginners-study-13/"/>
-    <updated>2016-02-20T13:51:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/02/20/swift-beginners-study-13</id>
-    <content type="html"><![CDATA[<h4>始めに</h4>
-
-<p>本日は<a href="http://eventdots.jp/event/578498">Swiftビギナーズ勉強会 第１３回</a>に参加してきました。<br/>
-筆者はiPhoneアプリ開発自体は4年近く前から関わっているものの<br/>
-(初めはWebViewを使ったハイブリッドアプリから携わり、後にフルネイティブに&hellip;)、<br/>
-多くはObjective-Cで書いてきたため、Swiftでのコーディング経験は長くありません。<br/>
-そういった経緯や、iOS関連の勉強会を探していたこともあり、<br/>
-良い機会だと思って参加することにしました。</p>
-
-<p>今回の勉強会の概要はこちらの資料で説明頂きました。<br/>
-<a href="http://www.slideshare.net/YoshinoriKoba/swiftswift">概要資料</a></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>ショートセッション</h4>
-
-<ol>
-<li><p>Swift × WordPress SwiftからWP REST APIを使ってWordPressの記事をリストする<br/>
-<a href="http://www.slideshare.net/YoshinoriKoba/swift-wordpressswift-wp-rest-apiwordpressswift-160220">発表資料</a></p>
-
-<ul>
-<li>メモ
-
-<ul>
-<li>デバッグ方法に関するリンク<br/>
-<a href="http://blogios.stack3.net/archives/776">Xcodeでのデバッグ方法</a></li>
-<li>WP REST APIを使ったときにATSに関するエラーが発生した<br/>
-HTTPSサーバを用意するのはハードルがあるので、plistの設定で対応した</li>
-</ul>
-</li>
-<li>感想
-
-<ul>
-<li>個人的には<a href="https://github.com/SwiftyJSON/SwiftyJSON">SwiftyJson</a>を使ったことがなく、やっぱり使った方が良いのかなと</li>
-<li>最近オープンに公開されているAPIがHTTPだと、ATSに引っかかるので、世の中のオープンなAPIが載っているサーバはHTTPSになっていくのかなと</li>
-</ul>
-</li>
-</ul>
-</li>
-<li><p>mBaaSの基本的な扱い方の事始め</p>
-
-<ul>
-<li>参考URL
-
-<ul>
-<li><a href="http://qiita.com/fumiyasac@github/items/53d9d45d880b0e523417">ニフティクラウドmobile backendの事始めと導入手順まとめ</a></li>
-<li><a href="http://qiita.com/fumiyasac@github/items/7549acb9610860de1733">ニフティクラウドmobile backendを利用した画像付きメモアプリ作成のポイントまとめ</a></li>
-</ul>
-</li>
-<li>メモ
-
-<ul>
-<li>Coffre, 10秒虫食い算アプリ</li>
-<li><a href="https://parse.com/">Parse</a>とNCMBの比較</li>
-<li>Parseは <strong>2017/01/29(日本時間)</strong> でサービス終了するのでNCMBに乗り換えたい</li>
-<li>ParseサーバのソースはGitHubに公開されている</li>
-<li>Parseサーバのソースを見るとNode.js(Express)とMongoDBを利用している</li>
-<li>Frameworkが提供されているので、Referenceに従ってアプリ側にソースを実装していけば、自分でREST API叩くだとかしなくて良い模様</li>
-<li>FrameworkはObjective-C製なので、Bridge-Headerの作成が必要</li>
-<li>NCMBはParseと大差なさそう</li>
-<li>NCMBは日本語のコミュニティやフォーラムなどがあるので安心</li>
-</ul>
-</li>
-<li>感想
-
-<ul>
-<li>いつも自分でNode.jsとMongoDBで構築しちゃうからmBaaS使ったことなかったな〜</li>
-</ul>
-</li>
-</ul>
-</li>
-<li><p>iOS9で楽になったAutoLayout<br/>
-<a href="https://speakerdeck.com/satotakeshi/shi-utukiyanai-ios9dele-ninatutaauto-layout">発表資料</a></p>
-
-<ul>
-<li>メモ
-
-<ul>
-<li>iOS6で誕生したAutoLayout</li>
-<li>徐々に進化して&hellip;iOS9でStackView, NSLayoutAnchorsが出た</li>
-<li>入れ子で複雑なレイアウトをStackViewで実現可能</li>
-<li>これで等間隔にviewとか並べられるよ</li>
-<li>iOS8まではspacingのviewを作成して、それぞれAutoLayoutをつけていた&hellip;</li>
-<li>NSLayoutAnchorsが出たことでコードでも1行で制約を書ける(かなりソースコードが短縮される)</li>
-<li>NSLayoutConstraintはたいへんだった</li>
-<li>Visual Format Language → 複数の制約を一気につけれるが、不正な記法が判明するのが実行時&hellip;。記法が独特すぎる&hellip;</li>
-</ul>
-</li>
-<li>感想
-
-<ul>
-<li>Dynamic Typeってあまり気にしたことなかった&hellip;</li>
-</ul>
-</li>
-</ul>
-</li>
-<li><p>Linterを使って快適なチーム開発をしよう!<br/>
-<a href="https://speakerdeck.com/akatsuki174/linterwoshi-tutekuai-shi-natimukai-fa-wosiyou">発表資料</a></p>
-
-<ul>
-<li>メモ
-
-<ul>
-<li>SwiftLintの話</li>
-<li>『(』で引っかかる場合はautocorrect実行してやれば良い</li>
-<li>バージョンアップの頻度が高い</li>
-</ul>
-</li>
-<li>感想
-
-<ul>
-<li>先日、気になって取り組んだところだったので、復習になった</li>
-</ul>
-</li>
-</ul>
-</li>
-</ol>
-
-
-<h4>もくもく会</h4>
-
-<p>ショートセッションの後にもくもく会の時間がありました。<br/>
-あまりテーマを決めていなかったものの、1時間〜1時間30分程度の時間だったため、<br/>
-あまり大きなことはやらずに基本的なところから見直してみることにしました。</p>
-
-<p>そこで、Swift2.0から追加された新機能3つを試してみることにしました。</p>
-
-<ul>
-<li><code>do-catch</code>, <code>try</code>, <code>defer</code></li>
-<li><code>guard</code></li>
-<li><p><code>Protocol Extension</code></p></li>
-<li><p>参考URL</p>
-
-<ul>
-<li><a href="https://moneyforward.com/engineers_blog/2015/06/17/swift2/">Swift2.0で追加された新機能 3選</a></li>
-<li><a href="http://llcc.hatenablog.com/entry/2015/06/13/235129">Swift2.0で追加されたguard statementを試してみる</a></li>
-</ul>
-</li>
-</ul>
-
-
-<h4>まとめ</h4>
-
-<p>今回、初めてSwiftビギナーズ勉強会に参加させて頂きましたが、<br/>
-日本にはこんなにも幅広い年齢層、職種(専門プログラミングがSwift以外)の方々がSwiftに興味を示しているのだと改めて感じました。<br/>
-Objective-Cであれば、基本的なところは抑えられていると思えるようになってきましたが、<br/>
-Swiftに関してはまだまだ経験不足で学ぶべきところが多いと感じたのも事実です。<br/>
-だからこそやり甲斐があり、モチベーションが上がるんですけどね。<br/>
-といったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
