@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-05-15T01:36:45+09:00</updated>
+  <updated>2016-05-15T23:00:39+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,153 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Bolts-Swiftを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/05/15/bolts-swift/"/>
+    <updated>2016-05-15T22:34:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/05/15/bolts-swift</id>
+    <content type="html"><![CDATA[<h4>SwiftでBolts-Swiftライブラリを使ってみよう</h4>
+
+<p>これまで、<code>BrightFuture</code>, <code>PromiseKit</code>とPromiseライブラリについて見てきましたが、本日はFacebook製のPromiseライブラリである<a href="https://github.com/BoltsFramework/Bolts-Swift">Bolts-Swift</a>を試してみたいと思います。</p>
+
+<p><code>Bolts</code>はこれまでもObjective-Cコードで利用されてきた有名ライブラリですが、<br/>
+2016-03-18にSwift版 v1.0.0(<code>Bolts-Swift</code>) が公開されました。<br/>
+※ Objective-C版は<a href="https://github.com/BoltsFramework/Bolts-ObjC">Bolts-ObjC</a>です。<br/>
+※ 本記事執筆時点ではv1.1.0が最新となっています。</p>
+
+<p>Facebookのエンジニアが開発しているため、Facebook SDKを利用する場合でも内部で<code>Bolts-ObjC</code>が利用されています。<br/>
+現在、Facebook SDKがObjective-Cで書かれているため、今後Swift化される際に、<code>Bolts-Swift</code>が使われることになる可能性が高いと思います。<br/>
+知っておいて損はないでしょう。</p>
+
+<p>ということで早速、使い方を見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>Bolts-Swiftのインストール</h4>
+
+<p>CocoaPodsでインストールします。</p>
+
+<p><strong>1．Podfileに下記を記載</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">source</span> <span class="err">&#39;</span><span class="nl">https:</span><span class="c1">//github.com/CocoaPods/Specs.git&#39;</span>
+</span><span class='line'><span class="n">platform</span> <span class="o">:</span><span class="n">ios</span><span class="p">,</span> <span class="err">&#39;</span><span class="mf">8.0</span><span class="err">&#39;</span>
+</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>     <span class="c1">// (1)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="s">&quot;BoltsSwiftSample&quot;</span> <span class="k">do</span>   <span class="c1">// (2)</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Bolts</span><span class="o">-</span><span class="n">Swift</span><span class="err">&#39;</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>Bolts-Swift</code>の場合は(1)と(2)が必須書式となります。<br/>
+(書かない場合、インストール時にErrorが発生します。)</p>
+
+<p><strong>2．<code>pod install</code>を実行</strong></p>
+
+<p><strong>3．処理の実装</strong></p>
+
+<p>ライブラリのインストールが完了したら、処理を書いていきましょう。</p>
+
+<p><code>Bolts-Swift</code>を適用したメソッドを用意します。<br/>
+※ 非同期処理を含むサンプルメソッドです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">func</span> <span class="n">p_task</span><span class="p">(</span><span class="nl">msg:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">let</span> <span class="n">taskCompletionSource</span> <span class="o">=</span> <span class="n">TaskCompletionSource</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">let</span> <span class="n">queue</span> <span class="o">=</span> <span class="n">dispatch_get_global_queue</span><span class="p">(</span><span class="n">DISPATCH_QUEUE_PRIORITY_DEFAULT</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">dispatch_async</span><span class="p">(</span><span class="n">queue</span><span class="p">,</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">dispatch_sync</span><span class="p">(</span><span class="n">dispatch_get_main_queue</span><span class="p">(),</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</span><span class='line'>          <span class="n">taskCompletionSource</span><span class="p">.</span><span class="n">setResult</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">})</span>
+</span><span class='line'>  <span class="p">})</span>
+</span><span class='line'>                          
+</span><span class='line'>  <span class="k">return</span> <span class="n">taskCompletionSource</span><span class="p">.</span><span class="n">task</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このように定義することで、下記のように呼び出すことが可能となります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">let</span> <span class="n">bt</span> <span class="o">=</span> <span class="n">BoltsTask</span><span class="p">()</span>
+</span><span class='line'><span class="n">bt</span><span class="p">.</span><span class="n">p_task</span><span class="p">(</span><span class="s">&quot;Hello&quot;</span><span class="p">).</span><span class="n">continueOnSuccessWith</span> <span class="p">{</span> <span class="p">(</span><span class="n">msg1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="k">in</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">bt</span><span class="p">.</span><span class="n">p_task</span><span class="p">(</span><span class="s">&quot;Good Evening&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="p">}.</span><span class="n">continueOnSuccessWith</span> <span class="p">{</span> <span class="p">(</span><span class="n">msg2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="k">in</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">bt</span><span class="p">.</span><span class="n">p_task</span><span class="p">(</span><span class="s">&quot;Good Bye&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これを実行すれば、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">Hello</span>
+</span><span class='line'><span class="n">Good</span> <span class="n">Evening</span>
+</span><span class='line'><span class="n">Good</span> <span class="n">Bye</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>と結果が得られます。<br/>
+以上のように『ネストを浅く』、『非同期処理を直列的に書く』ことができます。</p>
+
+<p><code>BrightFuture</code>や<code>PromiseKit</code>を試しに使ってきたことで思ったのが、同様の書式で書けることが多いということです。<br/>
+一見、GitHub上のReadmeを読んでもわからないと思うライブラリがあった際には、用途が似ているライブラリのReadmeを見てみるのも1つの手段かもしれません。</p>
+
+<p>といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SwiftでFacebookログインを始めよう！]]></title>
@@ -370,6 +517,8 @@ Facebook SDKも徐々にバージョンアップしていますので、なか�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
+
+
 
 ]]></content>
   </entry>
@@ -4091,519 +4240,6 @@ iOSで言うところの<code>UITableView</code>が使いどころとしては�
 もっとAndroidアプリの特にUI・UX周りの開発に精進したいと思います。</p>
 
 <p>と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Android Studioでの初回作成Activityから考えるログイン画面]]></title>
-    <link href="http://grandbig.github.io/blog/2016/02/07/android-login-activity/"/>
-    <updated>2016-02-07T22:38:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/02/07/android-login-activity</id>
-    <content type="html"><![CDATA[<h4>Androidアプリでのログイン画面を考えてみる</h4>
-
-<p>筆者はこれまでAndroidアプリでログイン画面を作成するとき、</p>
-
-<ul>
-<li>Person Name / E-mail / Phone などの必須入力項目用のText Fields</li>
-<li>Password / Password(Numeric) のパスワード入力用のText Fields</li>
-<li>ログインするためのアクション用のButton</li>
-</ul>
-
-
-<p>のみを配置することを考えていました。<br/>
-今回はAndroid Studioで初回プロジェクト作成時に<code>Login Activity</code>を選択することで、<br/>
-Google側の意図を読み取ってみようと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>Login画面のレイアウト</h4>
-
-<p>では、早速、Android Studioを起動して<code>Login Activity</code>を選択したプロジェクトを作成しましょう。<br/>
-(本ブログでは <strong>Android Studio 2.0 Beta2</strong> を利用しています。)</p>
-
-<p>プロジェクト作成時に<code>Add an Activity to Mobile</code>のところで<code>Login Activity</code>を選択してみましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/login-activity-1.png" alt="Login Activityを選択する" /></p>
-
-<p>すると、下記のようなレイアウトファイルが作成されます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// activity_login.xml</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">LinearLayout</span> <span class="nl">xmlns:</span><span class="n">android</span><span class="o">=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
-</span><span class='line'>  <span class="nl">xmlns:</span><span class="n">tools</span><span class="o">=</span><span class="s">&quot;http://schemas.android.com/tools&quot;</span>
-</span><span class='line'>  <span class="o">...</span>
-</span><span class='line'>  <span class="nl">tools:</span><span class="n">context</span><span class="o">=</span><span class="s">&quot;com.example.takahiro.loginapplicationsample.LoginActivity&quot;</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="o">&lt;!--</span> <span class="n">Login</span> <span class="n">progress</span> <span class="o">--&gt;</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="n">ProgressBar</span>
-</span><span class='line'>      <span class="nl">android:</span><span class="n">id</span><span class="o">=</span><span class="s">&quot;@+id/login_progress&quot;</span>
-</span><span class='line'>      <span class="n">style</span><span class="o">=</span><span class="s">&quot;?android:attr/progressBarStyleLarge&quot;</span>
-</span><span class='line'>      <span class="nl">android:</span><span class="n">layout_width</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span>
-</span><span class='line'>      <span class="nl">android:</span><span class="n">layout_height</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span>
-</span><span class='line'>      <span class="nl">android:</span><span class="n">layout_marginBottom</span><span class="o">=</span><span class="s">&quot;8dp&quot;</span>
-</span><span class='line'>      <span class="nl">android:</span><span class="n">visibility</span><span class="o">=</span><span class="s">&quot;gone&quot;</span> <span class="o">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="o">&lt;</span><span class="n">ScrollView</span>
-</span><span class='line'>      <span class="nl">android:</span><span class="n">id</span><span class="o">=</span><span class="s">&quot;@+id/login_form&quot;</span>
-</span><span class='line'>      <span class="nl">android:</span><span class="n">layout_width</span><span class="o">=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>      <span class="nl">android:</span><span class="n">layout_height</span><span class="o">=</span><span class="s">&quot;match_parent&quot;</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="o">&lt;</span><span class="n">LinearLayout</span>
-</span><span class='line'>          <span class="nl">android:</span><span class="n">id</span><span class="o">=</span><span class="s">&quot;@+id/email_login_form&quot;</span>
-</span><span class='line'>          <span class="nl">android:</span><span class="n">layout_width</span><span class="o">=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>          <span class="nl">android:</span><span class="n">layout_height</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span>
-</span><span class='line'>          <span class="nl">android:</span><span class="n">orientation</span><span class="o">=</span><span class="s">&quot;vertical&quot;</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>          <span class="o">&lt;</span><span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">design</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">TextInputLayout</span>
-</span><span class='line'>              <span class="nl">android:</span><span class="n">layout_width</span><span class="o">=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>              <span class="nl">android:</span><span class="n">layout_height</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>              <span class="o">&lt;</span><span class="n">AutoCompleteTextView</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">id</span><span class="o">=</span><span class="s">&quot;@+id/email&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">layout_width</span><span class="o">=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">layout_height</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">hint</span><span class="o">=</span><span class="s">&quot;@string/prompt_email&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">inputType</span><span class="o">=</span><span class="s">&quot;textEmailAddress&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">maxLines</span><span class="o">=</span><span class="s">&quot;1&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">singleLine</span><span class="o">=</span><span class="s">&quot;true&quot;</span> <span class="o">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'>          <span class="o">&lt;/</span><span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">design</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">TextInputLayout</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>          <span class="o">&lt;</span><span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">design</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">TextInputLayout</span>
-</span><span class='line'>              <span class="nl">android:</span><span class="n">layout_width</span><span class="o">=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>              <span class="nl">android:</span><span class="n">layout_height</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span><span class="o">&gt;</span>
-</span><span class='line'>          
-</span><span class='line'>              <span class="o">&lt;</span><span class="n">EditText</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">id</span><span class="o">=</span><span class="s">&quot;@+id/password&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">layout_width</span><span class="o">=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">layout_height</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">hint</span><span class="o">=</span><span class="s">&quot;@string/prompt_password&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">imeActionId</span><span class="o">=</span><span class="s">&quot;@+id/login&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">imeActionLabel</span><span class="o">=</span><span class="s">&quot;@string/action_sign_in_short&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">imeOptions</span><span class="o">=</span><span class="s">&quot;actionUnspecified&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">inputType</span><span class="o">=</span><span class="s">&quot;textPassword&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">maxLines</span><span class="o">=</span><span class="s">&quot;1&quot;</span>
-</span><span class='line'>                  <span class="nl">android:</span><span class="n">singleLine</span><span class="o">=</span><span class="s">&quot;true&quot;</span> <span class="o">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'>          <span class="o">&lt;/</span><span class="n">android</span><span class="o">.</span><span class="na">support</span><span class="o">.</span><span class="na">design</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">TextInputLayout</span><span class="o">&gt;</span>
-</span><span class='line'>          
-</span><span class='line'>          <span class="o">&lt;</span><span class="n">Button</span>
-</span><span class='line'>              <span class="nl">android:</span><span class="n">id</span><span class="o">=</span><span class="s">&quot;@+id/email_sign_in_button&quot;</span>
-</span><span class='line'>              <span class="n">style</span><span class="o">=</span><span class="s">&quot;?android:textAppearanceSmall&quot;</span>
-</span><span class='line'>              <span class="nl">android:</span><span class="n">layout_width</span><span class="o">=</span><span class="s">&quot;match_parent&quot;</span>
-</span><span class='line'>              <span class="nl">android:</span><span class="n">layout_height</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span>
-</span><span class='line'>              <span class="nl">android:</span><span class="n">layout_marginTop</span><span class="o">=</span><span class="s">&quot;16dp&quot;</span>
-</span><span class='line'>              <span class="nl">android:</span><span class="n">text</span><span class="o">=</span><span class="s">&quot;@string/action_sign_in&quot;</span>
-</span><span class='line'>              <span class="nl">android:</span><span class="n">textStyle</span><span class="o">=</span><span class="s">&quot;bold&quot;</span> <span class="o">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="o">&lt;/</span><span class="n">LinearLayout</span><span class="o">&gt;</span>
-</span><span class='line'>  <span class="o">&lt;/</span><span class="n">ScrollView</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;/</span><span class="n">LinearLayout</span><span class="o">&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>実際に画面はこのようになっています。<br/>
-<img src="http://grandbig.github.io/images/login-activity-2.png" alt="ログイン画面" /></p>
-
-<p>その成り立ちを見てみましょう。</p>
-
-<h5>ProgressBarが配置されている</h5>
-
-<p>まず、目についたのは<code>ProgressBar</code>です。<br/>
-ログインボタンをタップした後に、サーバへの問い合わせをすることが通常だと思います。<br/>
-サーバ通信後、データを受け取るまでにはそれなりに時間がかかる可能性があります。<br/>
-なので、ユーザにロード中であることを知らせる<code>ProgressBar</code>は必要であるということなのでしょう。</p>
-
-<h5>ScrollViewが配置されている</h5>
-
-<p>続いて、<code>ScrollView</code>に着目しました。<br/>
-デフォルトでは、EmailとPasswordに加えて、ログインボタンが設置されているのみですが、<br/>
-場合によってはユーザ名, 電話番号, 住所, クレジットカード番号などなど必要とされる項目が多くなる可能性があります。<br/>
-初めからそういったことを想定した作りになっているということでしょう。</p>
-
-<h5>TextInputLayoutが配置されている</h5>
-
-<p>そして、何と言っても、<code>android.support.design.widget.TextInputLayout</code>は目立つのではないでしょうか？<br/>
-これは <strong>Android Design Support Library</strong> に含まれるマテリアルデザインを体現したパーツとなります。<br/>
-<code>TextView</code>等を囲むことで、ユーザの入力アクションに合わせて、入力項目タイトルがスムーズに移動するデザインを実装することができます。<br/>
-いわゆる<a href="https://www.google.com/design/spec/components/text-fields.html#">Floating Label</a>というものですね。</p>
-
-<h5>AutoCompleteTextViewが使われている</h5>
-
-<p>今回はEmailの入力が必要とのことで、<code>AutoCompleteTextView</code>によるユーザ補助機能がついています。<br/>
-もちろん、<code>AutoCompleteTextView</code>をレイアウト上で設定しても補助機能を実装することはできず、<br/>
-<code>AndroidManifest.xml</code>で設定が必要です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// AndroidManifest.xml</span>
-</span><span class='line'><span class="o">&lt;?</span><span class="n">xml</span> <span class="n">version</span><span class="o">=</span><span class="s">&quot;1.0&quot;</span> <span class="n">encoding</span><span class="o">=</span><span class="s">&quot;utf-8&quot;</span><span class="o">?&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="n">manifest</span> <span class="nl">xmlns:</span><span class="n">android</span><span class="o">=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
-</span><span class='line'>  <span class="n">package</span><span class="o">=</span><span class="s">&quot;com.example.takahiro.loginapplicationsample&quot;</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="o">&lt;!--</span> <span class="n">To</span> <span class="n">auto</span><span class="o">-</span><span class="n">complete</span> <span class="n">the</span> <span class="n">email</span> <span class="n">text</span> <span class="n">field</span> <span class="n">in</span> <span class="n">the</span> <span class="n">login</span> <span class="n">form</span> <span class="n">with</span> <span class="n">the</span> <span class="n">user</span><span class="err">&#39;</span><span class="n">s</span> <span class="n">emails</span> <span class="o">--&gt;</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="n">uses</span><span class="o">-</span><span class="n">permission</span> <span class="nl">android:</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;android.permission.GET_ACCOUNTS&quot;</span> <span class="o">/&gt;</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="n">uses</span><span class="o">-</span><span class="n">permission</span> <span class="nl">android:</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;android.permission.READ_PROFILE&quot;</span> <span class="o">/&gt;</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="n">uses</span><span class="o">-</span><span class="n">permission</span> <span class="nl">android:</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;android.permission.READ_CONTACTS&quot;</span> <span class="o">/&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="o">...</span>
-</span><span class='line'><span class="o">&lt;/</span><span class="n">manifest</span><span class="o">&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>このように<code>GET_ACCOUNTS</code>, <code>READ_PROFILE</code>, <code>READ_CONTACTS</code>の3つのパーミッションを設定します。<br/>
-これによって、下図のようにアプリ起動後に連絡先へのアクセス許可を求めるアラートを表示することができます。</p>
-
-<p><img src="http://grandbig.github.io/images/login-activity-3.png" alt="連絡先へのアクセス許可アラート" /></p>
-
-<h4>LoginActivityについて</h4>
-
-<p>続いて、<code>LoginActivity</code>はどのようになっているのか見ていきましょう。</p>
-
-<h5>LoaderManagerを利用</h5>
-
-<p><code>LoginActivity</code>では<code>LoaderManager</code>を利用しています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// LoginActivity.java</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">LoginActivity</span> <span class="kd">extends</span> <span class="n">AppCompatActivity</span> <span class="kd">implements</span> <span class="n">LoaderCallbacks</span><span class="o">&lt;</span><span class="n">Cursor</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="o">...</span>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="n">Loader</span><span class="o">&lt;</span><span class="n">Cursor</span><span class="o">&gt;</span> <span class="nf">onCreateLoader</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">,</span> <span class="n">Bundle</span> <span class="n">bundle</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="k">new</span> <span class="nf">CursorLoader</span><span class="o">(</span><span class="k">this</span><span class="o">,</span>
-</span><span class='line'>          <span class="c1">// Retrieve data rows for the device user&#39;s &#39;profile&#39; contact.</span>
-</span><span class='line'>          <span class="n">Uri</span><span class="o">.</span><span class="na">withAppendedPath</span><span class="o">(</span><span class="n">ContactsContract</span><span class="o">.</span><span class="na">Profile</span><span class="o">.</span><span class="na">CONTENT_URI</span><span class="o">,</span>
-</span><span class='line'>              <span class="n">ContactsContract</span><span class="o">.</span><span class="na">Contacts</span><span class="o">.</span><span class="na">Data</span><span class="o">.</span><span class="na">CONTENT_DIRECTORY</span><span class="o">),</span> <span class="n">ProfileQuery</span><span class="o">.</span><span class="na">PROJECTION</span><span class="o">,</span>
-</span><span class='line'>
-</span><span class='line'>          <span class="c1">// Select only email addresses.</span>
-</span><span class='line'>          <span class="n">ContactsContract</span><span class="o">.</span><span class="na">Contacts</span><span class="o">.</span><span class="na">Data</span><span class="o">.</span><span class="na">MIMETYPE</span> <span class="o">+</span>
-</span><span class='line'>              <span class="s">&quot; = ?&quot;</span><span class="o">,</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]{</span><span class="n">ContactsContract</span><span class="o">.</span><span class="na">CommonDataKinds</span><span class="o">.</span><span class="na">Email</span>
-</span><span class='line'>          <span class="o">.</span><span class="na">CONTENT_ITEM_TYPE</span><span class="o">},</span>
-</span><span class='line'>
-</span><span class='line'>          <span class="c1">// Show primary email addresses first. Note that there won&#39;t be</span>
-</span><span class='line'>          <span class="c1">// a primary email address if the user hasn&#39;t specified one.</span>
-</span><span class='line'>          <span class="n">ContactsContract</span><span class="o">.</span><span class="na">Contacts</span><span class="o">.</span><span class="na">Data</span><span class="o">.</span><span class="na">IS_PRIMARY</span> <span class="o">+</span> <span class="s">&quot; DESC&quot;</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onLoadFinished</span><span class="o">(</span><span class="n">Loader</span><span class="o">&lt;</span><span class="n">Cursor</span><span class="o">&gt;</span> <span class="n">cursorLoader</span><span class="o">,</span> <span class="n">Cursor</span> <span class="n">cursor</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">emails</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;();</span>
-</span><span class='line'>      <span class="n">cursor</span><span class="o">.</span><span class="na">moveToFirst</span><span class="o">();</span>
-</span><span class='line'>      <span class="k">while</span> <span class="o">(!</span><span class="n">cursor</span><span class="o">.</span><span class="na">isAfterLast</span><span class="o">())</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">emails</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">cursor</span><span class="o">.</span><span class="na">getString</span><span class="o">(</span><span class="n">ProfileQuery</span><span class="o">.</span><span class="na">ADDRESS</span><span class="o">));</span>
-</span><span class='line'>          <span class="n">cursor</span><span class="o">.</span><span class="na">moveToNext</span><span class="o">();</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">addEmailsToAutoComplete</span><span class="o">(</span><span class="n">emails</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onLoaderReset</span><span class="o">(</span><span class="n">Loader</span><span class="o">&lt;</span><span class="n">Cursor</span><span class="o">&gt;</span> <span class="n">cursorLoader</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>  <span class="o">...</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><code>LoaderCallbacks&lt;Cursor&gt;</code>を <strong>implements</strong> しているのは、<br/>
-<code>onCreateLoader</code>, <code>onLoadFinished</code>でEmailのオートコンプリート機能を実装するためです。</p>
-
-<h5>showProgressメソッドの実装</h5>
-
-<p>レイアウトで実装した<code>ProgressBar</code>のアニメーションまで実装されています。<br/>
-また、AndroidのOSバージョンに合わせて適切な処理分けもされています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// LoginActivity.java</span>
-</span><span class='line'><span class="nd">@TargetApi</span><span class="o">(</span><span class="n">Build</span><span class="o">.</span><span class="na">VERSION_CODES</span><span class="o">.</span><span class="na">HONEYCOMB_MR2</span><span class="o">)</span>
-</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">showProgress</span><span class="o">(</span><span class="kd">final</span> <span class="kt">boolean</span> <span class="n">show</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>  <span class="c1">// On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow</span>
-</span><span class='line'>  <span class="c1">// for very easy animations. If available, use these APIs to fade-in</span>
-</span><span class='line'>  <span class="c1">// the progress spinner.</span>
-</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">Build</span><span class="o">.</span><span class="na">VERSION</span><span class="o">.</span><span class="na">SDK_INT</span> <span class="o">&gt;=</span> <span class="n">Build</span><span class="o">.</span><span class="na">VERSION_CODES</span><span class="o">.</span><span class="na">HONEYCOMB_MR2</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="kt">int</span> <span class="n">shortAnimTime</span> <span class="o">=</span> <span class="n">getResources</span><span class="o">().</span><span class="na">getInteger</span><span class="o">(</span><span class="n">android</span><span class="o">.</span><span class="na">R</span><span class="o">.</span><span class="na">integer</span><span class="o">.</span><span class="na">config_shortAnimTime</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">mLoginFormView</span><span class="o">.</span><span class="na">setVisibility</span><span class="o">(</span><span class="n">show</span> <span class="o">?</span> <span class="n">View</span><span class="o">.</span><span class="na">GONE</span> <span class="o">:</span> <span class="n">View</span><span class="o">.</span><span class="na">VISIBLE</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">mLoginFormView</span><span class="o">.</span><span class="na">animate</span><span class="o">().</span><span class="na">setDuration</span><span class="o">(</span><span class="n">shortAnimTime</span><span class="o">).</span><span class="na">alpha</span><span class="o">(</span>
-</span><span class='line'>              <span class="n">show</span> <span class="o">?</span> <span class="mi">0</span> <span class="o">:</span> <span class="mi">1</span><span class="o">).</span><span class="na">setListener</span><span class="o">(</span><span class="k">new</span> <span class="n">AnimatorListenerAdapter</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>          <span class="nd">@Override</span>
-</span><span class='line'>          <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onAnimationEnd</span><span class="o">(</span><span class="n">Animator</span> <span class="n">animation</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>              <span class="n">mLoginFormView</span><span class="o">.</span><span class="na">setVisibility</span><span class="o">(</span><span class="n">show</span> <span class="o">?</span> <span class="n">View</span><span class="o">.</span><span class="na">GONE</span> <span class="o">:</span> <span class="n">View</span><span class="o">.</span><span class="na">VISIBLE</span><span class="o">);</span>
-</span><span class='line'>          <span class="o">}</span>
-</span><span class='line'>      <span class="o">});</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">mProgressView</span><span class="o">.</span><span class="na">setVisibility</span><span class="o">(</span><span class="n">show</span> <span class="o">?</span> <span class="n">View</span><span class="o">.</span><span class="na">VISIBLE</span> <span class="o">:</span> <span class="n">View</span><span class="o">.</span><span class="na">GONE</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">mProgressView</span><span class="o">.</span><span class="na">animate</span><span class="o">().</span><span class="na">setDuration</span><span class="o">(</span><span class="n">shortAnimTime</span><span class="o">).</span><span class="na">alpha</span><span class="o">(</span>
-</span><span class='line'>              <span class="n">show</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="o">).</span><span class="na">setListener</span><span class="o">(</span><span class="k">new</span> <span class="n">AnimatorListenerAdapter</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>          <span class="nd">@Override</span>
-</span><span class='line'>          <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onAnimationEnd</span><span class="o">(</span><span class="n">Animator</span> <span class="n">animation</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>              <span class="n">mProgressView</span><span class="o">.</span><span class="na">setVisibility</span><span class="o">(</span><span class="n">show</span> <span class="o">?</span> <span class="n">View</span><span class="o">.</span><span class="na">VISIBLE</span> <span class="o">:</span> <span class="n">View</span><span class="o">.</span><span class="na">GONE</span><span class="o">);</span>
-</span><span class='line'>          <span class="o">}</span>
-</span><span class='line'>      <span class="o">});</span>
-</span><span class='line'>  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
-</span><span class='line'>      <span class="c1">// The ViewPropertyAnimator APIs are not available, so simply show</span>
-</span><span class='line'>      <span class="c1">// and hide the relevant UI components.</span>
-</span><span class='line'>      <span class="n">mProgressView</span><span class="o">.</span><span class="na">setVisibility</span><span class="o">(</span><span class="n">show</span> <span class="o">?</span> <span class="n">View</span><span class="o">.</span><span class="na">VISIBLE</span> <span class="o">:</span> <span class="n">View</span><span class="o">.</span><span class="na">GONE</span><span class="o">);</span>
-</span><span class='line'>      <span class="n">mLoginFormView</span><span class="o">.</span><span class="na">setVisibility</span><span class="o">(</span><span class="n">show</span> <span class="o">?</span> <span class="n">View</span><span class="o">.</span><span class="na">GONE</span> <span class="o">:</span> <span class="n">View</span><span class="o">.</span><span class="na">VISIBLE</span><span class="o">);</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>非同期通信処理の実装</h5>
-
-<p>ログイン処理は通常、必ずサーバ通信を伴います。<br/>
-そのため、バックグラウンドでの通信処理が必要となるんですが、それが既に側だけ実装されています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// LoginActivity.java</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">UserLoginTask</span> <span class="kd">extends</span> <span class="n">AsyncTask</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">,</span> <span class="n">Void</span><span class="o">,</span> <span class="n">Boolean</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">mEmail</span><span class="o">;</span>
-</span><span class='line'>  <span class="kd">private</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">mPassword</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">UserLoginTask</span><span class="o">(</span><span class="n">String</span> <span class="n">email</span><span class="o">,</span> <span class="n">String</span> <span class="n">password</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="n">mEmail</span> <span class="o">=</span> <span class="n">email</span><span class="o">;</span>
-</span><span class='line'>      <span class="n">mPassword</span> <span class="o">=</span> <span class="n">password</span><span class="o">;</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="nd">@Override</span>
-</span><span class='line'>  <span class="kd">protected</span> <span class="n">Boolean</span> <span class="nf">doInBackground</span><span class="o">(</span><span class="n">Void</span><span class="o">...</span> <span class="n">params</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>      <span class="c1">// TODO: attempt authentication against a network service.</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="k">try</span> <span class="o">{</span>
-</span><span class='line'>          <span class="c1">// Simulate network access.</span>
-</span><span class='line'>          <span class="n">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">2000</span><span class="o">);</span>
-</span><span class='line'>      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">InterruptedException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="k">for</span> <span class="o">(</span><span class="n">String</span> <span class="n">credential</span> <span class="o">:</span> <span class="n">DUMMY_CREDENTIALS</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>          <span class="n">String</span><span class="o">[]</span> <span class="n">pieces</span> <span class="o">=</span> <span class="n">credential</span><span class="o">.</span><span class="na">split</span><span class="o">(</span><span class="s">&quot;:&quot;</span><span class="o">);</span>
-</span><span class='line'>          <span class="k">if</span> <span class="o">(</span><span class="n">pieces</span><span class="o">[</span><span class="mi">0</span><span class="o">].</span><span class="na">equals</span><span class="o">(</span><span class="n">mEmail</span><span class="o">))</span> <span class="o">{</span>
-</span><span class='line'>              <span class="c1">// Account exists, return true if the password matches.</span>
-</span><span class='line'>              <span class="k">return</span> <span class="n">pieces</span><span class="o">[</span><span class="mi">1</span><span class="o">].</span><span class="na">equals</span><span class="o">(</span><span class="n">mPassword</span><span class="o">);</span>
-</span><span class='line'>          <span class="o">}</span>
-</span><span class='line'>      <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// TODO: register the new account here.</span>
-</span><span class='line'>      <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
-</span><span class='line'>  <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>さて、いかがだったでしょうか？<br/>
-レイアウトはまだしも、オートコンプリートの実装まで必要な場合は、自作するよりも、Android Studioでデフォルト実装してくれる<code>LoginActivity</code>の方が工数省略ができそうですよね！
-といったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
