@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-06-13T00:04:43+09:00</updated>
+  <updated>2016-06-19T00:46:20+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,223 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[JekninsからGitHubにアップされたiOSプロジェクトをビルドしよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/06/18/ios-jenkins/"/>
+    <updated>2016-06-18T22:57:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/06/18/ios-jenkins</id>
+    <content type="html"><![CDATA[<h4>Jenkins / GitHub / Xcodeを連携させよう！</h4>
+
+<p>さて、今日はJenkinsとGitHubとXcodeの連携について見ていきます。<br/>
+筆者はこれまで、手元の自身のMac端末でビルドして、Fabricでアプリを配信することが多かったのですが、最近、<a href="https://deploygate.com/?locale=ja">Deploygate</a>を使う場面が出てきました。<br/>
+業界スタンダートな方法なのかわからないものの、JenkinsとDeploygateを連携させてJenkins上でビルドしたアプリをDeploygateから配信することができます。<br/>
+そういった筆者にとって新しい機会に恵まれたものの、触ってみた経験がないためわからないことが多々あったりします。<br/>
+そこで、今回はローカル環境でJenkins / GitHub / Xcodeを連携させて遊んでみようと思います。</p>
+
+<!-- more -->
+
+
+<h5>Jenkinsのインストール</h5>
+
+<p>まずは、JenkinsをHomebrewでローカル環境にインストールします。<br/>
+<code>brew install jenkins</code>を実行します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="nl">Password:</span>
+</span><span class='line'><span class="o">==&gt;</span> <span class="n">Downloading</span> <span class="nl">http:</span><span class="c1">//mirrors.jenkins-ci.org/war/2.9/jenkins.war</span>
+</span><span class='line'><span class="o">==&gt;</span> <span class="n">Downloading</span> <span class="n">from</span> <span class="nl">http:</span><span class="c1">//ftp.yz.yamagata-u.ac.jp/pub/misc/jenkins/war/2.9/jenkins.war</span>
+</span><span class='line'><span class="cp">######################################################################## 100.0%</span>
+</span><span class='line'><span class="o">==&gt;</span> <span class="n">jar</span> <span class="n">xvf</span> <span class="n">jenkins</span><span class="p">.</span><span class="n">war</span>
+</span><span class='line'><span class="o">==&gt;</span> <span class="n">Caveats</span>
+</span><span class='line'><span class="nl">Note:</span> <span class="n">When</span> <span class="n">using</span> <span class="n">launchctl</span> <span class="n">the</span> <span class="n">port</span> <span class="n">will</span> <span class="n">be</span> <span class="mf">8080.</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">To</span> <span class="n">have</span> <span class="n">launchd</span> <span class="n">start</span> <span class="n">jenkins</span> <span class="n">now</span> <span class="n">and</span> <span class="n">restart</span> <span class="n">at</span> <span class="nl">login:</span>
+</span><span class='line'>  <span class="n">brew</span> <span class="n">services</span> <span class="n">start</span> <span class="n">jenkins</span>
+</span><span class='line'><span class="n">Or</span><span class="p">,</span> <span class="k">if</span> <span class="n">you</span> <span class="n">don</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">want</span><span class="o">/</span><span class="n">need</span> <span class="n">a</span> <span class="n">background</span> <span class="n">service</span> <span class="n">you</span> <span class="n">can</span> <span class="n">just</span> <span class="nl">run:</span>
+</span><span class='line'>    <span class="n">jenkins</span>
+</span><span class='line'><span class="o">==&gt;</span> <span class="n">Summary</span>
+</span><span class='line'><span class="err">🍺</span>  <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">Cellar</span><span class="o">/</span><span class="n">jenkins</span><span class="o">/</span><span class="mf">2.9</span><span class="o">:</span> <span class="mi">6</span> <span class="n">files</span><span class="p">,</span> <span class="mf">66.4</span><span class="n">M</span><span class="p">,</span> <span class="n">built</span> <span class="k">in</span> <span class="mi">59</span> <span class="n">seconds</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Jenkinsをこれから使う機会も多いかもしれないので自動起動設定もしちゃいましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">cp</span> <span class="o">-</span><span class="n">p</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">jenkins</span><span class="o">/*</span><span class="p">.</span><span class="n">plist</span> <span class="o">~/</span><span class="n">Library</span><span class="o">/</span><span class="n">LaunchAgents</span>
+</span><span class='line'><span class="n">launchctl</span> <span class="n">load</span> <span class="o">~/</span><span class="n">Library</span><span class="o">/</span><span class="n">LaunchAgents</span><span class="o">/</span><span class="n">homebrew</span><span class="p">.</span><span class="n">mxcl</span><span class="p">.</span><span class="n">jenkins</span><span class="p">.</span><span class="n">plist</span>
+</span><span class='line'><span class="n">launchctl</span> <span class="n">start</span> <span class="n">homebrew</span><span class="p">.</span><span class="n">mxcl</span><span class="p">.</span><span class="n">jenkins</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>本当に起動してるかな〜と心配な方は<code>ps aux | grep jenkins</code>を叩いちゃいましょう！<br/>
+すると下記のように表示されます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">java</span> <span class="o">-</span><span class="n">Dmail</span><span class="p">.</span><span class="n">smtp</span><span class="p">.</span><span class="n">starttls</span><span class="p">.</span><span class="n">enable</span><span class="o">=</span><span class="n">true</span> <span class="o">-</span><span class="n">jar</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">jenkins</span><span class="o">/</span><span class="n">libexec</span><span class="o">/</span><span class="n">jenkins</span><span class="p">.</span><span class="n">war</span> <span class="o">--</span><span class="n">httpListenAddress</span><span class="o">=</span><span class="mf">127.0.0.1</span> <span class="o">--</span><span class="n">httpPort</span><span class="o">=</span><span class="mi">8080</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>Jenkinsの初期登録を完了させよう！</h5>
+
+<p>インストール完了したので、Jenkins上でジョブを作りましょう！<br/>
+早速、<code>http://localhost:8080</code>にアクセスしてください。</p>
+
+<p>すると、 <strong>Unlock Jenkins</strong> と大きく書かれた画面が表示されます。<br/>
+この画面の表示された指示に従って、管理者パスワードを入力しましょう。
+(コマンドは画面に表示された通りにターミナルで叩けばOKです。)</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-1.png" alt="初期画面" /></p>
+
+<p>続いて、 <strong>Customize Jenkins</strong> 画面に遷移するので、<br/>
+<strong>Install suggested plugins</strong> を選択しましょう。</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-2.png" alt="Customize Jenkins" /></p>
+
+<p>そして、ユーザー登録をします。</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-3.png" alt="ユーザー登録" /></p>
+
+<p>これでJenkinsのトップ画面が表示されます。<br/>
+Xcode Pluginがまだインストールされていないので、インストールします。</p>
+
+<p>左メニューから「Jenkinsの管理 > プラグインの管理」を選択します。</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-6.png" alt="プラグインの管理" /></p>
+
+<p>検索ボックスでXcodeと入力してください。<br/>
+<strong>Xcode integration</strong> が見つかりますので、インストールしてください。<br/>
+これで必要なプラグインのインストールが完了しました。</p>
+
+<h5>Jenkinsで新規ジョブを作成しよう！</h5>
+
+<p>左メニューから新規ジョブを作成します。</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-4.png" alt="新規ジョブの作成" /></p>
+
+<p>ジョブ名を入力して、「フリースタイル・プロジェクトのビルド」を選択して、OKを押します。</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-5.png" alt="ジョブのベースを作成" /></p>
+
+<p>まず、GitHubと連携させましょう。<br/>
+JenkinsのジョブにGitのRepository URLを設定します。</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-7.png" alt="JenkinsでGitのRepository URLを設定" /></p>
+
+<p>ただ単に設定すると403 Errorが出てしまうので、GitHub側を設定します。<br/>
+GitHubから取得したいRepositoryを選択します。<br/>
+Settings > Webhooks &amp; services > Add Webhook を選択します。<br/>
+下記のように設定しましょう！</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-8.png" alt="Webhooks &amp; services" /></p>
+
+<p>これでJenkins側の403 Errorが解消されるはずです。</p>
+
+<p>続いてビルド情報を入力していきます。</p>
+
+<p>ビルド手順の追加 > 「シェルの実行」を追加します</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#!/bin/bash -l</span>
+</span><span class='line'><span class="n">pod</span> <span class="n">install</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このタイミングで、<code>.bashrc</code>に<code>export LC_ALL="en_US.UTF-8"</code>を追加しておきましょう。<br/>
+(追加しないと『 <strong>invalid byte sequence in US-ASCII</strong> 』が後々発生します。)</p>
+
+<p>ビルド手順の追加 > 「Xcode」を追加します<br/>
+設定は下記のようにしてきます。</p>
+
+<p>【Code signing &amp; OS X keychain options】</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-9.png" alt="Code signing &amp; OS X keychain options" /></p>
+
+<p>【Advanced Xcode build options】</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-10.png" alt="Advanced Xcode build options" /></p>
+
+<table>
+<thead>
+<tr>
+<th></th>
+<th align="left">Xcode Schema File: </th>
+<th align="center">FacebookLoginSample</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td align="left">Xcode Workspace File: </td>
+<td align="center">FacebookLoginSample|</td>
+</tr>
+<tr>
+<td></td>
+<td align="left">Xcode Project File: </td>
+<td align="center">FacebookLoginSample|</td>
+</tr>
+<tr>
+<td></td>
+<td align="left">Build output directory: </td>
+<td align="center">${WORKSPACE}/build|</td>
+</tr>
+</tbody>
+</table>
+
+
+<p>　</p>
+
+<h5>Jennkinsでジョブを実行しよう！</h5>
+
+<p>これでジョブを実行してみましょう！<br/>
+左メニューから『 <strong>ビルド実行</strong> 』を選択します。</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-11.png" alt="ビルド実行" /></p>
+
+<p>ビルドを実行すると、ビルド履歴に新たに項目が追加されます。<br/>
+詳しいビルド状況を追いたければ、時間部分を選択します。</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-12.png" alt="ビルド状況の確認" /></p>
+
+<p>そして、画面遷移後の左メニューから『 <strong>コンソール出力</strong> 』を選択します。</p>
+
+<p><img src="http://grandbig.github.io/images/jenkins-13.png" alt="コンソール出力" /></p>
+
+<p>これで最後までログを追うことができます。</p>
+
+<h4>まとめ</h4>
+
+<p>さて如何でしたでしょうか？<br/>
+筆者も初めてローカル環境でJenkinsを立ててみましたが、意外とハマリポイントが多かったです。<br/>
+証明書周りでもう少し調べてみたいところもあるので、またわかったことがあればブログに書いていきたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://qiita.com/makoto_kw/items/cbe93d4ebbc35f3b43fd">OS XにJenkinsをHomebrewでセットアップする</a></li>
+<li><a href="http://www.buildinsider.net/enterprise/jenkins/001">Jenkinsをインストールして使ってみよう</a></li>
+<li><a href="https://github.com/CocoaPods/CocoaPods/issues/639#issuecomment-11483748">invalid byte sequence in US-ASCII</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SwiftとJava8とJavaScriptでreduce / filter / map / flatMap]]></title>
@@ -3737,174 +3954,6 @@ Objective-Cであれば、基本的なところは抑えられていると思え
 Swiftに関してはまだまだ経験不足で学ぶべきところが多いと感じたのも事実です。<br/>
 だからこそやり甲斐があり、モチベーションが上がるんですけどね。<br/>
 といったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[SwiftでNSDateFormatterを使ってNSDateからStringに変換してみる！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/02/19/swift-date/"/>
-    <updated>2016-02-19T23:17:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/02/19/swift-date</id>
-    <content type="html"><![CDATA[<h4>NSDateFormatterとは</h4>
-
-<p>さて、本日は<code>NSDateFormatter</code>について見ていきます。<br/>
-<code>NSDateFormatter</code>は</p>
-
-<ul>
-<li><code>NSDate</code>から<code>String</code>へ変換する際に指定するフォーマットオブジェクト</li>
-<li><code>String</code>から<code>NSDate</code>へ変換する際に指定するフォーマットオブジェクト</li>
-</ul>
-
-
-<p>として使ったりします。<br/>
-(他にも<code>NSCalendar</code>等々で利用します。)<br/>
-基本的な変換は下記のようにできます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">func</span> <span class="n">convertStringFromDate</span><span class="p">(</span><span class="nl">date:</span> <span class="n">NSDate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">String</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">dateFormatter</span> <span class="o">=</span> <span class="n">NSDateFormatter</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">dateFormatter</span><span class="p">.</span><span class="n">dateFormat</span> <span class="o">=</span> <span class="s">&quot;yyyy-MM-dd HH:mm:ss.SSSSSS&quot;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">return</span> <span class="n">dateFormatter</span><span class="p">.</span><span class="n">stringFromDate</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>続いて、よく利用する各種設定について見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>NSTimeZoneについて</h4>
-
-<p><code>NSTimeZone</code>はグリニッジ標準時と各地域の標準時の時差情報を持ったクラスです。<br/>
-このクラスを利用することで、欲しい時差情報を含んだ日付を取得できます。</p>
-
-<p>例えば下記のような形です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">func</span> <span class="n">convertStringFromDate</span><span class="p">(</span><span class="nl">date:</span> <span class="n">NSDate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">String</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">dateFormatter</span> <span class="o">=</span> <span class="n">NSDateFormatter</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">dateFormatter</span><span class="p">.</span><span class="n">timeZone</span> <span class="o">=</span> <span class="n">NSTimeZone</span><span class="p">.</span><span class="n">defaultTimeZone</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">dateFormatter</span><span class="p">.</span><span class="n">dateFormat</span> <span class="o">=</span> <span class="s">&quot;yyyy-MM-dd HH:mm:ss.SSSSSS&quot;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">return</span> <span class="n">dateFormatter</span><span class="p">.</span><span class="n">stringFromDate</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><code>NSTimeZone</code>には<code>systemTimeZone</code>, <code>defaultTimeZone</code>, <code>localTimeZone</code>, 直接地域を指定する方法があります。</p>
-
-<ul>
-<li><code>systemTimeZone</code>:<br/>
-設定 > 一般 > 日付と時刻 で設定されている地域のタイムゾーンを返却する</li>
-<li><code>defaultTimeZone</code>:<br/>
-アプリで設定された地域のタイムゾーン<br/>
-アプリで設定されていない場合は<code>systemTimeZone</code>を返却する</li>
-<li><code>localTimeZone</code>:<br/>
-<code>defaultTimeZone</code>への参照値を返却する</li>
-<li>直接タイムゾーンを指定:<br/>
-<code>GMT</code>, <code>UTC</code>, <code>ja_JP</code>, <code>en_US</code>などの地域を指定することで、指定地域のタイムゾーンを返却する</li>
-</ul>
-
-
-<p>仮に、それぞれのタイムゾーンの設定をして文字列を出力してみると、</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="nl">systemTimeZone:</span> <span class="mi">2016</span><span class="o">-</span><span class="mo">02</span><span class="o">-</span><span class="mi">19</span> <span class="mi">23</span><span class="o">:</span><span class="mi">27</span><span class="o">:</span><span class="mf">37.550000</span>
-</span><span class='line'><span class="nl">defaultTimeZone:</span> <span class="mi">2016</span><span class="o">-</span><span class="mo">02</span><span class="o">-</span><span class="mi">19</span> <span class="mi">23</span><span class="o">:</span><span class="mi">27</span><span class="o">:</span><span class="mf">37.550000</span>
-</span><span class='line'><span class="nl">localTimeZone:</span> <span class="mi">2016</span><span class="o">-</span><span class="mo">02</span><span class="o">-</span><span class="mi">19</span> <span class="mi">23</span><span class="o">:</span><span class="mi">27</span><span class="o">:</span><span class="mf">37.550000</span>
-</span><span class='line'><span class="nl">GMT:</span> <span class="mi">2016</span><span class="o">-</span><span class="mo">02</span><span class="o">-</span><span class="mi">19</span> <span class="mi">14</span><span class="o">:</span><span class="mi">27</span><span class="o">:</span><span class="mf">37.551000</span>
-</span><span class='line'><span class="nl">UTC:</span> <span class="mi">2016</span><span class="o">-</span><span class="mo">02</span><span class="o">-</span><span class="mi">19</span> <span class="mi">14</span><span class="o">:</span><span class="mi">27</span><span class="o">:</span><span class="mf">37.551000</span>
-</span><span class='line'><span class="nl">ja_JP:</span> <span class="mi">2016</span><span class="o">-</span><span class="mo">02</span><span class="o">-</span><span class="mi">19</span> <span class="mi">23</span><span class="o">:</span><span class="mi">27</span><span class="o">:</span><span class="mf">37.551000</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>といった感じです。</p>
-
-<h4>NSLocaleについて</h4>
-
-<p><code>NSLocale</code>は言語や分化などの情報を持ったクラスです。<br/>
-このクラスを利用することで、欲しい言語や分化の地域情報を含んだ日付を取得できます。</p>
-
-<p>利用方法は下記のようになります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">func</span> <span class="n">convertStringFromDate</span><span class="p">(</span><span class="nl">date:</span> <span class="n">NSDate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">String</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">dateFormatter</span> <span class="o">=</span> <span class="n">NSDateFormatter</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">dateFormatter</span><span class="p">.</span><span class="n">locale</span> <span class="o">=</span> <span class="n">NSLocale</span><span class="p">.</span><span class="n">currentLocale</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">dateFormatter</span><span class="p">.</span><span class="n">dateFormat</span> <span class="o">=</span> <span class="s">&quot;yyyy-MM-dd HH:mm:ss.SSSSSS&quot;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">return</span> <span class="n">dateFormatter</span><span class="p">.</span><span class="n">stringFromDate</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>systemLocale</code>:<br/>
-設定 > 一般 > 日付と時刻 で設定されている地域の情報を返却する</li>
-<li><code>currentLocale</code>:<br/>
-現在のユーザで設定されている地域の情報を返却する<br/>
-マルチユーザ環境下であれば、違いが出ると思います。</li>
-</ul>
-
-
-<p>地味に文字列変換って面倒だったりするんですよね&hellip;。<br/>
-とは言え、アプリを世界対応させる場合は、<br/>
-ユーザの設定している <strong>日付と時刻</strong> に注意を配ることが大切です。</p>
-
-<p>と言ったところで本日はここまで。</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="http://aqubiblog.blogspot.jp/2012/11/ios.html">iOSの日付処理まとめ</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
