@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-07-17T00:08:58+09:00</updated>
+  <updated>2016-07-31T23:59:20+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,156 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Swift ExpressでAjax通信してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/07/31/swift-express-2/"/>
+    <updated>2016-07-31T23:40:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/07/31/swift-express-2</id>
+    <content type="html"><![CDATA[<h3>Swift ExpressでPOSTリクエスト投げてみよう！</h3>
+
+<p>さて、本日は<a href="https://github.com/crossroadlabs/Express">Swift Express</a>の続きを試してみます。<br/>
+<a href="http://grandbig.github.io/blog/2016/07/10/swift-express/">前回</a>はインストール方法とデフォルト画面の表示までを紹介しましたが、<br/>
+今回はAjax通信によるPOSTリクエストを投げてみたいと思います。</p>
+
+<h4>サーバサイドの対応</h4>
+
+<p>まずは、サーバサイドの準備です。<br/>
+<code>main.swift</code>を修正しましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>```objective-c
+import Express</p>
+
+<p>let app = express()</p>
+
+<p>app.views.register(StencilViewEngine())</p>
+
+<!-- ここを追加 -->
+
+
+<p>app.views.register(JsonView())</p>
+
+<p>app.get(&ldquo;/assets/:file+&rdquo;, action: StaticAction(path: &ldquo;public&rdquo;, param:&ldquo;file&rdquo;))</p>
+
+<p>app.get(&ldquo;/&rdquo;) { (request:Request<AnyContent>)&ndash;>Action<AnyContent> in</p>
+
+<pre><code>return Action&lt;AnyContent&gt;.render("index", context: ["hello": "Hello,", "swift": "Swift", "express": "Express!"])
+</code></pre>
+
+<p>}</p>
+
+<!-- ここを追加 -->
+
+
+<p>app.post(&ldquo;/:param&rdquo;) { (request:Request<AnyContent>)&ndash;>Action<AnyContent> in</p>
+
+<pre><code>let response = ["status": "ok", "description": "Post Request Succesfully"]
+    return Action.render(JsonView.name, context: response)
+</code></pre>
+
+<p>}</p>
+
+<p>app.listen(9999).onSuccess { server in</p>
+
+<pre><code>print("Express was successfully launched on port", server.port)
+</code></pre>
+
+<p>}</p>
+
+<p>app.run()
+```</p>
+
+<p><code>app.views.register(JsonView())</code>を追加することで、JSON形式のデータを返却できるようになります。<br/>
+また、返却レスポンスは<code>dictionary</code>型で書けばOKなようです。</p>
+
+<h4>クライアントサイドの対応</h4>
+
+<p>続いて、クライアントサイドの準備です。<br/>
+手っ取り早くjQuery使いましょう。<br/>
+<a href="https://jquery.com/">こちらのページ</a>から最新のjQueryをダウンロードしてきます。</p>
+
+<p>そして、<code>index.js</code>をさくっと作っちゃいましょう。</p>
+
+<p>```javascript
+$(function() {</p>
+
+<pre><code>$("#touch").on("click", function() {
+    // Ajax通信
+    ajax();
+});
+
+function ajax() {
+    $.ajax({
+        type: "POST",
+        url: "http://localhost:9999/1",
+        dataType: "json"
+    }).done(function(data) {
+        alert(data.status + "\n" + data.description);
+    }).fail(function(data) {
+        alert("error!!");
+    });
+}
+</code></pre>
+
+<p>});
+```</p>
+
+<p>これらjsファイルを読み込みます。</p>
+
+<p>```html
+// index.stencil
+<html></p>
+
+<pre><code>&lt;head&gt;
+    &lt;title&gt;{{hello}} {{swift}} {{express}}&lt;/title&gt;
+    &lt;link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:700italic,700' rel='stylesheet' type='text/css'&gt;
+    &lt;link href='http://grandbig.github.io/assets/css/main.css' rel='stylesheet' type='text/css'&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;img class="logo" src="http://grandbig.github.io/assets/logo.png"/&gt;
+    &lt;h1&gt;{{hello}} &lt;i&gt;&lt;span class="swift"&gt;{{swift}}&lt;/span&gt; {{express}}&lt;/i&gt;&lt;/h1&gt;
+    &lt;div id="touch"&gt;ここをタッチ！！&lt;/div&gt;
+
+    &lt;script src="http://grandbig.github.io/assets/js/jquery-3.1.0.min.js"&gt;&lt;/script&gt;
+    &lt;script src="http://grandbig.github.io/assets/js/index.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+</code></pre>
+
+<p></html>
+```</p>
+
+<p>これだけで下図のようにPOSTリクエストが通りました。</p>
+
+<p><img src="/images/swift-express-3.png" alt="POSTリクエスト" /></p>
+
+<p>というところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Swift Expressを使ってみよう！]]></title>
@@ -1025,300 +1175,6 @@ Good Bye
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[SwiftでFacebookログインを始めよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/05/14/facebook-login-for-swift/"/>
-    <updated>2016-05-14T15:30:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/05/14/facebook-login-for-swift</id>
-    <content type="html"><![CDATA[<h4>Facebookログインの実装方法</h4>
-
-<p>公式ページの<a href="https://developers.facebook.com/">facebook for developers</a>を見るのが、一番良いと思いますが、<br/>
-あちこちページを飛ばされるので、順を追って説明することにします。<br/>
-※ 本記事で利用しているFacebook SDKは <strong>v4.11.0</strong> です。</p>
-
-<p><strong>1．Facebookログインを選択する</strong></p>
-
-<p><img src="/images/facebook_login_1.png" alt="Facebookログインを選択" /></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p><strong>2．Get Startedを選択する</strong></p>
-
-<p><img src="/images/facebook_login_2.png" alt="Get Startedを選択" /></p>
-
-<p><strong>3．iOSを選択する</strong></p>
-
-<p><img src="/images/facebook_login_3.png" alt="iOSを選択" /></p>
-
-<p><strong>4．利用手順の概要を読む</strong></p>
-
-<p><img src="/images/facebook_login_4.png" alt="利用手順の概要を読む" /></p>
-
-<p><strong>5．Facebookアプリを作成する</strong></p>
-
-<p><img src="/images/facebook_login_5.png" alt="Facebookアプリを作成" /></p>
-
-<p>※ CocoaPodsでFacebook SDKを取り込むので、ダウンロードはしません。</p>
-
-<p>「新しいアプリを作成」を選択すると、アプリ作成画面が表示されるため、任意の値を入力してください。</p>
-
-<p><img src="/images/facebook_login_6.png" alt="任意の値を入力" /></p>
-
-<p><strong>6．作成したFacebookアプリにiOSアプリ用の設定を追加する</strong></p>
-
-<p><img src="/images/facebook_login_7.png" alt="一連のiOSアプリ用設定手順" /></p>
-
-<p><img src="/images/facebook_login_8.png" alt="追加ボタンを選択" /></p>
-
-<p><img src="/images/facebook_login_9.png" alt="iOSを選択" /></p>
-
-<p>追加された設定項目に値を入力して、「変更を保存」ボタンを選択します。</p>
-
-<ul>
-<li>バンドルIDを入力</li>
-<li>シングルサインオンボタンをONに変更</li>
-</ul>
-
-
-<p><img src="/images/facebook_login_10.png" alt="設定項目に値を入力" /></p>
-
-<p>続いて、詳細設定でネイティブアプリでの利用を許可します。</p>
-
-<p><img src="/images/facebook_login_18.png" alt="詳細設定" /></p>
-
-<p><strong>7．Xcodeプロジェクトを用意する</strong></p>
-
-<p>当然のことながら、Xcodeプロジェクトを作成します。</p>
-
-<p><strong>8．<code>Podfile</code>を作成する</strong></p>
-
-<p>```objective-c
-source &lsquo;<a href="https://github.com/CocoaPods/Specs.git">https://github.com/CocoaPods/Specs.git</a>&rsquo;
-platform :ios, &lsquo;8.0&rsquo;</p>
-
-<h1>Facebook</h1>
-
-<p>pod &lsquo;FBSDKCoreKit&rsquo;
-pod &lsquo;FBSDKLoginKit&rsquo;
-pod &lsquo;FBSDKShareKit&rsquo;
-```</p>
-
-<p><strong>9．<code>pod install</code>を実行する</strong></p>
-
-<p><strong>10．Xcodeプロジェクトに必要な設定を追加</strong></p>
-
-<p>必要な設定値を見るために、<br/>
-下図のようにFacebookアプリページのiOS設定項目上の <strong>クイックスタート</strong> を選択します。</p>
-
-<p><img src="/images/facebook_login_11.png" alt="クイックスタートを選択" /></p>
-
-<p>すると、下図のページに遷移します。</p>
-
-<p><img src="/images/facebook_login_12.png" alt="クイックスタートページ" /></p>
-
-<p>この中で重要なのが <strong>Configure your info.plist</strong> です。<br/>
-ここに書かれた設定値をXcodeに追加します。</p>
-
-<p><img src="/images/facebook_login_13.png" alt="Configure your info.plist" /></p>
-
-<p><img src="/images/facebook_login_14.png" alt="Xcodeに設定値を追加" /></p>
-
-<p><strong>11．XcodeプロジェクトにiOS9 SDK対応の設定を追加</strong></p>
-
-<p>iOS9 SDKよりHTTP通信が非推奨となったため、ATS設定を追加する必要があります。</p>
-
-<p><img src="/images/facebook_login_15.png" alt="XcodeにATS設定を追加" /></p>
-
-<p><strong>12．Facebookアプリをホワイトリストに追加する</strong></p>
-
-<p><img src="/images/facebook_login_16.png" alt="ホワイトリストへの追加" /></p>
-
-<p><strong>13．Bridge-Headerファイルを追加</strong></p>
-
-<p>Swift実装なので、Bridge-Headerファイルを追加します。</p>
-
-<p>```objective-c
-// FacebookLoginSample-Bridging-Header.h</p>
-
-<h1>ifndef FacebookLoginSample_Bridging_Header_h</h1>
-
-<h1>define FacebookLoginSample_Bridging_Header_h</h1>
-
-<h1>import &lt;FBSDKCoreKit/FBSDKCoreKit.h></h1>
-
-<h1>import &lt;FBSDKLoginKit/FBSDKLoginKit.h></h1>
-
-<h1>endif /<em> FacebookLoginSample_Bridging_Header_h </em>/</h1>
-
-<p>```</p>
-
-<p><strong>14．<code>AppDelegate.swift</code>に<code>FBSDKApplicationDelegate</code>への接続処理を追加</strong></p>
-
-<p>```objective-c
-// AppDelegate.swift</p>
-
-<p>func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) &ndash;> Bool {</p>
-
-<pre><code>FBSDKApplicationDelegate.sharedInstance().application(application, didFinishLaunchingWithOptions: launchOptions)
-return true;
-</code></pre>
-
-<p>}</p>
-
-<p>func application(application: UIApplication, openURL url: NSURL, sourceApplication: String?, annotation: AnyObject) &ndash;> Bool {</p>
-
-<pre><code>return FBSDKApplicationDelegate.sharedInstance().application(application,
-                                                             openURL: url,
-                                                             sourceApplication: sourceApplication,
-                                                             annotation: annotation)
-</code></pre>
-
-<p>}
-```</p>
-
-<p><strong>15．Facebook SDKが機能しているか確認</strong></p>
-
-<p>Facebook SDKを搭載したつもりでも、一切機能していないと困りますよね？<br/>
-ということでログ収集機能を使ってTestできたりします。<br/>
-様々なログ収集が可能なようですが、公式ページにあるように最も簡単なアプリ起動ログ収集を実装します。</p>
-
-<p>```objective-c
-// AppDelegate.swift
-func applicationDidBecomeActive(application: UIApplication) {</p>
-
-<pre><code>FBSDKAppEvents.activateApp()
-</code></pre>
-
-<p>}
-```</p>
-
-<p><a href="https://www.facebook.com/analytics?__aref_src=devsite&amp;__aref_id=docs_ios_getting_started">アプリ用Analyticsダッシュボード</a>に遷移します。<br/>
-ログを確認したいアプリ > アクティビティー > イベントを選択します。<br/>
-すると「App Launches」の件数を確認することができます。</p>
-
-<p><strong>16．ログインボタンを追加</strong></p>
-
-<p>公式ではソースコードから追加しているので、その想定で書いていますが、もちろんStoryboardも利用できます。</p>
-
-<p>```objective-c
-// ViewController.swift
-import UIKit</p>
-
-<p>class ViewController: UIViewController, FBSDKLoginButtonDelegate {</p>
-
-<pre><code>override func viewDidLoad() {
-    super.viewDidLoad()
-
-    let loginBtn : FBSDKLoginButton = FBSDKLoginButton()
-    self.view.addSubview(loginBtn)
-    loginBtn.center = self.view.center
-    loginBtn.readPermissions = ["public_profile", "email", "user_friends"]
-    loginBtn.delegate = self
-}
-</code></pre>
-
-<p>}</p>
-
-<p>func loginButton(loginButton: FBSDKLoginButton!, didCompleteWithResult result: FBSDKLoginManagerLoginResult!, error: NSError!) {</p>
-
-<pre><code>print("ログイン処理を実行")
-
-if (error != nil) {
-    // エラーが発生した場合
-    print("Process Error !")
-} else if result.isCancelled {
-    // ログインをキャンセルした場合
-    print("User Cancelled")
-} else {
-    // その他
-    print("Login Succeeded")
-}
-</code></pre>
-
-<p>}</p>
-
-<p>func loginButtonDidLogOut(loginButton: FBSDKLoginButton!) {</p>
-
-<pre><code>print("ログアウト処理を実行")
-</code></pre>
-
-<p>}
-```</p>
-
-<p>結果、下図のような遷移が可能となります。</p>
-
-<p><img src="/images/facebook_login_17.png" alt="Facebookログイン" /></p>
-
-<h4>Facebookログインボタンのカスタム化</h4>
-
-<p>因みに、Facebookログインボタンをカスタム化する方法を説明します。<br/>
-折角なので、Storyboardでの方法として載せておきましょう。</p>
-
-<p><strong>1．Storyboardにボタンを配置する</strong></p>
-
-<p><img src="/images/facebook_login_19.png" alt="Storyboardにボタンを配置" /></p>
-
-<p><strong>2．StoryboardからViewControllerにボタンアクションを接続する</strong></p>
-
-<p><img src="/images/facebook_login_20.png" alt="ボタンアクションの接続" /><br/>
-※ 上記キャプチャでは既に下記3の処理を書いてあるけど悪しからず&hellip;</p>
-
-<p><strong>3．ログインアクションを追加</strong></p>
-
-<p>```objective-c
-// ViewController.swift
-@IBAction func loginByFacebookID(sender: AnyObject) {</p>
-
-<pre><code>let loginManager: FBSDKLoginManager = FBSDKLoginManager()
-loginManager.logInWithReadPermissions(["public_profile", "email", "user_friends"], fromViewController: self) { (result, error) in
-    if (error != nil) {
-        // エラーが発生した場合
-        print("Process error")
-    } else if result.isCancelled {
-        // ログインをキャンセルした場合
-        print("Cancelled")
-    } else {
-        // その他
-        print("Login Succeeded")
-    }
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>さて、いかがでしたでしょうか？<br/>
-Facebook SDKも徐々にバージョンアップしていますので、なかなか最新のライブラリに対応した記事がないこともあるでしょう。<br/>
-そんなときに本記事を少しでも参考にしてもらえればと思います。<br/>
-ということで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
 
 ]]></content>
   </entry>
