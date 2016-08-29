@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-08-22T00:31:25+09:00</updated>
+  <updated>2016-08-30T00:14:54+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,244 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[RxSwiftを勉強してみよう！(2)]]></title>
+    <link href="http://grandbig.github.io/blog/2016/08/29/rxswift-2/"/>
+    <updated>2016-08-29T22:40:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/08/29/rxswift-2</id>
+    <content type="html"><![CDATA[<h3>RxSwiftの公式Exampleを覗いてみる(2)</h3>
+
+<p>前回に引き続きRxSwiftの公式Exampleを見ていきたいと思います。<br/>
+公式ソースは<a href="https://github.com/ReactiveX/RxSwift">GitHub: ReactiveX/RxSwift</a>からダウンロードできます。</p>
+
+<h4>GeolocationExample</h4>
+
+<p>位置情報を用いたときのRxの有効性が表現されているのでしょうか？<br/>
+早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>まずは、<code>CoreLocation</code>のコア部分をラップしている<code>GeolocationService</code>です。</p>
+
+<p>```objective-c
+import Foundation
+import CoreLocation
+import RxSwift
+import RxCocoa</p>
+
+<p>class GeolocationService {</p>
+
+<pre><code>static let instance = GeolocationService()
+// (1)
+private (set) var authorized: Driver&lt;Bool&gt;
+private (set) var location: Driver&lt;CLLocationCoordinate2D&gt;
+
+private let locationManager = CLLocationManager()
+
+private init() {
+    locationManager.distanceFilter = kCLDistanceFilterNone
+    locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+
+    // (2)
+    authorized = Observable.deferred { [weak locationManager] in
+        let status = CLLocationManager.authorizationStatus()
+        guard let locationManager = locationManager else {
+            // (3)
+            return Observable.just(status)
+        }
+        return locationManager
+            .rx_didChangeAuthorizationStatus
+            .startWith(status) // (4)
+        }
+        .asDriver(onErrorJustReturn: CLAuthorizationStatus.NotDetermined) // (5)
+        .map {
+            switch $0 {
+                case .AuthorizedAlways:
+                    return true
+                default:
+                    return false
+            }
+        }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記ソースでポイントとなる部分を見ていきます。</p>
+
+<p>(1): <code>Driver</code><br/>
+末尾に参考URLとして上げさせて頂いた記事に書かれているのですが、<br/>
+<code>Driver</code>型で定義することで、エラー発生時の処理<code>asDriver</code>オペレータで続けて書くことができます。</p>
+
+<p>(2): <code>deferred</code><br/>
+ObserverがSubscribe(購読)されたタイミングで動的にObservableを生成します。<br/>
+※ 因みに新規ObservableをSubscribeタイミングで毎回生成します。</p>
+
+<p>(3): <code>just</code><br/>
+引数に取った特定の型を返却するObservableを生成します。<br/>
+この場合は<code>CLAuthorizationStatus</code>型のObservableです。</p>
+
+<p>(4): <code>startWith</code><br/>
+想定したemit対象値の前に何らかの値をemitしたい場合に利用します。<br/>
+この場合、<code>rx_didChangeAuthoricationStatus</code>をemitする前にということでしょうか。<br/>
+(これが恐らく、一番わかりやすい例です → <a href="http://www.introtorx.com/Content/v1.0.10621.0/12_CombiningSequences.html#StartWith">Introduction to Rx: startWith</a>)</p>
+
+<p>(5): <code>asDriver</code><br/>
+(1)で説明した<code>Driver</code>に関係するオペレータです。<br/>
+エラーが発生した場合に<code>onErrorJustReturn</code>で指定した値を返却して処理を続けます。</p>
+
+<p>続いて、<code>GeolocationService</code>を利用している<code>GeolocationViewController</code>です。</p>
+
+<p>```objective-c
+import Foundation
+import UIKit
+import RxSwift
+import RxCocoa</p>
+
+<p>// (6)
+private extension UILabel {</p>
+
+<pre><code>var rx_driveCoordinates: AnyObserver&lt;CLLocationCoordinate2D&gt; {
+    return UIBindingObserver(UIElement: self) { label, location in
+        label.text = "Lat: \(location.latitude)\nLon: \(location.longitude)"
+    }.asObserver()
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// (7)
+private extension UIView {</p>
+
+<pre><code>var rx_driveAuthorization: AnyObserver&lt;Bool&gt; {
+    return UIBindingObserver(UIElement: self) { view, authorized in
+        if authorized {
+            view.hidden = true
+            view.superview?.sendSubviewToBack(view)
+        }
+        else {
+            view.hidden = false
+            view.superview?.bringSubviewToFront(view)
+        }
+    }.asObserver()
+}
+</code></pre>
+
+<p>}</p>
+
+<p>class GeolocationViewController: ViewController {</p>
+
+<pre><code>@IBOutlet weak private var noGeolocationView: UIView!
+@IBOutlet weak private var button: UIButton!
+@IBOutlet weak private var button2: UIButton!
+@IBOutlet weak var label: UILabel!
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    let geolocationService = GeolocationService.instance
+
+    geolocationService.authorized
+        .drive(noGeolocationView.rx_driveAuthorization) // (8)
+        .addDisposableTo(disposeBag)
+
+    geolocationService.location
+        .drive(label.rx_driveCoordinates) // (8)
+        .addDisposableTo(disposeBag)
+
+    button.rx_tap
+        .bindNext { [weak self] in
+            self?.openAppPreferences()
+        }
+        .addDisposableTo(disposeBag)
+
+    button2.rx_tap
+        .bindNext { [weak self] in
+            self?.openAppPreferences()
+        }
+        .addDisposableTo(disposeBag)
+}
+
+private func openAppPreferences() {
+    UIApplication.sharedApplication().openURL(NSURL(string: UIApplicationOpenSettingsURLString)!)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>(6): <code>rx_driveCoordinates</code><br/>
+見ての通りここで<code>UILabel</code>の<code>extension</code>をしています。<br/>
+<code>UILabel</code>の<code>text</code>内容を任意の値で返却するために作成しています。<br/>
+(<code>asObserver</code>をつけることで<code>rx_driveCoordinates</code>という<code>AnyObserver</code>型の変数定義を実現しています。)</p>
+
+<p>(7): <code>rx_driveAuthorization</code><br/>
+同じく<code>UIView</code>の<code>extension</code>をしています。<br/>
+<code>authorized</code>の値でViewの表示/非表示を切り替えています。</p>
+
+<p>(8): <code>drive</code><br/>
+ここで新たにSubscribtionを生成して、引数に取ったObserverに処理の実行を要請しています。</p>
+
+<p>今回のExampleを見てみると下記のようなメリットが感じられます。</p>
+
+<ul>
+<li>Rxを利用することで非同期処理を直列的に書ける</li>
+<li>エラーハンドリングを直列的に書けることで後処理も直列的に統一して見れる(<code>jQuery</code>の<code>ajax</code>メソッドの<code>always</code>的なイメージ)</li>
+<li>処理の拡張がRxで用意されたメソッドで比較的に容易に書ける</li>
+</ul>
+
+
+<h3>Rxで把握しておきたいAPI一覧</h3>
+
+<p>RxSwiftをインストールすると中にドキュメントが含まれています。<br/>
+<a href="https://github.com/ReactiveX/RxSwift/blob/master/Documentation/API.md">API.md</a>を読むだけでもかなり理解が進むと思われます。</p>
+
+<p>特に言語がSwiftであるが故に他のRxフレームワークとはメソッド名が異なる場合があります。<br/>
+(<code>defer</code>でなく<code>deferred</code>、<code>repeat</code>でなく<code>repeatElement</code>など)</p>
+
+<p>一度は目を通しておくと良いかもしれません。<br/>
+と言いつつ、筆者も全然見れていませんが&hellip;</p>
+
+<h3>まとめ</h3>
+
+<p>さて、今回は公式Exampleの1つを見るだけに留まりましたが如何でしたでしょうか？<br/>
+筆者としてはRxの使い方の理解がだいぶ進んだ気がしております。<br/>
+引き続きRxに関する勉強は続けていきたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://qiita.com/yuzushioh/items/0a4483502c5c8569790a">RxSwift/RxCocoa Driver Unitについてまとめてみた。</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[RxSwiftを勉強してみよう！]]></title>
@@ -1109,238 +1347,6 @@ Android Studio 2.2からJava8のラムダ式サポートなんて話も聞こえ
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[SwiftとJava8とJavaScriptでreduce / filter / map / flatMap]]></title>
-    <link href="http://grandbig.github.io/blog/2016/06/12/filter-map/"/>
-    <updated>2016-06-12T21:01:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/06/12/filter-map</id>
-    <content type="html"><![CDATA[<h4>SwiftとJava8とJavaScriptを比較してみよう！</h4>
-
-<p>本日は前々から気になっていた『SwiftとJava8とJavaScript』の比較をしてみたいと思います。<br/>
-と言っても難しいことをやるわけではなく、今回はreduce, filter, map, flatMapメソッドの書き方を比較してみます。</p>
-
-<p>筆者個人としては、どうしてもSwiftやJava8から書き方やメソッドの意味の理解を始めようとすると時間がかかってしまいます。<br/>
-なので、JavaScriptから入って比較することで理解が促進することがあるのです。</p>
-
-<p>では早速見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>reduceメソッド</h4>
-
-<p>まずは<code>reduce</code>メソッドです。</p>
-
-<h5>JavaScript</h5>
-
-<p>```javascript
-var array = [1, 2, 3, 4, 5];
-var reduced = array.reduce(function(previus, current) {</p>
-
-<pre><code>return previous + current;
-</code></pre>
-
-<p>}, 0);</p>
-
-<p>// 結果 &ndash;> 15
-```</p>
-
-<h5>Swift</h5>
-
-<p>```objective-c
-let array = [1, 2, 3, 4, 5]
-let reduced = array.reduce(0) { (previous, current) &ndash;> Int in</p>
-
-<pre><code>previous + current
-</code></pre>
-
-<p>}</p>
-
-<p>// 結果 &ndash;> 15
-```</p>
-
-<h5>Java8</h5>
-
-<p>```java
-List<Integer> integerList = Arrays.asList(1, 2, 3, 4, 5);
-Optional<Integer> sum = list.stream().reduce((previous, current) &ndash;> previous + current);</p>
-
-<p>// 結果 &ndash;> 15
-```</p>
-
-<h4>filterメソッド</h4>
-
-<p>次に<code>filter</code>メソッドです。</p>
-
-<h5>JavaScript</h5>
-
-<p>```javascript
-var array = [1, 50, 800, 3, 44];
-var filtered = array.filter(function(elem) {</p>
-
-<pre><code>return elem &gt;= 10;
-</code></pre>
-
-<p>});</p>
-
-<p>// 結果 &ndash;> [50, 800, 44]
-```</p>
-
-<h5>Swift</h5>
-
-<p>```objective-c
-let array = [1, 50, 800, 3, 44]
-var filtered = array.filter { (elem) &ndash;> Bool in</p>
-
-<pre><code>elem &gt;= 10
-</code></pre>
-
-<p>}</p>
-
-<p>// 結果 &ndash;> [50, 800, 44]
-```</p>
-
-<h5>Java8</h5>
-
-<p>```java
-List<Integer> list = Arrays.asList(1, 50, 800, 3, 44);
-List<Integer> filteredList = new ArrayList<Integer>();
-list.stream().filter(elem &ndash;> elem >= 10).forEach(elem &ndash;> filteredList.add(elem));</p>
-
-<p>// 結果 &ndash;> [50, 800, 44]
-```</p>
-
-<h4>mapメソッド</h4>
-
-<p>続いて<code>map</code>メソッドです。</p>
-
-<h5>JavaScript</h5>
-
-<p>```javascript
-var array = [1, 2, 3, 4, 5];
-var mapped = array.map(function(elem) {</p>
-
-<pre><code>return elem * elem;
-</code></pre>
-
-<p>});</p>
-
-<p>// 結果 &ndash;> [1, 4, 9, 16, 25]
-```</p>
-
-<h5>Swift</h5>
-
-<p>```objective-c
-let array = [1, 2, 3, 4, 5]
-var mapped = array.map { (elem) &ndash;> Int in</p>
-
-<pre><code>elem * elem
-</code></pre>
-
-<p>}</p>
-
-<p>// 結果 &ndash;> [1, 4, 9, 16, 25]
-```</p>
-
-<h5>Java8</h5>
-
-<p>```java
-List<Integer> list = Arrays.asList(1, 2, 3, 4, 5);
-List<Integer> mappedList = new ArrayList<Integer>();
-list.stream().map(elem &ndash;> elem * elem).forEach(elem &ndash;> mappedList.add(elem));</p>
-
-<p>// 結果 &ndash;> [1, 4, 9, 16, 25]
-```</p>
-
-<h4>flatMapメソッド</h4>
-
-<p>最後に<code>flatMap</code>メソッドです。<br/>
-(と言いつつ、処理の意味的には<code>flatten</code>しか入っていませんね&hellip;)</p>
-
-<h5>JavaScript</h5>
-
-<p>JavaScriptでは標準で<code>flatMap</code>メソッドは実装されていません。<br/>
-自作するしかないわけですが、<code>flatMap = flatten + map</code>なので下記のように書けます。</p>
-
-<p>```javascript
-var listArrayList = [[1, 2], [3], [4, 5]]
-var flatMappedList = Array.prototype.concat.apply([], listArrayList).map(function(elem) {</p>
-
-<pre><code>return elem;
-</code></pre>
-
-<p>});</p>
-
-<p>// 結果 &ndash;> [1, 2, 3, 4, 5]
-```</p>
-
-<h5>Swift</h5>
-
-<p>```objective-c
-var listArrayList:[Int]] = []
-let list1: [Int] = [1, 2]
-let list2: [Int] = [3]
-let list3: [Int] = [4, 5]
-listArrayList.append(list1)
-listArrayList.append(list2)
-listArrayList.append(list3)</p>
-
-<p>let flatMappedList = listArrayList.flatMap { (elem) &ndash;> [Int] in</p>
-
-<pre><code>return elem
-</code></pre>
-
-<p>}</p>
-
-<p>// 結果 &ndash;> [1, 2, 3, 4, 5]
-```</p>
-
-<h5>Java8</h5>
-
-<p>```java
-List&lt;List<Integer>> listArrayList = new ArrayList&lt;List<Integer>>();
-List<Integer> list1 = Arrays.asList(1, 2);
-List<Integer> list2 = Arrays.asList(3);
-List<Integer> list3 = Arrays.asList(4, 5);
-listArrayList.add(list1);
-listArrayList.add(list2);
-listArrayList.add(list3);
-List<Integer> flatMappedList = new ArrayList<Integer>();
-listArrayList.stream().flatMap(elem &ndash;> elem.stream()).forEach(elem &ndash;> flatMappedList.add(elem));</p>
-
-<p>// 結果 &ndash;> [1, 2, 3, 4, 5]
-```</p>
-
-<p>さていかがでしたでしょうか？<br/>
-1つの言語を極めれば、何となく他の言語でも書き方がわかるという話を聞いたりすると思うのですが、こういったことの延長戦にある話なんだろうなと思ったりました。<br/>
-と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
 
 ]]></content>
   </entry>
