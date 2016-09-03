@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-08-30T19:11:01+09:00</updated>
+  <updated>2016-09-03T22:28:28+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,321 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[ReSwiftを勉強してみよう！(1)]]></title>
+    <link href="http://grandbig.github.io/blog/2016/09/03/reswift-1/"/>
+    <updated>2016-09-03T19:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/09/03/reswift-1</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日は最近JavaScript界では浸透してきている<code>Redux</code>についてSwiftを通して勉強していきたいと思います。<br/>
+<code>Redux</code>に関する日本語の記事はそれなりにあるもののSwift版ライブラリである<code>ReSwift</code>に関する日本語の記事は少ないため、筆者が少しでも記事を増やせたら良いなという思いがあります。<br/>
+と言いつつも、いきなり有効性の高い有良記事を書くことはハードルが高いため、簡単な勉強から始めて行く次第です。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>ReSwiftとは</h3>
+
+<p><code>ReSwift</code>とは<code>Redux</code>のSwift版ライブラリです。<br/>
+<a href="https://github.com/ReSwift/ReSwift">GitHub: ReSwift/ReSwift</a>が公式ページとなります。</p>
+
+<p>上記公式ページのイントロをざっくり訳すと&hellip;<br/>
+(意味が間違っていたらごめんなさい&hellip;)</p>
+
+<p>ReSwiftはSwiftで<a href="https://github.com/reactjs/redux">Redux</a>ライクな一方向のデータフローアーキテクチャを実装したものです。ReSwiftを使うことで、次の3つの関係性でアプリを構成することを手助けします。</p>
+
+<ul>
+<li><strong>State</strong> : 全てのアプリの状態を管理します。複雑な状態の管理やデバッグのし易さを手助けするなど、メリットは数多くあります。</li>
+<li><strong>Views</strong> : 状態変化したときにViewを更新します。状態に対してシンプルなビジュアルを実現します。</li>
+<li><strong>State Changes</strong> : <code>actions</code>を通した状態変化の実行のみを担当します。<code>actions</code>は状態変化を表現する小さなモジュールを指します。限られた状態変化を担うため、大人数で開発する際にアプリを簡単に理解することができるメリットがあります。</li>
+</ul>
+
+
+<p>また、ReSwiftは下記の3つの原則に従って構成されます。</p>
+
+<ul>
+<li><strong>The Store</strong> : アプリの状態(State)を保持するアプリ内で唯一の存在です。StoreにActionsが発送されることによってのみ状態(State)は変化します。状態(State)が変化したら必ず、Storeが全てのオブザーバに通知します。</li>
+<li><strong>Actions</strong> : アプリの状態(State)がどんな変化なのかを宣言します。Storeによって消費され、Reducerに渡されます。Reducerは各Actionで引き起こされる異なる状態変化を実装することによってActionを扱います。</li>
+<li><strong>Reducers</strong> : 現在のActionとStateに基いて、新しいStateを生成する純粋な関数を提供します。</li>
+</ul>
+
+
+<p>というように、何となく、この辺りを理解すれば良さそうですね。<br/>
+まずは、公式ページに載っている最も簡単な『Counterサンプルアプリ』から上記の内容を直にコードで理解していきたいと思います。</p>
+
+<h3>CounterサンプルアプリからReSwiftを理解しよう</h3>
+
+<p>公式ページのREADMEには<a href="https://github.com/ReSwift/CounterExample">CounterExample</a>が紹介されています。<br/>
+公開されているサンプルアプリの中で最も簡単なサンプルなはずなので、これを見ていきたいと思います。</p>
+
+<p>最終的なフォルダ構成は下記になります。<br/>
+(関係のないファイルは除いています。)</p>
+
+<p><code>objective-c
+ReSwiftSample
+┣━━ State
+┃   ┗━━ AppState.swift
+┣━━ Actions
+┃   ┗━━ CounterActions.swift
+┣━━ Reducers
+┃   ┗━━ CounterReducers.swift
+┣━━ ViewController.swift
+┣━━ AppDelegate.swift
+┗━━ Main.storyboard
+</code></p>
+
+<p>では早速、1つずつ見ていきましょう。</p>
+
+<h4>ReSwiftをCocoaPodsでインストール</h4>
+
+<p>例によってCocoaPodsでインストールします。</p>
+
+<p>```objective-c
+use_frameworks!</p>
+
+<p>target &lsquo;ReSwiftSample&rsquo; do</p>
+
+<pre><code>pod 'ReSwift'
+</code></pre>
+
+<p>end</p>
+
+<p>target &lsquo;ReSwiftSampleTests&rsquo; do</p>
+
+<pre><code>pod 'ReSwift'
+</code></pre>
+
+<p>end</p>
+
+<p>target &lsquo;ReSwiftSampleUITests&rsquo; do</p>
+
+<pre><code>pod 'ReSwift'
+</code></pre>
+
+<p>end
+```</p>
+
+<p>これで<code>pod install</code>すればOKです。</p>
+
+<h4>State</h4>
+
+<p>準備が整ったところでコードを具体的に見ていきましょう。
+まずは<code>AppState.swift</code>を見ていきます。</p>
+
+<p>```objective-c
+//AppState.swift
+import Foundation
+import ReSwift</p>
+
+<p>struct AppState: StateType {</p>
+
+<pre><code>var counter: Int
+</code></pre>
+
+<p>}
+```</p>
+
+<p>今回のアプリは単純なカウントアップアプリなので、上記では<code>AppState</code>の1つのプロパティとして <strong>カウントの状態(counter)</strong> を定義しています。</p>
+
+<h4>Action</h4>
+
+<p>続いて<code>CounterActions.swift</code>を見ていきます。</p>
+
+<p>```objective-c
+// CounterActions.swift
+import Foundation
+import ReSwift</p>
+
+<p>struct CounterActionIncrease: Action {}
+struct CounterActionDecrease: Action {}
+```</p>
+
+<p>カウントアップの動作には <strong>『増加(Increase)』</strong> と <strong>『減少(Decrease)』</strong> の2つがあるため、それぞれのActionを定義します。<br/>
+ここで注意したいのはActionは関数(<code>func</code>)ではなく構造体(<code>struct</code>)であるということです。<br/>
+先に述べたようにActionは状態の宣言であり、Reducerに渡されて、処理を判別するために利用されるからです。</p>
+
+<h4>Reducer</h4>
+
+<p>そして、<code>CounterReducers.swift</code>を見ていきます。</p>
+
+<p>```objective-c
+// CounterReducers.swift
+struct CounterReducer: Reducer {</p>
+
+<pre><code>func handleAction(action: Action, state: AppState?) -&gt; AppState {
+    var state = state ?? AppState()
+
+    switch action {
+        case _ as CounterActionIncrease:
+            state.counter += 1
+        case _ as CounterActionDecrease:
+            state.counter -= 1
+        default:
+            break
+    }
+
+    return state
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>先に述べましたが、Reducerは引数として渡されたStateとActionの2つから新規のStateを返却します。<br/>
+重要なのは、 <strong>新規のStateを返却する</strong> ということです。<br/>
+これは<code>var state = state ?? AppState()</code>を見るとわかるかと思います。<br/>
+既に<code>state</code>オブジェクトがある場合は値渡しで新規<code>AppState</code>型に内容を格納しています。<br/>
+もし、<code>state</code>オブジェクトがなければ、初期化して作成しています。</p>
+
+<p>そして<code>switch</code>文で各Actionごとに最適な処理を実行しています。<br/>
+(今回の場合は『Increase』と『Decrease』)</p>
+
+<h4>Store</h4>
+
+<p>モジュールの作成が完了したので、実装していきます。<br/>
+先に述べたように<code>Store</code>はアプリの状態(State)を保持するアプリ内で <strong>唯一の存在</strong> です。<br/>
+よって、<code>AppDelegate.swift</code>で次のように定義します。</p>
+
+<p>```objective-c
+// AppDelegate.swift
+import UIKit
+import ReSwift</p>
+
+<p>let mainStore = Store<AppState>(</p>
+
+<pre><code>reducer: CounterReducer(),
+state: nil
+</code></pre>
+
+<p>)</p>
+
+<p>@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記では<code>Store</code>型の<code>mainStore</code>を定義しています。<br/>
+Reducerとして<code>CounterReducer</code>を定義しています。<br/>
+Stateは初期値<code>nil</code>として定義しています。</p>
+
+<h4>View層への実装</h4>
+
+<p>最後にユーザの操作が走った際の処理の実装について見ていきます。<br/>
+状態変化の監視開始/終了を下記で実施します。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import ReSwift</p>
+
+<p>class ViewController: UIViewController, StoreSubscriber {</p>
+
+<pre><code>override func viewWillAppear(animated: Bool) {
+    super.viewWillAppear(animated)
+    mainStore.subscribe(self)   // 状態変化の監視開始
+}
+
+override func viewWillDisappear(animated: Bool) {
+    super.viewWillDisappear(animated)
+    mainStore.unsubscribe(self) // 状態変化の監視終了
+}
+
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いて、ユーザ操作からのReducerへのAction発送部分です。</p>
+
+<p>```objective-c
+// ViewController.swift
+@IBAction func increaseButtonTapped(sender: AnyObject) {</p>
+
+<pre><code>mainStore.dispatch(
+    CounterActionIncrease()
+)
+</code></pre>
+
+<p>}</p>
+
+<p>@IBAction func decreaseButtonTapped(sender: AnyObject) {</p>
+
+<pre><code>mainStore.dispatch(
+    CounterActionDecrease()
+)
+</code></pre>
+
+<p>}
+```</p>
+
+<ul>
+<li>『増加』ボタンタップ時にStoreが『CounterActionIncreaseというAction』をReducerへdispatch(発送)します。</li>
+<li>『減少』ボタンタップ時にStoreが『CounterActionDecreaseというAction』をReducerへdispatch(発送)します。</li>
+</ul>
+
+
+<p>そして、新しいStateが返却された際に実行すべき処理を書くために<code>StoreSubscriber</code>プロトコルに<code>newState</code>メソッドが定義されています。<br/>
+よって、</p>
+
+<p>```objective-c
+// ViewController.swift
+class ViewController: UIViewController, StoreSubscriber {</p>
+
+<pre><code>@IBOutlet weak var counterLabel: UILabel!
+
+...
+
+func newState(state: AppState) {
+    counterLabel.text = "\(state.counter)"
+}
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のように実装することで<code>newState</code>メソッド内で任意の処理を書くことができます。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか？<br/>
+今回は公式の最も簡単なサンプルについて見ていきましたが、少々ReSwiftの扱い方が見えてきた気がします。<br/>
+また、ReSwiftが有能であるが故にReduxであればもっと自分で書かなければいけなさそうなところもカバーしてくれているように見えました。<br/>
+実践での活用なRxSwift同様にいろいろなリスク管理的な意味で難しいのかもしれませんが、もっとReSwiftを理解することで想定を上回るメリットを示し、実践で利用できるかもしれません。</p>
+
+<p>そんなことを夢見ながら今後は、別の公式サンプルを見つつ理解を深めていきたい思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[RxSwiftを勉強してみよう！(3)]]></title>
@@ -1014,463 +1329,6 @@ function ajax() {
 <p><img src="/images/swift-express-3.png" alt="POSTリクエスト" /></p>
 
 <p>というところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Swift Expressを使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/07/10/swift-express/"/>
-    <updated>2016-07-10T22:56:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/07/10/swift-express</id>
-    <content type="html"><![CDATA[<h3>今注目のサーバーサイドSwift</h3>
-
-<p>本日はサーバーサイドSwiftのWebフレームワークの1つである<a href="https://github.com/crossroadlabs/Express">Swift Express</a>を紹介したいと思います。<br/>
-近年、AppleからSwiftのOSS化が発表されたことで一気に動き出したのがGitHub上でのWebフレームワーク作成合戦です。<br/>
-筆者が知っているだけでも、</p>
-
-<ul>
-<li><a href="https://github.com/PerfectlySoft/Perfect">Perfect</a></li>
-<li><a href="https://github.com/qutheory/vapor">Vapor</a></li>
-<li><a href="https://github.com/IBM-Swift/Kitura-Starter-Bluemix">Kitura</a></li>
-<li><a href="https://github.com/slimane-swift">Sliman</a></li>
-</ul>
-
-
-<p>などが上げられます。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>そんな中、筆者の目に止まったのが、 <strong>Swift Express</strong> でした。<br/>
-本ブログでも度々 <strong>Node.js</strong> を触ったことがあると述べてきたように、筆者は <strong>Node.js</strong> でサーバサイド実装の経験があります。<br/>
-その際に利用していたWebフレームワークに<a href="http://expressjs.com/">Express</a>というものがありました。<br/>
-Expressは <strong>Node.js</strong> でいとも簡単にベースとなるサーバサイド実装を提供してくれます。</p>
-
-<p>Swiftの経験はあるものの、サーバサイドSwiftの実装経験がない筆者にとっては『願ってもないWebフレームワークじゃないか！』ということで <strong>Swift Express</strong> に惹かれたのです。<br/>
-さて、本日はそんな <strong>Swift Express</strong> を見ていきたいと思います。</p>
-
-<h3>Swift Expressをインストールしよう</h3>
-
-<p>まずは、Swift Expressをインストールしてみます。<br/>
-<code>homebrew</code>でインストールします。</p>
-
-<p>```javascript
-// 手順(1)
-brew tap crossroadlabs/tap</p>
-
-<p>// 手順(2)
-brew install swift-express
-```</p>
-
-<p>手順(1)を実行すると、下記のように結果が表示されます。</p>
-
-<p><code>javascript
-==&gt; Tapping crossroadlabs/tap
-Cloning into '/usr/local/Library/Taps/crossroadlabs/homebrew-tap'...
-remote: Counting objects: 8, done.
-remote: Compressing objects: 100% (7/7), done.
-remote: Total 8 (delta 0), reused 6 (delta 0), pack-reused 0
-Unpacking objects: 100% (8/8), done.
-Checking connectivity... done.
-Tapped 2 formulae (34 files, 72.7K)
-</code></p>
-
-<p>続いて、手順(2)を実行すると、下記のように結果が表示されます。</p>
-
-<p>```javascript
-==> Installing swift-express from crossroadlabs/tap
-==> Installing dependencies for crossroadlabs/tap/swift-express: openssl, cmake, libevent, libevhtp, carthage
-==> Installing crossroadlabs/tap/swift-express dependency: openssl
-==> Downloading <a href="https://homebrew.bintray.com/bottles/openssl-1.0.2h_1.el_capitan.bottle.tar.gz">https://homebrew.bintray.com/bottles/openssl-1.0.2h_1.el_capitan.bottle.tar.gz</a></p>
-
-<h6>################################################################## 100.0%</h6>
-
-<p>==> Pouring openssl-1.0.2h_1.el_capitan.bottle.tar.gz
-==> Caveats
-A CA file has been bootstrapped using certificates from the system
-keychain. To add additional certificates, place .pem files in
-  /usr/local/etc/openssl/certs</p>
-
-<p>  and run</p>
-
-<pre><code>/usr/local/opt/openssl/bin/c_rehash
-
-This formula is keg-only, which means it was not symlinked into /usr/local.
-
-Apple has deprecated use of OpenSSL in favor of its own TLS and crypto libraries
-
-Generally there are no consequences of this for you. If you build your
-own software and it requires this formula, you'll need to add to your
-build variables:
-
-    LDFLAGS:  -L/usr/local/opt/openssl/lib
-    CPPFLAGS: -I/usr/local/opt/openssl/include
-</code></pre>
-
-<p>==> Summary
-🍺  /usr/local/Cellar/openssl/1.0.2h_1: 1,691 files, 12M
-==> Installing crossroadlabs/tap/swift-express dependency: cmake
-==> Downloading <a href="https://homebrew.bintray.com/bottles/cmake-3.6.0.el_capitan.bottle.tar.gz">https://homebrew.bintray.com/bottles/cmake-3.6.0.el_capitan.bottle.tar.gz</a></p>
-
-<h6>################################################################## 100.0%</h6>
-
-<p>==> Pouring cmake-3.6.0.el_capitan.bottle.tar.gz
-==> Caveats
-Emacs Lisp files have been installed to:
-  /usr/local/share/emacs/site-lisp/cmake
-  ==> Summary
-  🍺  /usr/local/Cellar/cmake/3.6.0: 2,028 files, 27.8M
-  ==> Installing crossroadlabs/tap/swift-express dependency: libevent
-  ==> Downloading <a href="https://homebrew.bintray.com/bottles/libevent-2.0.22.el_capitan.bottle.tar.gz">https://homebrew.bintray.com/bottles/libevent-2.0.22.el_capitan.bottle.tar.gz</a></p>
-
-<h6>################################################################## 100.0%</h6>
-
-<p>==> Pouring libevent-2.0.22.el_capitan.bottle.tar.gz
-🍺  /usr/local/Cellar/libevent/2.0.22: 53 files, 1.6M
-==> Installing crossroadlabs/tap/swift-express dependency: libevhtp
-==> Downloading <a href="https://github.com/ellzey/libevhtp/archive/1.2.10.tar.gz">https://github.com/ellzey/libevhtp/archive/1.2.10.tar.gz</a>
-==> Downloading from <a href="https://codeload.github.com/ellzey/libevhtp/tar.gz/1.2.10">https://codeload.github.com/ellzey/libevhtp/tar.gz/1.2.10</a></p>
-
-<h6>################################################################## 100.0%</h6>
-
-<p>Warning: SHA1 support is deprecated and will be removed in a future version.
-Please switch this formula to SHA256.
-==> cmake . -DEVHTP_DISABLE_REGEX:STRING=ON -DEVHTP_BUILD_SHARED:STRING=ON -DCMAKE_C_FLAGS_RELEASE=-DNDEBUG -DCMAKE_CXX_FLAGS_RELEASE=-DNDEBUG -DCMAKE_INSTALL_PREFIX=/usr/local/Cell
-==> make install
-🍺  /usr/local/Cellar/libevhtp/1.2.10: 9 files, 151.5K, built in 48 seconds
-==> Installing crossroadlabs/tap/swift-express dependency: carthage
-==> Downloading <a href="https://homebrew.bintray.com/bottles/carthage-0.17.2.el_capitan.bottle.tar.gz">https://homebrew.bintray.com/bottles/carthage-0.17.2.el_capitan.bottle.tar.gz</a></p>
-
-<h6>################################################################## 100.0%</h6>
-
-<p>==> Pouring carthage-0.17.2.el_capitan.bottle.tar.gz
-🍺  /usr/local/Cellar/carthage/0.17.2: 45 files, 11.9M
-==> Installing crossroadlabs/tap/swift-express
-==> Cloning <a href="https://github.com/crossroadlabs/ExpressCommandLine.git">https://github.com/crossroadlabs/ExpressCommandLine.git</a>
-Cloning into &lsquo;/Users/kato_takahiro/Library/Caches/Homebrew/swift-express&mdash;git&rsquo;&hellip;
-remote: Counting objects: 67, done.
-remote: Compressing objects: 100% (63/63), done.
-remote: Total 67 (delta 21), reused 25 (delta 1), pack-reused 0
-Unpacking objects: 100% (67/67), done.
-Checking connectivity&hellip; done.
-Note: checking out &lsquo;fae821f4d52c9dfb4e4c34ab0a4297ea700c9db1&rsquo;.</p>
-
-<p>You are in &lsquo;detached HEAD&rsquo; state. You can look around, make experimental
-changes and commit them, and you can discard any commits you make in this
-state without impacting any branches by performing another checkout.</p>
-
-<p>If you want to create a new branch to retain commits you create, you may
-do so (now or later) by using -b with the checkout command again. Example:</p>
-
-<pre><code>  git checkout -b &lt;new-branch-name&gt;
-
-==&gt; Checking out tag 0.2.2
-==&gt; carthage update --platform Mac --no-use-binaries --no-build
-==&gt; rm -rf Carthage/Checkouts/Commandant/Carthage/Checkouts/Nimble Carthage/Checkouts/Commandant/Carthage/Checkouts/Quick
-==&gt; carthage build --platform Mac
-==&gt; xcodebuild SYMROOT=build
-==&gt; Caveats
-.app bundles were installed.
-Run `brew linkapps swift-express` to symlink these to /Applications.
-==&gt; Summary
-🍺  /usr/local/Cellar/swift-express/0.2.2: 30 files, 7.3M, built in 3 minutes 5 seconds
-</code></pre>
-
-<p>```</p>
-
-<p>さて、見過ごしがちですが、<br/>
-最後の方に『<code>brew linkapps swift-express</code> to symlink these to /Applications.』と書かれているので、</p>
-
-<p><code>brew linkapps swift-express</code>を実行しておきましょう。</p>
-
-<p>ここまで来たら、<code>swift-express</code>を実行してください。</p>
-
-<p>```javascript
-Available commands:</p>
-
-<p>bootstrap   download and build Express project dependencies
-build       build Express project
-help        Display general or command-specific help
-init        Creates new Express application project
-run         run Express project
-update      update and build Express project dependencies
-version     Display the current version of Swift Express Command Line
-```</p>
-
-<p>のようにコマンド種別が表示されたら、正しく <strong>Swift Express</strong> がインストールされた証拠です。</p>
-
-<h3>Swift Expressのプロジェクトを作ろう！</h3>
-
-<p>Swift Expressのインストールが完了したので、早速プロジェクト作成しましょう。</p>
-
-<p>```javascript
-// 手順(1)
-swift-express init &lt;プロジェクト名></p>
-
-<p>// 手順(2)
-cd &lt;プロジェクト名></p>
-
-<p>// 手順(3)
-swift-express bootstrap
-```</p>
-
-<p>手順(1)を実行すると、下記の結果が表示されます。</p>
-
-<p><code>javascript
-Cloning into '/var/folders/hj/p9y9d00s3sb5nn_x04961z2m0000gn/T/swift-express-827699'...
-remote: Counting objects: 124, done.
-remote: Total 124 (delta 0), reused 0 (delta 0), pack-reused 124
-Receiving objects: 100% (124/124), 79.66 KiB | 0 bytes/s, done.
-Resolving deltas: 100% (33/33), done.
-Checking connectivity... done.
-Task: "init" done.
-</code></p>
-
-<p>続いて、手順(2)で作成したプロジェクトフォルダ配下に移動すると、</p>
-
-<p><code>javascript
-HelloExpress
-  ┣━━ Cartfile
-  ┣━━ HelloExpress.xcodeproj
-  ┣━━ Info.plist
-  ┣━━ Package.swift
-  ┣━━ app
-  ┃    ┗━━ main.swift
-  ┣━━ dist
-  ┣━━ public
-  ┃    ┣━━ css
-  ┃    ┃    ┗━━ main.css
-  ┃    ┗━━ logo.png
-  ┗━━ views
-</code></p>
-
-<p>といった形で構成されていることを確認できます。</p>
-
-<p>最後に手順(3)を実行すると、下記の結果が表示されます。<br/>
-(ここが最も時間のかかる工程になります。)</p>
-
-<p>```javascript
-<strong><em> No Cartfile.resolved found, updating dependencies
-</em></strong> Cloning Express
-<strong><em> Cloning Stencil
-</em></strong> Cloning GRMustache.swift
-<strong><em> Cloning CEVHTP
-</em></strong> Cloning PathToRegex
-<strong><em> Cloning Regex
-</em></strong> Cloning TidyJSON
-<strong><em> Cloning BrightFutures
-</em></strong> Cloning PathKit
-<strong><em> Cloning ExecutionContext
-</em></strong> Cloning Result
-<strong><em> Checking out CEVHTP at &ldquo;0.1.0&rdquo;
-</em></strong> Checking out ExecutionContext at &ldquo;0.3.1&rdquo;
-<strong><em> Checking out Result at &ldquo;1.0.3&rdquo;
-</em></strong> Checking out GRMustache.swift at &ldquo;bf7d6031d7e0dd862519eaba2b36b2e11a0d25a9&rdquo;
-<strong><em> Checking out Regex at &ldquo;0.5.2&rdquo;
-</em></strong> Checking out PathToRegex at &ldquo;0.2.2&rdquo;
-<strong><em> Checking out PathKit at &ldquo;0.6.1&rdquo;
-</em></strong> Checking out BrightFutures at &ldquo;0.4.0&rdquo;
-<strong><em> Checking out Stencil at &ldquo;0.5.3&rdquo;
-</em></strong> Checking out Express at &ldquo;0.3.6&rdquo;
-*** Checking out TidyJSON at &ldquo;1.1.0&rdquo;</p>
-
-<p>&lt;省略></p>
-
-<p>/Users/<strong><strong>**/</strong></strong>/HelloExpress/Carthage/Checkouts/Express/Express/Content.swift:39:5: warning: use of &lsquo;typealias&rsquo; to declare associated types is deprecated; use &lsquo;associatedtype&rsquo; instead
-Task: &ldquo;bootstrap&rdquo; done.
-```</p>
-
-<p>これでプロジェクトの作成は完了です。</p>
-
-<h3>プロジェクトを実行してみよう！</h3>
-
-<p>先ほど作成したプロジェクトを実行してみたいと思います。</p>
-
-<p>```javascript
-// 手順(1)
-swift-express build</p>
-
-<p>// 手順(2)
-swift-express run
-```</p>
-
-<p>早速、ビルドを実行するために手順(1)のコマンドを叩いてください。<br/>
-すると、</p>
-
-<p>```javascript
-Building HelloExpress in Debug mode&hellip;</p>
-
-<p>&lt;省略></p>
-
-<p>=== BUILD TARGET HelloExpress OF PROJECT HelloExpress WITH CONFIGURATION Debug ===</p>
-
-<p>&lt;省略></p>
-
-<p><strong> BUILD SUCCEEDED </strong></p>
-
-<p>Task: &ldquo;build&rdquo; done.
-```</p>
-
-<p>という結果が表示されます。<br/>
-問題がなければ<code>BUILD SUCCEEDED</code>が表示されるはずです。</p>
-
-<p>ビルドが成功したら、手順(2)を実行しましょう。<br/>
-すると、</p>
-
-<p><code>javascript
-Running HelloExpress...
-Express was successfully launched on port 9999
-</code></p>
-
-<p>のように表示されます。デフォルトでポート番号が <strong>9999</strong> になっていることがわかると思います。<br/>
-<code>http://localhost:9999</code>にアクセスしてみると、</p>
-
-<p><img src="/images/swift-express-1.png" alt="Swift Express TOPページ" /></p>
-
-<p>という画面が得られます。</p>
-
-<p>因みにですが、Xcodeからも<code>Build</code>＆<code>Run</code>はできます。</p>
-
-<p><img src="/images/swift-express-2.png" alt="XcodeからBuild &amp; Run" /></p>
-
-<h3>Swift Expressの中身を見てみよう！</h3>
-
-<p>最後にざっくり中身のソースを見てみようと思います。<br/>
-Swift Expressのメインソースである<code>main.swift</code>を見てみます。</p>
-
-<p>```javascript
-// app/main.swift</p>
-
-<p>import Express</p>
-
-<p>let app = express()</p>
-
-<p>// (1)
-app.views.register(StencilViewEngine())</p>
-
-<p>// (2)
-app.get(&ldquo;/assets/:file+&rdquo;, action: StaticAction(path: &ldquo;public&rdquo;, param:&ldquo;file&rdquo;))</p>
-
-<p>// (3)
-app.get(&ldquo;/&rdquo;) { (request:Request<AnyContent>)&ndash;>Action<AnyContent> in</p>
-
-<pre><code>return Action&lt;AnyContent&gt;.render("index", context: ["hello": "Hello,", "swift": "Swift", "express": "Express!"])
-</code></pre>
-
-<p>}</p>
-
-<p>// (4)
-app.listen(9999).onSuccess { server in</p>
-
-<pre><code>print("Express was successfully launched on port", server.port)
-</code></pre>
-
-<p>}</p>
-
-<p>app.run()
-```</p>
-
-<p>これは <strong>Node.js</strong> 経験者としてはかなりExpressに酷似してるなと感じます。<br/>
-順に追ってみていきます。</p>
-
-<p>(1): 描画エンジンを設定しています。</p>
-
-<p>Node.jsのExpressで言うところの、</p>
-
-<p><code>javascript
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
-</code></p>
-
-<p>に該当します。</p>
-
-<p>(2): 静的ファイルの格納場所を設定しています。</p>
-
-<p>Node.jsのExpressで言うところの、</p>
-
-<p><code>javascript
-app.use(express.static(path.join(__dirname, 'public')));
-</code></p>
-
-<p>に該当します。</p>
-
-<p>(3): リクエストのアクションパスと処理を設定しています。</p>
-
-<p>Node.jsのExpressで言うところの、</p>
-
-<p>```javascript
-// app.js
-app.use(&lsquo;/&rsquo;, routes);</p>
-
-<p>// route/index.js
-router.get(&lsquo;/&rsquo;, function(req, res, next) {</p>
-
-<pre><code>res.render('index', { title: 'Express' }); 
-</code></pre>
-
-<p>}
-```</p>
-
-<p>に該当します。</p>
-
-<p>(4): ポート番号を設定しています。</p>
-
-<p>Node.jsのExpressで言うところの、</p>
-
-<p>```javascript
-// bin/www
-var port = normalizePort(process.env.PORT || &lsquo;3000&rsquo;);
-app.set(&lsquo;port&rsquo;, port);</p>
-
-<p>var server = http.createServer(app);</p>
-
-<p>server.listen(port);</p>
-
-<p>server.on(&lsquo;listening&rsquo;, onListening);</p>
-
-<p>function onListening() {</p>
-
-<pre><code>var addr = server.address();
-var bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
-debug('Listening on ' + bind);
-</code></pre>
-
-<p>}
-```</p>
-
-<p>に該当します。</p>
-
-<h3>まとめ</h3>
-
-<p>さて如何でしたでしょうか？<br/>
-これだけNode.jsのExpressに似ているのですから、<br/>
-<strong>Swift Express</strong> はこれからサーバサイドSwiftを学んでいく上で強力なWebフレームワークとなるかもしれません。<br/>
-新しくNode.jsを学ぶ人も将来的にサーバサイドSwiftを触る機会が出てくるかもしれませんので知っておいて損はないでしょう。<br/>
-筆者もこれまら益々注目されるであろうサーバサイドSwiftの情報は追っていきたいと思います。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
