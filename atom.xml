@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-09-19T17:33:07+09:00</updated>
+  <updated>2016-09-25T21:12:02+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,284 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOSアプリ内課金: 自動更新購読]]></title>
+    <link href="http://grandbig.github.io/blog/2016/09/25/ios-in-app-purchase/"/>
+    <updated>2016-09-25T17:45:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/09/25/ios-in-app-purchase</id>
+    <content type="html"><![CDATA[<h3>アプリ内課金とは</h3>
+
+<p>アプリ内課金とはiTunes Storeを通してアプリ内の様々なものを購入する機能です。<br/>
+例えば、</p>
+
+<ol>
+<li>電子書籍アプリの購読</li>
+<li>コミュニケーションアプリのスタンプ</li>
+<li>ゲームアプリの協力なアイテム</li>
+</ol>
+
+
+<p>などが該当します。<br/>
+2と3に関しては買い切りプランとして、1は一定の購読期間を持ったプランとしてAppleから提供されています。<br/>
+本記事では一定の購読期間を持ったプラン <strong>自動更新購読(Auto-Renewing subscription)</strong> について書きます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>自動更新購読(Auto-Renewing subscripion)とは</h3>
+
+<p>アプリ内課金をアプリに実装する場合、もちろん事前にできる限りのテストをしなければいけません。Appleはテスト用にSandbox環境を用意しています。<br/>
+では、Sandbox環境と本番環境は何が違うのでしょう。<br/>
+また、アプリがどの状態のときにSandbox環境で試すことができ、どこから本番環境となるのでしょう。</p>
+
+<h4>購読期間の違い</h4>
+
+<p>まず、Sandbox環境では、テストをしやすくするために実際の購読期間よりも短い期間となっています。<br/>
+1年を1時間と考えれば、1〜12ヶ月まで空で時間を計算できますが、7日のみ3分が割り当てられていることに注意しましょう。<br/>
+(同じ割合で行くと、流石に短すぎるからだと思われます。)</p>
+
+<p>Sandbox環境</p>
+
+<ul>
+<li>7日 → 3分</li>
+<li>1ヶ月 → 5分</li>
+<li>2ヶ月 → 10分</li>
+<li>3ヶ月 → 15分</li>
+<li>6ヶ月 → 30分</li>
+<li>12ヶ月 → 60分</li>
+</ul>
+
+
+<h4>Sandbox環境では自動更新キャンセルができない</h4>
+
+<p>Sandbox環境では、iTunes Connectで作成するテスト用のApple IDアカウントを使用します。<br/>
+しかしながら、本物のアカウントでないため、設定アプリから購読の自動更新をキャンセルすることはできません。</p>
+
+<p><img src="http://grandbig.github.io/images/in-app-purchase-1.png" alt="設定アプリから管理画面には遷移できない" /></p>
+
+<p>自動更新をキャンセルすることができない代わりに、自動で5回だけ購読が更新されます。<br/>
+つまり、1回購読を始めれば、計6回分だけ購読が続きます。</p>
+
+<p>しかしながら、自動で購読が更新されると言っても、即時更新ではありません。<br/>
+(恐らく、Apple側のサーバでもバッチを回しているのではないでしょうか&hellip;)</p>
+
+<p>例えば、Sandbox環境で1ヶ月プランを購入したとしましょう。</p>
+
+<ul>
+<li>1回目の購入日: 2016/09/25 10:00:00.000</li>
+<li>1回目の期限日: 2016/09/25 10:05:00.000</li>
+<li>2回目の購入日: 2016/09/25 10:07:00.000</li>
+</ul>
+
+
+<p>このように「1回目の期限日」と「2回目の購入日」が完全一致するわけではないのです。<br/>
+こういった仕様を理解した上でテストを進めないと思わぬ誤った結果を出してしまうかもしれません。</p>
+
+<h4>請求の有無について</h4>
+
+<p>開発中に最も気になるのは請求の有無ではないでしょうか？<br/>
+心配しなくともSandbox環境では請求は発生しません。<br/>
+もちろん本番環境では請求が発生します。</p>
+
+<h4>アプリの状態別環境</h4>
+
+<p>iOSアプリは様々な状態が存在します。<br/>
+それは次の5つです。<br/>
+Develop / Adhoc / TestFlight / Promotion Code / Release</p>
+
+<p>各状態で本番環境とSandbox環境のどちらが使えるのかまとめると下記のようになります。</p>
+
+<ul>
+<li>Sandbox環境
+
+<ul>
+<li>Develop</li>
+<li>Adhoc</li>
+<li>TestFlight</li>
+</ul>
+</li>
+<li>本番環境
+
+<ul>
+<li>Promotion Code</li>
+<li>Release</li>
+</ul>
+</li>
+</ul>
+
+
+<p>Promotion Codeでアプリを配布するには、Appleの審査を通過する必要があります。</p>
+
+<h3>レシート検証</h3>
+
+<p>自動更新購読は買い切りと違って、継続した結果をサービス提供側のサーバで保持しておく必要があります。<br/>
+(サービス特性上、それがないのはサーバを使わずにアプリ内で完結する場合のみでしょう。)<br/>
+そこで避けては通れないのが <strong>レシート検証</strong> です。</p>
+
+<p>レシート検証には2種類の方法があります。</p>
+
+<ul>
+<li>ローカル検証
+
+<ul>
+<li>アプリ内で独自実装します。</li>
+<li>独自実装する理由は公開されたサードパーティ製ライブラリを使うと仕組みがバレてしまうからです。</li>
+</ul>
+</li>
+<li>App Store検証
+
+<ul>
+<li>信頼できるサーバを用意してサーバサイド処理として実装します。</li>
+<li>アプリから直接App Storeに検証しに行くことは脆弱性があるため推奨されていません。</li>
+</ul>
+</li>
+</ul>
+
+
+<h4>App Store検証</h4>
+
+<p>App Store検証できるように、Appleは <strong>レシート検証API</strong> を用意しています。<br/>
+ここでも本番環境とSandbox環境でアクセス先URLに違いがあります。</p>
+
+<ul>
+<li>Sandbox環境URL: <a href="https://sandbox.itunes.apple.com/verifyReceipt">https://sandbox.itunes.apple.com/verifyReceipt</a></li>
+<li>本番環境URL: <a href="https://buy.itunes.apple.com/verifyReceipt">https://buy.itunes.apple.com/verifyReceipt</a></li>
+</ul>
+
+
+<p>共にリクエストパラメータは2種類になります。</p>
+
+<ul>
+<li><code>receipt_data</code>
+
+<ul>
+<li>base64エンコードを施したレシートデータ</li>
+</ul>
+</li>
+<li><code>password</code>
+
+<ul>
+<li>iTunes Connectで発行した共有シークレットキー</li>
+</ul>
+</li>
+</ul>
+
+
+<p>また、レスポンスデータも同じになります。<br/>
+ここでは重要なものだけ書きます。</p>
+
+<ul>
+<li><code>status</code>
+
+<ul>
+<li>有効なレシートの場合は <strong>0</strong> 。それ以外は幾つかの理由で無効なレシートとなっています。</li>
+</ul>
+</li>
+<li><code>receipt</code>
+
+<ul>
+<li><code>bundle_id</code>: iOSアプリの<code>CFBundleIdentifier</code></li>
+<li><code>application_version</code>: iOSアプリの<code>CFBundleVersion</code></li>
+<li><code>in_app</code>: 購買履歴(自動更新購読の場合、更新された段階で追加されます。)</li>
+<li><code>original_application_version</code>: iOSアプリの<code>CFBundleVersion</code></li>
+<li><code>product_id</code>: 購入アイテムのプロダクトID</li>
+<li><code>transaction_id</code>: 購入アイテムのトランザクションID</li>
+</ul>
+</li>
+<li><code>latest_receipt</code>
+
+<ul>
+<li>base64エンコードを施した直近の更新に対応するトランザクションレシート</li>
+</ul>
+</li>
+<li><code>latest_receipt_info</code>
+
+<ul>
+<li>購読履歴(自動更新購読の場合、更新された段階で追加されます。)</li>
+</ul>
+</li>
+</ul>
+
+
+<p>上記のレスポンスデータ概要を見ると、<br/>
+<code>receipt.in_app</code>と<code>latest_receipt_info</code>は同じものに見えます。<br/>
+実際にはレシート検証APIを叩いたタイミングで取得できるデータは異なります。<br/>
+Appleは<code>in_app</code>を利用することを推奨しており、<code>latest_receipt</code>と<code>latest_receipt_info</code>は「 <strong>iOS 6型のトランザクションレシートの場合のみ。</strong> 」としています。<br/>
+しかしながら、iOS7以降でもこれらの値は返却されてきます。<br/>
+ここがネット上で調べてもはっきりしない部分ではあるのですが、筆者の試した感覚では<code>latest_receipt_info</code>は<code>in_app</code>よりもリアルタイムに情報が更新されている気がしています。<br/>
+<code>in_app</code>は自動で更新された後にレシート検証APIを叩いても1回目は必ず情報が更新されていません。<br/>
+1回目で返却された<code>latest_receipt</code>を<code>receipt_data</code>として利用すると正しく更新された<code>in_app</code>が返却されます。<br/>
+(Sandbox環境の場合であって、本番環境では検証できていません。)</p>
+
+<p>このことを考えると、<code>in_app</code>は非常に使いにくいものに思われますが、使い方に寄るのかもしれません&hellip;<br/>
+今後、<code>latest_receipt</code>と<code>latest_receipt_info</code>が廃止されてしまうかもしれませんし、そうなったときにAppleは事前に告知をするのか&hellip;などなど不安要素は実にたくさんあります。</p>
+
+<p>アプリ側では、起動時に課金周りの監視処理を必ず実行する必要があります。<br/>
+これを実行することで、自動更新購読の場合に更新を検知してサーバに送信するといったフローができるためでしょう。</p>
+
+<p>冒頭に上げた2種類のレシート検証APIの使い道は様々あるのかもしれませんが、<br/>
+筆者としては今のところ</p>
+
+<ul>
+<li>ローカル検証
+
+<ul>
+<li>必ずアプリ側の処理に組み込む</li>
+</ul>
+</li>
+<li>App Store検証
+
+<ul>
+<li>アプリ不具合やクラッシュなどで漏れたユーザへの対応</li>
+<li>アプリを起動しないユーザへの対応</li>
+</ul>
+</li>
+</ul>
+
+
+<p>と考えています。<br/>
+つまりはどちらも必要なんですね。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、筆者的にはもう少しローカル検証やリストアに関しての理解が乏しいと感じています。<br/>
+これからまだまだ関わる気もするので、また理解が進んだら続きを書こうかなと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考</p>
+
+<ul>
+<li><a href="https://developer.apple.com/jp/documentation/ValidateAppStoreReceipt.pdf">レシート検証 プログラミングガイド</a></li>
+<li><a href="http://ameblo.jp/principia-ca/entry-12071724382.html">自動購買課金について</a></li>
+<li><a href="http://qiita.com/monoqlo/items/24d36e3a95bc813a7276">In-App Purchaseを実装する際に調べたことまとめ</a></li>
+<li><a href="http://qiita.com/koyopro/items/c6c387b136da1698f666">iOSアプリの課金検証環境</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Xcode8を始めてみよう！]]></title>
@@ -5165,163 +5443,6 @@ SwiftyJsonのGitHub上でのStar数が約1万なのに比べるとFreddyは約85
 どのライブラリを使った方が良いか否かは個々人の判断ですね。</p>
 
 <p>簡単ですが、本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[快適なSpring BootプログラミングのためにIntelliJ IDEA Ultimate版を購入しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/04/30/start-spring-boot-intellij-ultimate/"/>
-    <updated>2016-04-30T14:48:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/04/30/start-spring-boot-intellij-ultimate</id>
-    <content type="html"><![CDATA[<h4>はじめに</h4>
-
-<p>筆者は決してJetBrains社の回し者ではありません笑<br/>
-最近、Spring Bootにチャレンジしているのですが、自宅ではvimを使っていました。<br/>
-なぜかって、IntelliJ IDEA Community版だとSpring Bootプログラミングの際に面倒なことが多いんですもの&hellip;。<br/>
-しかしながら、vimでSpring Bootプログラミングを続けるのもしんどいので、<br/>
-とうとうIntelliJ IDEA Ultimate版に手を出してしまったということなんです。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>IntelliJ IDEA Ultimate版とは</h4>
-
-<p>さて、早速、IntelliJ IDEA Ultimate版の何が良いかについて説明していきます。<br/>
-IntelliJ IDEAとは<a href="https://www.jetbrains.com/">JetBrains</a>社が開発した多言語対応の統合開発環境のことです。<br/>
-Android StudioがIntelliJ IDEAを元に作られていることは割りと有名な話ですね。</p>
-
-<p>筆者が<a href="http://grandbig.github.io/blog/2016/04/16/start-spring-boot/">Spring Bootを使い始めよう！</a>の記事内で使用していたIntelliJ IDEAはCommunity版だったのですが、<br/>
-もちろん、Community版でもプログラミングを書くことやGradleによるビルド実行は問題ありません。<br/>
-しかし、Community版では例えば下記のようなことに対応できません。</p>
-
-<ul>
-<li>Spring Boot Framework関連の予測変換</li>
-<li>Thymeleaf関連の予測変換</li>
-<li>Spring Bootを利用したプロジェクトをIntelliJから新規作成可能</li>
-</ul>
-
-
-<p>これに対応したのが <strong>IntelliJ IDEA Ultimate版</strong> なのです。<br/>
-詳細は公式サイトから知ることができます。</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate1.png" alt="IntelliJ 比較表" /></p>
-
-<p>また、価格ですが、個人版であれば、ビジネス版よりも比較的に安く購入することができます。<br/>
-1年単位での購入なのですが、使い続けるほどに安くなるという価格設定がエンジニア魂をくすぐります。<br/>
-下図のように、3年目以降は初年度の半額弱にまで安くなります。<br/>
-(Apple Developer Programも同じような仕組みにして欲しいですね笑)</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate2.png" alt="IntelliJ IDEA Ultimate版の価格" /></p>
-
-<p>因みに、同ページに「All Products Pack」という商品もありますが、<br/>
-PHP, Ruby等々を無双したい方向けなので、筆者には今のところ不要です。</p>
-
-<h4>IntelliJ IDEA Ultimate版の購入と設定</h4>
-
-<p>IntelliJ IDEA Ultimate版の購入方法と設定について説明します。<br/>
-購入は非常に簡単です。</p>
-
-<p>1．<a href="https://www.jetbrains.com/idea/buy/#edition=personal">Buyページ</a>で <strong>Buy Now</strong> をクリック</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate2.png" alt="Buyページ" /></p>
-
-<p>2．CustomerページでEmailアドレスを入力してNEXTをクリック</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate3.png" alt="Customerページ" /></p>
-
-<p>3．Emailアドレスと国を確認してPROCESS AS NEW CUSTOMERをクリック</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate4.png" alt="Customerページ2" /></p>
-
-<p>4．Customer Infoページで必要事項を入力してPLACE ORDERをクリック</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate5.png" alt="Customer Infoページ" /></p>
-
-<p>5．JetBrains社から届いたメールの添付ファイルを開封して、リンクをクリックしてActivationページへ遷移</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate6.png" alt="JetBrains社から届いたメールの添付ファイル" /></p>
-
-<p>6．Activationページを確認</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate7.png" alt="Activationページ" /></p>
-
-<p>ここまでで、購入完了したことを確認できます。<br/>
-続いて設定に必要な工程について説明します。</p>
-
-<p>7．ActivationページでDownload activation codeをクリック</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate8.png" alt="Activationページ2" /></p>
-
-<p>8．IntelliJ IDEA Ultimate版をDownLoad</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate9.png" alt="Ultimate版をDownLoad" /></p>
-
-<p>9．Activation codeをIntelliJ IDEA Ultimate版に登録</p>
-
-<p>DownLoadしたIntelliJ IDEA Ultimate版を起動して、先ほどDownLoadしたActivation codeを設定しましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate10.png" alt="IntelliJ IDEA Ultimate" /></p>
-
-<p>以上で設定も完了です。</p>
-
-<h4>IntelliJ IDEA Ultimate版でSpring Bootを始めよう！</h4>
-
-<p>では、IntelliJ IDEA Ultimate版でSpring Bootを利用する新規プロジェクトを作成しましょう。</p>
-
-<p>1．IntelliJ IDEA Ultimate版を起動してCreate New Projectをクリック</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate11.png" alt="Create New Project" /></p>
-
-<p>2．Spring Inilializrを選択</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate12.png" alt="Spring Initializr" /></p>
-
-<p>3．各種名称や項目を設定</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate13.png" alt="各種名称や項目の設定" /></p>
-
-<p>4．必要なDependencyを設定</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate14.png" alt="必要な名称や項目の設定" /></p>
-
-<p>5．プロジェクト名と保存場所を設定</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate15.png" alt="プロジェクト名と保存場所を設定" /></p>
-
-<p>6．Gradleの設定の確認</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate16.png" alt="Gradleの設定の確認" /></p>
-
-<p>以上で新規プロジェクトが作成できました。<br/>
-プロジェクトを実行してみましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/start-spring-boot-intellij-ultimate17.png" alt="プロジェクトの実行" /></p>
-
-<p>さて、如何でしたでしょうか？<br/>
-非常に簡単に導入できますし、使い勝手も良いので、これからSpring Bootプログラミングを始める方は検討してみてはいかがでしょうか？<br/>
-と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
