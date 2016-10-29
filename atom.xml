@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-10-09T13:34:40+09:00</updated>
+  <updated>2016-10-30T02:32:30+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,216 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Node.jsでrouterモジュールでルーティング！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/10/30/node-router/"/>
+    <updated>2016-10-30T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/10/30/node-router</id>
+    <content type="html"><![CDATA[<h3>Expressなしで簡単にルーティングしよう！</h3>
+
+<p>さて、久しぶりにNode.jsについて書きます。<br/>
+筆者が本格的にNode.jsを利用していたのは3〜4年前だったため、Expressをよく利用していました。<br/>
+その後、Expressを利用するほどのリッチな機能を必要としない、簡易的なデモ用のサーバサイドの仕組みを作るのにバリバリ自作ルーティングをしていました。<br/>
+しかし、ここにきてExpressを利用するでもなく、かと言って自作でルーティング処理を書くのも若干面倒だと感じるとき果たしてどうすれば良いのかふと気になりました。<br/>
+「きっと今の世の中なら何らかのモジュールが出ているはず！」と思った筆者は早速探してみることに&hellip;</p>
+
+<p>そこで見つけたのが<a href="https://github.com/pillarjs/router">router</a>です。<br/>
+このモジュールを利用すれば、次のように簡単にルーティングを実装することができます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// server.js</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">http</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s2">&quot;http&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">Router</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s2">&quot;router&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">finalhandler</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;finalhandler&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">bodyParser</span>   <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;body-parser&#39;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">function</span> <span class="nx">start</span><span class="p">(</span><span class="nx">route</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">opts</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">mergeParams</span><span class="o">:</span> <span class="kc">true</span> <span class="p">}</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">router</span> <span class="o">=</span> <span class="nx">Router</span><span class="p">(</span><span class="nx">opts</span><span class="p">);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">server</span> <span class="o">=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">createServer</span><span class="p">(</span><span class="kd">function</span> <span class="nx">onRequest</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nx">router</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">finalhandler</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">));</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// GETリクエストのハンドリング</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">user</span> <span class="o">=</span> <span class="nx">Router</span><span class="p">(</span><span class="nx">opts</span><span class="p">);</span>
+</span><span class='line'>  <span class="nx">router</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;/users/:path&#39;</span><span class="p">,</span> <span class="nx">user</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">user</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nx">res</span><span class="p">.</span><span class="nx">statusCode</span> <span class="o">=</span> <span class="mi">200</span>
+</span><span class='line'>      <span class="nx">res</span><span class="p">.</span><span class="nx">setHeader</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s1">&#39;text/plain; charset=utf-8&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="nx">res</span><span class="p">.</span><span class="nx">end</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">path</span> <span class="o">+</span> <span class="s1">&#39;\n&#39;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// POSTリクエストのハンドリング</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">users</span> <span class="o">=</span> <span class="nx">Router</span><span class="p">();</span>
+</span><span class='line'>  <span class="nx">router</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;/users&#39;</span><span class="p">,</span> <span class="nx">users</span><span class="p">);</span>
+</span><span class='line'>  <span class="nx">users</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="nx">bodyParser</span><span class="p">.</span><span class="nx">json</span><span class="p">());</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">users</span><span class="p">.</span><span class="nx">post</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">value</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="nx">res</span><span class="p">.</span><span class="nx">statusCode</span> <span class="o">=</span> <span class="mi">200</span><span class="p">;</span>
+</span><span class='line'>          <span class="nx">res</span><span class="p">.</span><span class="nx">setHeader</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s1">&#39;text/plain; charset=utf-8&#39;</span><span class="p">);</span>
+</span><span class='line'>          <span class="nx">res</span><span class="p">.</span><span class="nx">end</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">value</span> <span class="o">+</span> <span class="s1">&#39;\n&#39;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="nx">res</span><span class="p">.</span><span class="nx">statusCode</span> <span class="o">=</span> <span class="mi">400</span><span class="p">;</span>
+</span><span class='line'>          <span class="nx">res</span><span class="p">.</span><span class="nx">setHeader</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s1">&#39;text/plain; charset=utf-8&#39;</span><span class="p">);</span>
+</span><span class='line'>          <span class="nx">res</span><span class="p">.</span><span class="nx">end</span><span class="p">(</span><span class="s1">&#39;Invalid API Syntax\n&#39;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">server</span><span class="p">.</span><span class="nx">listen</span><span class="p">(</span><span class="mi">8888</span><span class="p">);</span>
+</span><span class='line'>  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;server has started.&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">exports</span><span class="p">.</span><span class="nx">start</span> <span class="o">=</span> <span class="nx">start</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因みに、 <code>server.js</code> はモジュールとして切り出しています。<br/>
+実際には <code>app.js</code> で呼び出すようにしています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// app.js</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">server</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s2">&quot;./server&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="nx">server</span><span class="p">.</span><span class="nx">start</span><span class="p">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このように実装することで、GETとPOSTリクエストを送れば下記のような結果が得られます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// GETリクエスト</span>
+</span><span class='line'><span class="nx">curl</span> <span class="nx">http</span><span class="o">:</span><span class="c1">//localhost:8888/users/20161029</span>
+</span><span class='line'><span class="c1">// 結果</span>
+</span><span class='line'><span class="mi">20161029</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// POSTリクエスト</span>
+</span><span class='line'><span class="nx">curl</span> <span class="nx">http</span><span class="o">:</span><span class="c1">//localhost:8888/users -X POST -H &quot;Content-Type: application/json&quot; -d &#39;{&quot;value&quot;:&quot;Sample&quot;}&#39;</span>
+</span><span class='line'><span class="c1">// 結果</span>
+</span><span class='line'><span class="nx">Sample</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Node.jsでデバッグ</h3>
+
+<p>筆者はこれまで <code>node-inspector</code> を利用していたのですが、何とv6.3.0からデバッグ機能が標準装備されているらしいですね！<br/>
+早速ですが使ってみました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// Node.jsでデバッグ起動</span>
+</span><span class='line'><span class="nx">node</span> <span class="o">--</span><span class="nx">inspect</span> <span class="nx">app</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="nx">Debugger</span> <span class="nx">listening</span> <span class="nx">on</span> <span class="nx">port</span> <span class="mi">9229</span><span class="p">.</span>
+</span><span class='line'><span class="nx">Warning</span><span class="o">:</span> <span class="nx">This</span> <span class="nx">is</span> <span class="nx">an</span> <span class="nx">experimental</span> <span class="nx">feature</span> <span class="nx">and</span> <span class="nx">could</span> <span class="nx">change</span> <span class="nx">at</span> <span class="nx">any</span> <span class="nx">time</span><span class="p">.</span>
+</span><span class='line'><span class="nx">To</span> <span class="nx">start</span> <span class="nx">debugging</span><span class="p">,</span> <span class="nx">open</span> <span class="nx">the</span> <span class="nx">following</span> <span class="nx">URL</span> <span class="k">in</span> <span class="nx">Chrome</span><span class="o">:</span>
+</span><span class='line'>    <span class="nx">chrome</span><span class="o">-</span><span class="nx">devtools</span><span class="o">:</span><span class="c1">//devtools/remote/serve_file/@60cd6e859b9f557d2312f5bf532f6aec5f284980/inspector.html?experiments=true&amp;v8only=true&amp;ws=localhost:9229/f1478fd8-33f2-4bca-8ab4-4ac9be3515cb</span>
+</span><span class='line'><span class="nx">server</span> <span class="nx">has</span> <span class="nx">started</span><span class="p">.</span>
+</span><span class='line'><span class="nx">Debugger</span> <span class="nx">attached</span><span class="p">.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>出力される <code>chrome-devtools://devtools/remote/serve_file/@....</code> の部分をChromeのアドレスバーに貼りましょう！<br/>
+<code>node-inspcetor</code> さながらのデバッグができるはずです。</p>
+
+<p>因みに、起動時のオプションとして <code>--debug-brk</code> をつけると必ず1行目でデバッグが停止します。<br/>
+一度停めたい場合はオプションを使いましょう。</p>
+
+<h3>まとめ</h3>
+
+<p>今回はNode.jsに触る機会があったため、どうすれば簡単にルーティングが実装できるのか調べてみました。<br/>
+Expressを使っても良かったのですが、極力不要なモジュールを取り込みたくない気持ちがあったので割りと最低限にできて良かったなと思いました。<br/>
+Node.jsは少しずつリハビリしながら思い出していくことにしようかな。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[NoSQLの特性を調べよう！]]></title>
@@ -5198,369 +5408,6 @@ POSTリクエストやURLにリクエストパラメータを表示するわけ�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[SwiftでFacebookログインを始めよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/05/14/facebook-login-for-swift/"/>
-    <updated>2016-05-14T15:30:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/05/14/facebook-login-for-swift</id>
-    <content type="html"><![CDATA[<h4>Facebookログインの実装方法</h4>
-
-<p>公式ページの<a href="https://developers.facebook.com/">facebook for developers</a>を見るのが、一番良いと思いますが、<br/>
-あちこちページを飛ばされるので、順を追って説明することにします。<br/>
-※ 本記事で利用しているFacebook SDKは <strong>v4.11.0</strong> です。</p>
-
-<p><strong>1．Facebookログインを選択する</strong></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_1.png" alt="Facebookログインを選択" /></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p><strong>2．Get Startedを選択する</strong></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_2.png" alt="Get Startedを選択" /></p>
-
-<p><strong>3．iOSを選択する</strong></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_3.png" alt="iOSを選択" /></p>
-
-<p><strong>4．利用手順の概要を読む</strong></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_4.png" alt="利用手順の概要を読む" /></p>
-
-<p><strong>5．Facebookアプリを作成する</strong></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_5.png" alt="Facebookアプリを作成" /></p>
-
-<p>※ CocoaPodsでFacebook SDKを取り込むので、ダウンロードはしません。</p>
-
-<p>「新しいアプリを作成」を選択すると、アプリ作成画面が表示されるため、任意の値を入力してください。</p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_6.png" alt="任意の値を入力" /></p>
-
-<p><strong>6．作成したFacebookアプリにiOSアプリ用の設定を追加する</strong></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_7.png" alt="一連のiOSアプリ用設定手順" /></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_8.png" alt="追加ボタンを選択" /></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_9.png" alt="iOSを選択" /></p>
-
-<p>追加された設定項目に値を入力して、「変更を保存」ボタンを選択します。</p>
-
-<ul>
-<li>バンドルIDを入力</li>
-<li>シングルサインオンボタンをONに変更</li>
-</ul>
-
-
-<p><img src="http://grandbig.github.io/images/facebook_login_10.png" alt="設定項目に値を入力" /></p>
-
-<p>続いて、詳細設定でネイティブアプリでの利用を許可します。</p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_18.png" alt="詳細設定" /></p>
-
-<p><strong>7．Xcodeプロジェクトを用意する</strong></p>
-
-<p>当然のことながら、Xcodeプロジェクトを作成します。</p>
-
-<p><strong>8．<code>Podfile</code>を作成する</strong></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">source</span> <span class="err">&#39;</span><span class="nl">https:</span><span class="c1">//github.com/CocoaPods/Specs.git&#39;</span>
-</span><span class='line'><span class="n">platform</span> <span class="o">:</span><span class="n">ios</span><span class="p">,</span> <span class="err">&#39;</span><span class="mf">8.0</span><span class="err">&#39;</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp"># Facebook</span>
-</span><span class='line'><span class="n">pod</span> <span class="err">&#39;</span><span class="n">FBSDKCoreKit</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">pod</span> <span class="err">&#39;</span><span class="n">FBSDKLoginKit</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">pod</span> <span class="err">&#39;</span><span class="n">FBSDKShareKit</span><span class="err">&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>9．<code>pod install</code>を実行する</strong></p>
-
-<p><strong>10．Xcodeプロジェクトに必要な設定を追加</strong></p>
-
-<p>必要な設定値を見るために、<br/>
-下図のようにFacebookアプリページのiOS設定項目上の <strong>クイックスタート</strong> を選択します。</p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_11.png" alt="クイックスタートを選択" /></p>
-
-<p>すると、下図のページに遷移します。</p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_12.png" alt="クイックスタートページ" /></p>
-
-<p>この中で重要なのが <strong>Configure your info.plist</strong> です。<br/>
-ここに書かれた設定値をXcodeに追加します。</p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_13.png" alt="Configure your info.plist" /></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_14.png" alt="Xcodeに設定値を追加" /></p>
-
-<p><strong>11．XcodeプロジェクトにiOS9 SDK対応の設定を追加</strong></p>
-
-<p>iOS9 SDKよりHTTP通信が非推奨となったため、ATS設定を追加する必要があります。</p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_15.png" alt="XcodeにATS設定を追加" /></p>
-
-<p><strong>12．Facebookアプリをホワイトリストに追加する</strong></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_16.png" alt="ホワイトリストへの追加" /></p>
-
-<p><strong>13．Bridge-Headerファイルを追加</strong></p>
-
-<p>Swift実装なので、Bridge-Headerファイルを追加します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// FacebookLoginSample-Bridging-Header.h</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#ifndef FacebookLoginSample_Bridging_Header_h</span>
-</span><span class='line'><span class="cp">#define FacebookLoginSample_Bridging_Header_h</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#import &lt;FBSDKCoreKit/FBSDKCoreKit.h&gt;</span>
-</span><span class='line'><span class="cp">#import &lt;FBSDKLoginKit/FBSDKLoginKit.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#endif </span><span class="cm">/* FacebookLoginSample_Bridging_Header_h */</span><span class="cp"></span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>14．<code>AppDelegate.swift</code>に<code>FBSDKApplicationDelegate</code>への接続処理を追加</strong></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span> <span class="n">didFinishLaunchingWithOptions</span> <span class="nl">launchOptions:</span> <span class="p">[</span><span class="nl">NSObject:</span> <span class="n">AnyObject</span><span class="p">]</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">FBSDKApplicationDelegate</span><span class="p">.</span><span class="n">sharedInstance</span><span class="p">().</span><span class="n">application</span><span class="p">(</span><span class="n">application</span><span class="p">,</span> <span class="nl">didFinishLaunchingWithOptions:</span> <span class="n">launchOptions</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">true</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span> <span class="n">openURL</span> <span class="nl">url:</span> <span class="n">NSURL</span><span class="p">,</span> <span class="nl">sourceApplication:</span> <span class="n">String</span><span class="o">?</span><span class="p">,</span> <span class="nl">annotation:</span> <span class="n">AnyObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">return</span> <span class="n">FBSDKApplicationDelegate</span><span class="p">.</span><span class="n">sharedInstance</span><span class="p">().</span><span class="n">application</span><span class="p">(</span><span class="n">application</span><span class="p">,</span>
-</span><span class='line'>                                                               <span class="nl">openURL:</span> <span class="n">url</span><span class="p">,</span>
-</span><span class='line'>                                                               <span class="nl">sourceApplication:</span> <span class="n">sourceApplication</span><span class="p">,</span>
-</span><span class='line'>                                                               <span class="nl">annotation:</span> <span class="n">annotation</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>15．Facebook SDKが機能しているか確認</strong></p>
-
-<p>Facebook SDKを搭載したつもりでも、一切機能していないと困りますよね？<br/>
-ということでログ収集機能を使ってTestできたりします。<br/>
-様々なログ収集が可能なようですが、公式ページにあるように最も簡単なアプリ起動ログ収集を実装します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
-</span><span class='line'><span class="n">func</span> <span class="nf">applicationDidBecomeActive</span><span class="p">(</span><span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">FBSDKAppEvents</span><span class="p">.</span><span class="n">activateApp</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><a href="https://www.facebook.com/analytics?__aref_src=devsite&amp;__aref_id=docs_ios_getting_started">アプリ用Analyticsダッシュボード</a>に遷移します。<br/>
-ログを確認したいアプリ > アクティビティー > イベントを選択します。<br/>
-すると「App Launches」の件数を確認することができます。</p>
-
-<p><strong>16．ログインボタンを追加</strong></p>
-
-<p>公式ではソースコードから追加しているので、その想定で書いていますが、もちろんStoryboardも利用できます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">FBSDKLoginButtonDelegate</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">let</span> <span class="n">loginBtn</span> <span class="o">:</span> <span class="n">FBSDKLoginButton</span> <span class="o">=</span> <span class="n">FBSDKLoginButton</span><span class="p">()</span>
-</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">addSubview</span><span class="p">(</span><span class="n">loginBtn</span><span class="p">)</span>
-</span><span class='line'>      <span class="n">loginBtn</span><span class="p">.</span><span class="n">center</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">center</span>
-</span><span class='line'>      <span class="n">loginBtn</span><span class="p">.</span><span class="n">readPermissions</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;public_profile&quot;</span><span class="p">,</span> <span class="s">&quot;email&quot;</span><span class="p">,</span> <span class="s">&quot;user_friends&quot;</span><span class="p">]</span>
-</span><span class='line'>      <span class="n">loginBtn</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">func</span> <span class="n">loginButton</span><span class="p">(</span><span class="nl">loginButton:</span> <span class="n">FBSDKLoginButton</span><span class="o">!</span><span class="p">,</span> <span class="n">didCompleteWithResult</span> <span class="nl">result:</span> <span class="n">FBSDKLoginManagerLoginResult</span><span class="o">!</span><span class="p">,</span> <span class="nl">error:</span> <span class="n">NSError</span><span class="o">!</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="n">print</span><span class="p">(</span><span class="s">&quot;ログイン処理を実行&quot;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">error</span> <span class="o">!=</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// エラーが発生した場合</span>
-</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;Process Error !&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="n">result</span><span class="p">.</span><span class="n">isCancelled</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// ログインをキャンセルした場合</span>
-</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;User Cancelled&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// その他</span>
-</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;Login Succeeded&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">func</span> <span class="n">loginButtonDidLogOut</span><span class="p">(</span><span class="nl">loginButton:</span> <span class="n">FBSDKLoginButton</span><span class="o">!</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">print</span><span class="p">(</span><span class="s">&quot;ログアウト処理を実行&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>結果、下図のような遷移が可能となります。</p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_17.png" alt="Facebookログイン" /></p>
-
-<h4>Facebookログインボタンのカスタム化</h4>
-
-<p>因みに、Facebookログインボタンをカスタム化する方法を説明します。<br/>
-折角なので、Storyboardでの方法として載せておきましょう。</p>
-
-<p><strong>1．Storyboardにボタンを配置する</strong></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_19.png" alt="Storyboardにボタンを配置" /></p>
-
-<p><strong>2．StoryboardからViewControllerにボタンアクションを接続する</strong></p>
-
-<p><img src="http://grandbig.github.io/images/facebook_login_20.png" alt="ボタンアクションの接続" /><br/>
-※ 上記キャプチャでは既に下記3の処理を書いてあるけど悪しからず&hellip;</p>
-
-<p><strong>3．ログインアクションを追加</strong></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
-</span><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">loginByFacebookID</span><span class="p">(</span><span class="nl">sender:</span> <span class="n">AnyObject</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">let</span> <span class="nl">loginManager:</span> <span class="n">FBSDKLoginManager</span> <span class="o">=</span> <span class="n">FBSDKLoginManager</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">loginManager</span><span class="p">.</span><span class="n">logInWithReadPermissions</span><span class="p">([</span><span class="s">&quot;public_profile&quot;</span><span class="p">,</span> <span class="s">&quot;email&quot;</span><span class="p">,</span> <span class="s">&quot;user_friends&quot;</span><span class="p">],</span> <span class="nl">fromViewController:</span> <span class="n">self</span><span class="p">)</span> <span class="p">{</span> <span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span> <span class="k">in</span>
-</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">error</span> <span class="o">!=</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>          <span class="c1">// エラーが発生した場合</span>
-</span><span class='line'>          <span class="n">print</span><span class="p">(</span><span class="s">&quot;Process error&quot;</span><span class="p">)</span>
-</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="n">result</span><span class="p">.</span><span class="n">isCancelled</span> <span class="p">{</span>
-</span><span class='line'>          <span class="c1">// ログインをキャンセルした場合</span>
-</span><span class='line'>          <span class="n">print</span><span class="p">(</span><span class="s">&quot;Cancelled&quot;</span><span class="p">)</span>
-</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>          <span class="c1">// その他</span>
-</span><span class='line'>          <span class="n">print</span><span class="p">(</span><span class="s">&quot;Login Succeeded&quot;</span><span class="p">)</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>さて、いかがでしたでしょうか？<br/>
-Facebook SDKも徐々にバージョンアップしていますので、なかなか最新のライブラリに対応した記事がないこともあるでしょう。<br/>
-そんなときに本記事を少しでも参考にしてもらえればと思います。<br/>
-ということで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
 
 ]]></content>
   </entry>

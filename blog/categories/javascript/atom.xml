@@ -4,7 +4,7 @@
   <title><![CDATA[Category: javascript | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/javascript/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-10-09T13:36:11+09:00</updated>
+  <updated>2016-10-30T02:35:03+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,155 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Node.jsでrouterモジュールでルーティング！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/10/30/node-router/"/>
+    <updated>2016-10-30T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/10/30/node-router</id>
+    <content type="html"><![CDATA[<h3>Expressなしで簡単にルーティングしよう！</h3>
+
+<p>さて、久しぶりにNode.jsについて書きます。<br/>
+筆者が本格的にNode.jsを利用していたのは3〜4年前だったため、Expressをよく利用していました。<br/>
+その後、Expressを利用するほどのリッチな機能を必要としない、簡易的なデモ用のサーバサイドの仕組みを作るのにバリバリ自作ルーティングをしていました。<br/>
+しかし、ここにきてExpressを利用するでもなく、かと言って自作でルーティング処理を書くのも若干面倒だと感じるとき果たしてどうすれば良いのかふと気になりました。<br/>
+「きっと今の世の中なら何らかのモジュールが出ているはず！」と思った筆者は早速探してみることに&hellip;</p>
+
+<p>そこで見つけたのが<a href="https://github.com/pillarjs/router">router</a>です。<br/>
+このモジュールを利用すれば、次のように簡単にルーティングを実装することができます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<p>```javascript
+// server.js
+var http = require(&ldquo;http&rdquo;);
+var Router = require(&ldquo;router&rdquo;);
+var finalhandler = require(&lsquo;finalhandler&rsquo;);
+var bodyParser   = require(&lsquo;body-parser&rsquo;);</p>
+
+<p>function start(route) {</p>
+
+<pre><code>var opts = { mergeParams: true }
+var router = Router(opts);
+var server = http.createServer(function onRequest(req, res) {
+    router(req, res, finalhandler(req, res));
+});
+
+// GETリクエストのハンドリング
+var user = Router(opts);
+router.use('/users/:path', user);
+
+user.get('/', function (req, res) {
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    res.end(req.params.path + '\n')
+});
+
+// POSTリクエストのハンドリング
+var users = Router();
+router.use('/users', users);
+users.use(bodyParser.json());
+
+users.post('/', function (req, res) {
+    if (req.body.value) {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end(req.body.value + '\n');
+    } else {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end('Invalid API Syntax\n');
+    }
+});
+
+server.listen(8888);
+console.log("server has started.");
+</code></pre>
+
+<p>}</p>
+
+<p>exports.start = start;
+```</p>
+
+<p>因みに、 <code>server.js</code> はモジュールとして切り出しています。<br/>
+実際には <code>app.js</code> で呼び出すようにしています。</p>
+
+<p><code>javascript
+// app.js
+var server = require("./server");
+server.start();
+</code></p>
+
+<p>このように実装することで、GETとPOSTリクエストを送れば下記のような結果が得られます。</p>
+
+<p>```
+// GETリクエスト
+curl <a href="http://localhost:8888/users/20161029">http://localhost:8888/users/20161029</a>
+// 結果
+20161029</p>
+
+<p>// POSTリクエスト
+curl <a href="http://localhost:8888/users">http://localhost:8888/users</a> -X POST -H &ldquo;Content-Type: application/json&rdquo; -d &lsquo;{&ldquo;value&rdquo;:&ldquo;Sample&rdquo;}&rsquo;
+// 結果
+Sample
+```</p>
+
+<h3>Node.jsでデバッグ</h3>
+
+<p>筆者はこれまで <code>node-inspector</code> を利用していたのですが、何とv6.3.0からデバッグ機能が標準装備されているらしいですね！<br/>
+早速ですが使ってみました。</p>
+
+<p>```
+// Node.jsでデバッグ起動
+node &mdash;inspect app.js
+Debugger listening on port 9229.
+Warning: This is an experimental feature and could change at any time.
+To start debugging, open the following URL in Chrome:</p>
+
+<pre><code>chrome-devtools://devtools/remote/serve_file/@60cd6e859b9f557d2312f5bf532f6aec5f284980/inspector.html?experiments=true&amp;v8only=true&amp;ws=localhost:9229/f1478fd8-33f2-4bca-8ab4-4ac9be3515cb
+</code></pre>
+
+<p>server has started.
+Debugger attached.
+```</p>
+
+<p>出力される <code>chrome-devtools://devtools/remote/serve_file/@....</code> の部分をChromeのアドレスバーに貼りましょう！<br/>
+<code>node-inspcetor</code> さながらのデバッグができるはずです。</p>
+
+<p>因みに、起動時のオプションとして <code>--debug-brk</code> をつけると必ず1行目でデバッグが停止します。<br/>
+一度停めたい場合はオプションを使いましょう。</p>
+
+<h3>まとめ</h3>
+
+<p>今回はNode.jsに触る機会があったため、どうすれば簡単にルーティングが実装できるのか調べてみました。<br/>
+Expressを使っても良かったのですが、極力不要なモジュールを取り込みたくない気持ちがあったので割りと最低限にできて良かったなと思いました。<br/>
+Node.jsは少しずつリハビリしながら思い出していくことにしようかな。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[昔関わったNode.jsを思い出してみる]]></title>
