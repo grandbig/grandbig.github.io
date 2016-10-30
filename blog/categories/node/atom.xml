@@ -4,7 +4,7 @@
   <title><![CDATA[Category: node | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/node/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-10-30T02:35:03+09:00</updated>
+  <updated>2016-10-30T19:08:33+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -102,7 +102,81 @@ var server = require("./server");
 server.start();
 </code></p>
 
-<p>このように実装することで、GETとPOSTリクエストを送れば下記のような結果が得られます。</p>
+<p>ただ、今後たくさんのリクエストを捌くことを考えると、もう少しリクエスト内容ごとにファイルを分けた方が良いですよね&hellip;<br/>
+と言うことで少々修正します。</p>
+
+<p>```javascript
+// server.js
+var http = require(&ldquo;http&rdquo;);
+var Router = require(&ldquo;router&rdquo;);
+var finalhandler = require(&lsquo;finalhandler&rsquo;);
+var bodyParser   = require(&lsquo;body-parser&rsquo;);
+var users = require(&ldquo;./users&rdquo;);</p>
+
+<p>/<em>*
+ *  サーバ起動処理
+ </em>/
+function start() {</p>
+
+<pre><code>var opts = { mergeParams: true };
+var router = Router(opts);
+var server = http.createServer(function onRequest(req, res) {
+    router(req, res, finalhandler(req, res));
+});
+
+router.use(bodyParser.json());
+router.use('/users/:path', users);  // GETリクエスト
+router.use('/users', users);        // POST, PUT, DELETEリクエスト
+
+server.listen(8888);
+console.log("server has started.");
+</code></pre>
+
+<p>}</p>
+
+<p>exports.start = start;</p>
+
+<p>```</p>
+
+<p>上記のように<code>server.js</code>はサーバ起動だけに絞りました。<br/>
+そしてリクエストを受け付けたあとの処理は下記のように<code>users.js</code>に書きます。</p>
+
+<p>```javascript
+// users.js
+var Router = require(&ldquo;router&rdquo;);
+var opts = { mergeParams: true };
+var router = Router(opts);</p>
+
+<p>router.get(&ldquo;/&rdquo;, function(req, res) {</p>
+
+<pre><code>res.statusCode = 200;
+res.setHeader("Content-Type", "text/plain; charset=utf-8");
+res.end(req.params.path + "\n");
+</code></pre>
+
+<p>});</p>
+
+<p>router.post(&ldquo;/&rdquo;, function(req, res) {</p>
+
+<pre><code>if (req.body.value) {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.end(req.body.value + '\n');
+} else {
+    res.statusCode = 400;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.end('Invalid API Syntax\n');
+}
+</code></pre>
+
+<p>});</p>
+
+<p>module.exports = router;</p>
+
+<p>```</p>
+
+<p>このようにまとめることで可読性高くなるので、ルーティングの意味も出てくるというものですね。<br/>
+因みに、GETとPOSTリクエストを送れば下記のような結果が得られます。</p>
 
 <p>```
 // GETリクエスト
