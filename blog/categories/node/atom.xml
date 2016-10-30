@@ -4,7 +4,7 @@
   <title><![CDATA[Category: node | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/node/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-10-30T19:08:33+09:00</updated>
+  <updated>2016-10-31T00:25:23+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,195 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Server Side Swift: Perfect を使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/10/30/swift-perfect/"/>
+    <updated>2016-10-30T22:48:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/10/30/swift-perfect</id>
+    <content type="html"><![CDATA[<h3>Server Side SwiftライブラリのPerfect</h3>
+
+<p>本日は以前書いたサーバサイドSwiftの続きを書きます！<br/>
+と言いたかったところなのですが、Swift ExpressはSwift3.0やXcode8に対応しておらず、何もできなかったため、方向転換して最もSTAR数の多い<a href="https://github.com/PerfectlySoft/Perfect">PerfectlySoft/Perfect</a>を使うことにしました。</p>
+
+<p>よくよく見るとMySQLだけでなくMongoDB接続用にもモジュールが用意されており、なかなか良さそうではないですか！！<br/>
+とは言いつつも、そんなにすぐにMaster Of Perfectにはなれないので少しずつ見ていくことにします。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<h4>チュートリアルを触ってみる</h4>
+
+<p>まずは何はともあれGitHubの <em>Getting Started</em> からやらないと話になりません。<br/>
+手順は簡単です。</p>
+
+<p>１．テンプレートプロジェクトをクローンする<br/>
+<code>git clone https://github.com/PerfectlySoft/PerfectTemplate.git</code></p>
+
+<p>２．ビルドを実行する<br/>
+クローンした<code>PerfectTemplate</code>フォルダ内に入り、ビルドを実行しましょう。</p>
+
+<p><code>
+$ cd PerfectTemplate
+$ swift build
+</code></p>
+
+<p>３．サーバを起動します<br/>
+なんと後は下記コマンドでサーバを起動するだけです。</p>
+
+<p><code>.build/debug/PerfectTemplate</code></p>
+
+<p>正しく起動すれば、下記ログが出力されます。<br/>
+<code>Starting HTTP server on 0.0.0.0:8181 with document root ./webroot</code><br/>
+またログの指示通りChromeで<code>http://localhost:8181/</code>にアクセスすれば<code>Hello World</code>が拝めます。</p>
+
+<h4>ルーティングの書き方について学ぶ</h4>
+
+<p>では次に簡単なルーティングについて学んでいきましょう。<br/>
+チュートリアルでは、下記GETリクエストのみ受け付けていました。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .get, uri: &ldquo;/&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.setHeader(.contentType, value: "text/html")
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Hello, world!&lt;/title&gt;&lt;body&gt;Hello, world!&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>最も単純なGETリクエストですね。<br/>
+では、<code>ID: 100</code>のユーザ情報を取得するGETリクエストはどう受け付けるのでしょうか。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .get, uri: &ldquo;/user/{id}&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.setHeader(.contentType, value: "text/html")
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You GET UserInfo with \(request.urlVariables)&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>たったのこれだけです。<br/>
+では、POSTリクエストの受け付けはどうでしょうか。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .post, uri: &ldquo;/user&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You POSTed user data to catch your POST request.&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>これも簡単ですね。<br/>
+書き方に若干の違いはあれど、最早Node.jsとそんなに変わらん&hellip;</p>
+
+<p>おまけで、POSTリクエストで届いたJSONStringをバラバラっと分解して返却してみました。<br/>
+そのためにまずはJSONStringをデコードする処理を実装します。</p>
+
+<p>```javascript
+// decode.swift
+import PerfectHTTPServer
+import PerfectLib</p>
+
+<p>func decode(postBody: String?) &ndash;> [String: Any]? {</p>
+
+<pre><code>do {
+    guard let decoded = try postBody?.jsonDecode() as? [String:Any] else {
+        return [:]
+    }
+    print(decoded)
+    return decoded
+} catch {
+    return [:]
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これを下記のように利用します。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .post, uri: &ldquo;/user&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+
+var userInfo = ""
+let decodedParam = decode(postBody: request.postBodyString)
+for (key, value) in decodedParam! {
+    switch key {
+        case "name":
+            userInfo = userInfo + "name is \(value as! String).\n"
+        case "email":
+            userInfo = userInfo + "email is \(value as! String)."
+        default:
+            break
+    }
+}
+response.appendBody(string: "&lt;html&gt;&lt;body&gt;POST handler: \(userInfo)&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>さて、実装できたのでクライアントからリクエストを投げてみます。</p>
+
+<p><code>
+// クライアントからPOSTリクエストを投げます
+curl http://localhost:8181/user -X POST -H "Content-Type: application/json" -d '{"name":"Ichiro", "email": "xxx@gmail.com"}'
+// 結果
+&lt;html&gt;&lt;body&gt;POST handler: name is Ichiro.
+email is xxx@gmail.com.&lt;/body&gt;&lt;/html&gt;xxxx:PerfectTemplate
+</code></p>
+
+<h3>まとめ</h3>
+
+<p>さて今回は<code>Perfect</code>を使ったサーバサイドSwiftを見てみました。<br/>
+まだまだ基本的なリクエストの受付しかみていませんが、既にいろいろなモジュールが用意されているようなので、継続的に見ていきたいと思います。<br/>
+やっぱりライブラリを作るなら、最新の状況についていかないと見捨てられるな〜と思ってしまいました。<br/>
+(今回で言うと、Swift3やXcode8とかですね。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Node.jsでrouterモジュールでルーティング！]]></title>
@@ -1189,121 +1378,6 @@ Swiftだけを眺めてみてもよくわからないという方はNode.jsの�
 </script>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[東京Node学園付属小学校 1限目に参加してみた！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/01/15/node-elementary-school/"/>
-    <updated>2016-01-15T19:27:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/01/15/node-elementary-school</id>
-    <content type="html"><![CDATA[<h4>Node.jsを基礎から見直そう！</h4>
-
-<p>以前、業務でNode.js v0.6.12だったり、v0.10.24だったりを触ってきました。<br/>
-しかし個々最近は、ネイティブアプリ開発にかかりっきりになっていたので、Node.jsから遠ざかってしまっていました。<br/>
-そんなこともあり、「これじゃいかん！」ということで今回、 <strong>東京Node学園付属小学校 1限目</strong> に参加してみることにしました。</p>
-
-<p>通常のNode学園は行ったことがあったものの、非常にレベルが高いなと感じた経験があり、まずは思い出す足掛けということで&hellip;。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>勉強会の内容と感想</h4>
-
-<p>さて、勉強会の内容と感想について書いていきます。</p>
-
-<h5>オープニング</h5>
-
-<p>teratailでは技術の壁をなくしたい。<br/>
-何かサービスを開発するときには、いつも使っている言語を選びがちだけど、一番適した技術を使ったり、新しい技術を導入したりできると良いな〜という感じ。</p>
-
-<p>工数やリソースの問題から、保守的になって実績のあるやり方で進めるパターン多いんだよな〜と思いながら聞いていました笑。</p>
-
-<h5>ゲスト講演</h5>
-
-<p>ゲスト講演はNode.js日本ユーザーグループ代表の古川陽介さんが担当されていました。<br/>
-内容はあえてNode.jsではなく、Guillermo Rauch(socket.ioの作者)が提唱した  <strong>7 principles of rich web applications</strong> でした。<br/>
-筆者は勉強不足のせいもあって、初めて知りました。</p>
-
-<p>古川さん曰く、実際に7つの原則を満たしているWeb Applicationは存在しないんではないかと&hellip;。<br/>
-詳しい内容は<a href="http://yosuke-furukawa.hatenablog.com/entry/2014/11/14/141415">【翻訳】リッチなWebアプリケーションのための7つの原則</a>に書かれています。</p>
-
-<p>筆者個人としてはSPA(Single Page Application)が興味を惹いている理由を知れたり、<a href="https://developers.google.com/web/tools/chrome-devtools/profile/evaluate-performance/rail">RAIL</a>という重要な指標を知れたりと、かなり勉強になりました。</p>
-
-<p>また特に印象的だったのは、 <strong>レイテンシの壁</strong> の話でした。<br/>
-通信をする限り、レイテンシは必ず存在するのだと。<br/>
-それを処理の仕方で早く見せることができないかと鎬を削る様がとても惹きつけられました。</p>
-
-<p>最近ネイティブ開発ばかりやっていた自分としては、描画に対するレイテンシはあまり気にしていませんでした。<br/>
-きちんと考えないとダメだなと。</p>
-
-<p>JavaScriptは7つの原則をクリアできるのだ！！</p>
-
-<h5>LT</h5>
-
-<p>続いて、LTです。<br/>
-<strong>東京Node学園付属小学校</strong> という名にふさわしく、知識・技術的についていけないといったことなく、落ち着いて聞くことができました。</p>
-
-<p>以下、聞いたことを箇条書き</p>
-
-<ul>
-<li>お役立ちツール
-
-<ul>
-<li><a href="http://swagger.io/">SWAGGER</a>
-Web APIドキュメント生成ツール</li>
-<li><a href="http://nodered.org/">Node-RED</a>
-Drug&amp;Dropで簡単にWebアプリを作れるツール</li>
-<li><a href="http://loopback.io/">LoopBack</a>
-Node.jsベースのBaaSを作れるオープンソース
-　</li>
-</ul>
-</li>
-<li>Node.jsが使われているサービス
-
-<ul>
-<li>Uber</li>
-<li>PayPal(JavaからNode.jsに移行)</li>
-<li>NETFLIX
-　</li>
-</ul>
-</li>
-<li>Node.jsの良いところ
-
-<ul>
-<li>非エンジニアでも簡単にWebアプリが作れる</li>
-<li>クライアントとサーバサイド共にJavaScriptで書ける</li>
-<li>リアルタイム通信でいろいろなWebアプリを作りたくなる</li>
-<li>IoTでも使える</li>
-<li>「同時に接続して、チームで協力してゴールを達成する」方向にも注目&hellip;</li>
-</ul>
-</li>
-</ul>
-
-
-<p>とりあえず、Node.js意欲が湧いてきたので、何か作りたい！！</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
 
 ]]></content>
   </entry>

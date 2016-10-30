@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-10-30T19:08:33+09:00</updated>
+  <updated>2016-10-31T00:25:23+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,195 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Server Side Swift: Perfect を使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/10/30/swift-perfect/"/>
+    <updated>2016-10-30T22:48:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/10/30/swift-perfect</id>
+    <content type="html"><![CDATA[<h3>Server Side SwiftライブラリのPerfect</h3>
+
+<p>本日は以前書いたサーバサイドSwiftの続きを書きます！<br/>
+と言いたかったところなのですが、Swift ExpressはSwift3.0やXcode8に対応しておらず、何もできなかったため、方向転換して最もSTAR数の多い<a href="https://github.com/PerfectlySoft/Perfect">PerfectlySoft/Perfect</a>を使うことにしました。</p>
+
+<p>よくよく見るとMySQLだけでなくMongoDB接続用にもモジュールが用意されており、なかなか良さそうではないですか！！<br/>
+とは言いつつも、そんなにすぐにMaster Of Perfectにはなれないので少しずつ見ていくことにします。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<h4>チュートリアルを触ってみる</h4>
+
+<p>まずは何はともあれGitHubの <em>Getting Started</em> からやらないと話になりません。<br/>
+手順は簡単です。</p>
+
+<p>１．テンプレートプロジェクトをクローンする<br/>
+<code>git clone https://github.com/PerfectlySoft/PerfectTemplate.git</code></p>
+
+<p>２．ビルドを実行する<br/>
+クローンした<code>PerfectTemplate</code>フォルダ内に入り、ビルドを実行しましょう。</p>
+
+<p><code>
+$ cd PerfectTemplate
+$ swift build
+</code></p>
+
+<p>３．サーバを起動します<br/>
+なんと後は下記コマンドでサーバを起動するだけです。</p>
+
+<p><code>.build/debug/PerfectTemplate</code></p>
+
+<p>正しく起動すれば、下記ログが出力されます。<br/>
+<code>Starting HTTP server on 0.0.0.0:8181 with document root ./webroot</code><br/>
+またログの指示通りChromeで<code>http://localhost:8181/</code>にアクセスすれば<code>Hello World</code>が拝めます。</p>
+
+<h4>ルーティングの書き方について学ぶ</h4>
+
+<p>では次に簡単なルーティングについて学んでいきましょう。<br/>
+チュートリアルでは、下記GETリクエストのみ受け付けていました。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .get, uri: &ldquo;/&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.setHeader(.contentType, value: "text/html")
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Hello, world!&lt;/title&gt;&lt;body&gt;Hello, world!&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>最も単純なGETリクエストですね。<br/>
+では、<code>ID: 100</code>のユーザ情報を取得するGETリクエストはどう受け付けるのでしょうか。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .get, uri: &ldquo;/user/{id}&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.setHeader(.contentType, value: "text/html")
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You GET UserInfo with \(request.urlVariables)&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>たったのこれだけです。<br/>
+では、POSTリクエストの受け付けはどうでしょうか。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .post, uri: &ldquo;/user&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You POSTed user data to catch your POST request.&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>これも簡単ですね。<br/>
+書き方に若干の違いはあれど、最早Node.jsとそんなに変わらん&hellip;</p>
+
+<p>おまけで、POSTリクエストで届いたJSONStringをバラバラっと分解して返却してみました。<br/>
+そのためにまずはJSONStringをデコードする処理を実装します。</p>
+
+<p>```javascript
+// decode.swift
+import PerfectHTTPServer
+import PerfectLib</p>
+
+<p>func decode(postBody: String?) &ndash;> [String: Any]? {</p>
+
+<pre><code>do {
+    guard let decoded = try postBody?.jsonDecode() as? [String:Any] else {
+        return [:]
+    }
+    print(decoded)
+    return decoded
+} catch {
+    return [:]
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これを下記のように利用します。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .post, uri: &ldquo;/user&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+
+var userInfo = ""
+let decodedParam = decode(postBody: request.postBodyString)
+for (key, value) in decodedParam! {
+    switch key {
+        case "name":
+            userInfo = userInfo + "name is \(value as! String).\n"
+        case "email":
+            userInfo = userInfo + "email is \(value as! String)."
+        default:
+            break
+    }
+}
+response.appendBody(string: "&lt;html&gt;&lt;body&gt;POST handler: \(userInfo)&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>さて、実装できたのでクライアントからリクエストを投げてみます。</p>
+
+<p><code>
+// クライアントからPOSTリクエストを投げます
+curl http://localhost:8181/user -X POST -H "Content-Type: application/json" -d '{"name":"Ichiro", "email": "xxx@gmail.com"}'
+// 結果
+&lt;html&gt;&lt;body&gt;POST handler: name is Ichiro.
+email is xxx@gmail.com.&lt;/body&gt;&lt;/html&gt;xxxx:PerfectTemplate
+</code></p>
+
+<h3>まとめ</h3>
+
+<p>さて今回は<code>Perfect</code>を使ったサーバサイドSwiftを見てみました。<br/>
+まだまだ基本的なリクエストの受付しかみていませんが、既にいろいろなモジュールが用意されているようなので、継続的に見ていきたいと思います。<br/>
+やっぱりライブラリを作るなら、最新の状況についていかないと見捨てられるな〜と思ってしまいました。<br/>
+(今回で言うと、Swift3やXcode8とかですね。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[ReSwiftを勉強してみよう！(1)]]></title>
@@ -1188,156 +1377,6 @@ func showAlert() {
 </script>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Swift ExpressでAjax通信してみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/07/31/swift-express-2/"/>
-    <updated>2016-07-31T23:40:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/07/31/swift-express-2</id>
-    <content type="html"><![CDATA[<h3>Swift ExpressでPOSTリクエスト投げてみよう！</h3>
-
-<p>さて、本日は<a href="https://github.com/crossroadlabs/Express">Swift Express</a>の続きを試してみます。<br/>
-<a href="http://grandbig.github.io/blog/2016/07/10/swift-express/">前回</a>はインストール方法とデフォルト画面の表示までを紹介しましたが、<br/>
-今回はAjax通信によるPOSTリクエストを投げてみたいと思います。</p>
-
-<h4>サーバサイドの対応</h4>
-
-<p>まずは、サーバサイドの準備です。<br/>
-<code>main.swift</code>を修正しましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>```objective-c
-import Express</p>
-
-<p>let app = express()</p>
-
-<p>app.views.register(StencilViewEngine())</p>
-
-<!-- ここを追加 -->
-
-
-<p>app.views.register(JsonView())</p>
-
-<p>app.get(&ldquo;/assets/:file+&rdquo;, action: StaticAction(path: &ldquo;public&rdquo;, param:&ldquo;file&rdquo;))</p>
-
-<p>app.get(&ldquo;/&rdquo;) { (request:Request<AnyContent>)&ndash;>Action<AnyContent> in</p>
-
-<pre><code>return Action&lt;AnyContent&gt;.render("index", context: ["hello": "Hello,", "swift": "Swift", "express": "Express!"])
-</code></pre>
-
-<p>}</p>
-
-<!-- ここを追加 -->
-
-
-<p>app.post(&ldquo;/:param&rdquo;) { (request:Request<AnyContent>)&ndash;>Action<AnyContent> in</p>
-
-<pre><code>let response = ["status": "ok", "description": "Post Request Succesfully"]
-    return Action.render(JsonView.name, context: response)
-</code></pre>
-
-<p>}</p>
-
-<p>app.listen(9999).onSuccess { server in</p>
-
-<pre><code>print("Express was successfully launched on port", server.port)
-</code></pre>
-
-<p>}</p>
-
-<p>app.run()
-```</p>
-
-<p><code>app.views.register(JsonView())</code>を追加することで、JSON形式のデータを返却できるようになります。<br/>
-また、返却レスポンスは<code>dictionary</code>型で書けばOKなようです。</p>
-
-<h4>クライアントサイドの対応</h4>
-
-<p>続いて、クライアントサイドの準備です。<br/>
-手っ取り早くjQuery使いましょう。<br/>
-<a href="https://jquery.com/">こちらのページ</a>から最新のjQueryをダウンロードしてきます。</p>
-
-<p>そして、<code>index.js</code>をさくっと作っちゃいましょう。</p>
-
-<p>```javascript
-$(function() {</p>
-
-<pre><code>$("#touch").on("click", function() {
-    // Ajax通信
-    ajax();
-});
-
-function ajax() {
-    $.ajax({
-        type: "POST",
-        url: "http://localhost:9999/1",
-        dataType: "json"
-    }).done(function(data) {
-        alert(data.status + "\n" + data.description);
-    }).fail(function(data) {
-        alert("error!!");
-    });
-}
-</code></pre>
-
-<p>});
-```</p>
-
-<p>これらjsファイルを読み込みます。</p>
-
-<p>```html
-// index.stencil
-<html></p>
-
-<pre><code>&lt;head&gt;
-    &lt;title&gt;  &lt;/title&gt;
-    &lt;link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:700italic,700' rel='stylesheet' type='text/css'&gt;
-    &lt;link href='http://grandbig.github.io/assets/css/main.css' rel='stylesheet' type='text/css'&gt;
-&lt;/head&gt;
-&lt;body&gt;
-    &lt;img class="logo" src="http://grandbig.github.io/assets/logo.png"/&gt;
-    &lt;h1&gt; &lt;i&gt;&lt;span class="swift"&gt;&lt;/span&gt; &lt;/i&gt;&lt;/h1&gt;
-    &lt;div id="touch"&gt;ここをタッチ！！&lt;/div&gt;
-
-    &lt;script src="http://grandbig.github.io/assets/js/jquery-3.1.0.min.js"&gt;&lt;/script&gt;
-    &lt;script src="http://grandbig.github.io/assets/js/index.js"&gt;&lt;/script&gt;
-&lt;/body&gt;
-</code></pre>
-
-<p></html>
-```</p>
-
-<p>これだけで下図のようにPOSTリクエストが通りました。</p>
-
-<p><img src="/images/swift-express-3.png" alt="POSTリクエスト" /></p>
-
-<p>というところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
 
 ]]></content>
   </entry>
