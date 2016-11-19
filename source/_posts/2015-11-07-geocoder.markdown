@@ -1,0 +1,89 @@
+---
+layout: post
+title: "CLGeocoderによるジオコーディングについて"
+date: 2015-11-07 23:04
+comments: true
+categories: ios
+---
+
+###ジオコーディング/逆ジオコーディングについて
+本日は、CoreLocation.frameworkによる **ジオコーディング** について書きたいと思います。まず、 **ジオコーディング** とは住所を緯度・経度に変換する技術のことです。逆に緯度・経度を住所に変換する技術を **逆ジオコーディング** と言います。  
+
+ジオコーディングは多くのサービスで利用されていることと思いますが、大抵の場合、GoogleやYahooのジオコーディングAPIを利用しているのではないでしょうか？  
+ですが、冒頭でも述べたようにあえてCoreLocation.frameworkによるジオコーディング/逆ジオコーディングについて見てみたいと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+####CoreLocation.frameworkでのジオコーディング/逆ジオコーディング方法
+早速、説明していきます。  
+ジオコーディング/逆ジオコーディングのためのメソッドはCLGeocoderクラスの中に含まれています。  
+下記のように使います。  
+
+```objective-c
+// ジオコーディング処理(住所を緯度・経度に変換)
+func geocode(address:String) {
+	let geocoder = CLGeocoder()
+	geocoder.geocodeAddressString(address) { (placeMarks:[CLPlacemark]?, error:NSError?) -> Void in
+		for placeMark in placeMarks! {
+			print("latitude: \(placeMark.location?.coordinate.latitude), longitude: \(placeMark.location?.coordinate.longitude)")
+		}
+	}
+}
+
+// 逆ジオコーディング処理(緯度・経度を住所に変換)
+func reverseGeocode(latitude:CLLocationDegrees, longitude:CLLocationDegrees) {
+	let location = CLLocation(latitude: latitude, longitude: longitude)
+	let geocoder = CLGeocoder()
+	geocoder.reverseGeocodeLocation(location) { (placeMarks:[CLPlacemark]?, error:NSError?) -> Void in
+		let placeMark = placeMarks?.first
+		if let country = placeMark?.country {
+			print("\(country)")
+		}
+		if let administrativeArea = placeMark?.administrativeArea {
+			print("\(administrativeArea)")
+		}
+		if let subAdministrativeArea = placeMark?.subAdministrativeArea {
+			print("\(subAdministrativeArea)")
+		}
+		if let locality = placeMark?.locality {
+			print("\(locality)")
+		}
+		if let subLocality = placeMark?.subLocality {
+			print("\(subLocality)")
+		}
+		if let thoroughfare = placeMark?.thoroughfare {
+			print("\(thoroughfare)")
+		}
+		if let subThoroughfare = placeMark?.subThoroughfare {
+			print("\(subThoroughfare)")
+		}
+	}
+}
+```
+
+今回は簡単なサンプルなので、ログ出力のみにしています。  
+実に簡単ですね！  
+逆ジオコーディングの場合、全ての値が入った上でplaceMarkが返されるわけではないので、思い描いた住所が出ない場合もありました。  
+
+####CoreLocation.frameworkでの逆ジオコーディングの精度
+では、このCoreLocation.frameworkによる逆ジオコーディングって、どの程度正確なんでしょうか？  
+Googleが公開している逆ジオコーディングAPIは`https://maps.googleapis.com/maps/api/geocode/json?latlng=<緯度>,<経度>&sensor=false`です。  
+筆者が自宅で実機で実際に取得した位置情報を逆ジオコーディングして試したところ、Google APIの結果と必ず一致するわけではありませんでした。  
+
+どちらが正しかったかというと、正直なところ、Google APIの方が精度が高かったです。  
+これがあまり逆ジオコーディングの方法としてCoreLocation.frameworkが使われない理由なのかもしれません。  
+Appleはどんどんマップの精度向上に力を入れていますし、いつの日か、Googleと遜色のない結果が返ってくるかもしれません。  
+  
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>

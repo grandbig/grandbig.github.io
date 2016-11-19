@@ -1,0 +1,731 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: springboot | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/springboot/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2016-11-03T11:48:47+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Spring Bootでリダイレクト先にパラメータを渡す方法]]></title>
+    <link href="http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot/"/>
+    <updated>2016-05-28T20:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot</id>
+    <content type="html"><![CDATA[<h4>RedirectAttributesを使ってみよう！</h4>
+
+<p>さて、本日は久々にSpring Bootの話です。</p>
+
+<p>皆さんはWebアプリケーションを作る中で、「リダイレクト先にパラメータを渡したい！」なんてことはありませんでしょうか？<br/>
+筆者は先日、そのような状況に鉢合わせたのですが、ググってみてもなかなか求めている答えが見つからず、少々悩んでしまいました。<br/>
+GETリクエストであればリダイレクト後にURLからリクエストパラメータが取得できますが、<br/>
+POSTリクエストやURLにリクエストパラメータを表示するわけにいかない仕様の場合はそうもいきません。</p>
+
+<p>そんなときに役に立つのが<code>RedirectAttributes</code>です。<br/>
+では、早速、使い方を見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<h4>リダイレクト先に文字列を送る</h4>
+
+<p>まずは単純な例から見ていきましょう。<br/>
+下記はリダイレクト先に文字列をパラメータとして渡す例です。</p>
+
+<p>```java
+// HelloController
+@Controller
+public class HelloController {</p>
+
+<pre><code>@RequestMappinf(value = "/", method = RequestMethod.POST)
+public String form(RedirectAttributes redirectAttributes, @RequestParam("name") String name) {
+
+    redirectAttributes.addFlashSttribute("name", name);
+    return "redirect:/redirectSample";
+}
+
+@RequestMapping("/redirectSample")
+public String sample(@ModelAttributes("name") String name) {
+
+    System.out.println("name: " + name);
+    return "sample";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>実際に動かしてみれば、正しくログが出力されることを確認できるでしょう。<br/>
+上記で<code>return "sample";</code>としているのは単なる例なので、適切なtemplateを指定してあげてください。</p>
+
+<h4>リダイレクト先にオブジェクトを送る</h4>
+
+<p>続いて、パラメータをまとめて送るパターンです。<br/>
+今回は下記のように定義された<code>MyData</code>を送ってみましょう。<br/>
+※ソースを簡単にするために<code>build.gradle</code>に<code>compile("org.projectlombok:lombok:1.16.6")</code>を設定して<code>@Data</code>を利用しています。</p>
+
+<p>```java
+// MyData.java
+@Data
+public class MyData {</p>
+
+<pre><code>private String name;
+private String memo;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>では、実際にパラメータを送ってみましょう。</p>
+
+<p>```java
+// HelloController</p>
+
+<p>@Controller
+public class HelloController {</p>
+
+<pre><code>@RequestMapping(value = "/", method = RequestMethod.POST)
+public String form(RedirectAttributes redirectAttributes, @RequestParam("name") String name, @RequestParam("memo") String memo) {
+
+    // MyDataについては後述します
+    MyData mydata = new MyData(name, memo);
+    ModelMap modelMap = new ModelMap();
+    modelMap.addAttribute("mydata", mydata);
+    redirectAttributes.addFlashAttribute("model", modelMap);
+
+    return "redirect:/redirectSample";
+}
+
+@RequestMapping("/redirectSample")
+public String sample(@ModelAttribute("model")ModelMap modelMap) {
+
+    MyData mydata = modelMap.get("mydata");
+    String name = mydata.getName();
+    String memo = mydata.getMemo();
+    System.out.println("name: " + name + ", memo: " + memo);
+
+    return "sample";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>オブジェクトとしてパラメータを送るには<code>ModelMap</code>に一度格納する必要があります。<br/>
+パラメータを受け取ったあとに型変換して取り出せばOKです。</p>
+
+<h4>RedirectAttributesにおけるaddAttributeとaddFlashAttributeの違い</h4>
+
+<p>さて、今回は<code>RedirectAttributes</code>の<code>addFlashAttribute</code>を利用しましたが、<code>RedirectAttributes</code>には<code>addAttribute</code>というメソッドも存在します。<br/>
+ではなぜ<code>addFlashAttribute</code>を利用したのか参考までに書いておきます。</p>
+
+<h5>RedirectAttributesのaddAttributeはリダイレクト先に文字列としてパラメータを送る</h5>
+
+<p>大きな違いは<code>addFlashAttribute</code>のように<code>ModelMap</code>型でパラメータを送れません。<br/>
+よって、複数のパラメータを送るには1つずつパラメータをセットするしか方法がありません。</p>
+
+<p><code>java
+// addAttributeの例
+redirectAttributes.addAttribute("name", "hogehoge");
+redirectAttributes.addAttribute("memo", "fugafuga");
+</code></p>
+
+<h5>RedirectAttributesのaddAttributeはリダイレクト先でのパラメータの受取り方が異なる</h5>
+
+<p>こちらも大きな違いとなりますが、<code>addFlashAttribute</code>のときのように<code>@ModelAttribute</code>を使ってパラメータを受け取ることができません。<br/>
+<code>addAttribute</code>の場合、<code>@RequestParameter</code>を使ってパラメータを受取ります。</p>
+
+<p>```java
+// addAttributeの例
+@RequestMapping(&ldquo;/redirectSample&rdquo;)
+public String sample(@RequestParam(&ldquo;name&rdquo;) String name, @RequestParam(&ldquo;memo&rdquo;) String memo) {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>リロード時の挙動が異なる</h5>
+
+<p>最後になりますが、<br/>
+<code>addAttribute</code>と<code>addFlashAttribute</code>ではリダイレクト後にリロードすると挙動が異なります。<br/>
+<code>addAttribute</code>ではGETリクエストとしてURLの末尾に<code>?name=hogehoge&amp;memo=fugafuga</code>という形でパラメータが渡されるため、リロードをしてもパラメータを受け取ることができます。</p>
+
+<p>しかし、<code>addFlashAttribute</code>では<code>flashMap</code>を利用したパラメータ渡しとなっています。<br/>
+よって、リダイレクト後は<code>flashMap</code>からパラメータが残らないため、何もパラメータを受け取ることはできなくなります。</p>
+
+<p>いかがでしたでしょうか？<br/>
+筆者にとってもSpring Bootに慣れない日々が続きますが、気づいたことや学んだことについてはブログにまとめていきたと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[快適なSpring BootプログラミングのためにIntelliJ IDEA Ultimate版を購入しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/04/30/start-spring-boot-intellij-ultimate/"/>
+    <updated>2016-04-30T14:48:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/04/30/start-spring-boot-intellij-ultimate</id>
+    <content type="html"><![CDATA[<h4>はじめに</h4>
+
+<p>筆者は決してJetBrains社の回し者ではありません笑<br/>
+最近、Spring Bootにチャレンジしているのですが、自宅ではvimを使っていました。<br/>
+なぜかって、IntelliJ IDEA Community版だとSpring Bootプログラミングの際に面倒なことが多いんですもの&hellip;。<br/>
+しかしながら、vimでSpring Bootプログラミングを続けるのもしんどいので、<br/>
+とうとうIntelliJ IDEA Ultimate版に手を出してしまったということなんです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>IntelliJ IDEA Ultimate版とは</h4>
+
+<p>さて、早速、IntelliJ IDEA Ultimate版の何が良いかについて説明していきます。<br/>
+IntelliJ IDEAとは<a href="https://www.jetbrains.com/">JetBrains</a>社が開発した多言語対応の統合開発環境のことです。<br/>
+Android StudioがIntelliJ IDEAを元に作られていることは割りと有名な話ですね。</p>
+
+<p>筆者が<a href="http://grandbig.github.io/blog/2016/04/16/start-spring-boot/">Spring Bootを使い始めよう！</a>の記事内で使用していたIntelliJ IDEAはCommunity版だったのですが、<br/>
+もちろん、Community版でもプログラミングを書くことやGradleによるビルド実行は問題ありません。<br/>
+しかし、Community版では例えば下記のようなことに対応できません。</p>
+
+<ul>
+<li>Spring Boot Framework関連の予測変換</li>
+<li>Thymeleaf関連の予測変換</li>
+<li>Spring Bootを利用したプロジェクトをIntelliJから新規作成可能</li>
+</ul>
+
+
+<p>これに対応したのが <strong>IntelliJ IDEA Ultimate版</strong> なのです。<br/>
+詳細は公式サイトから知ることができます。</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate1.png" alt="IntelliJ 比較表" /></p>
+
+<p>また、価格ですが、個人版であれば、ビジネス版よりも比較的に安く購入することができます。<br/>
+1年単位での購入なのですが、使い続けるほどに安くなるという価格設定がエンジニア魂をくすぐります。<br/>
+下図のように、3年目以降は初年度の半額弱にまで安くなります。<br/>
+(Apple Developer Programも同じような仕組みにして欲しいですね笑)</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate2.png" alt="IntelliJ IDEA Ultimate版の価格" /></p>
+
+<p>因みに、同ページに「All Products Pack」という商品もありますが、<br/>
+PHP, Ruby等々を無双したい方向けなので、筆者には今のところ不要です。</p>
+
+<h4>IntelliJ IDEA Ultimate版の購入と設定</h4>
+
+<p>IntelliJ IDEA Ultimate版の購入方法と設定について説明します。<br/>
+購入は非常に簡単です。</p>
+
+<p>1．<a href="https://www.jetbrains.com/idea/buy/#edition=personal">Buyページ</a>で <strong>Buy Now</strong> をクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate2.png" alt="Buyページ" /></p>
+
+<p>2．CustomerページでEmailアドレスを入力してNEXTをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate3.png" alt="Customerページ" /></p>
+
+<p>3．Emailアドレスと国を確認してPROCESS AS NEW CUSTOMERをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate4.png" alt="Customerページ2" /></p>
+
+<p>4．Customer Infoページで必要事項を入力してPLACE ORDERをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate5.png" alt="Customer Infoページ" /></p>
+
+<p>5．JetBrains社から届いたメールの添付ファイルを開封して、リンクをクリックしてActivationページへ遷移</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate6.png" alt="JetBrains社から届いたメールの添付ファイル" /></p>
+
+<p>6．Activationページを確認</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate7.png" alt="Activationページ" /></p>
+
+<p>ここまでで、購入完了したことを確認できます。<br/>
+続いて設定に必要な工程について説明します。</p>
+
+<p>7．ActivationページでDownload activation codeをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate8.png" alt="Activationページ2" /></p>
+
+<p>8．IntelliJ IDEA Ultimate版をDownLoad</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate9.png" alt="Ultimate版をDownLoad" /></p>
+
+<p>9．Activation codeをIntelliJ IDEA Ultimate版に登録</p>
+
+<p>DownLoadしたIntelliJ IDEA Ultimate版を起動して、先ほどDownLoadしたActivation codeを設定しましょう。</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate10.png" alt="IntelliJ IDEA Ultimate" /></p>
+
+<p>以上で設定も完了です。</p>
+
+<h4>IntelliJ IDEA Ultimate版でSpring Bootを始めよう！</h4>
+
+<p>では、IntelliJ IDEA Ultimate版でSpring Bootを利用する新規プロジェクトを作成しましょう。</p>
+
+<p>1．IntelliJ IDEA Ultimate版を起動してCreate New Projectをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate11.png" alt="Create New Project" /></p>
+
+<p>2．Spring Inilializrを選択</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate12.png" alt="Spring Initializr" /></p>
+
+<p>3．各種名称や項目を設定</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate13.png" alt="各種名称や項目の設定" /></p>
+
+<p>4．必要なDependencyを設定</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate14.png" alt="必要な名称や項目の設定" /></p>
+
+<p>5．プロジェクト名と保存場所を設定</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate15.png" alt="プロジェクト名と保存場所を設定" /></p>
+
+<p>6．Gradleの設定の確認</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate16.png" alt="Gradleの設定の確認" /></p>
+
+<p>以上で新規プロジェクトが作成できました。<br/>
+プロジェクトを実行してみましょう。</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate17.png" alt="プロジェクトの実行" /></p>
+
+<p>さて、如何でしたでしょうか？<br/>
+非常に簡単に導入できますし、使い勝手も良いので、これからSpring Bootプログラミングを始める方は検討してみてはいかがでしょうか？<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Spring BootでSystem.inにハマったメモ]]></title>
+    <link href="http://grandbig.github.io/blog/2016/04/17/gradle-spring-boot/"/>
+    <updated>2016-04-17T23:13:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/04/17/gradle-spring-boot</id>
+    <content type="html"><![CDATA[<h4>Spring BootをGradleでビルドしてハマったメモ</h4>
+
+<p>今日は超絶ハマって苦しんだ超初歩についてメモ書きです。<br/>
+Spring Bootに関する情報はあまり多くはないのですが、<br/>
+さらに困ったことにほとんどの書籍やネット情報ではMavenでビルドしているのでGradleに関する情報が乏しくてハマりました&hellip;。</p>
+
+<p>Javaでキーボード入力のために、<br/>
+<code>Scanner scanner = new Scanner(System.in);</code>を記述することがあります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>これをメインファイルに記述した状態で<code>gradle bootRun</code>コマンドを実行しても、<br/>
+しれっと処理が流れてしまいました&hellip;。<br/>
+「なぜだ〜〜〜」と格闘すること数時間!?</p>
+
+<p>解決方法がわかりました。下記を<code>build.gradle</code>に追加します。</p>
+
+<p>```java
+// build.gradle
+bootRun {</p>
+
+<pre><code>standardInput = System.in
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これは<code>bootRun</code>タスクを実行したときに、<br/>
+<code>System.in</code>をInput処理として判別するように定義しています。<br/>
+もう一度<code>gradle bootRun</code>を実行してみると処理が途中でStopしてユーザ入力を受け付けるようになりました。</p>
+
+<p>いや〜ハマった&hellip;。<br/>
+本日は完全なるメモ書きでした。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Spring BootでHello Worldをしてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/04/17/hello-world-spring-boot/"/>
+    <updated>2016-04-17T01:25:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/04/17/hello-world-spring-boot</id>
+    <content type="html"><![CDATA[<h4>Spring BootでHello World</h4>
+
+<p>引き続きSpring Bootの練習です。<br/>
+前回、Spring Boot用のプロジェクトを作成して、起動してみるところまでやってみました。<br/>
+今回はHello Worldアプリケーションを作成してみます。<br/>
+(Node.jsのExpressとは異なりますが、結構簡単にできました。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>まずは、下記が前回のフォルダ構成です。</p>
+
+<p>```java
+firstApp
+  ┣━━ build.gradle
+  ┣━━ gradlew
+  ┣━━ gradlew.bat
+  ┣━━ gradle
+  ┃    ┗━━ wrapper
+  ┃          ┣━━ gradle-wrapper.jar
+  ┃          ┗━━ gradle-wrapper.properties
+  ┗━━ src</p>
+
+<pre><code>   ┣━━ main
+   ┃    ┣━━ java
+   ┃    ┃    ┗━━ com
+   ┃    ┃         ┗━━ example
+   ┃    ┃               ┗━━ FirstAppApplication.java
+   ┃    ┗━━ resources
+   ┃         ┗━━ application.properties
+   ┗━━ test
+        ┗━━ java
+             ┗━━ com
+                  ┗━━ example
+                        ┗━━ FirstAppApplicationTests.java
+</code></pre>
+
+<p>```</p>
+
+<p>今回はWebアプリケーションを作成するので、<code>build.gradle</code>を修正する必要があります。</p>
+
+<p>```java
+// build.gradle
+dependencies {</p>
+
+<pre><code>compile 'org.springframework.boot:spring-boot-starter-web'
+testCompile('org.springframework.boot:spring-boot-starter-test')
+</code></pre>
+
+<p>}
+```</p>
+
+<p>コンパイル対象のSpring Bootのモジュールを変更しています。<br/>
+(元はcompile(&lsquo;org.springframework.boot:spring-boot-starter&rsquo;)でした。)</p>
+
+<p>次に、上記のフォルダ構成の<code>FirstApplication.java</code>と同階層に<code>HelloController.java</code>を作成します。</p>
+
+<p>```java
+// HelloController.java
+package com.example;</p>
+
+<p>import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;</p>
+
+<p>@RestController
+@RequestMapping(&ldquo;/hello-world&rdquo;)
+public class HelloController {</p>
+
+<pre><code>@RequestMapping(method=RequestMethod.GET)
+public String hello() {
+    return "Hello Spring MVC";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p><code>HelloController.java</code>の処理について説明すると</p>
+
+<ul>
+<li><code>@RestController</code>: WebAPIのエントリポイントクラスを指定</li>
+<li><code>@RequestMapping</code>: パスやHTTPメソッド(GET, POST, PUT, DELETEなど)のマッピングを指定
+
+<ul>
+<li><code>@RequestMapping("/hello-world")</code>で<code>HelloController</code>クラスにパスをマッピング</li>
+<li><code>@RequestMapping(method=RequestMethod.GET)</code>で<code>hello</code>メソッドにHTTPメソッドをマッピング</li>
+</ul>
+</li>
+</ul>
+
+
+<p>そして、<code>application.properties</code>にポート番号を指定します。</p>
+
+<p><code>java
+// application.properties
+server.port=9000
+</code>
+あとは、ターミナルから<code>gradle bootRun</code>を実行するだけです。<br/>
+そして、Chromeで<code>http://localhost:9000/hello-world</code>にアクセスしてみましょう。<br/>
+下記のような結果が得られるはずです。</p>
+
+<p><img src="/images/hello-world-spring-boot1.png" alt="Hello World" /></p>
+
+<p>もろもろの問題はあるけれど、後回しにして、引き続き勉強を進めます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Spring Bootを使い始めよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/04/16/start-spring-boot/"/>
+    <updated>2016-04-16T14:43:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/04/16/start-spring-boot</id>
+    <content type="html"><![CDATA[<h4>Spring Bootとは</h4>
+
+<p>本日はこれまでと全く趣向を変えて、 <strong>Spring Boot</strong> について書きたいと思います。<br/>
+<a href="http://projects.spring.io/spring-boot/">Spring Boot</a>とはSpringプロジェクトが提供している多くのFrameworkを統合した、<br/>
+簡単にWebアプリケーションを作成できるように設計されたFrameworkです。</p>
+
+<p>開発者はSpringプロジェクト内で用意された様々なFrameworkを意識する必要がありません。<br/>
+Spring Bootとは長年ブラッシュアップされ、肥大化してきたSpringプロジェクトへの参入ハードルを劇的に下げるものと言えるでしょう。</p>
+
+<p>なんて言いつつも、<br/>
+筆者はJavaによるWebアプリケーション開発はほとんどやったことがありません。</p>
+
+<p>何はともあれ、まずは触れてみたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>Spring BootによるWeb Application Projectを作成しよう！</h4>
+
+<p>最も簡単な方法について説明します。</p>
+
+<p>1．<a href="https://start.spring.io/">Spring Initializr</a>にアクセス<br/>
+Projectの自動生成ツールサイトがあるので、アクセスして各種項目を設定しましょう。</p>
+
+<ul>
+<li>Project: GradleおよびMavenから選択できます</li>
+<li>Spring Boot: バージョンを選択できます</li>
+<li>Group: パッケージ名を指定できます</li>
+<li>Artifact: メインファイル名を指定できます</li>
+<li>Dependencies: 初期状態で追加されるdependenciesを指定できます</li>
+</ul>
+
+
+<p>筆者は下記のように指定しました。</p>
+
+<p><img src="/images/start-spring-boot1.png" alt="Spring Initializr" /></p>
+
+<p>2．Generate Projectボタンをクリック<br/>
+下記のようなProjectが生成されます。<br/>
+(下記は筆者が指定した設定項目で生成されたProjectです。)</p>
+
+<p>```java
+firstApp
+  ┣━━ build.gradle
+  ┣━━ gradlew
+  ┣━━ gradlew.bat
+  ┣━━ gradle
+  ┃    ┗━━ wrapper
+  ┃          ┣━━ gradle-wrapper.jar
+  ┃          ┗━━ gradle-wrapper.properties
+  ┗━━ src</p>
+
+<pre><code>   ┣━━ main
+   ┃    ┣━━ java
+   ┃    ┃    ┗━━ com
+   ┃    ┃         ┗━━ example
+   ┃    ┃               ┗━━ FirstAppApplication.java
+   ┃    ┗━━ resources
+   ┃         ┗━━ application.properties
+   ┗━━ test
+        ┗━━ java
+             ┗━━ com
+                  ┗━━ example
+                        ┗━━ FirstAppApplicationTests.java
+</code></pre>
+
+<p>```</p>
+
+<p>3．<code>gradle bootRun</code>コマンドを実行<br/>
+firstApp直下で<code>gradle bootRun</code>コマンドを実行します。<br/>
+下記のような実行結果が出るはずです。</p>
+
+<p><img src="/images/start-spring-boot2.png" alt="実行結果" /></p>
+
+<p>これは生成されたメインファイルでのソースが下記のようになっているためです。<br/>
+<code>main</code>メソッド内で実行している処理はたったの1行で、<br/>
+これはSpring Bootによるアプリケーションを起動する処理となっています。</p>
+
+<p>ここで設定している<code>@SpringBootApplication</code>アノテーションは<br/>
+<code>@Configuration</code>, <code>@EnableAutoConfiguration</code>, <code>@ComponentScan</code>の3つの設定と同義になります。</p>
+
+<ul>
+<li><code>@Configuration</code>: Beanを含むJavaConfig用のクラスに付与する</li>
+<li><code>@EnableAutoConfiguration</code>: 様々な設定を自動で有効にする</li>
+<li><code>@ComponentScan</code>: クラスの自動スキャンを可能にする</li>
+</ul>
+
+
+<p>```java
+package com.example;</p>
+
+<p>import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;</p>
+
+<p>@SpringBootApplication
+public class FirstAppApplication {</p>
+
+<pre><code>public static void main(String[] args) {
+    SpringApplication.run(FirstAppApplication.class, args);
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>因みに、初期状態で<code>sourceCompatibility</code>および<code>targetCompatibility</code>が <strong>1.8</strong> となっています。<br/>
+よって、実行するためにはJDKバージョン <strong>1.8</strong> が必要になります。<br/>
+(インストールは<a href="http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html">こちら</a>から)</p>
+
+<p>まずは最も簡単な導入が完了したようです。</p>
+
+<h4>IntelliJ IDEAにimportしてみよう</h4>
+
+<p>ターミナルからプロジェクトの開発を続けても良いのですが、<br/>
+ターミナルに慣れていない方は統合開発環境ツールで開きたいかもしれませんね。<br/>
+複雑なプロジェクトになればなるほど、ターミナルでの開発は辛くなるかもしれません。</p>
+
+<p>ということでIntelliJ IDEAに先ほどのプロジェクトをimportしてみましょう。</p>
+
+<p>1．IntelliJ IDEAを起動して、importを選択<br/>
+<img src="/images/start-spring-boot3.png" alt="import" /></p>
+
+<p>2．importしたいDirectoryを選択<br/>
+<img src="/images/start-spring-boot4.png" alt="Directoryの選択" /></p>
+
+<p>3．Createの方を選択<br/>
+<img src="/images/start-spring-boot5.png" alt="Createの方を選択" /></p>
+
+<p>4．Project名と保存場所を確認<br/>
+<img src="/images/start-spring-boot6.png" alt="Project名と保存場所を確認" /></p>
+
+<p>5．流れに任せてNextを続ける<br/>
+<img src="/images/start-spring-boot7.png" alt="ソースファイル一覧" /></p>
+
+<p><img src="/images/start-spring-boot8.png" alt="ライブラリの確認" /></p>
+
+<p><img src="/images/start-spring-boot9.png" alt="ライブラリの確認" /></p>
+
+<p><img src="/images/start-spring-boot10.png" alt="JDKを選択" /></p>
+
+<p>6．一通り作業が終わったらFinishを選択<br/>
+<img src="/images/start-spring-boot11.png" alt="Finishを選択" /></p>
+
+<p>7．Intellij IDEAのターミナルで<code>gradle bootRun</code>を実行<br/>
+<img src="/images/start-spring-boot12.png" alt="コマンドを実行" /></p>
+
+<p>続いて、最も簡単なIntelliJ IDEA上での実行が完了しました。</p>
+
+<p>引き続きSpring Bootを見ていきますが、本記事は一旦ここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+</feed>

@@ -1,0 +1,252 @@
+---
+layout: post
+title: "RxSwiftを勉強してみよう！"
+date: 2016-08-21 18:09
+comments: true
+categories: ios swift Rx
+---
+
+###RxSwiftとは
+Reactive Extensions(以下、Rx)のSwift版です。  
+と一言で言っても、「Rxとはなんぞや？？」となってしまうかと思います。  
+(多分に漏れず、筆者もそうです...)  
+そこで、いろいろと調べてみると、  
+
+* 「非同期/イベント/時間に関する処理をLINQの形式で簡潔かつ宣言的に記述すること」ができるのが特徴  
+* 観測可能 (observable) なシーケンスと LINQ スタイルのクエリ演算子を使って、非同期なイベントベースのプログラムを合成するライブラリ  
+
+なんて話が出てきます。  
+確かに非同期処理はソースコードが複雑になりやすいので、何となくRxは良さそうな気がしてきました。  
+今回はまず触って慣れてみようということで見ていきましょう。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+###RxSwiftでUI
+まずはRxSwiftの書き方を覚えるためにUI関連から見てきましょう。  
+
+####サンプル画面
+下記のように画面を作成します。  
+![サンプル画面](/images/rxswift_1.png)  
+
+####RxSwiftのインストール
+下記のように`Podfile`を作成します。  
+
+```objective-c
+use_frameworks!
+
+target 'RxSwiftSample' do
+	pod 'RxSwift',    '~> 2.0'
+	pod 'RxCocoa',    '~> 2.0'
+end
+
+target 'RxSwiftSampleTests' do
+	pod 'RxBlocking', '~> 2.0'
+	pod 'RxTests',    '~> 2.0'
+end
+
+target 'RxSwiftSampleUITests' do
+	pod 'RxBlocking', '~> 2.0'
+	pod 'RxTests',    '~> 2.0'
+end
+```
+
+そして、`pod install`を実行します。  
+
+####RxSwiftを用いたUIアクションを実装
+下記のようにアクションを実装します。  
+
+```objective-c
+// ViewController.swift
+import UIKit
+import RxSwift
+import RxCocoa
+
+class ViewController: UIViewController {
+
+	// UI部品
+	@IBOutlet weak var sampleBtn: UIButton!
+	@IBOutlet weak var sampleTextField: UITextField!
+	@IBOutlet weak var sampleLabel: UILabel!
+
+	// 自動unsubscribeのために必要
+	let disposeBag = DisposeBag()
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+
+		// ボタンタップアクション
+		self.sampleBtn.rx_tap.subscribeNext { [unowned self] _ in
+			self.showAlert()
+		}.addDisposableTo(disposeBag)
+
+		// テキストフィールドの入力アクション
+		self.sampleTextField.rx_text
+			.map { "Your Text is \($0)" }
+			.bindTo(self.sampleTextField.rx_text)
+			.addDisposableTo(disposeBag)
+	}
+
+	<省略>
+
+	func showAlert() {
+		let alert = UIAlertController(title: "Sample Alert", message: "Can you see a sample alert?", preferredStyle: .Alert)
+		let ok = UIAlertAction(title: "OK", style: .Default) { (action) in
+			// 特に何もしない
+		}
+		alert.addAction(ok)
+		presentViewController(alert, animated: true, completion: nil)
+	}
+}
+```
+
+上記のUIアクションはあまりにも単純な例であるため、恩恵を受けられている気はしないですね...  
+いつものようにXcodeでアクションを繋げているのと同じ気がする...  
+
+###RxSwiftの公式Exampleを覗いてみる
+先ほどの例ではイマイチ良さがわからなかったので、公式のExampleを覗いてみます。  
+公式のExampleは[GitHub: ReactiveX/RxSwift](https://github.com/ReactiveX/RxSwift)からダウンロードできます。  
+
+####NumbersViewController
+最も簡単なExampleはこれになるかと思います。  
+
+```objective-c
+import Foundation
+import UIKit
+import RxSwift
+import RxCocoa
+
+class NumbersViewController: ViewController {
+
+	@IBOutlet weak var number1: UITextField!
+	@IBOutlet weak var number2: UITextField!
+	@IBOutlet weak var number3: UITextField!
+
+	@IBOutlet weak var result: UILabel!
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+		// 注目！！
+		Observable.combineLatest(number1.rx_text, number2.rx_text, number3.rx_text) { textValue1, textValue2, textValue3 -> Int in
+			return (Int(textValue1) ?? 0) + (Int(textValue2) ?? 0) + (Int(textValue3) ?? 0)
+		}
+		.map { $0.description }
+		.bindTo(result.rx_text)
+		.addDisposableTo(disposeBag)
+	}
+}
+```
+
+ここで注目したいのは`Observable.combineLatest`です。  
+Exampleではこれを利用して一気に3つの`UITextField`から値を取得して、合計値を計算しています。  
+`Obsertvable.combineLatest`は名前から察することができると思いますが、3つの`UITextField`のいずれかの値が変わったタイミングで合計値が再計算されます。  
+
+これだけでも少し便利な感じが伝わってきました。  
+
+####SimpleValidationViewController
+続いて着手しやすいExampleはこちらになりそうです。  
+
+```objective-c
+import Foundation
+import UIKit
+import RxSwift
+import RxCocoa
+
+let minimalUsernameLength = 5
+let minimalPasswordLength = 5
+
+class SimpleValidationViewController : ViewController {
+	@IBOutlet weak var usernameOutlet: UITextField!
+	@IBOutlet weak var usernameValidOutlet: UILabel!
+	@IBOutlet weak var passwordOutlet: UITextField!
+	@IBOutlet weak var passwordValidOutlet: UILabel!
+	@IBOutlet weak var doSomethingOutlet: UIButton!
+	
+	override func viewDidLoad() {
+		super.viewDidLoad()
+
+		usernameValidOutlet.text = "Username has to be at least \(minimalUsernameLength) characters"
+		passwordValidOutlet.text = "Password has to be at least \(minimalPasswordLength) characters"
+
+		// 注目！！
+		let usernameValid = usernameOutlet.rx_text
+			.map { $0.characters.count >= minimalUsernameLength }
+			.shareReplay(1)
+
+		let passwordValid = passwordOutlet.rx_text
+			.map { $0.characters.count >= minimalPasswordLength }
+			.shareReplay(1)
+
+		let everythingValid = Observable.combineLatest(usernameValid, passwordValid) { $0 && $1 }
+			.shareReplay(1)
+
+		usernameValid
+			.bindTo(passwordOutlet.rx_enabled)
+			.addDisposableTo(disposeBag)
+
+		usernameValid
+			.bindTo(usernameValidOutlet.rx_hidden)
+			.addDisposableTo(disposeBag)
+
+		passwordValid
+			.bindTo(passwordValidOutlet.rx_hidden)
+			.addDisposableTo(disposeBag)
+
+		everythingValid
+			.bindTo(doSomethingOutlet.rx_enabled)
+			.addDisposableTo(disposeBag)
+
+		doSomethingOutlet.rx_tap
+			.subscribeNext { [weak self] in self?.showAlert() }
+			.addDisposableTo(disposeBag)
+	}
+
+	func showAlert() {
+		let alertView = UIAlertView(
+			title: "RxExample",
+			message: "This is wonderful",
+			delegate: nil,
+			cancelButtonTitle: "OK"
+		)
+
+		alertView.show()
+	}
+}
+```
+
+ここで注目したいのは`shareReplay(1)`という記述です。  
+このExampleでは、  
+`username`のバリデーションをクリアしていれば、`passwordOutlet.rx_enabled`と`usernameValidOutlet.rx_hidden`の2つを実行するように実装されています。  
+
+通常だと、`usernameValid`が2回実行されてしまうところを`shareReplay(1)`をつけることで、最適な回数だけ実行してくれます。  
+詳しくは、[hareReplayをちゃんと書いてお行儀良くストリームを購読しよう](http://qiita.com/kazu0620/items/bde4a65e82a10bd33f88)を読むと良いでしょう。  
+
+ここまで来ると`RxSwift`の有効性を許容せざるを得ませんね。  
+
+###まとめ
+今回簡単に触っただけでも、Rxはかなり有効なものであると感じました。  
+非同期処理や互いに関連性を持つ複雑な処理を実装する際にはぜひRxを使ってみたいと思いました。  
+
+本当はもっとExampleを追っていきたいのですが、一旦ここまでとさせて頂きます。  
+(単なる時間切れなので、続きは必ず書きたいを思っています。)  
+
+ということで本日はここまで。  
+
+参考:  
+
+* [GitHub: ReactiveX/RxSwift](https://github.com/ReactiveX/RxSwift)  
+* [RxSwiftの道標](http://qiita.com/nakailand/items/8b54dc9b4b39b0809c57)  
+* [RxSwift で UIKit を扱う基本](http://qiita.com/usamik26/items/2bbd0b8d304ab42b2279)  
+* [関数型プログラマのための Rx 入門（前編）](http://okapies.hateblo.jp/entry/2015/03/04/031148)  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+

@@ -1,0 +1,265 @@
+---
+layout: post
+title: "QuickでSwiftコードのUnitテストをしよう！"
+date: 2016-01-16 19:49
+comments: true
+categories: ios swift 
+---
+
+####Quickフレームワークを使おう！
+先日、XCTestによるiOSアプリのUnit TestとUI Testについて記事を書きました。  
+もちろんXCTestを使って、テストをすることに問題はありません。  
+ですが、XCTestは非常に独特な書式で、初めて使う人には取っ付きにくいかと思います。  
+
+そんな中、注目を集めているiOSアプリ用のテストフレームワークが[Quick](https://github.com/Quick/Quick)です。  
+GitHubに書かれている通り、[RSpec](https://github.com/rspec/rspec) / [Specta](https://github.com/specta/specta) / [Ginkgo](https://github.com/onsi/ginkgo)にインスパイアされて開発されているため、親しみやすい書式でテストコードを書くことができます。  
+(筆者もこれを機に親しもうと思います笑)  
+
+これまでiOSアプリのテストコードは独特で...と避けてきた方がいましたら、ぜひ **Quick** を導入してみて頂ければと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+####Quickの導入方法
+では、Quickを導入しましょう。  
+GitHubにも書いてありますが、CocoaPodsでの導入方法は下記です。  
+※ 説明用のプロジェクト名を **QuickSample** とします。  
+
+１．Podfileの作成  
+
+```objective-c
+# Podfile
+
+use_frameworks!
+
+def testing_pods
+	pod 'Quick', '~> 0.8.0'
+	pod 'Nimble', '3.0.0'
+end
+
+target 'QuickSampleTests' do
+	testing_pods
+end
+
+target 'QuickSampleUITests' do
+	testing_pods
+end
+```
+
+２．CocoaPodsコマンドを実行  
+Podfileと同階層で`pod install`を実行  
+
+３．テストファイルを用意  
+プロジェクト作成時に`QuickSampleTests.swift`を作成しておいたので、それを編集します。  
+
+```objective-c
+// QuickSampleTests.swift
+import XCTest
+import Quick
+import Nimble
+@testable import QuickSample
+
+class QuickSampleTests: QuickSpec {
+	
+	override func spec() {
+		// ここにテストコードを書いていきます。
+	}
+}
+```
+
+これで`QuickSpec`をオーバーライドしたテスト用クラスになりました。  
+最低限の準備はこれで完了です。  
+
+####Quickでのテストコードの書式
+続いて、基本的なテストコードの書式を見ていきましょう。  
+
+１．`describe`：『何のテストをするのか』を記述  
+
+```objective-c
+// テストコード
+override func spec() {
+	describe("天気情報をログ出力する") {
+		// 「天気情報をログ出力する」ことをテストするためのコードを書いていきます。
+	}
+}
+```
+
+２．`context`：『どういった条件のテストをするのか』を記述  
+
+```objective-c
+// テストコード
+override func spec() {
+	describe("天気情報をログ出力する") {
+		context("晴れの場合") {
+			// 天気が晴れの場合のテスト
+		}
+
+		context("雨の場合") {
+			// 天気が雨の場合のテスト
+		}
+	}
+}
+```
+
+３．`it`：『このテストはこういった結果になる』ということを記述  
+
+```objective-c
+// テストコード
+override func spec() {
+	describe("天気情報をログ出力する") {
+		context("晴れの場合") {
+			// 天気が晴れの場合のテスト
+			it("print out 'sunny'") {
+				// 実行するテストコードをここに記述します
+			}
+		}
+
+		<省略>
+	}
+}
+```
+
+４．`expect('☓☓☓').to(△△△)`：『「☓☓☓」が「△△△」と等しい結果になる』ことを記述  
+ここは説明のために、テスト対象を`Weather.swift`として下記のようなコードだとします。  
+あくまでも`expect('☓☓☓').to(△△△)`の説明であるため、`Weather.getWeather`の処理は超簡単にしています。  
+
+```objective-c
+// Weather.swift
+class Weather:NSObject {
+	<省略>
+
+	func getWeather() -> String {
+		return "sunny"
+	}
+
+	<省略>
+}
+```
+
+続いてテストコードです。  
+
+```objective-c
+// テストコード
+override func spec() {
+	describe("天気情報をログ出力する") {
+		context("晴れの場合") {
+			// 天気が晴れの場合のテスト
+			it("print out 'sunny'") {
+				let weather = Weather().getWeather()
+				expect(weather).to(contain("sunny"))
+			}
+		}
+
+		<省略>
+	}
+}
+```
+
+補足すると、    
+
+・戻り値と期待値が完全一致する場合：`to(equal(△△△))`  
+・戻り値が期待値の一部を含む場合：`to(contain(△△△))`  
+
+といったように使い分けましょう。  
+
+５．非同期処理のテストをする場合  
+これまで同期処理を見てきましたが、今度は非同期処理を見ていきましょう。  
+
+`Weather.swift`クラスに非同期処理を追加します。  
+
+```objective-c
+// Weather.swift
+class Weather:NSObject {
+
+	<省略>
+
+	func getAsyncWeather(closure:(String) -> Void) {
+		Alamofire.request(.GET, "http://api.openweathermap.org/data/2.5/weather?APPID=<自身のAPPIDを指定>", parameters:
+			["q":"Tokyo,jp"]).response { (request, response, data, error) -> Void in
+			if(error == nil) {
+				do {
+					let dataDict = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+					let weatherArray:[AnyObject] = dataDict["weather"] as! [AnyObject]
+					let weather:AnyObject = weatherArray[0]
+					let description:String = weather["description"] as! String
+					closure(description)
+				} catch {
+					clouser("exception")
+				}
+			}
+	}
+
+	<省略>
+
+}
+```
+
+XCTestでも説明しましたが、  
+Swiftではスタブの代わりに **manual mocking** という手法を採用しています。  
+なので、通信処理はテストコード内で継承したクラスを作成して、そちらで定数を返すようにしましょう。  
+
+```objective-c
+// テストコード
+override func spec() {
+
+	// manual mockingのための用意
+	class WeatherMock:Weather {
+		override func getAsyncWeather(closure:(String) -> Void) {
+			closure("sunny")
+		}
+	}
+
+	describe("天気情報を取得する") {
+		context("晴れの場合") {
+			// 天気が晴れの場合のテスト
+			it("print out 'sunny'") {
+				var result:String = ""
+				let wm:WeatherMock = WeatherMock()
+				wm.getAsyncWeather{(weather) -> Void in
+					result = weather
+				}
+				expect(result).toEventually(equal("sunny"))"
+			}
+		}
+
+		<省略>
+	}
+}
+```
+
+因みに、非同期処理では、`to`ではなく`toEventually`を利用します。  
+`expect(result).toEventually(equal("sunny"), timeout: 10)`と書けば、  
+任意のタイムアウトを設定可能です。  
+
+その他のメソッドを探したい場合は、  
+**Pods > Nimble > ObjCExpectation.swift > NMBExpectation** を確認してみてください。  
+また、[GitHubのNimble](https://github.com/Quick/Nimble)も参考になります。  
+
+####Quickでのテスト結果
+テストの実行方法はXCTestと同じです。  
+**Xcodeメニュー > Product > Test** を選択してテストを実行しましょう。  
+
+結果は同じく、Xcodeの左メニューに表示されます。  
+
+![Xcodeのテスト結果](/images/quick.png)  
+
+また、ログでも細かな結果が出力されますので、  
+(少し見づらいですが)なぜかテストが成功しないといったことがあれば、  
+積極的に確認してみましょう。  
+
+さて、いかがでしたでしょうか？  
+今のところは **XCTest** もしくは **Quick** によるUnit テストが主流になると思います。  
+開発者の使いやすさに合わせて選んでみてください。  
+
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>

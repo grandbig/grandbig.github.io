@@ -1,0 +1,256 @@
+---
+layout: post
+title: "ReSwiftを勉強してみよう！(1)"
+date: 2016-09-03 19:51
+comments: true
+categories: ios swift Redux
+---
+
+###はじめに
+本日は最近JavaScript界では浸透してきている`Redux`についてSwiftを通して勉強していきたいと思います。  
+`Redux`に関する日本語の記事はそれなりにあるもののSwift版ライブラリである`ReSwift`に関する日本語の記事は少ないため、筆者が少しでも記事を増やせたら良いなという思いがあります。  
+と言いつつも、いきなり有効性の高い有良記事を書くことはハードルが高いため、簡単な勉強から始めて行く次第です。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+###ReSwiftとは
+`ReSwift`とは`Redux`のSwift版ライブラリです。  
+[GitHub: ReSwift/ReSwift](https://github.com/ReSwift/ReSwift)が公式ページとなります。  
+
+上記公式ページのイントロをざっくり訳すと...  
+(意味が間違っていたらごめんなさい...)  
+
+ReSwiftはSwiftで[Redux](https://github.com/reactjs/redux)ライクな一方向のデータフローアーキテクチャを実装したものです。ReSwiftを使うことで、次の3つの関係性でアプリを構成することを手助けします。  
+
+* **State** : 全てのアプリの状態を管理します。複雑な状態の管理やデバッグのし易さを手助けするなど、メリットは数多くあります。  
+* **Views** : 状態変化したときにViewを更新します。状態に対してシンプルなビジュアルを実現します。  
+* **State Changes** : `actions`を通した状態変化の実行のみを担当します。`actions`は状態変化を表現する小さなモジュールを指します。限られた状態変化を担うため、大人数で開発する際にアプリを簡単に理解することができるメリットがあります。  
+
+また、ReSwiftは下記の3つの原則に従って構成されます。  
+
+* **The Store** : アプリの状態(State)を保持するアプリ内で唯一の存在です。StoreにActionsが発送されることによってのみ状態(State)は変化します。状態(State)が変化したら必ず、Storeが全てのオブザーバに通知します。  
+* **Actions** : アプリの状態(State)がどんな変化なのかを宣言します。Storeによって消費され、Reducerに渡されます。Reducerは各Actionで引き起こされる異なる状態変化を実装することによってActionを扱います。  
+* **Reducers** : 現在のActionとStateに基いて、新しいStateを生成する純粋な関数を提供します。  
+
+というように、何となく、この辺りを理解すれば良さそうですね。  
+まずは、公式ページに載っている最も簡単な『Counterサンプルアプリ』から上記の内容を直にコードで理解していきたいと思います。  
+
+###CounterサンプルアプリからReSwiftを理解しよう
+公式ページのREADMEには[CounterExample](https://github.com/ReSwift/CounterExample)が紹介されています。  
+公開されているサンプルアプリの中で最も簡単なサンプルなはずなので、これを見ていきたいと思います。  
+
+最終的なフォルダ構成は下記になります。  
+(関係のないファイルは除いています。)  
+
+```objective-c
+ReSwiftSample
+┣━━ State
+┃   ┗━━ AppState.swift
+┣━━ Actions
+┃   ┗━━ CounterActions.swift
+┣━━ Reducers
+┃   ┗━━ CounterReducers.swift
+┣━━ ViewController.swift
+┣━━ AppDelegate.swift
+┗━━ Main.storyboard
+```
+
+では早速、1つずつ見ていきましょう。  
+
+####ReSwiftをCocoaPodsでインストール
+例によってCocoaPodsでインストールします。  
+
+```objective-c
+use_frameworks!
+
+target 'ReSwiftSample' do
+	pod 'ReSwift'
+end
+
+target 'ReSwiftSampleTests' do
+	pod 'ReSwift'
+end
+
+target 'ReSwiftSampleUITests' do
+	pod 'ReSwift'
+end
+```
+
+これで`pod install`すればOKです。  
+
+####State
+準備が整ったところでコードを具体的に見ていきましょう。
+まずは`AppState.swift`を見ていきます。  
+
+```objective-c
+//AppState.swift
+import Foundation
+import ReSwift
+
+struct AppState: StateType {
+	var counter: Int
+}
+```
+
+今回のアプリは単純なカウントアップアプリなので、上記では`AppState`の1つのプロパティとして **カウントの状態(counter)** を定義しています。  
+
+####Action
+続いて`CounterActions.swift`を見ていきます。  
+
+```objective-c
+// CounterActions.swift
+import Foundation
+import ReSwift
+
+struct CounterActionIncrease: Action {}
+struct CounterActionDecrease: Action {}
+```
+
+カウントアップの動作には **『増加(Increase)』** と **『減少(Decrease)』** の2つがあるため、それぞれのActionを定義します。  
+ここで注意したいのはActionは関数(`func`)ではなく構造体(`struct`)であるということです。  
+先に述べたようにActionは状態の宣言であり、Reducerに渡されて、処理を判別するために利用されるからです。  
+
+####Reducer
+そして、`CounterReducers.swift`を見ていきます。  
+
+```objective-c
+// CounterReducers.swift
+struct CounterReducer: Reducer {
+	func handleAction(action: Action, state: AppState?) -> AppState {
+		var state = state ?? AppState()
+
+		switch action {
+			case _ as CounterActionIncrease:
+				state.counter += 1
+			case _ as CounterActionDecrease:
+				state.counter -= 1
+			default:
+				break
+		}
+
+		return state
+	}
+}
+```
+
+先に述べましたが、Reducerは引数として渡されたStateとActionの2つから新規のStateを返却します。  
+重要なのは、 **新規のStateを返却する** ということです。  
+これは`var state = state ?? AppState()`を見るとわかるかと思います。  
+既に`state`オブジェクトがある場合は値渡しで新規`AppState`型に内容を格納しています。  
+もし、`state`オブジェクトがなければ、初期化して作成しています。  
+
+そして`switch`文で各Actionごとに最適な処理を実行しています。  
+(今回の場合は『Increase』と『Decrease』)  
+
+####Store
+モジュールの作成が完了したので、実装していきます。  
+先に述べたように`Store`はアプリの状態(State)を保持するアプリ内で **唯一の存在** です。  
+よって、`AppDelegate.swift`で次のように定義します。  
+
+
+```objective-c
+// AppDelegate.swift
+import UIKit
+import ReSwift
+
+let mainStore = Store<AppState>(
+	reducer: CounterReducer(),
+	state: nil
+)
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+	...
+}
+```
+
+上記では`Store`型の`mainStore`を定義しています。  
+Reducerとして`CounterReducer`を定義しています。  
+Stateは初期値`nil`として定義しています。  
+
+####View層への実装
+最後にユーザの操作が走った際の処理の実装について見ていきます。  
+状態変化の監視開始/終了を下記で実施します。  
+
+```objective-c
+// ViewController.swift
+import UIKit
+import ReSwift
+
+class ViewController: UIViewController, StoreSubscriber {
+
+	override func viewWillAppear(animated: Bool) {
+		super.viewWillAppear(animated)
+		mainStore.subscribe(self)	// 状態変化の監視開始
+	}
+								
+	override func viewWillDisappear(animated: Bool) {
+		super.viewWillDisappear(animated)
+		mainStore.unsubscribe(self)	// 状態変化の監視終了
+	}
+
+	...
+
+}
+```
+
+続いて、ユーザ操作からのReducerへのAction発送部分です。  
+
+```objective-c
+// ViewController.swift
+@IBAction func increaseButtonTapped(sender: AnyObject) {
+	mainStore.dispatch(
+		CounterActionIncrease()
+	)
+}
+
+@IBAction func decreaseButtonTapped(sender: AnyObject) {
+	mainStore.dispatch(
+		CounterActionDecrease()
+	)
+}
+```
+
+* 『増加』ボタンタップ時にStoreが『CounterActionIncreaseというAction』をReducerへdispatch(発送)します。  
+* 『減少』ボタンタップ時にStoreが『CounterActionDecreaseというAction』をReducerへdispatch(発送)します。  
+
+そして、新しいStateが返却された際に実行すべき処理を書くために`StoreSubscriber`プロトコルに`newState`メソッドが定義されています。  
+よって、  
+
+```objective-c
+// ViewController.swift
+class ViewController: UIViewController, StoreSubscriber {
+	
+	@IBOutlet weak var counterLabel: UILabel!
+
+	...
+
+	func newState(state: AppState) {
+		counterLabel.text = "\(state.counter)"
+	}
+	...
+}
+```
+
+のように実装することで`newState`メソッド内で任意の処理を書くことができます。  
+
+###まとめ
+さて、如何でしたでしょうか？  
+今回は公式の最も簡単なサンプルについて見ていきましたが、少々ReSwiftの扱い方が見えてきた気がします。  
+また、ReSwiftが有能であるが故にReduxであればもっと自分で書かなければいけなさそうなところもカバーしてくれているように見えました。  
+実践での活用なRxSwift同様にいろいろなリスク管理的な意味で難しいのかもしれませんが、もっとReSwiftを理解することで想定を上回るメリットを示し、実践で利用できるかもしれません。  
+
+そんなことを夢見ながら今後は、別の公式サンプルを見つつ理解を深めていきたい思います。  
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>

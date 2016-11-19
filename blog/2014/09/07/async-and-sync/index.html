@@ -1,0 +1,719 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Objective-cで改めて同期・非同期について考えてみる - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="NSURLConnectionで同期・非同期通信をしてみる さて、1ヶ月ぶりでしょうか&hellip;.。久々にブログを更新します。
+本日は、もはやObjective-c開発者なら誰しも使うであろうNSURLConnectionでの同期・非同期通信について書きたいと思います。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2014/09/07/async-and-sync/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Objective-cで改めて同期・非同期について考えてみる</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-09-07T21:30:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2014</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>NSURLConnectionで同期・非同期通信をしてみる</h3>
+
+<p>さて、1ヶ月ぶりでしょうか&hellip;.。久々にブログを更新します。<br/>
+本日は、もはやObjective-c開発者なら誰しも使うであろうNSURLConnectionでの同期・非同期通信について書きたいと思います。</p>
+
+<p>NSURLConnectionで同期通信を行う場合、 <strong>sendSynchronousRequest</strong> を利用します。一方、非同期通信を行う場合、 <strong>sendAsynchronousRequest</strong> を利用します。<br/>
+この2つの通信のどちらを利用するかについてはまさに <strong>使いドコロ</strong> によります。<br/>
+同期通信の場合、メインスレッドでの実行のため、通信先サーバで処理の遅延があると、その間はアプリのUI操作ができなくなります。そのため、通信中はアプリの操作が発生し得ない場合に適していると言えます。<br/>
+逆に、通信頻度が多いアプリの場合、UI操作を滞らせることがないように非同期通信を利用するべきです。</p>
+
+<!--more-->
+
+
+<p>実際に同期・非同期の場合の通信の順番を見てみましょう。<br/>
+下記のようなファイル構成を作ります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">syncAsyncTest</span>                  <span class="c1">// syncAsyncTest.xcodeprojを作成した際に自動で作られるフォルダ</span>
+</span><span class='line'><span class="o">|</span>
+</span><span class='line'><span class="o">|</span>
+</span><span class='line'><span class="n">L____ViewController</span>                <span class="c1">// メイン画面用のUIViewController</span>
+</span><span class='line'>      <span class="o">|</span>
+</span><span class='line'>      <span class="n">L____ViewController</span><span class="p">.</span><span class="n">h</span>
+</span><span class='line'>      <span class="n">L____ViewController</span><span class="p">.</span><span class="n">m</span>
+</span><span class='line'><span class="o">|</span>
+</span><span class='line'><span class="o">|</span>
+</span><span class='line'><span class="n">L____AppDelegate</span><span class="p">.</span><span class="n">h</span>               <span class="c1">// 自動で作成されるdelegateヘッダーファイル</span>
+</span><span class='line'><span class="n">L____AppDelegate</span><span class="p">.</span><span class="n">m</span>               <span class="c1">// 自動で作成されるdelegateモデルファイル</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、ViewController.mに同期・非同期メソッドを下記のように定義します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 非同期通信メソッド</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">sendAsynchronousRequest:</span><span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="p">)</span><span class="nv">url</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSURLRequest</span> <span class="o">*</span><span class="n">request</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURLRequest</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithURL:</span><span class="n">url</span> <span class="nl">cachePolicy:</span><span class="n">NSURLRequestReloadIgnoringLocalCacheData</span> <span class="nl">timeoutInterval:</span><span class="mi">10</span><span class="p">];</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="p">[</span><span class="n">NSURLConnection</span> <span class="nl">sendAsynchronousRequest:</span><span class="n">request</span> <span class="nl">queue:</span><span class="p">[[</span><span class="n">NSOperationQueue</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">]</span> <span class="nl">completionHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURLResponse</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span> <span class="n">NSData</span> <span class="o">*</span><span class="n">resData</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;error: %@&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;resData: %@&quot;</span><span class="p">,</span> <span class="n">resData</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 同期通信メソッド</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">sendSynchronousRequest:</span><span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="p">)</span><span class="nv">url</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSURLRequest</span> <span class="o">*</span><span class="n">request</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURLRequest</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithURL:</span><span class="n">url</span> <span class="nl">cachePolicy:</span><span class="n">NSURLRequestReloadIgnoringLocalCacheData</span> <span class="nl">timeoutInterval:</span><span class="mi">10</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">NSURLResponse</span> <span class="o">*</span><span class="n">response</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">NSData</span> <span class="o">*</span><span class="n">resData</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURLConnection</span> <span class="nl">sendSynchronousRequest:</span><span class="n">request</span> <span class="nl">returningResponse:</span><span class="o">&amp;</span><span class="n">response</span> <span class="nl">error:</span><span class="o">&amp;</span><span class="n">error</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;error: %@&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;resData: %@&quot;</span><span class="p">,</span> <span class="n">resData</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// asyncBtnをタップしたときに実行されるアクション</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">IBAction</span><span class="p">)</span><span class="nf">asyncAction:</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nv">sender</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSURL</span> <span class="o">*</span><span class="n">url</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURL</span> <span class="nl">URLWithString:</span><span class="s">@&quot;通信先サーバのURL&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;リクエスト前&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="nl">sendAsynchronousRequest:</span><span class="n">url</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;リクエスト後&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// syncBtnをタップしたときに実行されるアクション</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">IBAction</span><span class="p">)</span><span class="nf">syncAction:</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nv">sender</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSURL</span> <span class="o">*</span><span class="n">url</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURL</span> <span class="nl">URLWithString:</span><span class="s">@&quot;通信先サーバのURL&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;リクエスト前&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span> <span class="nl">sendSynchronousRequest:</span><span class="n">url</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;リクエスト後&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>※asyncBtnとsyncBtnの2つのボタンををViewController.xibに配置しています。</p>
+
+<p>上記のソースを実行すると、<br/>
+asyncBtnをタップした場合: リクエスト前⇒リクエスト後⇒sendAsynchronousRequest内のログ<br/>
+syncBtnをタップした場合: リクエスト前⇒sendSynchronousRequest内のログ⇒リクエスト後<br/>
+といったログの順番になります。</p>
+
+<p>このように処理に順番を踏まえた上で同期・非同期のどちらを利用するのか決めましょう。</p>
+
+<p>また、お気づきの方もいるかもしれませんが、<br/>
+sendAsynchronousRequestメソッドを利用した場合、それをラッピングしたメソッドでは <strong>sendAsynchronousRequestでサーバから取得してきたデータを戻り値として設定することができません。</strong><br/>
+どういうことかと言うと、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 非同期通信メソッド</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="n">NSData</span> <span class="o">*</span><span class="p">)</span><span class="nf">sendAsynchronousRequest:</span><span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="p">)</span><span class="nv">url</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSURLRequest</span> <span class="o">*</span><span class="n">request</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURLRequest</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithURL:</span><span class="n">url</span> <span class="nl">cachePolicy:</span><span class="n">NSURLRequestReloadIgnoringLocalCacheData</span> <span class="nl">timeoutInterval:</span><span class="mi">10</span><span class="p">];</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="p">[</span><span class="n">NSURLConnection</span> <span class="nl">sendAsynchronousRequest:</span><span class="n">request</span> <span class="nl">queue:</span><span class="p">[[</span><span class="n">NSOperationQueue</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">]</span> <span class="nl">completionHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURLResponse</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span> <span class="n">NSData</span> <span class="o">*</span><span class="n">resData</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;error: %@&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;resData: %@&quot;</span><span class="p">,</span> <span class="n">resData</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">return</span> <span class="n">resData</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>と定義すると <strong>Incompatible block pointer types sending &lsquo;NSData *(^)&hellip;..</strong> といったエラーが発生します。</p>
+
+<p>これはsendAsynchronousRequestの戻り値がvoid型で定義されているにも関わらず、NSData型の戻り値を返そうとしているのでエラーが発生しています。<br/>
+特に工夫なく、サーバから取得したデータをラッピングしたメソッドの戻り値として返したいのであれば、sendSynchronousRequestを使えば良いのですが、冒頭で述べたように利用用途が限られます。</p>
+
+<p>sendAsynchronousRequestメソッドを利用しつつ、その通信で取得したデータを別の処理で使い回したい場合は <strong>自作クラスにDelegateメソッド</strong> を実装することで解決可能です。</p>
+
+<p>下記のようなフォルダ構成にしてみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">syncAsyncTest</span>                  <span class="c1">// syncAsyncTest.xcodeprojを作成した際に自動で作られるフォルダ</span>
+</span><span class='line'><span class="o">|</span>
+</span><span class='line'><span class="o">|</span>
+</span><span class='line'><span class="n">L___TestDelegate</span>               <span class="c1">// 自作Delegateメソッドを実装するクラス</span>
+</span><span class='line'>      <span class="o">|</span>
+</span><span class='line'>      <span class="n">L____TestDelegate</span><span class="p">.</span><span class="n">h</span>
+</span><span class='line'>      <span class="n">L____TestDelegate</span><span class="p">.</span><span class="n">m</span>
+</span><span class='line'><span class="n">L____ViewController</span>                <span class="c1">// メイン画面用のUIViewController</span>
+</span><span class='line'>      <span class="o">|</span>
+</span><span class='line'>      <span class="n">L____ViewController</span><span class="p">.</span><span class="n">h</span>
+</span><span class='line'>      <span class="n">L____ViewController</span><span class="p">.</span><span class="n">m</span>
+</span><span class='line'><span class="o">|</span>
+</span><span class='line'><span class="o">|</span>
+</span><span class='line'><span class="n">L____AppDelegate</span><span class="p">.</span><span class="n">h</span>               <span class="c1">// 自動で作成されるdelegateヘッダーファイル</span>
+</span><span class='line'><span class="n">L____AppDelegate</span><span class="p">.</span><span class="n">m</span>               <span class="c1">// 自動で作成されるdelegateモデルファイル</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これまでViewControllerで実装していたsendAsynchronousRequestメソッドをTestDelegateクラスに移行します。</p>
+
+<p>TestDelegate.hは下記</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#import &lt;Foundation/Foundation.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@protocol</span> <span class="nc">TestDelegate</span> <span class="o">&lt;</span><span class="n">NSObject</span><span class="o">&gt;</span>
+</span><span class='line'><span class="k">@optional</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nl">successMethod:</span><span class="p">(</span><span class="n">NSData</span> <span class="o">*</span><span class="p">)</span><span class="n">data</span><span class="p">;</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">failedMethod:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">err</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">TestDelegate</span> : <span class="nc">NSObject</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">assign</span><span class="p">)</span> <span class="kt">id</span><span class="o">&lt;</span><span class="n">TestDelegate</span><span class="o">&gt;</span> <span class="n">delegate</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">sendAsynchronousRequest:</span><span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="p">)</span><span class="nv">url</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、TestDelegate.mは下記</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#import &quot;TestDelegate.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">TestDelegate</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">sendAsynchronousRequest:</span><span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="p">)</span><span class="nv">url</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSURLRequest</span> <span class="o">*</span><span class="n">request</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURLRequest</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithURL:</span><span class="n">url</span> <span class="nl">cachePolicy:</span><span class="n">NSURLRequestReloadIgnoringLocalCacheData</span> <span class="nl">timeoutInterval:</span><span class="mi">10</span><span class="p">];</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="p">[</span><span class="n">NSURLConnection</span> <span class="nl">sendAsynchronousRequest:</span><span class="n">request</span> <span class="nl">queue:</span><span class="p">[[</span><span class="n">NSOperationQueue</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">]</span> <span class="nl">completionHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURLResponse</span> <span class="o">*</span><span class="n">response</span><span class="p">,</span> <span class="n">NSData</span> <span class="o">*</span><span class="n">resData</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">([</span><span class="n">self</span><span class="p">.</span><span class="n">delegate</span> <span class="nl">respondsToSelector:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">failedMethod:</span><span class="p">)])</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;error: %@&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+</span><span class='line'>              <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">delegate</span> <span class="nl">failedMethod:</span><span class="n">error</span><span class="p">];</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">([</span><span class="n">self</span><span class="p">.</span><span class="n">delegate</span> <span class="nl">respondsToSelector:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">successMethod:</span><span class="p">)])</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;resData: %@&quot;</span><span class="p">,</span> <span class="n">resData</span><span class="p">);</span>
+</span><span class='line'>              <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">delegate</span> <span class="nl">successMethod:</span><span class="n">resData</span><span class="p">];</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでDelegateメソッドの実装とsendAsynchronousRequestメソッドの移行が完了しました。</p>
+
+<p>Delegateメソッドを呼び出す側のViewController.mは下記のようになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;TestDelegate.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span> <span class="o">&lt;</span><span class="n">TestDelegate</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">TestDelegate</span> <span class="o">*</span><span class="n">td</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">viewDidLoad</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">td</span> <span class="o">=</span> <span class="p">[</span><span class="n">TestDelegate</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">td</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;]</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// asyncBtnをタップしたときに実行されるアクション</span>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">IBAction</span><span class="p">)</span><span class="nl">asyncAction:</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="n">sender</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSURL</span> <span class="o">*</span><span class="n">url</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURL</span> <span class="nl">URLWithString:</span><span class="s">@&quot;通信先サーバのURL&quot;</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;リクエスト前&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">td</span> <span class="nl">sendAsynchronousRequest:</span><span class="n">url</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;リクエスト後&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// TestDelegateクラスで実装したsuccessMethod</span>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nl">successMethod:</span><span class="p">(</span><span class="n">NSData</span> <span class="o">*</span><span class="p">)</span><span class="n">data</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;data: %@&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// TestDelegateクラスで実装したfailedMethod</span>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nl">failedMethod:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="n">err</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;err: %@&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでTestDelegateクラス内のsendAsynchronousRequestを実行して取得したデータをViewControllerクラス内のsuccessMethodやfailedMethodで受け取ることができるようになりました。</p>
+
+<p>今回改めて調べてみることで、通信の同期・非同期は意外と奥が深いということがわかりました。<br/>
+ということで今日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-09-07T21:30:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/request/'>request</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2014/09/07/async-and-sync/" data-via="" data-counturl="http://grandbig.github.io/blog/2014/09/07/async-and-sync/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/08/02/didupdatetolocation3/" title="Previous Post: iOS7とNSTimerと位置情報の取得について">&laquo; iOS7とNSTimerと位置情報の取得について</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/09/14/blog-1-year-anniversary/" title="Next Post: iOS技術ブログのアクセスと収入の推移">iOS技術ブログのアクセスと収入の推移 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2016/11/03/blog-3-year-anniversary/">技術ブログのアクセスと収入の推移(3周年)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/30/swift-perfect/">Server Side Swift: Perfect を使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/30/node-router/">Node.jsでrouterモジュールでルーティング！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/09/nosql/">NoSQLの特性を調べよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/09/25/ios-in-app-purchase/">iOSアプリ内課金: 自動更新購読</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (135)</a></li><li><a href='/blog/categories/swift'>swift (37)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/java'>java (19)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li><li><a href='/blog/categories/location'>location (6)</a></li><li><a href='/blog/categories/node'>node (6)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li><li><a href='/blog/categories/apurishen-qing'>アプリ申請 (5)</a></li><li><a href='/blog/categories/springboot'>springboot (5)</a></li><li><a href='/blog/categories/wkwebview'>WKWebView (4)</a></li><li><a href='/blog/categories/sqlite'>SQLite (4)</a></li></ul>
+</section>
+<aside>
+	<h3>About Takahiro</h3>
+	<p>
+	メカ出身のプログラマー<br />
+	故にLevelは-1<br />
+	主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)<br />
+	</p>
+	<a href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2016 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2014/09/07/async-and-sync/';
+        var disqus_url = 'http://grandbig.github.io/blog/2014/09/07/async-and-sync/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

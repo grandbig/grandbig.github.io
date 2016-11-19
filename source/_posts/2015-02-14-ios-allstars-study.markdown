@@ -3,7 +3,7 @@ layout: post
 title: "iOS オールスターズ勉強会に参加しました！"
 date: 2015-02-14 13:16
 comments: true
-categories: ios 勉強会
+categories: ios study
 ---
 
 ####iOS オールスターズ勉強会
@@ -172,7 +172,7 @@ iOS8ユーザには体験できる部分は体験してほしいと思ってい�
     * SDWebImageのバグを発見して、PullRequestを出したらマージされた  
     * [Facebookの発展途上国向けの改善施策](http://agilecatcloud.com/2014/12/02/facebook-%E3%81%8C%E8%AA%9E%E3%82%8B%E3%83%A2%E3%83%90%E3%82%A4%E3%83%AB%EF%BD%A5%E3%83%81%E3%83%A5%E3%83%BC%E3%83%8B%E3%83%B3%E3%82%B0%E3%81%AE%E6%A5%B5%E6%84%8F%EF%BC%9A%E3%81%93%E3%82%8C%E3%81%A7/)がネット上に載っていた  
 
-* WebP	
+* WebP
     * WebPとはGoogle製のフォーマット(1/3程度のサイズに抑えられる)  
     * SDWebImageはWebPに対応している  
     * wantedlyではサーバはAWSを使っている  
@@ -328,7 +328,7 @@ AnimatedImageをWatch側でレンダリングするのは重い？⇒シミュ�
 * CIの自動化
     * [Travis CIでiOSアプリのリリース作業を自動化する](http://kishikawakatsumi.hatenablog.com/entry/20141022/1413963656)という記事が良い  
 
-* 万が一の事故に対して... 
+* 万が一の事故に対して...
     * 後から見返せない情報をバックアップしておく
         * Build Details: バージョンが進むと過去のバージョンの情報が見れなくなる。スクショをとっておくと良い。  
     * 過去のバージョンのアプリをとっておく
@@ -418,5 +418,3 @@ A: 重い。シミュレータだとカクついたりする。
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-

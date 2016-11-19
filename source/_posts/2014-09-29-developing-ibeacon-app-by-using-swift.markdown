@@ -50,11 +50,11 @@ Objective-Cの場合は`import`のすぐ下のinterface内で書きます。
 // ViewController.mファイル
 @interface ViewController ()
 
-@property (strong, nonatomic) IBOutlet CLLocationManager *locationManager;
-@property (strong, nonatomic) IBOutlet NSUUID *proximityUUID;
-@property (strong, nonatomic) IBOutlet CLBeaconRegion *beaconRegion;
-@property (strong, nonatomic) IBOutlet CLBeacon *nearestBeacon;
-@property (strong, nonatomic) IBOutlet NSString *str;
+@property (strong, nonatomic) CLLocationManager *locationManager;
+@property (strong, nonatomic) NSUUID *proximityUUID;
+@property (strong, nonatomic) CLBeaconRegion *beaconRegion;
+@property (strong, nonatomic) CLBeacon *nearestBeacon;
+@property (strong, nonatomic) NSString *str;
 
 @end
 ```
@@ -65,11 +65,11 @@ Swiftの場合は`class ViewController`に全体が囲まれる書式になる�
 ```
 class ViewController: UIViewController {
 
-	@IBOutlet var locationManager:CLLocationManager?
-	@IBOutlet var proximityUUID:NSUUID?
-	@IBOutlet var beaconRegion:CLBeaconRegion?
-	@IBOutlet var nearestBeacon:CLBeacon?
-	@IBOutlet var str:NSString?
+	var locationManager:CLLocationManager?
+	var proximityUUID:NSUUID?
+	var beaconRegion:CLBeaconRegion?
+	var nearestBeacon:CLBeacon?
+	var str:NSString?
 
 	.....
 
@@ -190,7 +190,7 @@ func sendLocalNotificationForMessage(message: NSString!) {
 - (void)locationManager:(CLLocationManager *)manager didEnterRegion:(CLRegion *)region
 {
 	[self sendLocalNotificationForMessage:@"Enter Region"];
-		    
+
 	if ([region isMemberOfClass:[CLBeaconRegion class]] && [CLLocationManager isRangingAvailable]) {
 		[self.locationManager startRangingBeaconsInRegion:(CLBeaconRegion *)region];
 	}
@@ -200,7 +200,7 @@ func sendLocalNotificationForMessage(message: NSString!) {
 - (void)locationManager:(CLLocationManager *)manager didExitRegion:(CLRegion *)region
 {
 	[self sendLocalNotificationForMessage:@"Exit Region"];
-		    
+
 	if ([region isMemberOfClass:[CLBeaconRegion class]] && [CLLocationManager isRangingAvailable]) {
 		[self.locationManager stopRangingBeaconsInRegion:(CLBeaconRegion *)region];
 	}
