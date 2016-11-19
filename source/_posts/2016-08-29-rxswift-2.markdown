@@ -1,0 +1,207 @@
+---
+layout: post
+title: "RxSwiftを勉強してみよう！(2)"
+date: 2016-08-29 22:40
+comments: true
+categories: ios swift Rx
+---
+
+###RxSwiftの公式Exampleを覗いてみる(2)
+前回に引き続きRxSwiftの公式Exampleを見ていきたいと思います。  
+公式ソースは[GitHub: ReactiveX/RxSwift](https://github.com/ReactiveX/RxSwift)からダウンロードできます。  
+
+####GeolocationExample
+位置情報を用いたときのRxの有効性が表現されているのでしょうか？  
+早速見ていきましょう。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+まずは、`CoreLocation`のコア部分をラップしている`GeolocationService`です。  
+
+```objective-c
+import Foundation
+import CoreLocation
+import RxSwift
+import RxCocoa
+
+class GeolocationService {
+
+	static let instance = GeolocationService()
+	// (1)
+	private (set) var authorized: Driver<Bool>
+	private (set) var location: Driver<CLLocationCoordinate2D>
+
+	private let locationManager = CLLocationManager()
+
+	private init() {
+		locationManager.distanceFilter = kCLDistanceFilterNone
+		locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+
+		// (2)
+		authorized = Observable.deferred { [weak locationManager] in
+			let status = CLLocationManager.authorizationStatus()
+			guard let locationManager = locationManager else {
+				// (3)
+				return Observable.just(status)
+			}
+			return locationManager
+				.rx_didChangeAuthorizationStatus
+				.startWith(status) // (4)
+			}
+			.asDriver(onErrorJustReturn: CLAuthorizationStatus.NotDetermined) // (5)
+			.map {
+				switch $0 {
+					case .AuthorizedAlways:
+						return true
+					default:
+						return false
+				}
+			}
+	}
+}
+```
+
+上記ソースでポイントとなる部分を見ていきます。  
+
+(1): `Driver`  
+末尾に参考URLとして上げさせて頂いた記事に書かれているのですが、  
+`Driver`型で定義することで、エラー発生時の処理`asDriver`オペレータで続けて書くことができます。  
+
+(2): `deferred`  
+ObserverがSubscribe(購読)されたタイミングで動的にObservableを生成します。  
+※ 因みに新規ObservableをSubscribeタイミングで毎回生成します。  
+
+(3): `just`  
+引数に取った特定の型を返却するObservableを生成します。  
+この場合は`CLAuthorizationStatus`型のObservableです。  
+
+(4): `startWith`  
+想定したemit対象値の前に何らかの値をemitしたい場合に利用します。  
+この場合、`rx_didChangeAuthoricationStatus`をemitする前にということでしょうか。  
+(これが恐らく、一番わかりやすい例です → [Introduction to Rx: startWith](http://www.introtorx.com/Content/v1.0.10621.0/12_CombiningSequences.html#StartWith))  
+
+
+(5): `asDriver`  
+(1)で説明した`Driver`に関係するオペレータです。  
+エラーが発生した場合に`onErrorJustReturn`で指定した値を返却して処理を続けます。  
+
+続いて、`GeolocationService`を利用している`GeolocationViewController`です。  
+
+```objective-c
+import Foundation
+import UIKit
+import RxSwift
+import RxCocoa
+
+// (6)
+private extension UILabel {
+	var rx_driveCoordinates: AnyObserver<CLLocationCoordinate2D> {
+		return UIBindingObserver(UIElement: self) { label, location in
+			label.text = "Lat: \(location.latitude)\nLon: \(location.longitude)"
+		}.asObserver()
+	}
+}
+
+// (7)
+private extension UIView {
+	var rx_driveAuthorization: AnyObserver<Bool> {
+		return UIBindingObserver(UIElement: self) { view, authorized in
+			if authorized {
+				view.hidden = true
+				view.superview?.sendSubviewToBack(view)
+			}
+			else {
+				view.hidden = false
+				view.superview?.bringSubviewToFront(view)
+			}
+		}.asObserver()
+	}
+}
+
+class GeolocationViewController: ViewController {
+	@IBOutlet weak private var noGeolocationView: UIView!
+	@IBOutlet weak private var button: UIButton!
+	@IBOutlet weak private var button2: UIButton!
+	@IBOutlet weak var label: UILabel!
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+
+		let geolocationService = GeolocationService.instance
+
+		geolocationService.authorized
+			.drive(noGeolocationView.rx_driveAuthorization) // (8)
+			.addDisposableTo(disposeBag)
+
+		geolocationService.location
+			.drive(label.rx_driveCoordinates) // (8)
+			.addDisposableTo(disposeBag)
+
+		button.rx_tap
+			.bindNext { [weak self] in
+				self?.openAppPreferences()
+			}
+			.addDisposableTo(disposeBag)
+
+		button2.rx_tap
+			.bindNext { [weak self] in
+				self?.openAppPreferences()
+			}
+			.addDisposableTo(disposeBag)
+	}
+
+	private func openAppPreferences() {
+		UIApplication.sharedApplication().openURL(NSURL(string: UIApplicationOpenSettingsURLString)!)
+	}
+}
+```
+
+(6): `rx_driveCoordinates`  
+見ての通りここで`UILabel`の`extension`をしています。  
+`UILabel`の`text`内容を任意の値で返却するために作成しています。  
+(`asObserver`をつけることで`rx_driveCoordinates`という`AnyObserver`型の変数定義を実現しています。)  
+
+(7): `rx_driveAuthorization`  
+同じく`UIView`の`extension`をしています。  
+`authorized`の値でViewの表示/非表示を切り替えています。  
+
+(8): `drive`  
+ここで新たにSubscriptionを生成して、引数に取ったObserverに処理の実行を要請しています。  
+
+今回のExampleを見てみると下記のようなメリットが感じられます。  
+
+* Rxを利用することで非同期処理を直列的に書ける  
+* エラーハンドリングを直列的に書けることで後処理も直列的に統一して見れる(`jQuery`の`ajax`メソッドの`always`的なイメージ)  
+* 処理の拡張がRxで用意されたメソッドで比較的に容易に書ける  
+
+###Rxで把握しておきたいAPI一覧
+RxSwiftをインストールすると中にドキュメントが含まれています。  
+[API.md](https://github.com/ReactiveX/RxSwift/blob/master/Documentation/API.md)を読むだけでもかなり理解が進むと思われます。  
+
+特に言語がSwiftであるが故に他のRxフレームワークとはメソッド名が異なる場合があります。  
+(`defer`でなく`deferred`、`repeat`でなく`repeatElement`など)  
+
+一度は目を通しておくと良いかもしれません。  
+と言いつつ、筆者も全然見れていませんが...  
+
+###まとめ
+さて、今回は公式Exampleの1つを見るだけに留まりましたが如何でしたでしょうか？  
+筆者としてはRxの使い方の理解がだいぶ進んだ気がしております。  
+引き続きRxに関する勉強は続けていきたいと思います。  
+と言ったところで本日はここまで。  
+
+参考:  
+
+* [RxSwift/RxCocoa Driver Unitについてまとめてみた。](http://qiita.com/yuzushioh/items/0a4483502c5c8569790a)  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>

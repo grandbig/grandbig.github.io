@@ -1,0 +1,86 @@
+---
+layout: post
+title: "iPhoneアプリで使おう様々なWeb-API"
+date: 2013-10-16 22:03
+comments: true
+categories: ios api
+---
+
+###Web-APIを使ってJSON形式でデータを取得したい！
+iPhoneアプリをいざ作ろう！となったとき◯◯のデータを使って、▼▲なアプリが作れたらな〜なんて思うことはないでしょうか？  
+でもいざ作ろうとすると膨大なデータを自分で作ることもできないし、作り方もわからない…。あ〜作れない〜てなことになるでしょう。そんなときは既にどこかの誰かが作った**API**を使えばいいわけです。世の中にはとても便利なAPIが溢れています(たぶん...)  
+しかし、気をつけておきたいのはそれが無料なのか、商用フリーなのかということです。  
+
+<!--more-->
+
+####Web-APIの例
+どのくらい無料&商用フリーで使えるAPIがあるのか探してみました。  
+※商用フリーでもライセンス表記など条件があるかもしれないので十分ご注意下さい。  
+・OpenStreetMap：Map情報の取得  
+　[OpenStreetMap公式ページ](http://www.openstreetmap.org/)  
+・OpenWeatherMap：天気情報の取得  
+　[OpenWeatherMap公式ページ](http://openweathermap.org/)  
+・HeartRails Geo API：Map情報の取得  
+　[HeartRails Geo API公式ページ](http://geoapi.heartrails.com/api.html)  
+・HeartRails Express API：鉄道・路線情報の取得  
+　[HeartRails Express API公式ページ](http://express.heartrails.com/api.html)  
+・detectFace();：顔認識情報の取得  
+　[detectFace();公式ページ](http://detectface.com/)  
+
+因みに筆者はどれも使ったことがありません...。Google Maps APIは使ったことがあるって程度です。  
+
+####XcodeでJSON形式を扱うためには
+さて、APIを利用すると、xmlまたはjsonのどちらかを指定して下さいといったことがあります。私はjsonを扱うことが多いため(というか、xmlは使ったことがないので...)ここではjson形式を扱うことについてご紹介致します。  
+恐らく、ほとんどの方々が**SBJson**を利用されているのではないでしょうか？ネットで調べても真っ先に出てくると思います。  
+ライセンスも修正BSDライセンス(New BSD License)なので商用でも非常に使いやすいです。  
+使うための準備としては  
+1: [公式ページ](https://github.com/stig/json-framework/)に上がっているのでダウンロード  
+2: json-framework-master/src/main/objc/直下のファイルを全てコピー  
+3: 追加したいXcodeプロジェクトに追加(SBJsonなどフォルダを作って、その配下に置いた方が見やすいでしょう)  
+4: JSONを扱いたいファイルで**#import "SBJson.h"**と表記  
+となります。  
+![XcodeにSBJsonを追加](/images/xcode_sbjson_add.png)  
+
+準備ができたら後は簡単です。  
+参考までに今回は**OpenWeatherMap API**を利用したサンプルを作成します。  
+
+作成するサンプルは日本の東京の天候を取得して、ラベルに表示するというものです。  
+では例によってViewController.m, ViewController.h, ViewController.xibファイルを追加するところまで作成して下さい。  
+で、ViewController.mファイルのViewDidLoad関数に以下を書きます。  
+```
+- (void)viewDidLoad
+{
+	[super viewDidLoad];
+	// ①
+	NSString *url = @"http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp";
+	// ②
+	NSString *urlEscapeStr = [[NSString  stringWithString:url] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+	// ③
+	NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:[NSURL URLWithString:urlEscapeStr] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:15];
+	// ④
+	 NSData *responseData = [NSURLConnection sendSynchronousRequest:request returningResponse:nil error:nil];
+	// ⑤
+	SBJsonParser* parser = [[SBJsonParser alloc]init];
+	// ⑥
+	NSDictionary *result = [parser objectWithData:responseData];
+	// ⑦
+	NSArray *main = [result valueForKeyPath:@"weather.main"];
+	NSString *weather = main[0];
+	label1.text = weather;
+```
+
+① OpenWeatherMap APIのリクエストURLをセット  
+② リクエストURLをUTF8でエンコード※stringByAddingPercentEscapesUsingEncodingを使うとAPIでよく使われる**&**はエスケープされません。  
+③ 通信するためにNSMutableURLRequest型のrequestを作成  
+④ 通信  
+⑤ ここからSBJsonを利用します。まずはSBJsonを初期化  
+⑥ JSON形式で来たデータをNSDictionary型に格納  
+⑦ weather.mainの値を抽出してラベルに表示  
+※ label1はViewController.xibでセットしたラベルになります。  
+
+その結果がこれ↓  
+![OpenWeatherMapで天気を取得してラベルに表示してみた](/images/xcode_openweathermap_sample.png)  
+
+こんな簡単にAPIを使えるなら、やらない手はないですよね？  
+筆者もAPIを使ったアプリの開発をこれから考えようと思います。  
+ってことで今日は以上です。

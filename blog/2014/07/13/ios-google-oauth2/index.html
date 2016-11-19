@@ -1,0 +1,576 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>iOSでGoogle OAuth認証がしたい - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="iOSネイティブアプリにGoogle OAuth認証機能を実装する方法 Google OAuth認証はWebアプリであれば多くの情報が載っているのですが、なぜかiOSネイティブアプリになると情報が全然見つからない&hellip;。
+ということでその方法をまとめてみることにした。 まず、 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">iOSでGoogle OAuth認証がしたい</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-07-13T00:17:00+09:00" pubdate data-updated="true">Jul 13<span>th</span>, 2014</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>iOSネイティブアプリにGoogle OAuth認証機能を実装する方法</h3>
+
+<p>Google OAuth認証はWebアプリであれば多くの情報が載っているのですが、なぜかiOSネイティブアプリになると情報が全然見つからない&hellip;。<br/>
+ということでその方法をまとめてみることにした。</p>
+
+<p>まず、ネット上で検索してみるとiOSでOAuth認証をするためのライブラリは幾つか作られているようでした。<br/>
+その中でも、Googleが提供している<strong>gtm-oauth2</strong>がよく使われているらしい。<br/>
+ま、Googleが提供しているのであれば、安心して使えるだろうということで、ここでは<strong>gtm-oauth2</strong>を使った方法で説明します。</p>
+
+<!--more-->
+
+
+<h4>設定編</h4>
+
+<p>開発に入る前に<a href="https://console.developers.google.com/project">Google Console</a>で設定する必要があります。<br/>
+1: OAuthのClientIDを作成する<br/>
+左メニューからAPIS &amp; AUTH > Credentialsを選択します。<br/>
+OAuthと書かれた下に<strong>Create new Client ID</strong>というボタンがあります。これをクリックするとポップアップが出てきます。このポップアップの中で必要な選択と入力は下記画像のようになります。<br/>
+<img src="/images/goauth5.png" alt="Create new Client ID" /><br/>
+すると、下記画像のように<strong>CLIENT ID</strong>と<strong>CLIENT SECRET</strong>が表示されます。<br/>
+<img src="/images/goauth6.png" alt="Client ID &amp; Client Secret" /></p>
+
+<p>2: Consent Screenを設定する<br/>
+次にConsent Screenを設定します。これを設定しないとErrorが発生してしまいます。<br/>
+左メニューからAPIS &amp; AUTH > Consent Screenを選択します。<br/>
+下記画像のように<strong>EMAIL ADDRESS</strong>と<strong>PRODUCT NAME</strong>の２箇所を入力してSaveボタンをクリックしましょう。<br/>
+<img src="/images/goauth7.png" alt="Consent Screenの設定" /></p>
+
+<p>3: 利用するAPIを設定する<br/>
+最後に利用したいAPIの設定をONにしておきましょう。<br/>
+左メニューからAPIS &amp; AUTH > APIsを選択します。<br/>
+下記画像のように利用したいAPIのSTATUSをONにしましょう。<br/>
+<img src="/images/goauth8.png" alt="APIをONにする" /></p>
+
+<p>これで設定は完了です。<br/>
+続いて開発の説明に入ります。</p>
+
+<h4>開発編</h4>
+
+<p>1: GoogleからソースをGET<br/>
+早速、Googleが配布しているソースをもらいに行きます。<br/>
+<a href="https://code.google.com/p/gtm-oauth2/source/checkout">Googleのgtm-oauth2サイト</a>でも書かれているようにsvnを使って、ソースを落とします。<br/>
+ソースを保存する場所を決めたら、その配下で下記コマンドを実行。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>svn checkout http://gtm-oauth2.googlecode.com/svn/trunk/ gtm-oauth2-read-only</span></code></pre></td></tr></table></div></figure>
+
+
+<p>もしかしたら、途中でRejectかtemporaryかpermanentか聞かれるかもしれません。筆者はtemporaryにしました。<br/>
+ソースを落とした後は<a href="https://code.google.com/p/gtm-oauth2/wiki/Introduction">公式ドキュメント</a>に書かれている通り、進めていきます。</p>
+
+<p>2: ダウンロードしたソースを自身のXcodeプロジェクトに追加<br/>
+OAuth認証機能を実装したいXcodeプロジェクトを作成します。ここにOAuthに必要なソースを追加します。<br/>
+必要なソースは<br/>
+・GTMOAuth2Authentication.h/m<br/>
+・GTMOAuth2SignIn.h/m<br/>
+・GTMHTTPFetcher.h/m<br/>
+・GTMOAuth2ViewControllerTouch.h/m<br/>
+・GTMOAuth2ViewTouch.xib<br/>
+です。<br/>
+格納場所は下記画像を見てください。<br/>
+<img src="/images/goauth1.png" alt="必要なソースの格納場所" /></p>
+
+<p>ほとんどの人がXcode5.1.1でプロジェクトを作ると思うのですが、デフォルトARC対応プロジェクトとなっていると思います。<br/>
+そのため、<strong>コンパイルオプション</strong>と<strong>Other Linker Flags</strong>を設定する必要があります。<br/>
+<img src="/images/goauth2.png" alt="コンパイルオプションの設定" /><br/>
+<img src="/images/goauth3.png" alt="Other Linker Flagsの設定" /></p>
+
+<p>3: Googleからダウンロードしたソースを使うために必要なFrameworkをプロジェクトに追加する<br/>
+Security.frameworkとSystemConfiguration.frameworkを追加します。<br/>
+<img src="/images/goauth4.png" alt="必要なframeworkを追加" /></p>
+
+<p>4: ソースを書く<br/>
+OAuth認証機能を実装するUIViewControllerをプロジェクトに追加しましょう。ここでは名前をViewControllerとします。<br/>
+ViewController.mファイルのソース</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#import "ViewController.h"
+</span><span class='line'>#import "GTMOAuth2Authentication.h"
+</span><span class='line'>#import "GTMOAuth2ViewControllerTouch.h"
+</span><span class='line'>
+</span><span class='line'>@interface ViewController ()
+</span><span class='line'>
+</span><span class='line'>@property (nonatomic, retain) GTMOAuth2Authentication *auth;
+</span><span class='line'>
+</span><span class='line'>-(void) startLogin;
+</span><span class='line'>
+</span><span class='line'>@end
+</span><span class='line'>static NSString *const kKeychainItemName = @"GOAuthTest";
+</span><span class='line'>static NSString *const scope = @"https://www.googleapis.com/auth/calendar";// Calendar APIを利用する場合のscope
+</span><span class='line'>static NSString *const clientId = @"xxxxxxxx.apps.googleusercontent.com";// 発行されたClient IDを設定
+</span><span class='line'>static NSString *const clientSecret = @"xxxxxxxx";// 発行されたClient Secretを設定
+</span><span class='line'>static NSString *const hasLoggedIn = @"hasLoggedInKey";// NSUserDefaultに保存するための文字列
+</span><span class='line'>
+</span><span class='line'>&lt;省略&gt;
+</span><span class='line'>
+</span><span class='line'>- (void)viewDidAppear:(BOOL)animated
+</span><span class='line'>{
+</span><span class='line'>  // アプリ起動してOAuth認証動作を開始する
+</span><span class='line'>  [self startLogin];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// OAuth認証の開始
+</span><span class='line'>- (void)startLogin
+</span><span class='line'>{
+</span><span class='line'>  // 既に認証をしたかどうか確認
+</span><span class='line'>  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+</span><span class='line'>  BOOL hasLoggedin = [defaults boolForKey:hasLoggedIn];
+</span><span class='line'>
+</span><span class='line'>  if(hasLoggedin == YES) {
+</span><span class='line'>      // 認証したことがある場合
+</span><span class='line'>      self.auth = [GTMOAuth2ViewControllerTouch authForGoogleFromKeychainForName:kKeychainItemName
+</span><span class='line'>                                                                        clientID:clientId
+</span><span class='line'>                                                                    clientSecret:clientSecret];
+</span><span class='line'>      // アクセストークンの取得
+</span><span class='line'>      [self authorizeRequest];
+</span><span class='line'>  } else {
+</span><span class='line'>      // 認証したことがない場合
+</span><span class='line'>      GTMOAuth2ViewControllerTouch *gvc = [[GTMOAuth2ViewControllerTouch alloc] initWithScope:scope
+</span><span class='line'>                                                                                     clientID:clientId
+</span><span class='line'>                                                                                 clientSecret:clientSecret
+</span><span class='line'>                                                                             keychainItemName:kKeychainItemName
+</span><span class='line'>                                                                                     delegate:self
+</span><span class='line'>                                                                             finishedSelector:@selector(viewController:finishedWithAuth:error:)
+</span><span class='line'>      ];
+</span><span class='line'>      // 認証画面の表示
+</span><span class='line'>      [self presentViewController:gvc animated:YES completion:nil];
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// 認証後に実行する処理
+</span><span class='line'>- (void)viewController:(GTMOAuth2ViewControllerTouch *)viewController
+</span><span class='line'>    finishedWithAuth:(GTMOAuth2Authentication *)auth
+</span><span class='line'>               error:(NSError *)error
+</span><span class='line'>{
+</span><span class='line'>  if(error != nil) {
+</span><span class='line'>      // 認証失敗
+</span><span class='line'>  } else {
+</span><span class='line'>      // 認証成功
+</span><span class='line'>      self.auth = auth;
+</span><span class='line'>      NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+</span><span class='line'>      [defaults setBool:YES forKey:hasLoggedIn];
+</span><span class='line'>      [defaults synchronize];
+</span><span class='line'>
+</span><span class='line'>      // アクセストークンの取得
+</span><span class='line'>      [self authorizeRequest];
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>  // 認証画面を閉じる
+</span><span class='line'>  [viewController dismissViewControllerAnimated:YES completion:nil];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// アクセストークンの取得処理
+</span><span class='line'>- (void)authorizeRequest
+</span><span class='line'>{
+</span><span class='line'>  NSLog(@"%@", self.auth);
+</span><span class='line'>  NSMutableURLRequest *req = [NSMutableURLRequest alloc] initWithURL:self.auth.tokenURL];
+</span><span class='line'>  [self.auth authorizeRequest:req completionHandler:^(NSError *error) {
+</span><span class='line'>      NSLog(@"%@", self.auth);
+</span><span class='line'>  }];
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<ol>
+<li>実機で動作を確認<br/>
+ソースが書けたら、実際にアプリを起動して見てみましょう。<br/>
+認証画面が表示されます。<br/>
+<img src="/images/goauth9.png" alt="認証画面" /></li>
+</ol>
+
+
+<p>メールアドレスとパスワードを入力すると、認証の許可画面が表示されます。<br/>
+<img src="/images/goauth10.png" alt="許可画面" /><br/>
+許可をすると、開発者の作成する画面に戻ります。</p>
+
+<p>さて、いかがだったでしょうか？<br/>
+今回はGoogle APIの利用まで書いていませんが、OAuthができてしまえば、そんなに難しくはないでしょう。たぶん笑</p>
+
+<p>参考:<br/>
+・<a href="http://kernhack.hatenablog.com/entry/2013/11/24/164828">gtm-oauth2でOAuth認証してgoogleのAPIを使う</a><br/>
+・<a href="http://stackoverflow.com/questions/18677244/error-invalid-client-no-application-name">invalid_client no application name &ndash; Stack Overflow</a></p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-07-13T00:17:00+09:00" pubdate data-updated="true">Jul 13<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/oauth2/'>oauth2</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/" data-via="" data-counturl="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/07/12/osx-server/" title="Previous Post: OS X Serverを使ってみよう">&laquo; OS X Serverを使ってみよう</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/07/17/ios-google-oauth2-2/" title="Next Post: iOSでGoogle OAuth認証がしたい〜OAuth2Clientを使う〜">iOSでGoogle OAuth認証がしたい〜OAuth2Clientを使う〜 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2016/11/03/blog-3-year-anniversary/">技術ブログのアクセスと収入の推移(3周年)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/30/swift-perfect/">Server Side Swift: Perfect を使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/30/node-router/">Node.jsでrouterモジュールでルーティング！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/09/nosql/">NoSQLの特性を調べよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/09/25/ios-in-app-purchase/">iOSアプリ内課金: 自動更新購読</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (135)</a></li><li><a href='/blog/categories/swift'>swift (37)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/java'>java (19)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li><li><a href='/blog/categories/location'>location (6)</a></li><li><a href='/blog/categories/node'>node (6)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li><li><a href='/blog/categories/apurishen-qing'>アプリ申請 (5)</a></li><li><a href='/blog/categories/springboot'>springboot (5)</a></li><li><a href='/blog/categories/wkwebview'>WKWebView (4)</a></li><li><a href='/blog/categories/sqlite'>SQLite (4)</a></li></ul>
+</section>
+<aside>
+	<h3>About Takahiro</h3>
+	<p>
+	メカ出身のプログラマー<br />
+	故にLevelは-1<br />
+	主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)<br />
+	</p>
+	<a href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2016 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/';
+        var disqus_url = 'http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: jenkins | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/jenkins/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2016-11-03T11:48:47+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[JekninsからGitHubにアップされたiOSプロジェクトをビルドしよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/06/18/ios-jenkins/"/>
+    <updated>2016-06-18T22:57:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/06/18/ios-jenkins</id>
+    <content type="html"><![CDATA[<h4>Jenkins / GitHub / Xcodeを連携させよう！</h4>
+
+<p>さて、今日はJenkinsとGitHubとXcodeの連携について見ていきます。<br/>
+筆者はこれまで、手元の自身のMac端末でビルドして、Fabricでアプリを配信することが多かったのですが、最近、<a href="https://deploygate.com/?locale=ja">Deploygate</a>を使う場面が出てきました。<br/>
+業界スタンダートな方法なのかわからないものの、JenkinsとDeploygateを連携させてJenkins上でビルドしたアプリをDeploygateから配信することができます。<br/>
+そういった筆者にとって新しい機会に恵まれたものの、触ってみた経験がないためわからないことが多々あったりします。<br/>
+そこで、今回はローカル環境でJenkins / GitHub / Xcodeを連携させて遊んでみようと思います。</p>
+
+<!-- more -->
+
+
+<h5>Jenkinsのインストール</h5>
+
+<p>まずは、JenkinsをHomebrewでローカル環境にインストールします。<br/>
+<code>brew install jenkins</code>を実行します。</p>
+
+<p>```objective-c
+Password:
+==> Downloading <a href="http://mirrors.jenkins-ci.org/war/2.9/jenkins.war">http://mirrors.jenkins-ci.org/war/2.9/jenkins.war</a>
+==> Downloading from <a href="http://ftp.yz.yamagata-u.ac.jp/pub/misc/jenkins/war/2.9/jenkins.war">http://ftp.yz.yamagata-u.ac.jp/pub/misc/jenkins/war/2.9/jenkins.war</a></p>
+
+<h6>################################################################## 100.0%</h6>
+
+<p>==> jar xvf jenkins.war
+==> Caveats
+Note: When using launchctl the port will be 8080.</p>
+
+<p>To have launchd start jenkins now and restart at login:
+  brew services start jenkins
+Or, if you don&rsquo;t want/need a background service you can just run:</p>
+
+<pre><code>jenkins
+</code></pre>
+
+<p>==> Summary
+🍺  /usr/local/Cellar/jenkins/2.9: 6 files, 66.4M, built in 59 seconds
+```</p>
+
+<p>Jenkinsをこれから使う機会も多いかもしれないので自動起動設定もしちゃいましょう。</p>
+
+<p><code>objective-c
+cp -p /usr/local/opt/jenkins/*.plist ~/Library/LaunchAgents
+launchctl load ~/Library/LaunchAgents/homebrew.mxcl.jenkins.plist
+launchctl start homebrew.mxcl.jenkins
+</code></p>
+
+<p>本当に起動してるかな〜と心配な方は<code>ps aux | grep jenkins</code>を叩いちゃいましょう！<br/>
+すると下記のように表示されます。</p>
+
+<p><code>
+/usr/bin/java -Dmail.smtp.starttls.enable=true -jar /usr/local/opt/jenkins/libexec/jenkins.war --httpListenAddress=127.0.0.1 --httpPort=8080
+</code></p>
+
+<h5>Jenkinsの初期登録を完了させよう！</h5>
+
+<p>インストール完了したので、Jenkins上でジョブを作りましょう！<br/>
+早速、<code>http://localhost:8080</code>にアクセスしてください。</p>
+
+<p>すると、 <strong>Unlock Jenkins</strong> と大きく書かれた画面が表示されます。<br/>
+この画面の表示された指示に従って、管理者パスワードを入力しましょう。
+(コマンドは画面に表示された通りにターミナルで叩けばOKです。)</p>
+
+<p><img src="/images/jenkins-1.png" alt="初期画面" /></p>
+
+<p>続いて、 <strong>Customize Jenkins</strong> 画面に遷移するので、<br/>
+<strong>Install suggested plugins</strong> を選択しましょう。</p>
+
+<p><img src="/images/jenkins-2.png" alt="Customize Jenkins" /></p>
+
+<p>そして、ユーザー登録をします。</p>
+
+<p><img src="/images/jenkins-3.png" alt="ユーザー登録" /></p>
+
+<p>これでJenkinsのトップ画面が表示されます。<br/>
+Xcode Pluginがまだインストールされていないので、インストールします。</p>
+
+<p>左メニューから「Jenkinsの管理 > プラグインの管理」を選択します。</p>
+
+<p><img src="/images/jenkins-6.png" alt="プラグインの管理" /></p>
+
+<p>検索ボックスでXcodeと入力してください。<br/>
+<strong>Xcode integration</strong> が見つかりますので、インストールしてください。<br/>
+これで必要なプラグインのインストールが完了しました。</p>
+
+<h5>Jenkinsで新規ジョブを作成しよう！</h5>
+
+<p>左メニューから新規ジョブを作成します。</p>
+
+<p><img src="/images/jenkins-4.png" alt="新規ジョブの作成" /></p>
+
+<p>ジョブ名を入力して、「フリースタイル・プロジェクトのビルド」を選択して、OKを押します。</p>
+
+<p><img src="/images/jenkins-5.png" alt="ジョブのベースを作成" /></p>
+
+<p>まず、GitHubと連携させましょう。<br/>
+JenkinsのジョブにGitのRepository URLを設定します。</p>
+
+<p><img src="/images/jenkins-7.png" alt="JenkinsでGitのRepository URLを設定" /></p>
+
+<p>ただ単に設定すると403 Errorが出てしまうので、GitHub側を設定します。<br/>
+GitHubから取得したいRepositoryを選択します。<br/>
+Settings > Webhooks &amp; services > Add Webhook を選択します。<br/>
+下記のように設定しましょう！</p>
+
+<p><img src="/images/jenkins-8.png" alt="Webhooks &amp; services" /></p>
+
+<p>これでJenkins側の403 Errorが解消されるはずです。</p>
+
+<p>続いてビルド情報を入力していきます。</p>
+
+<p>ビルド手順の追加 > 「シェルの実行」を追加します</p>
+
+<p>```objective-c</p>
+
+<h1>!/bin/bash -l</h1>
+
+<p>pod install
+```</p>
+
+<p>このタイミングで、<code>.bashrc</code>に<code>export LC_ALL="en_US.UTF-8"</code>を追加しておきましょう。<br/>
+(追加しないと『 <strong>invalid byte sequence in US-ASCII</strong> 』が後々発生します。)</p>
+
+<p>ビルド手順の追加 > 「Xcode」を追加します<br/>
+設定は下記のようにしてきます。</p>
+
+<p>【Code signing &amp; OS X keychain options】</p>
+
+<p><img src="/images/jenkins-9.png" alt="Code signing &amp; OS X keychain options" /></p>
+
+<p>【Advanced Xcode build options】</p>
+
+<p><img src="/images/jenkins-10.png" alt="Advanced Xcode build options" /></p>
+
+<table>
+<thead>
+<tr>
+<th></th>
+<th align="left">Xcode Schema File: </th>
+<th align="center">FacebookLoginSample</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td align="left">Xcode Workspace File: </td>
+<td align="center">FacebookLoginSample|</td>
+</tr>
+<tr>
+<td></td>
+<td align="left">Xcode Project File: </td>
+<td align="center">FacebookLoginSample|</td>
+</tr>
+<tr>
+<td></td>
+<td align="left">Build output directory: </td>
+<td align="center">${WORKSPACE}/build|</td>
+</tr>
+</tbody>
+</table>
+
+
+<p>　</p>
+
+<h5>Jennkinsでジョブを実行しよう！</h5>
+
+<p>これでジョブを実行してみましょう！<br/>
+左メニューから『 <strong>ビルド実行</strong> 』を選択します。</p>
+
+<p><img src="/images/jenkins-11.png" alt="ビルド実行" /></p>
+
+<p>ビルドを実行すると、ビルド履歴に新たに項目が追加されます。<br/>
+詳しいビルド状況を追いたければ、時間部分を選択します。</p>
+
+<p><img src="/images/jenkins-12.png" alt="ビルド状況の確認" /></p>
+
+<p>そして、画面遷移後の左メニューから『 <strong>コンソール出力</strong> 』を選択します。</p>
+
+<p><img src="/images/jenkins-13.png" alt="コンソール出力" /></p>
+
+<p>これで最後までログを追うことができます。</p>
+
+<h4>まとめ</h4>
+
+<p>さて如何でしたでしょうか？<br/>
+筆者も初めてローカル環境でJenkinsを立ててみましたが、意外とハマリポイントが多かったです。<br/>
+証明書周りでもう少し調べてみたいところもあるので、またわかったことがあればブログに書いていきたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://qiita.com/makoto_kw/items/cbe93d4ebbc35f3b43fd">OS XにJenkinsをHomebrewでセットアップする</a></li>
+<li><a href="http://www.buildinsider.net/enterprise/jenkins/001">Jenkinsをインストールして使ってみよう</a></li>
+<li><a href="https://github.com/CocoaPods/CocoaPods/issues/639#issuecomment-11483748">invalid byte sequence in US-ASCII</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>

@@ -3,7 +3,7 @@ layout: post
 title: "Octopressインストールしてみました"
 date: 2013-09-04 00:23
 comments: true
-categories: 
+categories: octopress
 ---
 
 ##Octopressとは
@@ -11,6 +11,8 @@ GitHub Pagesと組み合わせて、無料で簡単にブログが作れると�
 その噂の真相を確かめるべく、いざOctopressをインストールしてみました。
 
 それがまさかこんな苦労するなんて夢にも思わず…
+
+<!--more-->
 
 ###Rubyのインストール
 それではまず以下のコマンドを打ってみよう！

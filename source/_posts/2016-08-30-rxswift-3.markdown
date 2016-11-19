@@ -1,0 +1,259 @@
+---
+layout: post
+title: "RxSwiftを勉強してみよう！(3)"
+date: 2016-08-30 16:42
+comments: true
+categories: ios swift Rx
+---
+
+###RxSwiftのメソッドを見てみよう
+前回に引き続きRxSwiftを勉強したいと思います。  
+今回は[GitHub: Reactive/RxSwift API一覧](https://github.com/ReactiveX/RxSwift/blob/master/Documentation/API.md)からメインのメソッドを見ていきたいと思います。  
+
+####asObservable
+これは`ReactiveX`で定義されている`From`オペレータと同義です。  
+様々なオブジェクトを`Observable`型のデータに変換するためのオペレータです。  
+
+利用例は下記です。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let array: [Int] = [1, 2, 3, 4, 5]
+let variable = Variable(array)
+variable.asObservable.subscribe { (event) in
+	print("Event is \(event)")
+}.addDisposableTo(disposeBag)
+
+variable.value = [6, 7, 8]
+
+// 結果は下記です。
+Event is Next([1, 2, 3, 4, 5])
+Event is Next([6, 7, 8])
+Event is Completed
+```
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+####create
+0から`Observable`型のデータを生成するためのオペレータです。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let source = Observable.create { (observer: AnyObserver<Int>) -> Disposable in
+	observer.onNext(1)
+	observer.onCompleted()
+
+	return AnonymousDisposable {
+		print("Disposed")
+	}
+}
+
+source.subscribeNext { (elem) in
+	print("Event is \(elem)")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です
+Event is 1
+Disposed
+```
+
+####deferred
+Subscribeされたタイミングで`Observable`型のデータを生成するオペレータです。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let source = Observable.deferred { () -> Observable<Int> in
+	return Observable.just(1)
+}
+source.subscribeNext { (elem) in
+	print("Elem is \(elem)")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です
+Event is 1
+```
+
+####empty
+空の(何の値も持たない)`Observable`型のデータを生成するオペレータです。  
+通常通り、終了処理は実行されます。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let source: Observable<Int> = Observable.empty()
+source.subscribeNext { (elem) in
+	print("Elem is \(elem)")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です。
+// 空のため何も出力されません
+```
+
+####never
+空の(何の値も持たない)`Observable`型のデータを生成するオペレータです。  
+`empty`と異なるのは終了処理が実行されないことです。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let source: Observable<Int> = Observable.never()
+source.subscribeNext { (elem) in
+	print("Elem is \(elem)")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です。
+// 空のため何も出力されません
+```
+
+####error
+空の(何の値も持たない)`Observable`型のデータを生成するオペレータです。  
+`empty`, `never`と異なり、エラーを持った終了処理を実行します。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let error = NSError(domain: "test", code: -1, userInfo: nil)
+let source: Observable<Int> = Observable.error(error)
+source.subscribeError { (error) in
+	print("Error is \(error)")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です。
+Error is Error Domain=test Code=-1 "(null)"
+```
+
+####toObservable
+様々なオブジェクトを`Observable`型のデータに変換するためのオペレータです。  
+`asObservable`とは利用方法が異なります。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let array: [Int] = [1, 2, 3]
+array.toObservable().subscribeNext { (elem) in
+	print("Number is \(elem)")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です。
+Number is 1
+Number is 2
+Number is 3
+```
+
+####interval
+一定期間あけて処理を実行するためのオペレータです。  
+`JavaScript`で言うところの`setTimeInterval`です。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let timer: Observable<Int> = Observable.interval(5.0, scheduler: MainScheduler.instance)
+timer.subscribeNext { (count) in
+	print("log output")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です。
+// 5秒後に実行されます。
+log output
+```
+
+####just
+引数に指定した特定の型を返却する`Observable`型のデータを生成するためのオペレータです。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let source = Observable.just(1)
+source.subscribeNext { (elem) in
+	print("Elem is \(elem)")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です。
+Elem is 1
+```
+
+####of
+様々なオブジェクトを`Observable`型のデータに変換するためのオペレータです。  
+`asObservable`や`toObservable`とは利用方法が異なります。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let source = Observable.of(1)
+source.subscribeNext { (elem) in
+	print("Elem is \(elem)")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です。
+Elem is 1
+```
+
+####range
+特定の範囲の`Int`型を持つ`Observable`型データを生成するオペレータです。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let source: Observable<Int> = Observable.range(start: 1, count: 3)
+source.subscribeNext { (elem) in
+	print("Elem is \(elem)")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です。
+Elem is 1
+Elem is 2
+Elem is 3
+```
+
+####repeatElement
+指定した回数、処理を実行するときに利用する`Observable`型データを生成するオペレータです。  
+`take`メソッドを利用して回数を指定します。  
+
+```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要
+
+let source = Observable.repeatElement(1).take(3)
+source.subscribeNext { (elem) in
+	print("Elem is \(elem)")
+}.addDisposableTo(disposeBag)
+
+// 結果は下記です。
+Elem is 1
+Elem is 1
+Elem is 1
+```
+
+####timer
+一定時間経過後に処理を実行したい場合に利用するオペレータです。  
+`JavaScript`で言うところの`setTimeout`です。  
+
+```objective-c
+let timer: Observable<Int> = Observable.timer(5.0, scheduler: MainScheduler.instance)
+timer.subscribeNext { (count) in
+	print("log output")
+}.addDisposableTo(disposeBag)
+```
+
+###まとめ
+さて、今回は`Creating Observables`のみを取り上げさせて頂きましたが、いかがでしたでしょうか？  
+筆者もイマイチ使い方がわからなかったオペレータがたくさんあったので、多少なりとも使えそうな気がしてきました。  
+`Transforming Observables`, `Filtering Observables` .... と全て見ていけると良いのですが、結構数が多いですね。  
+時間があるときに続きを書きたいと思います。  
+
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+

@@ -1,0 +1,1385 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: node | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/node/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2016-11-03T11:48:47+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Server Side Swift: Perfect を使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/10/30/swift-perfect/"/>
+    <updated>2016-10-30T22:48:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/10/30/swift-perfect</id>
+    <content type="html"><![CDATA[<h3>Server Side SwiftライブラリのPerfect</h3>
+
+<p>本日は以前書いたサーバサイドSwiftの続きを書きます！<br/>
+と言いたかったところなのですが、Swift ExpressはSwift3.0やXcode8に対応しておらず、何もできなかったため、方向転換して最もSTAR数の多い<a href="https://github.com/PerfectlySoft/Perfect">PerfectlySoft/Perfect</a>を使うことにしました。</p>
+
+<p>よくよく見るとMySQLだけでなくMongoDB接続用にもモジュールが用意されており、なかなか良さそうではないですか！！<br/>
+とは言いつつも、そんなにすぐにMaster Of Perfectにはなれないので少しずつ見ていくことにします。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<h4>チュートリアルを触ってみる</h4>
+
+<p>まずは何はともあれGitHubの <em>Getting Started</em> からやらないと話になりません。<br/>
+手順は簡単です。</p>
+
+<p>１．テンプレートプロジェクトをクローンする<br/>
+<code>git clone https://github.com/PerfectlySoft/PerfectTemplate.git</code></p>
+
+<p>２．ビルドを実行する<br/>
+クローンした<code>PerfectTemplate</code>フォルダ内に入り、ビルドを実行しましょう。</p>
+
+<p><code>
+$ cd PerfectTemplate
+$ swift build
+</code></p>
+
+<p>３．サーバを起動します<br/>
+なんと後は下記コマンドでサーバを起動するだけです。</p>
+
+<p><code>.build/debug/PerfectTemplate</code></p>
+
+<p>正しく起動すれば、下記ログが出力されます。<br/>
+<code>Starting HTTP server on 0.0.0.0:8181 with document root ./webroot</code><br/>
+またログの指示通りChromeで<code>http://localhost:8181/</code>にアクセスすれば<code>Hello World</code>が拝めます。</p>
+
+<h4>ルーティングの書き方について学ぶ</h4>
+
+<p>では次に簡単なルーティングについて学んでいきましょう。<br/>
+チュートリアルでは、下記GETリクエストのみ受け付けていました。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .get, uri: &ldquo;/&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.setHeader(.contentType, value: "text/html")
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Hello, world!&lt;/title&gt;&lt;body&gt;Hello, world!&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>最も単純なGETリクエストですね。<br/>
+では、<code>ID: 100</code>のユーザ情報を取得するGETリクエストはどう受け付けるのでしょうか。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .get, uri: &ldquo;/user/{id}&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.setHeader(.contentType, value: "text/html")
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You GET UserInfo with \(request.urlVariables)&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>たったのこれだけです。<br/>
+では、POSTリクエストの受け付けはどうでしょうか。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .post, uri: &ldquo;/user&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You POSTed user data to catch your POST request.&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>これも簡単ですね。<br/>
+書き方に若干の違いはあれど、最早Node.jsとそんなに変わらん&hellip;</p>
+
+<p>おまけで、POSTリクエストで届いたJSONStringをバラバラっと分解して返却してみました。<br/>
+そのためにまずはJSONStringをデコードする処理を実装します。</p>
+
+<p>```javascript
+// decode.swift
+import PerfectHTTPServer
+import PerfectLib</p>
+
+<p>func decode(postBody: String?) &ndash;> [String: Any]? {</p>
+
+<pre><code>do {
+    guard let decoded = try postBody?.jsonDecode() as? [String:Any] else {
+        return [:]
+    }
+    print(decoded)
+    return decoded
+} catch {
+    return [:]
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これを下記のように利用します。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .post, uri: &ldquo;/user&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+
+var userInfo = ""
+let decodedParam = decode(postBody: request.postBodyString)
+for (key, value) in decodedParam! {
+    switch key {
+        case "name":
+            userInfo = userInfo + "name is \(value as! String).\n"
+        case "email":
+            userInfo = userInfo + "email is \(value as! String)."
+        default:
+            break
+    }
+}
+response.appendBody(string: "&lt;html&gt;&lt;body&gt;POST handler: \(userInfo)&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>さて、実装できたのでクライアントからリクエストを投げてみます。</p>
+
+<p><code>
+// クライアントからPOSTリクエストを投げます
+curl http://localhost:8181/user -X POST -H "Content-Type: application/json" -d '{"name":"Ichiro", "email": "xxx@gmail.com"}'
+// 結果
+&lt;html&gt;&lt;body&gt;POST handler: name is Ichiro.
+email is xxx@gmail.com.&lt;/body&gt;&lt;/html&gt;xxxx:PerfectTemplate
+</code></p>
+
+<h3>まとめ</h3>
+
+<p>さて今回は<code>Perfect</code>を使ったサーバサイドSwiftを見てみました。<br/>
+まだまだ基本的なリクエストの受付しかみていませんが、既にいろいろなモジュールが用意されているようなので、継続的に見ていきたいと思います。<br/>
+やっぱりライブラリを作るなら、最新の状況についていかないと見捨てられるな〜と思ってしまいました。<br/>
+(今回で言うと、Swift3やXcode8とかですね。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Node.jsでrouterモジュールでルーティング！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/10/30/node-router/"/>
+    <updated>2016-10-30T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/10/30/node-router</id>
+    <content type="html"><![CDATA[<h3>Expressなしで簡単にルーティングしよう！</h3>
+
+<p>さて、久しぶりにNode.jsについて書きます。<br/>
+筆者が本格的にNode.jsを利用していたのは3〜4年前だったため、Expressをよく利用していました。<br/>
+その後、Expressを利用するほどのリッチな機能を必要としない、簡易的なデモ用のサーバサイドの仕組みを作るのにバリバリ自作ルーティングをしていました。<br/>
+しかし、ここにきてExpressを利用するでもなく、かと言って自作でルーティング処理を書くのも若干面倒だと感じるとき果たしてどうすれば良いのかふと気になりました。<br/>
+「きっと今の世の中なら何らかのモジュールが出ているはず！」と思った筆者は早速探してみることに&hellip;</p>
+
+<p>そこで見つけたのが<a href="https://github.com/pillarjs/router">router</a>です。<br/>
+このモジュールを利用すれば、次のように簡単にルーティングを実装することができます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<p>```javascript
+// server.js
+var http = require(&ldquo;http&rdquo;);
+var Router = require(&ldquo;router&rdquo;);
+var finalhandler = require(&lsquo;finalhandler&rsquo;);
+var bodyParser   = require(&lsquo;body-parser&rsquo;);</p>
+
+<p>function start(route) {</p>
+
+<pre><code>var opts = { mergeParams: true }
+var router = Router(opts);
+var server = http.createServer(function onRequest(req, res) {
+    router(req, res, finalhandler(req, res));
+});
+
+// GETリクエストのハンドリング
+var user = Router(opts);
+router.use('/users/:path', user);
+
+user.get('/', function (req, res) {
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    res.end(req.params.path + '\n')
+});
+
+// POSTリクエストのハンドリング
+var users = Router();
+router.use('/users', users);
+users.use(bodyParser.json());
+
+users.post('/', function (req, res) {
+    if (req.body.value) {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end(req.body.value + '\n');
+    } else {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end('Invalid API Syntax\n');
+    }
+});
+
+server.listen(8888);
+console.log("server has started.");
+</code></pre>
+
+<p>}</p>
+
+<p>exports.start = start;
+```</p>
+
+<p>因みに、 <code>server.js</code> はモジュールとして切り出しています。<br/>
+実際には <code>app.js</code> で呼び出すようにしています。</p>
+
+<p><code>javascript
+// app.js
+var server = require("./server");
+server.start();
+</code></p>
+
+<p>ただ、今後たくさんのリクエストを捌くことを考えると、もう少しリクエスト内容ごとにファイルを分けた方が良いですよね&hellip;<br/>
+と言うことで少々修正します。</p>
+
+<p>```javascript
+// server.js
+var http = require(&ldquo;http&rdquo;);
+var Router = require(&ldquo;router&rdquo;);
+var finalhandler = require(&lsquo;finalhandler&rsquo;);
+var bodyParser   = require(&lsquo;body-parser&rsquo;);
+var users = require(&ldquo;./users&rdquo;);</p>
+
+<p>/<em>*
+ *  サーバ起動処理
+ </em>/
+function start() {</p>
+
+<pre><code>var opts = { mergeParams: true };
+var router = Router(opts);
+var server = http.createServer(function onRequest(req, res) {
+    router(req, res, finalhandler(req, res));
+});
+
+router.use(bodyParser.json());
+router.use('/users/:path', users);  // GETリクエスト
+router.use('/users', users);        // POST, PUT, DELETEリクエスト
+
+server.listen(8888);
+console.log("server has started.");
+</code></pre>
+
+<p>}</p>
+
+<p>exports.start = start;</p>
+
+<p>```</p>
+
+<p>上記のように<code>server.js</code>はサーバ起動だけに絞りました。<br/>
+そしてリクエストを受け付けたあとの処理は下記のように<code>users.js</code>に書きます。</p>
+
+<p>```javascript
+// users.js
+var Router = require(&ldquo;router&rdquo;);
+var opts = { mergeParams: true };
+var router = Router(opts);</p>
+
+<p>router.get(&ldquo;/&rdquo;, function(req, res) {</p>
+
+<pre><code>res.statusCode = 200;
+res.setHeader("Content-Type", "text/plain; charset=utf-8");
+res.end(req.params.path + "\n");
+</code></pre>
+
+<p>});</p>
+
+<p>router.post(&ldquo;/&rdquo;, function(req, res) {</p>
+
+<pre><code>if (req.body.value) {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.end(req.body.value + '\n');
+} else {
+    res.statusCode = 400;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.end('Invalid API Syntax\n');
+}
+</code></pre>
+
+<p>});</p>
+
+<p>module.exports = router;</p>
+
+<p>```</p>
+
+<p>このようにまとめることで可読性高くなるので、ルーティングの意味も出てくるというものですね。<br/>
+因みに、GETとPOSTリクエストを送れば下記のような結果が得られます。</p>
+
+<p>```
+// GETリクエスト
+curl <a href="http://localhost:8888/users/20161029">http://localhost:8888/users/20161029</a>
+// 結果
+20161029</p>
+
+<p>// POSTリクエスト
+curl <a href="http://localhost:8888/users">http://localhost:8888/users</a> -X POST -H &ldquo;Content-Type: application/json&rdquo; -d &lsquo;{&ldquo;value&rdquo;:&ldquo;Sample&rdquo;}&rsquo;
+// 結果
+Sample
+```</p>
+
+<h3>Node.jsでデバッグ</h3>
+
+<p>筆者はこれまで <code>node-inspector</code> を利用していたのですが、何とv6.3.0からデバッグ機能が標準装備されているらしいですね！<br/>
+早速ですが使ってみました。</p>
+
+<p>```
+// Node.jsでデバッグ起動
+node &mdash;inspect app.js
+Debugger listening on port 9229.
+Warning: This is an experimental feature and could change at any time.
+To start debugging, open the following URL in Chrome:</p>
+
+<pre><code>chrome-devtools://devtools/remote/serve_file/@60cd6e859b9f557d2312f5bf532f6aec5f284980/inspector.html?experiments=true&amp;v8only=true&amp;ws=localhost:9229/f1478fd8-33f2-4bca-8ab4-4ac9be3515cb
+</code></pre>
+
+<p>server has started.
+Debugger attached.
+```</p>
+
+<p>出力される <code>chrome-devtools://devtools/remote/serve_file/@....</code> の部分をChromeのアドレスバーに貼りましょう！<br/>
+<code>node-inspcetor</code> さながらのデバッグができるはずです。</p>
+
+<p>因みに、起動時のオプションとして <code>--debug-brk</code> をつけると必ず1行目でデバッグが停止します。<br/>
+一度停めたい場合はオプションを使いましょう。</p>
+
+<h3>まとめ</h3>
+
+<p>今回はNode.jsに触る機会があったため、どうすれば簡単にルーティングが実装できるのか調べてみました。<br/>
+Expressを使っても良かったのですが、極力不要なモジュールを取り込みたくない気持ちがあったので割りと最低限にできて良かったなと思いました。<br/>
+Node.jsは少しずつリハビリしながら思い出していくことにしようかな。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Swift Expressを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/07/10/swift-express/"/>
+    <updated>2016-07-10T22:56:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/07/10/swift-express</id>
+    <content type="html"><![CDATA[<h3>今注目のサーバーサイドSwift</h3>
+
+<p>本日はサーバーサイドSwiftのWebフレームワークの1つである<a href="https://github.com/crossroadlabs/Express">Swift Express</a>を紹介したいと思います。<br/>
+近年、AppleからSwiftのOSS化が発表されたことで一気に動き出したのがGitHub上でのWebフレームワーク作成合戦です。<br/>
+筆者が知っているだけでも、</p>
+
+<ul>
+<li><a href="https://github.com/PerfectlySoft/Perfect">Perfect</a></li>
+<li><a href="https://github.com/qutheory/vapor">Vapor</a></li>
+<li><a href="https://github.com/IBM-Swift/Kitura-Starter-Bluemix">Kitura</a></li>
+<li><a href="https://github.com/slimane-swift">Sliman</a></li>
+</ul>
+
+
+<p>などが上げられます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>そんな中、筆者の目に止まったのが、 <strong>Swift Express</strong> でした。<br/>
+本ブログでも度々 <strong>Node.js</strong> を触ったことがあると述べてきたように、筆者は <strong>Node.js</strong> でサーバサイド実装の経験があります。<br/>
+その際に利用していたWebフレームワークに<a href="http://expressjs.com/">Express</a>というものがありました。<br/>
+Expressは <strong>Node.js</strong> でいとも簡単にベースとなるサーバサイド実装を提供してくれます。</p>
+
+<p>Swiftの経験はあるものの、サーバサイドSwiftの実装経験がない筆者にとっては『願ってもないWebフレームワークじゃないか！』ということで <strong>Swift Express</strong> に惹かれたのです。<br/>
+さて、本日はそんな <strong>Swift Express</strong> を見ていきたいと思います。</p>
+
+<h3>Swift Expressをインストールしよう</h3>
+
+<p>まずは、Swift Expressをインストールしてみます。<br/>
+<code>homebrew</code>でインストールします。</p>
+
+<p>```javascript
+// 手順(1)
+brew tap crossroadlabs/tap</p>
+
+<p>// 手順(2)
+brew install swift-express
+```</p>
+
+<p>手順(1)を実行すると、下記のように結果が表示されます。</p>
+
+<p><code>javascript
+==&gt; Tapping crossroadlabs/tap
+Cloning into '/usr/local/Library/Taps/crossroadlabs/homebrew-tap'...
+remote: Counting objects: 8, done.
+remote: Compressing objects: 100% (7/7), done.
+remote: Total 8 (delta 0), reused 6 (delta 0), pack-reused 0
+Unpacking objects: 100% (8/8), done.
+Checking connectivity... done.
+Tapped 2 formulae (34 files, 72.7K)
+</code></p>
+
+<p>続いて、手順(2)を実行すると、下記のように結果が表示されます。</p>
+
+<p>```javascript
+==> Installing swift-express from crossroadlabs/tap
+==> Installing dependencies for crossroadlabs/tap/swift-express: openssl, cmake, libevent, libevhtp, carthage
+==> Installing crossroadlabs/tap/swift-express dependency: openssl
+==> Downloading <a href="https://homebrew.bintray.com/bottles/openssl-1.0.2h_1.el_capitan.bottle.tar.gz">https://homebrew.bintray.com/bottles/openssl-1.0.2h_1.el_capitan.bottle.tar.gz</a></p>
+
+<h6>################################################################## 100.0%</h6>
+
+<p>==> Pouring openssl-1.0.2h_1.el_capitan.bottle.tar.gz
+==> Caveats
+A CA file has been bootstrapped using certificates from the system
+keychain. To add additional certificates, place .pem files in
+  /usr/local/etc/openssl/certs</p>
+
+<p>  and run</p>
+
+<pre><code>/usr/local/opt/openssl/bin/c_rehash
+
+This formula is keg-only, which means it was not symlinked into /usr/local.
+
+Apple has deprecated use of OpenSSL in favor of its own TLS and crypto libraries
+
+Generally there are no consequences of this for you. If you build your
+own software and it requires this formula, you'll need to add to your
+build variables:
+
+    LDFLAGS:  -L/usr/local/opt/openssl/lib
+    CPPFLAGS: -I/usr/local/opt/openssl/include
+</code></pre>
+
+<p>==> Summary
+🍺  /usr/local/Cellar/openssl/1.0.2h_1: 1,691 files, 12M
+==> Installing crossroadlabs/tap/swift-express dependency: cmake
+==> Downloading <a href="https://homebrew.bintray.com/bottles/cmake-3.6.0.el_capitan.bottle.tar.gz">https://homebrew.bintray.com/bottles/cmake-3.6.0.el_capitan.bottle.tar.gz</a></p>
+
+<h6>################################################################## 100.0%</h6>
+
+<p>==> Pouring cmake-3.6.0.el_capitan.bottle.tar.gz
+==> Caveats
+Emacs Lisp files have been installed to:
+  /usr/local/share/emacs/site-lisp/cmake
+  ==> Summary
+  🍺  /usr/local/Cellar/cmake/3.6.0: 2,028 files, 27.8M
+  ==> Installing crossroadlabs/tap/swift-express dependency: libevent
+  ==> Downloading <a href="https://homebrew.bintray.com/bottles/libevent-2.0.22.el_capitan.bottle.tar.gz">https://homebrew.bintray.com/bottles/libevent-2.0.22.el_capitan.bottle.tar.gz</a></p>
+
+<h6>################################################################## 100.0%</h6>
+
+<p>==> Pouring libevent-2.0.22.el_capitan.bottle.tar.gz
+🍺  /usr/local/Cellar/libevent/2.0.22: 53 files, 1.6M
+==> Installing crossroadlabs/tap/swift-express dependency: libevhtp
+==> Downloading <a href="https://github.com/ellzey/libevhtp/archive/1.2.10.tar.gz">https://github.com/ellzey/libevhtp/archive/1.2.10.tar.gz</a>
+==> Downloading from <a href="https://codeload.github.com/ellzey/libevhtp/tar.gz/1.2.10">https://codeload.github.com/ellzey/libevhtp/tar.gz/1.2.10</a></p>
+
+<h6>################################################################## 100.0%</h6>
+
+<p>Warning: SHA1 support is deprecated and will be removed in a future version.
+Please switch this formula to SHA256.
+==> cmake . -DEVHTP_DISABLE_REGEX:STRING=ON -DEVHTP_BUILD_SHARED:STRING=ON -DCMAKE_C_FLAGS_RELEASE=-DNDEBUG -DCMAKE_CXX_FLAGS_RELEASE=-DNDEBUG -DCMAKE_INSTALL_PREFIX=/usr/local/Cell
+==> make install
+🍺  /usr/local/Cellar/libevhtp/1.2.10: 9 files, 151.5K, built in 48 seconds
+==> Installing crossroadlabs/tap/swift-express dependency: carthage
+==> Downloading <a href="https://homebrew.bintray.com/bottles/carthage-0.17.2.el_capitan.bottle.tar.gz">https://homebrew.bintray.com/bottles/carthage-0.17.2.el_capitan.bottle.tar.gz</a></p>
+
+<h6>################################################################## 100.0%</h6>
+
+<p>==> Pouring carthage-0.17.2.el_capitan.bottle.tar.gz
+🍺  /usr/local/Cellar/carthage/0.17.2: 45 files, 11.9M
+==> Installing crossroadlabs/tap/swift-express
+==> Cloning <a href="https://github.com/crossroadlabs/ExpressCommandLine.git">https://github.com/crossroadlabs/ExpressCommandLine.git</a>
+Cloning into &lsquo;/Users/kato_takahiro/Library/Caches/Homebrew/swift-express&mdash;git&rsquo;&hellip;
+remote: Counting objects: 67, done.
+remote: Compressing objects: 100% (63/63), done.
+remote: Total 67 (delta 21), reused 25 (delta 1), pack-reused 0
+Unpacking objects: 100% (67/67), done.
+Checking connectivity&hellip; done.
+Note: checking out &lsquo;fae821f4d52c9dfb4e4c34ab0a4297ea700c9db1&rsquo;.</p>
+
+<p>You are in &lsquo;detached HEAD&rsquo; state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by performing another checkout.</p>
+
+<p>If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -b with the checkout command again. Example:</p>
+
+<pre><code>  git checkout -b &lt;new-branch-name&gt;
+
+==&gt; Checking out tag 0.2.2
+==&gt; carthage update --platform Mac --no-use-binaries --no-build
+==&gt; rm -rf Carthage/Checkouts/Commandant/Carthage/Checkouts/Nimble Carthage/Checkouts/Commandant/Carthage/Checkouts/Quick
+==&gt; carthage build --platform Mac
+==&gt; xcodebuild SYMROOT=build
+==&gt; Caveats
+.app bundles were installed.
+Run `brew linkapps swift-express` to symlink these to /Applications.
+==&gt; Summary
+🍺  /usr/local/Cellar/swift-express/0.2.2: 30 files, 7.3M, built in 3 minutes 5 seconds
+</code></pre>
+
+<p>```</p>
+
+<p>さて、見過ごしがちですが、<br/>
+最後の方に『<code>brew linkapps swift-express</code> to symlink these to /Applications.』と書かれているので、</p>
+
+<p><code>brew linkapps swift-express</code>を実行しておきましょう。</p>
+
+<p>ここまで来たら、<code>swift-express</code>を実行してください。</p>
+
+<p>```javascript
+Available commands:</p>
+
+<p>bootstrap   download and build Express project dependencies
+build       build Express project
+help        Display general or command-specific help
+init        Creates new Express application project
+run         run Express project
+update      update and build Express project dependencies
+version     Display the current version of Swift Express Command Line
+```</p>
+
+<p>のようにコマンド種別が表示されたら、正しく <strong>Swift Express</strong> がインストールされた証拠です。</p>
+
+<h3>Swift Expressのプロジェクトを作ろう！</h3>
+
+<p>Swift Expressのインストールが完了したので、早速プロジェクト作成しましょう。</p>
+
+<p>```javascript
+// 手順(1)
+swift-express init &lt;プロジェクト名></p>
+
+<p>// 手順(2)
+cd &lt;プロジェクト名></p>
+
+<p>// 手順(3)
+swift-express bootstrap
+```</p>
+
+<p>手順(1)を実行すると、下記の結果が表示されます。</p>
+
+<p><code>javascript
+Cloning into '/var/folders/hj/p9y9d00s3sb5nn_x04961z2m0000gn/T/swift-express-827699'...
+remote: Counting objects: 124, done.
+remote: Total 124 (delta 0), reused 0 (delta 0), pack-reused 124
+Receiving objects: 100% (124/124), 79.66 KiB | 0 bytes/s, done.
+Resolving deltas: 100% (33/33), done.
+Checking connectivity... done.
+Task: "init" done.
+</code></p>
+
+<p>続いて、手順(2)で作成したプロジェクトフォルダ配下に移動すると、</p>
+
+<p><code>javascript
+HelloExpress
+  ┣━━ Cartfile
+  ┣━━ HelloExpress.xcodeproj
+  ┣━━ Info.plist
+  ┣━━ Package.swift
+  ┣━━ app
+  ┃    ┗━━ main.swift
+  ┣━━ dist
+  ┣━━ public
+  ┃    ┣━━ css
+  ┃    ┃    ┗━━ main.css
+  ┃    ┗━━ logo.png
+  ┗━━ views
+</code></p>
+
+<p>といった形で構成されていることを確認できます。</p>
+
+<p>最後に手順(3)を実行すると、下記の結果が表示されます。<br/>
+(ここが最も時間のかかる工程になります。)</p>
+
+<p>```javascript
+<strong><em> No Cartfile.resolved found, updating dependencies
+</em></strong> Cloning Express
+<strong><em> Cloning Stencil
+</em></strong> Cloning GRMustache.swift
+<strong><em> Cloning CEVHTP
+</em></strong> Cloning PathToRegex
+<strong><em> Cloning Regex
+</em></strong> Cloning TidyJSON
+<strong><em> Cloning BrightFutures
+</em></strong> Cloning PathKit
+<strong><em> Cloning ExecutionContext
+</em></strong> Cloning Result
+<strong><em> Checking out CEVHTP at &ldquo;0.1.0&rdquo;
+</em></strong> Checking out ExecutionContext at &ldquo;0.3.1&rdquo;
+<strong><em> Checking out Result at &ldquo;1.0.3&rdquo;
+</em></strong> Checking out GRMustache.swift at &ldquo;bf7d6031d7e0dd862519eaba2b36b2e11a0d25a9&rdquo;
+<strong><em> Checking out Regex at &ldquo;0.5.2&rdquo;
+</em></strong> Checking out PathToRegex at &ldquo;0.2.2&rdquo;
+<strong><em> Checking out PathKit at &ldquo;0.6.1&rdquo;
+</em></strong> Checking out BrightFutures at &ldquo;0.4.0&rdquo;
+<strong><em> Checking out Stencil at &ldquo;0.5.3&rdquo;
+</em></strong> Checking out Express at &ldquo;0.3.6&rdquo;
+*** Checking out TidyJSON at &ldquo;1.1.0&rdquo;</p>
+
+<p>&lt;省略></p>
+
+<p>/Users/<strong><strong>**/</strong></strong>/HelloExpress/Carthage/Checkouts/Express/Express/Content.swift:39:5: warning: use of &lsquo;typealias&rsquo; to declare associated types is deprecated; use &lsquo;associatedtype&rsquo; instead
+Task: &ldquo;bootstrap&rdquo; done.
+```</p>
+
+<p>これでプロジェクトの作成は完了です。</p>
+
+<h3>プロジェクトを実行してみよう！</h3>
+
+<p>先ほど作成したプロジェクトを実行してみたいと思います。</p>
+
+<p>```javascript
+// 手順(1)
+swift-express build</p>
+
+<p>// 手順(2)
+swift-express run
+```</p>
+
+<p>早速、ビルドを実行するために手順(1)のコマンドを叩いてください。<br/>
+すると、</p>
+
+<p>```javascript
+Building HelloExpress in Debug mode&hellip;</p>
+
+<p>&lt;省略></p>
+
+<p>=== BUILD TARGET HelloExpress OF PROJECT HelloExpress WITH CONFIGURATION Debug ===</p>
+
+<p>&lt;省略></p>
+
+<p><strong> BUILD SUCCEEDED </strong></p>
+
+<p>Task: &ldquo;build&rdquo; done.
+```</p>
+
+<p>という結果が表示されます。<br/>
+問題がなければ<code>BUILD SUCCEEDED</code>が表示されるはずです。</p>
+
+<p>ビルドが成功したら、手順(2)を実行しましょう。<br/>
+すると、</p>
+
+<p><code>javascript
+Running HelloExpress...
+Express was successfully launched on port 9999
+</code></p>
+
+<p>のように表示されます。デフォルトでポート番号が <strong>9999</strong> になっていることがわかると思います。<br/>
+<code>http://localhost:9999</code>にアクセスしてみると、</p>
+
+<p><img src="/images/swift-express-1.png" alt="Swift Express TOPページ" /></p>
+
+<p>という画面が得られます。</p>
+
+<p>因みにですが、Xcodeからも<code>Build</code>＆<code>Run</code>はできます。</p>
+
+<p><img src="/images/swift-express-2.png" alt="XcodeからBuild &amp; Run" /></p>
+
+<h3>Swift Expressの中身を見てみよう！</h3>
+
+<p>最後にざっくり中身のソースを見てみようと思います。<br/>
+Swift Expressのメインソースである<code>main.swift</code>を見てみます。</p>
+
+<p>```javascript
+// app/main.swift</p>
+
+<p>import Express</p>
+
+<p>let app = express()</p>
+
+<p>// (1)
+app.views.register(StencilViewEngine())</p>
+
+<p>// (2)
+app.get(&ldquo;/assets/:file+&rdquo;, action: StaticAction(path: &ldquo;public&rdquo;, param:&ldquo;file&rdquo;))</p>
+
+<p>// (3)
+app.get(&ldquo;/&rdquo;) { (request:Request<AnyContent>)&ndash;>Action<AnyContent> in</p>
+
+<pre><code>return Action&lt;AnyContent&gt;.render("index", context: ["hello": "Hello,", "swift": "Swift", "express": "Express!"])
+</code></pre>
+
+<p>}</p>
+
+<p>// (4)
+app.listen(9999).onSuccess { server in</p>
+
+<pre><code>print("Express was successfully launched on port", server.port)
+</code></pre>
+
+<p>}</p>
+
+<p>app.run()
+```</p>
+
+<p>これは <strong>Node.js</strong> 経験者としてはかなりExpressに酷似してるなと感じます。<br/>
+順に追ってみていきます。</p>
+
+<p>(1): 描画エンジンを設定しています。</p>
+
+<p>Node.jsのExpressで言うところの、</p>
+
+<p><code>javascript
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'jade');
+</code></p>
+
+<p>に該当します。</p>
+
+<p>(2): 静的ファイルの格納場所を設定しています。</p>
+
+<p>Node.jsのExpressで言うところの、</p>
+
+<p><code>javascript
+app.use(express.static(path.join(__dirname, 'public')));
+</code></p>
+
+<p>に該当します。</p>
+
+<p>(3): リクエストのアクションパスと処理を設定しています。</p>
+
+<p>Node.jsのExpressで言うところの、</p>
+
+<p>```javascript
+// app.js
+app.use(&lsquo;/&rsquo;, routes);</p>
+
+<p>// route/index.js
+router.get(&lsquo;/&rsquo;, function(req, res, next) {</p>
+
+<pre><code>res.render('index', { title: 'Express' }); 
+</code></pre>
+
+<p>}
+```</p>
+
+<p>に該当します。</p>
+
+<p>(4): ポート番号を設定しています。</p>
+
+<p>Node.jsのExpressで言うところの、</p>
+
+<p>```javascript
+// bin/www
+var port = normalizePort(process.env.PORT || &lsquo;3000&rsquo;);
+app.set(&lsquo;port&rsquo;, port);</p>
+
+<p>var server = http.createServer(app);</p>
+
+<p>server.listen(port);</p>
+
+<p>server.on(&lsquo;listening&rsquo;, onListening);</p>
+
+<p>function onListening() {</p>
+
+<pre><code>var addr = server.address();
+var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+debug('Listening on ' + bind);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>に該当します。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+これだけNode.jsのExpressに似ているのですから、<br/>
+<strong>Swift Express</strong> はこれからサーバサイドSwiftを学んでいく上で強力なWebフレームワークとなるかもしれません。<br/>
+新しくNode.jsを学ぶ人も将来的にサーバサイドSwiftを触る機会が出てくるかもしれませんので知っておいて損はないでしょう。<br/>
+筆者もこれまら益々注目されるであろうサーバサイドSwiftの情報は追っていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[昔関わったNode.jsを思い出してみる]]></title>
+    <link href="http://grandbig.github.io/blog/2016/07/09/remember-node-js/"/>
+    <updated>2016-07-09T22:20:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/07/09/remember-node-js</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日は久しぶりにNode.jsについて書きたいと思います。<br/>
+筆者が本格的にNode.jsを触っていたのは、3〜4年ほど前で、当時は今ほど存在が浸透してはいませんでした。<br/>
+それが今やサーバサイドの処理作成の選択肢の1つとして普通に検討される時代になりました。<br/>
+正直なところ、最新のNode.jsを追えているわけではないのですが、<br/>
+その本質は今も昔も大きくは変わっていないだろうと思いつつ、筆者の経験を元にNode.jsを見ていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Node.jsとは</h3>
+
+<p>Node.jsは2009年にライアン・ダールによって作成された『JavaScriptをサーバサイドで実行可能にしてくれるプログラム』です。<br/>
+JavaScriptエンジンは <strong>Google V8 JavaScript エンジン</strong> を使っています。<br/>
+因みに、 <strong>Google V8 JavaScript エンジン</strong> とは、</p>
+
+<ul>
+<li>ECMAScript5に準拠</li>
+<li>C++で記述されている</li>
+<li>スタンドアローンで動作可能</li>
+<li>Google Chromeでも使われている</li>
+</ul>
+
+
+<p>というものです。<br/>
+これを見ただけでも何となくすごいな〜と思ってしまいますね笑。</p>
+
+<p>Node.jsの公式サイトは<a href="https://nodejs.org/en/">こちら</a>です。<br/>
+日本ユーザグループサイトもありますが、今は活動的に更新されていません。</p>
+
+<h3>Node.jsの特徴</h3>
+
+<p>続いて、Node.jsの特徴を見ていきましょう。<br/>
+Node.jsの特徴は、何と言っても</p>
+
+<ul>
+<li>イベントループモデル</li>
+<li>Non-blocking I/O</li>
+<li>シングルスレッド</li>
+</ul>
+
+
+<p>ではないでしょうか。<br/>
+筆者がNode.jsを触っていた時は正直全く理解していなかったのですが、<br/>
+これらこそがNode.jsの本質でしょう。</p>
+
+<h4>イベントループモデル</h4>
+
+<p>イベントループモデルと一言聞くと、「なんぞや！？」となってしまいそうですが、</p>
+
+<ul>
+<li>イベントの発火を常に監視しているループ</li>
+<li>イベントの発火を受け付けると、イベントキューに格納される</li>
+<li>受付順にイベントを処理していく</li>
+</ul>
+
+
+<p>という方式のことです。</p>
+
+<h4>Non-blocking I/O</h4>
+
+<p>I/O処理を受け付けた場合、I/O処理が完了するまで待つ(Blockされる)のが通常です。<br/>
+Node.jsではI/O処理を投げつけた間、他にやるべき処理があれば進んで実行してくれます。<br/>
+よって <strong>Non-blocking I/O</strong> と呼ばれています。</p>
+
+<h4>シングルスレッド</h4>
+
+<p>言葉のとおりですが、複数のリクエストを1つのスレッドで実行するということです。<br/>
+複数スレッドを生成するわけではないため、メモリ消費を抑えることができると言われています。</p>
+
+<h3>Node.jsのメリット/デメリット</h3>
+
+<p>Node.jsが全てのアプリケーションに最適なのかと言うとそんなことは当然ありません。<br/>
+Node.jsのメリット/デメリットを理解した上で、採用を検討する必要があるのです。</p>
+
+<h4>Node.jsのメリット</h4>
+
+<p>まずはメリットを見ていきましょう。</p>
+
+<ol>
+<li>大量の軽量な同時リクエストを捌くのが得意</li>
+<li>NoSQLとの親和性が高い</li>
+<li>JavaScriptで書ける</li>
+<li>充実したライブラリが存在している</li>
+</ol>
+
+
+<p>筆者の経験に基づくメリットを4つ上げさせて頂きました。</p>
+
+<p>1つ目の <strong>大量の軽量な同時リクエストを捌くのが得意</strong> というメリットですが、<br/>
+これはNode.jsの特徴で上げたことが関わってきます。<br/>
+Non-blocking I/Oなので、I/Oブロックしないとは言うものの、Node.jsはシングルスレッドなんです。<br/>
+なので、1つのイベント処理の中に非常に時間のかかる処理が含まれていると、そこがネックとなってしまい大量のリクエストを待たせてしまいます。<br/>
+場合によってはクライアント側で設定したタイムアウト時間を上回り期待した結果をユーザが得られなくなるでしょう。</p>
+
+<p>なので1つのイベント(1回のリクエスト)で非常に重い処理を実行させなくてはならない仕様が求められるサービスには向きません。<br/>
+逆に、細かくイベントを分割できて、複数回のリクエストをクライアントから送っても問題のない仕様のサービスには適切と言えます。</p>
+
+<p>2つ目の <strong>NoSQLとの親和性が高い</strong> というメリットですが、<br/>
+筆者は主に <strong>MongoDB</strong> と一緒に利用してきました。<br/>
+MongoDBはドキュメント指向データベースであるため、JSON型のデータをそのまま突っ込めるため非常に使いやすいのです。<br/>
+スキーマレスかつスケールアウトの特徴を存分に活かしたい場合はNoSQLを選択すると思いますが、<br/>
+そこから遡ってNode.jsを選択しても良いでしょう。</p>
+
+<p>3つ目と4つ目のメリットですが、<br/>
+フロントエンドエンジニアであれば、基本的にはJavaScriptを扱えるという人もたくさんいるかと思います。<br/>
+であれば同じ言語のJavaScriptで書けるNode.jsを採用しない手はないでしょう。<br/>
+また、MongoDBもNode.jsもJavaScriptにも言えることですが、初心者を割りとすんなり受け入れてくれる土台が整っているため、<br/>
+1人でサービス提案時のモック作成をしなくてはならないときなどに最適です。<br/>
+(誤解されたくないのが、どの技術も極めるにはかなり大変ということに変わりはないということです。)</p>
+
+<h4>Node.jsのデメリット</h4>
+
+<p>続いてデメリットを見ていきましょう。</p>
+
+<ol>
+<li>重いリクエストを捌くのが苦手</li>
+<li>コールバック地獄</li>
+</ol>
+
+
+<p>1つ目のデメリットはメリットで書いた内容です。<br/>
+2つ目はまさに筆者が3〜4年前に感じていたデメリットです。<br/>
+Non-blocking I/Oの特徴を持つ代わりにソースコードを書いた際に複数回ネストすることが少なくありません。<br/>
+(サーバダウンを防ぐために<code>try-catch</code>を入れようものなら尚更です。)</p>
+
+<p>ただし、v0.12から<code>yield</code>が追加されましたし、<br/>
+今やWebに限らずスマホネイティブの世界でも<code>Promise</code>の利用が珍しくはないため、最早デメリットとも言えなくなったと思われます。</p>
+
+<p>また、筆者的には<br/>
+HTML, CSS, JavaScriptや画像などの静的ファイルを返却するようなWebサーバとしての役割はNginxやApacheに任せてしまって良いという感覚です。<br/>
+むか〜し、計測したイメージが強く残っているからかもしれませんが&hellip;</p>
+
+<h3>Nodeモジュール</h3>
+
+<p>今も忘れない当時使っていた or 助けられたNodeモジュールについて紹介します。</p>
+
+<h4>Express</h4>
+
+<p>これは最も有名なNodeモジュールではないでしょうか？<br/>
+( <strong>Express</strong> の公式サイトは<a href="http://expressjs.com/">こちら</a>です。)</p>
+
+<p><strong>Express</strong> はWebアプリケションフレームワークであり、Webアプリケーションを作成するために必要な機能を提供してくれます。<br/>
+このモジュールがあるため、サーバサイドを非常に簡単に作成することができるのです。<br/>
+(玄人になればなるほどアンチExpressが多い気もしますが&hellip;)</p>
+
+<h4>node-inspector</h4>
+
+<p>続いて、こちらも使わない人の方が少ないのでは？と思うくらい重要な <strong>node-inspector</strong> について紹介します。<br/>
+(GitHubは<a href="https://github.com/node-inspector/node-inspector">こちら</a>です。)</p>
+
+<p>サーバサイドエンジニアはeclipse, IntelliJなどのIDEを利用して開発すると思います。<br/>
+IDEを利用する理由は様々ですが、その中の1つにデバッグ機能があります。<br/>
+<strong>node-inspector</strong> はまるでフロントエンドを開発しているかのごとく、ブラウザ上でデバッグ機能を提供してくれます。</p>
+
+<h4>forever</h4>
+
+<p>次は、 <strong>forever</strong> の紹介です。<br/>
+Node.jsでは想定外のエラーが発生した際にサーバがダウンしてしまいます。<br/>
+サーバがダウンし、イベントループが停止してしまうと、クライアント側からのリクエストを受け付けることができません。<br/>
+そのため、サーバを再起動する必要があるのですが、これを自動的に実行してくれるモジュールが <strong>forever</strong> です。<br/>
+(GitHubは<a href="https://github.com/foreverjs/forever">こちら</a>です。)</p>
+
+<h4>log4js-node</h4>
+
+<p>先ほども説明した通り、プログラムは所詮、人間が作り上げたものなので、想定外なことは起こりえます。<br/>
+それに対処するためにエンジニアとしては失敗をただの失敗として放置するのではなく、経験として蓄積し、次に活かすのです。<br/>
+その手助けとなるのがログです。</p>
+
+<p><strong>log4js-node</strong> を利用することで、<code>info</code>, <code>debug</code>, <code>warn</code>, <code>error</code>など各種ログを仕込むことが可能となります。</p>
+
+<h4>async</h4>
+
+<p>実は筆者が最も思い出深いモジュールがこの <strong>async</strong> です。<br/>
+Node.jsのデメリットで紹介しましたが、筆者がNode.jsをメインで触っていた3〜4年前はまさにコールバック地獄でした。<br/>
+また、1回のイベント発火内で非同期処理を繰り返し順番に実行したい要望があり、非常に手を焼きました。<br/>
+これを救ってくれたのが <strong>async</strong> なのです。</p>
+
+<p>特に、<code>async.waterfall</code>, <code>async.parallel</code>, <code>async.series</code>, <code>async.eachSeries</code>は必見の価値ありです。<br/>
+(GitHubは<a href="https://github.com/caolan/async">こちら</a>です。)</p>
+
+<h4>その他</h4>
+
+<p>その他にも便利なものがたくさん用意されているので必要に応じて利用すると良いでしょう。</p>
+
+<ul>
+<li><a href="https://github.com/mochajs/mocha">mocha</a>: Node.jsのためのテストフレームワーク</li>
+<li><a href="http://socket.io/">socket.io</a>: WebSocket機能を実装できるモジュール</li>
+<li><a href="http://mongoosejs.com/">mongoose</a>: Node.jsからMongoDBを利用するためのモジュール</li>
+<li><a href="https://github.com/mysqljs/mysql">mysql</a>: Node.jsからMySQLを利用するためのモジュール</li>
+<li><a href="https://github.com/balderdashy/sails">sails</a>: Ruby on RailsライクなMVCフレームワーク</li>
+</ul>
+
+
+<h3>Node.jsを勉強するための近道</h3>
+
+<p>最後にNode.jsの勉強方法について紹介したいと思います。<br/>
+筆者的には、まずは <strong>JavaScript</strong> をきちんと学ぶことが必要だと思います。<br/>
+クライアントサイドから始めても、サーバサイドから始めても構わないのですが、クライアントサイドからの方が始めやすいのではないでしょうか。</p>
+
+<p>また、サーバサイドでNode.jsというものが何かを学ぶのであれば、<br/>
+<a href="http://www.nodebeginner.org/index-jp.html">Nodeビギナーズブック</a>を1回は読んでおくことをオススメします。<br/>
+市販されている本を読むよりも本質的な部分を理解できると思います。<br/>
+(あと、未だにNode.js関連の本って全然ないので&hellip;。)</p>
+
+<h3>まとめ</h3>
+
+<p>さていかがでしたでしょうか？<br/>
+Node.jsはまだまだ新しい技術ですし、これからもっと学ぶべきことが増えてくることでしょう。<br/>
+筆者も極力最新を追えるように精進したいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://www.atmarkit.co.jp/ait/articles/1103/23/news101_2.html">naveでNode.jsのバージョン管理＆イベントループ詳説 </a></li>
+<li><a href="http://www.slideshare.net/shigeki_ohtsu/processnext-tick-nodejs">そうだったのか！ よくわかる process.nextTick() node.jsのイベントループを理解する</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[BrightFutureを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/04/03/bright-future/"/>
+    <updated>2016-04-03T17:11:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/04/03/bright-future</id>
+    <content type="html"><![CDATA[<h4>SwiftでPromiseライブラリを使ってみよう</h4>
+
+<p>最近は更新頻度が落ちてしまっていますが、久々に更新します。<br/>
+(iPhoneSEが発表されたことですし笑)</p>
+
+<p>さて、本日はSwift版Promiseライブラリとしては割と有名な <strong>BrightFuture</strong> ライブラリを使ってみたいと思います。<br/>
+筆者は、新しいことに取り組む際は、JSで例を見た方がわかりやすかったりするので、Node.jsのPromiseと交えながら紹介していきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>Promiseとは</h4>
+
+<p>まずは、Promiseの存在について軽く触れておきます。<br/>
+<a href="http://azu.github.io/promises-book/">JS Promiseの本</a>によると、Promiseとは『非同期処理を抽象化したオブジェクトとそれを操作する仕組み』のことだそうです。<br/>
+これだけ読むと理解しがたいと思うので、筆者が感じるPromiseの良さをざっくり書くと&hellip;</p>
+
+<ul>
+<li>非同期処理を繰り返す場合でも、深いネストにならない</li>
+<li>非同期処理を繰り返す場合でも、見かけ上、直列的に処理を書ける</li>
+</ul>
+
+
+<p>ということにつきると思います。</p>
+
+<p>具体的な例については、Node.jsで説明します。</p>
+
+<h4>Node.jsでのPromiseの例</h4>
+
+<p>早速、見ていきます。<br/>
+Node.jsで非同期処理を定義する場合、</p>
+
+<p>```javascript
+// 非同期処理を持ったメソッド
+function p(msg, callback) {</p>
+
+<pre><code>setTimeout(function() {
+    callback(msg);
+}, 1000);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>となります。<br/>
+このメソッドを繰り返し実行する場合、</p>
+
+<p>```javascript
+p(&ldquo;Hello&rdquo;, function(msg1) {</p>
+
+<pre><code>console.log(msg1 + ", date: " + new Date());
+p("Good Evening", function(msg2) {
+    console.log(msg2 + ", date: " + new Date());
+    p("Good Bye", function(msg3) {
+        console.log(msg3 + ", date: " + new Date());
+    });
+});
+</code></pre>
+
+<p>});
+```</p>
+
+<p>のようになります。<br/>
+ネスト深いですね&hellip;。</p>
+
+<p>これをPromiseを用いて書き直してみましょう。<br/>
+まずはメソッドの定義にPromiseを適用します。</p>
+
+<p>```javascript
+function p(msg) {</p>
+
+<pre><code>return new Promise(function(resolve) {
+    setTimeout(function() {
+        resolve(msg);
+    }, 1000);
+});
+</code></pre>
+
+<p>}
+```</p>
+
+<p>こうすることで、呼び出し側で下記のように浅いネストで書くことができます。</p>
+
+<p>```javascript
+p(&ldquo;Hello&rdquo;).then(function(msg1) {</p>
+
+<pre><code>console.log(msg1 + ", date: " + new Date());
+return p("Good Evening");
+</code></pre>
+
+<p>})
+.then(function(msg2) {</p>
+
+<pre><code>console.log(msg2 + ", date: " + new Date());
+return p("Good Bye")
+</code></pre>
+
+<p>})
+.then(function(msg3) {</p>
+
+<pre><code>console.log(msg3 + ", date: " + new Date());
+</code></pre>
+
+<p>});
+```</p>
+
+<p>うむ。かなり浅くなりましたね。<br/>
+これをSwiftで書くとどうなるのでしょうか？</p>
+
+<h4>SwiftでのPromiseの例</h4>
+
+<p>Swiftでも非同期処理を定義する場合、</p>
+
+<p>```objective-c
+func p(msg: String, closure: (String &ndash;> ())) {</p>
+
+<pre><code>let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+dispatch_async(queue, {
+    sleep(1)
+    dispatch_sync(dispatch_get_main_queue(), {
+        closure(msg)
+    })
+})
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のように書けたりします。<br/>
+これを複数回呼び出す場合、</p>
+
+<p>```objective-c
+p(&ldquo;Hello&rdquo;) { (msg1) in</p>
+
+<pre><code>print(msg1 + ", date: \(NSDate())")
+p("Good Evening") { (msg2) in
+    print(msg2 + ", date: \(NSDate())")
+    p("Good Bye") { (msg3) in
+        print(msg3 + ", date: \(NSDate())")
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のようになります。<br/>
+同様にネストが深くなりますね&hellip;。</p>
+
+<p>では、Promiseでネストを改善しましょう。<br/>
+Swiftでは、OSSの<a href="https://github.com/Thomvis/BrightFutures">BrightFuture</a>を利用します。<br/>
+導入はいつも通りCocoaPodsを使いました。</p>
+
+<p>1． Podfileに下記を記載</p>
+
+<p>```objective-c
+source &lsquo;<a href="https://github.com/CocoaPods/Specs.git">https://github.com/CocoaPods/Specs.git</a>&rsquo;
+platform :ios, &lsquo;8.0&rsquo;
+use_frameworks!</p>
+
+<p>pod &lsquo;BrightFutures&rsquo;
+```</p>
+
+<p>2．<code>pod install</code>を実行</p>
+
+<p>導入が完了したら、処理を書き換えていきます。<br/>
+メソッドにPromiseを適用しましょう。</p>
+
+<p>```objective-c
+func p_future(msg: String) &ndash;> Future&lt;String, NoError> {</p>
+
+<pre><code>let promise = Promise&lt;String, NoError&gt;()
+let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+
+dispatch_async(queue, {
+    sleep(1)
+    dispatch_sync(dispatch_get_main_queue(), {
+        promise.success(msg)
+    })
+})
+
+return promise.future
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これを呼び出すときは下記のように書けます。</p>
+
+<p>```objective-c
+p_future(&ldquo;Hello&rdquo;).flatMap { msg1 in</p>
+
+<pre><code>print(msg1 + ", date: \(NSDate())")
+p_future("Good Evening")
+</code></pre>
+
+<p>}.flatMap { msg2 in</p>
+
+<pre><code>print(msg2 + ", date: \(NSDate())")
+p_future("Good Bye")
+</code></pre>
+
+<p>}.onSuccess { (msg3) in</p>
+
+<pre><code>print(msg3)
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ネストが浅くなりましたね。<br/>
+こうして比較してみると、Node.jsとSwiftで呼び出し側の書き方はかなり似ていますね。<br/>
+Swiftだけを眺めてみてもよくわからないという方はNode.jsの方も見てみると良いと思います。</p>
+
+<p>今回はかなり基本的な例を書かせて頂きましたが、参考になれば幸いです。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+</feed>

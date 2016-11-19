@@ -1,0 +1,131 @@
+---
+layout: post
+title: "WKWebViewとUIWebViewのベンチマーク取ってみた(Google Octane2.0 利用)"
+date: 2014-09-23 21:15
+comments: true
+categories: ios WKWebView webview
+---
+
+###WKWebViewとUIWebViewのベンチマーク比較
+本日はGoogle Octane2.0を利用してWKwebViewとUIWebViewのベンチマークを取った結果を紹介したいと思います。  
+まずは、Google Octane2.0とは何かから説明しましょう。  
+Octane2.0とはGoogleからオープンソース提供している。ブラウザのパフォーマンスを測定するJavaScriptベンチマークスイートのことです。昨年、バージョン2.0が後悔され、これまでのテスト項目13から17への増えました。  
+では、そのテスト項目とは何があるのか説明しましょう。  
+
+<!--more-->
+
+* Richards:
+   *  OSのタスクディスパッチ(プロセッサが、実行するタスクを切り替える)・シミュレーション・ベンチマーク
+   * [Martin Richards](http://www.cl.cam.ac.uk/~mr10/)によって[BCPL](http://ja.wikipedia.org/wiki/BCPL)で書かれたものをJavaScriptに変換したもの
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/richards.js?r=19)
+* Deltable:
+   * 単変数の[制約解法](http://constraints.cs.washington.edu/deltablue/)
+   * John MaloneyとMario Wolczkoによって[Smalltalk](http://ja.wikipedia.org/wiki/Smalltalk)で書かれたものをJavaScriptに変換したもの
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/deltablue.js)
+* Raytrace:
+   * Adam Burmisterのコードを元に作成されたレイトレース(3次元空間内を伝わる波の伝播経路を追跡するシミュレーション)・ベンチマーク
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/raytrace.js)
+* Regexp:
+   * 正規表現ベンチマーク
+   * 最も人気のある50のWebページから正規表現の処理を抽出して作成
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/regexp.js)
+* NavierStokes:
+   * 二次ナビエ・ストークス方程式解法
+   * 倍精度(64ビットの浮動小数点数表現)配列を大量に処理
+   * Oliver Huntのコードを元にしている
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/navier-stokes.js)
+* Crypto:
+   * Tom Wuのコードを元にして作成した暗号化と復号化ベンチマーク
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/crypto.js)
+* Splay:
+   * [スプレー木](http://ja.wikipedia.org/wiki/%E3%82%B9%E3%83%97%E3%83%AC%E3%83%BC%E6%9C%A8)や自動メモリ管理サブシステムを実行するデータ操作ベンチマーク
+   * ノードへのメモリの割り当て＆古いノードに割り当てたメモリの再利用に要する処理時間を計測
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/splay.js)
+* SplayLatency:
+   * VMのGC(不要になったメモリ領域を自動開放する処理)サブシステムに圧力を与えるスプレー試験
+   * GCやコンパイラが原因のレイテンシ(遅延時間)をテスト
+* EarleyBoyer:
+   * 典型的なSchemeベンチをFlorian LoitschのScheme2Jsコンパイラを用いてJavaScriptに変換したもの
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/earley-boyer.js)
+* pdf.js:
+   * JavaScriptで実装されたMozillaのPDFリーダ
+   * デコード、インタープリター処理の時間を計測
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/pdfjs.js)
+* Mandreel:
+   * Mandreelを利用してC++からJavaScriptに移植した[3D Bullet 物理エンジン](http://bulletphysics.org/wordpress/)
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/mandreel.js)
+* MandreelLatency:
+   * Mandreelベンチ時のGCやコンパイラが原因のレイテンシ(遅延時間)をテスト
+* GB Emulator:
+   * 携帯用コンソール(任天堂ゲームボーイ)のアーキテクチャをエミュレートして、厳しい3DシミュレーションをJavaScriptで実行
+   * [GB Emulatorソース1](https://code.google.com/p/octane-benchmark/source/browse/latest/gbemu-part1.js)
+   * [GB Emulatorソース2](https://code.google.com/p/octane-benchmark/source/browse/latest/gbemu-part2.js)
+* Code loading:
+   * 大規模なJavaScriptプログラムをロードしたあと、JavaScriptエンジンがどれだけ速くコードの実行を開始できるかを計測
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/code-load.js)
+* Box2DWeb:
+   * Erin Cattoによって書かれた人気の2D物理シミュレーションエンジンである[Box2DWeb](https://code.google.com/p/box2dweb/)のJavaScript移植版がベース
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/box2d.js)
+* zlib:
+   * [zlib](https://github.com/kripken/emscripten/tree/master/tests/zlib) の試験により、JavaScriptとの互換性を保ちつつ、スクリプトのパフォーマンスをネイティブコード並みに高速化するasm.jsのコードの処理速度を計測
+   * [ソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/zlib.js)
+* Typescript: 
+   * Microsoftが発表したJavaScriptのスーパセットである[Typescript](http://www.typescriptlang.org/)はJavaScriptが苦手な大規模アプリケーション開発に最適とされている
+   * この試験ではTypescriptをJavaScriptにコンパイルする時間を計測可能
+   * [コンパイラーソースコード](https://code.google.com/p/octane-benchmark/source/browse/latest/typescript-compiler.js)
+
+このOctane2.0を用いて、試験した結果を報告します。  
+今回は、下記条件で試験しました。  
+
+利用端末: iPhone5, iPhone6  
+利用OS: iOS7.1.2, iOS8.0  
+利用アプリ: Safari, 自作アプリ(内部にUIWebView利用), 自作アプリ(内部にWKWebView利用)  
+
+組み合わせは下記です。  
+
+* Safari / iOS7.1.2 / iPhone5  
+* UIWebView / iOS7.1.2 / iPhone5  
+* Safari / iOS8.0 / iPhone5  
+* UIWebView / iOS8.0 / iPhone5  
+* WKWebView / iOS8.0 / iPhone5  
+* Safari / iOS8.0 / iPhone6  
+* UIWebView / iOS8.0 / iPhone6  
+* WKWebView / iOS8.0 / iPhone6  
+
+結果は下記になりました。  
+![Octane2.0によるベンチマーク結果](/images/wkwebview_bench.png)  
+
+数値としては下記です。  
+* Safari / iOS7.1.2 / iPhone5: **2,642**  
+* UIWebView / iOS7.1.2 / iPhone5: **453**  
+* Safari / iOS8.0 / iPhone5: **2983**  
+* UIWebView / iOS8.0 / iPhone5: **447**  
+* WKWebView / iOS8.0 / iPhone5: **3097**  
+* Safari / iOS8.0 / iPhone6: **6529**  
+* UIWebView / iOS8.0 / iPhone6: **1072**  
+* WKWebView / iOS8.0 / iPhone6: **6763**  
+
+項目ごとの結果は下記になります。  
+![Octane2.0 ベンチマーク結果: Richards〜Regexp](/images/wkwebview_bench_octane1.png)  
+![Octane2.0 ベンチマーク結果: Splay〜MandreelLatency](/images/wkwebview_bench_octane2.png)  
+![Octane2.0 ベンチマーク結果: GB Emulator〜Typescript](/images/wkwebview_bench_octane3.png)  
+
+全て1回だけ計測したため、ある程度の誤差があるかもしれません。  
+しかし、UIWebViewとWKWebViewが圧倒的に異なるということはわかりました。また、SafariとWKWebViewの結果がほぼ同じであることから、これまでSafariでしか利用できなかった各種機能が解放されていることがわかりました。  
+また、端末によって大きな差が出ました。やはり、iPhone5よりもiPhone6の方がマシンスペックが高いためにかなり良い結果が出ました。  
+因みに、UIWebViewで計測するとき、Box2DWebまでは他と大きな差がなく進んだのですが、zlibとTypescriptの試験が非常に時間がかかりました。(もうこれ以上は計測できないのでは？と思ったほどです。)  
+
+今日はここまで。  
+
+参考:  
+[Google Octane](https://developers.google.com/octane/benchmark)  
+[GoogleがJavaScriptベンチマークOctaneをアップデート](http://jp.techcrunch.com/2013/11/07/20131106google-updates-its-octane-javascript-benchmark-adds-asm-js-and-typescript-tests/)  
+[Google、JavaScriptベンチマークスイートOctane2.0をリリース](http://www.forest.impress.co.jp/docs/news/20131107_622555.html)  
+[JavaScript用の新ベンチマークスイートOctaneをGoogleがオープンソース化](http://www.infoq.com/jp/news/2012/08/Octane-JavaScript-Benchmark)  
+[octane benchmark](https://code.google.com/p/octane-benchmark/source/browse/#svn%2Flatest)  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>

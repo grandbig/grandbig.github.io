@@ -3,7 +3,7 @@ layout: post
 title: "Xcodeを始めてみよう！"
 date: 2013-09-05 23:56
 comments: true
-categories: 
+categories: xcode
 ---
 
 ##Xcodeとは
@@ -17,6 +17,8 @@ categories:
 ###プログラミングまでの準備
 Xcodeを起動すると次のウィンドウが表示されます。
 ![Welcome to Xcode](/images/xcode1.png)
+
+<!--more-->
 
 プロジェクトを新規作成する場合は『Create a new Xcode project』を選択しましょう。
 すると次の画面で『Choose a template for your new project』と言われます。
@@ -32,5 +34,4 @@ Xcodeを起動すると次のウィンドウが表示されます。
 はい！新規プロジェクト作成できました〜。
 ![Choose Options](/images/xcode4.png)
   
-###簡易アプリを作ろう！
-せっかく新規プロジェクト立ち上げたんで、簡単なアプリを作ってみましょうか！
+次回はアプリでも作ってみようかな

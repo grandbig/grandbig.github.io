@@ -1,0 +1,278 @@
+---
+layout: post
+title: "SwiftでXCTestを使って単体テストとUIテストをしてみよう！"
+date: 2016-01-11 19:17
+comments: true
+categories: ios swift
+---
+
+####iOSアプリケーション開発でのテストとは
+さて、本日はiOSアプリケーションを開発する際のテストについて書きたいと思います。  
+元々、Objective-Cでは下記のテスト用のライブラリが使われてきました。  
+
+* [Kiwi](https://github.com/kiwi-bdd/Kiwi)  
+* [GHUnit](https://github.com/gh-unit/gh-unit)  
+* [Specta](https://github.com/specta/specta)  
+
+しかし、これらはあくまでもObjective-C時代にApple公式のテストフレームワークが充実する以前から活躍していたものです。今後、Swiftが普及するにつれて、これらのテストフレームワークもSwiftに最適化したものになっていくかもしれません。  
+とは言え、AppleもいつまでもOSSのテストフレームワークがなければならない状況は避け、Xcode内で完結することを目指していくかもしれません。  
+後ほど詳しく説明しますが、Xcode7からUIテストが新たに追加されたのも、その流れだと思っています。  
+
+本日は特に **XCTest** に焦点をあてた、iOSにおけるテストについて見ていきたいと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+####XCTestでUnit Test
+早速、XCTestの使い方について見ていきましょう。  
+Xcode7ではプロジェクトを新規作成する際にXCTest用のTargetを作成するか否かを選ぶことができます。  
+初めにチェックを入れていない場合は、途中で追加することが可能ですが、単体テストをすることは大切なので、チェックはつけておきましょう。  
+
+![プロジェクト作成時にXCTest用のTargetを作成](/images/xctest_1.png)  
+
+今回テストするソースコードは下記のようなシンプルなものにします。  
+
+```objective-c
+import UIKit
+import Alamofire
+
+class ViewController: UIViewController {
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+	}
+
+	override func didReceiveMemoryWarning() {
+		super.didReceiveMemoryWarning()
+	}
+
+	func showWeather() {
+		self.getWeather{(description) -> Void in
+			print(description)
+		}
+	}
+
+	func getWeather(closure:(String) -> Void) {
+		Alamofire.request(.GET, "http://api.openweathermap.org/data/2.5/weather?APPID=<自身のAPPIDを指定>", parameters:
+			["q":"Tokyo"]).response { (request, response, data, error) -> Void in
+			if(error == nil) {
+				do {
+					let dataDict = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+					let weatherArray:[AnyObject] = dataDict["weather"] as! [AnyObject]
+					let weather:AnyObject = weatherArray[0]
+					let description:String = weather["description"] as! String
+
+					// アラートを表示
+					self.showAlert(description)
+				} catch {
+					print("例外が発生しました！")
+				}
+			}
+		}
+	}
+}
+```
+
+今回は **showWeather** メソッドのUnit Testを書いていきます。  
+上記コードを見て頂くと、 **showWeather** メソッドは **Open Weather Map API** を使って東京の天気を取得し、それをログとして出力していることがわかると思います。  
+前半の **Alamofire** を使った通信処理はOSSライブラリを使っているわけで、この通信処理のテストがしたいわけではありません。  
+筆者が実施したいテストは後半の **Open Weather Map API** を使って **取得した天気情報をログに出力する** 部分です。  
+(本来はテストするまでもないのですが、テストの手法や考え方をメインに説明したいので、ソースは超簡単にしています。)  
+
+それを踏まえた上で、実際にテストコードを書いてみましょう。  
+<Project名>Tests.swiftファイルを選択します。  
+
+```objective-c
+import XCTest
+@testable import SimpleApplication
+
+class SimpleApplicationTests: XCTestCase {
+	
+	override func setUp() {
+		super.setUp()
+	}
+
+	override func tearDown() {
+		super.tearDown()
+	}
+	
+	func testShowWeather() {
+		class VCMock:ViewController {
+			override func getWeather(closure:(String) -> Void) {
+				closure("test weather")
+			}
+		}
+
+		let vcm:VCMock = VCMock()
+		vcm.showWeather()
+	}
+}
+```
+
+ポイントは  
+
+1. テストメソッドの定義  
+テストメソッドは、 **test + <任意の文字列>** で命名しましょう。  
+2. スタブの定義  
+Swiftは **manual mocking** という手法を取ります。  
+これはテスト対象クラスを継承したクラスを定義し、テストしたいメソッドをオーバーライドします。  
+返却値等を固定文字列とすることで、スタブの作成となります。  
+
+の2点です。  
+
+では、このテストを実行してみます。  
+
+まず、実行Targetに **<Project名>Tests** を選択できるようにSchemeを編集します。  
+
+![Manage Schemes...](/images/xctest_2.png)  
+
+![Add Scheme](/images/xctest_3.png)  
+
+![Choose Testsファイル](/images/xctest_4.png)  
+
+![Set Scheme](/images/xctest_5.png)  
+実行するSchemeを **<Project名>Tests** に設定し、実行デバイスをシミュレータにします。  
+(実機ではテスト実行できないからです。)  
+
+![Testを実行](/images/xctest_6.png)  
+Xcodeメニュー > Product > Test を選択してテストを実行します。  
+
+![テスト結果の確認](/images/xctest_7.png)  
+左メニューおよびコード上からテスト結果を確認できます。  
+
+メソッドが増えるごとにテストメソッドを増やしていきましょう。  
+テストファイルはクラス別に作成しておくと、第三者から見ても見やすいと思います。  
+
+####XCTestでUI Test
+続いて、Xcode7から追加されたUI Testの方法を見ていきたいと思います。  
+冒頭で説明した通り、プロジェクト作成時に **include UI Tests** を選択しておくことで、 **<Project名>UITests.swift** ファイルが作成されます。  
+
+では、UI Test用に少しコードを修正してみます。  
+
+```objective-c
+import UIKit
+import Alamofire
+
+class ViewController: UIViewController {
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+	}
+
+	override func didReceiveMemoryWarning() {
+		super.didReceiveMemoryWarning()
+	}
+
+	@IBAction func getWeatherAction(sender: AnyObject) {
+		self.getWeather { (description) -> Void in
+			self.showAlert(description)
+		}
+	}
+
+	func getWeather(closure:(String) -> Void) {
+		Alamofire.request(.GET, "http://api.openweathermap.org/data/2.5/weather?APPID=<自身のAPPIDを指定>", parameters:
+			["q":"Tokyo"]).response { (request, response, data, error) -> Void in
+			if(error == nil) {
+				do {
+					let dataDict = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+					let weatherArray:[AnyObject] = dataDict["weather"] as! [AnyObject]
+					let weather:AnyObject = weatherArray[0]
+					let description:String = weather["description"] as! String
+
+					// アラートを表示
+					self.showAlert(description)
+				} catch {
+					print("例外が発生しました！")
+				}
+			}
+		}
+	}
+
+	func showAlert(message:String) {
+		let alertController:UIAlertController = UIAlertController(title: "確認", message: message, preferredStyle: .Alert)
+		let okAction:UIAlertAction = UIAlertAction(title: "OK", style: .Default) { (alert) -> Void in
+			// OKを選択したときに実行される処理
+		}
+		alertController.addAction(okAction)
+
+		presentViewController(alertController, animated: true, completion: nil)
+	}
+}
+```
+
+これに伴い、画面にボタンを配置しました。  
+このボタンをタップすると、天気情報をアラートで表示してくれます。  
+
+![ボタンを配置](/images/xctest_8.png)  
+
+![アラートを表示](/images/xctest_9.png)  
+
+では、UI Testのテストコードを作成します。  
+UI Testの場合は、Xcodeの **UI recording** 機能を使って、手作業でコードを修正していきます。  
+
+![UI recording 開始ボタンをタップ](/images/xctest_10.png)  
+
+![UI recording 終了ボタンをタップ](/images/xctest_11.png)  
+
+すると、下記のようなコードが生成されました。  
+
+```objective-c
+func testShowWeatherAlert() {
+	let app = XCUIApplication()
+	app.buttons["GET Weather"].tap()
+	app.alerts["\U78ba\U8a8d"].collectionViews.buttons["OK"].tap()
+}
+```
+
+しかし、このままではエラーが表示されるはずです。  
+理由はアラートのタイトルを日本語にしていたため、ASCIIコードで表示されてしまっているからです。  
+もし、指し示しているASCIIコードが理解できないようであれば、[ASCIIコード変換機](http://web-apps.nbookmark.com/ascii-converter/)を使ってください。  
+
+ASCIIコード部分を修正した結果が下記となります。  
+
+```objective-c
+func testShowWeatherAlert() {
+	let app = XCUIApplication()
+	app.buttons["GET Weather"].tap()
+	app.alerts["確認"].collectionViews.buttons["OK"].tap()
+}
+```
+
+テストコードが作成できましたので、実行Targetに <Project名>UITests を選択できるようにSchemeを編集します。  
+
+![Manage Schemes...](/images/xctest_12.png)  
+
+![Add Scheme](/images/xctest_13.png)  
+
+![Choose Testsファイル](/images/xctest_14.png)  
+
+![Set Scheme](/images/xctest_15.png)  
+実行するSchemeを <Project名>UITests に設定し、実行デバイスをシミュレータにします。  
+(実機ではテスト実行できないからです。)
+
+![Testを実行](/images/xctest_6.png)  
+Xcodeメニュー > Product > Test を選択してテストを実行します。  
+
+![テスト結果の確認](/images/xctest_16.png)  
+左メニューおよびコード上からテスト結果を確認できます。  
+
+Unit Testと同様にメソッドが増えるごとにテストメソッドを増やしていきましょう。  
+テストファイルはクラス別に作成しておくと、第三者から見ても見やすいと思います。  
+
+いかがだったでしょうか？  
+今回は超簡単なサンプルコードで基本的なことについて説明しましたが、今後深く使っていくことで躓くこともあるかもしれません。  
+その際にはまたブログにて説明したいと思います。  
+ぜひ、単体テストとUIテストを駆使して、バグの少ないアプリを作っていきたいものです。  
+
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
