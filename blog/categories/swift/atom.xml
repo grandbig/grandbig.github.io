@@ -1,0 +1,2233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2016-12-04T22:19:41+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Server Side SwiftでMongoDBと遊んでみる]]></title>
+    <link href="http://grandbig.github.io/blog/2016/12/05/swift-perfect-mongo/"/>
+    <updated>2016-12-05T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/12/05/swift-perfect-mongo</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>こちらは<a href="http://qiita.com/advent-calendar/2016/swift2">Swift その2 Advent Calendar 2016</a> 5日目の記事です。<br/>
+今年は筆者が興味を持っている <strong>Server Side Swift</strong> について書きたいと思います。
+Swiftサーバを立てるために、<a href="http://grandbig.github.io/blog/2016/10/30/swift-perfect/">以前の記事</a>でも利用した<a href="https://github.com/PerfectlySoft/Perfect">Perfect</a>を使います。</p>
+
+<p>ただ単にSwiftサーバを立てても面白くないので、提供されているMongoDB接続モジュールを利用して遊んでみようと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>SwiftによるAP・DBサーバの構築</h3>
+
+<p>早速、Perfectを用いてSwiftによるAP・DBサーバを構築しようと思います。<br/>
+基本的には<a href="https://github.com/PerfectlySoft/Perfect-MongoDB">ReadMe</a>に従えば良いのですが、丁寧に１つずつ見ていきます。</p>
+
+<h4>必要モジュールのインストール</h4>
+
+<p>流石に <strong>Homebrew</strong> はインストールされている方が多いと思いますが、入れていない方は下記コマンドで入れましょう。</p>
+
+<p><code>
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+</code></p>
+
+<p>また今回は <strong>MongoDB</strong> を利用するため、 <strong>mongodb</strong> および <strong>mongo-c</strong> をインストールする必要があります。<br/>
+mongodbに関しては、</p>
+
+<p><code>
+brew install mongodb
+</code></p>
+
+<p>でOKです。(自動起動などに関しては<a href="http://grandbig.github.io/blog/2016/11/20/brew-install-db/">こちら</a>を参照ください。)<br/>
+続いて、mongo-cは</p>
+
+<p><code>
+brew install mongo-c
+</code></p>
+
+<p>でインストール完了できるはずです。</p>
+
+<h4>xcodeprojを作成</h4>
+
+<h5>テンプレートのダウンロード</h5>
+
+<p>0からPerfectを用いてサーバを構築しても良いのですが、Perfectではテンプレートを用意してくれています。<br/>
+せっかくなので <code>git clone</code> してテンプレートをダウンロードして使いましょう。</p>
+
+<p><code>
+git clone https://github.com/PerfectlySoft/PerfectTemplate.git
+cd PerfectTemplate
+</code></p>
+
+<h5>MongoDBモジュールを利用するように編集</h5>
+
+<p><strong>Perfect-MongoDB</strong> を利用するので、<code>Package.swift</code>を編集しましょう。</p>
+
+<p>```objective-c
+import PackageDescription</p>
+
+<p>let package = Package(</p>
+
+<pre><code>name: "PerfectTemplate",
+targets: [],
+dependencies: [
+    .Package(url: "https://github.com/PerfectlySoft/Perfect-HTTPServer.git", majorVersion: 2, minor: 0),
+    .Package(url:"https://github.com/PerfectlySoft/PerfectLib.git", majorVersion: 2, minor: 0),
+    .Package(url:"https://github.com/PerfectlySoft/Perfect-MongoDB.git", majorVersion: 2, minor: 0)
+]
+</code></pre>
+
+<p>)
+```</p>
+
+<p>ReadMeでは <strong>Perfect-HTTPServer</strong> は書かれていないのですが、これを使った方が便利なので、テンプレートに残したまま進めます。</p>
+
+<h5>Packageからxcodeprojを作成</h5>
+
+<p><code>Package.swift</code>の編集が終わったら、下記コマンドを実行して<code>xcodeproj</code>ファイルを作成しましょう。</p>
+
+<p><code>
+swift package generate-xcodeproj
+</code></p>
+
+<p>そうすれば下図のような結果が得られるはずです。</p>
+
+<p><img src="/images/perfect-mongo_1.png" alt="フォルダ構成" /></p>
+
+<h4>MongoDBにデータを作成</h4>
+
+<p>サンプルを作成するためにもデータがなきゃ話になりませんよね？<br/>
+ということでデータを入れましょう。</p>
+
+<p>```
+// MongoDBにアクセス
+$ mongo</p>
+
+<p>// DBとCollectionの作成</p>
+
+<blockquote><p>use test;
+db.createCollection(&lsquo;testCollection&rsquo;);
+{ &ldquo;ok&rdquo; : 1 }</p></blockquote>
+
+<p>// DBの確認</p>
+
+<blockquote><p>show dbs;
+local  0.000GB
+test   0.000GB</p></blockquote>
+
+<p>// Collectionの確認</p>
+
+<blockquote><p>show collections
+testCollection</p></blockquote>
+
+<p>// データのインサート</p>
+
+<blockquote><p>db.testCollection.insert({name: &lsquo;takahiro&rsquo;, age: 30, hobby: &lsquo;blog&rsquo;});
+WriteResult({ &ldquo;nInserted&rdquo; : 1 })
+db.testCollection.insert({name: &lsquo;ichiro&rsquo;, age: 43, hobby: &lsquo;baseball&rsquo;});
+WriteResult({ &ldquo;nInserted&rdquo; : 1 })</p></blockquote>
+
+<p>// データの確認</p>
+
+<blockquote><p>db.testCollection.find()
+{ &ldquo;<em>id&rdquo; : ObjectId(&ldquo;58391469a8589d99c931303c&rdquo;), &ldquo;name&rdquo; : &ldquo;takahiro&rdquo;, &ldquo;age&rdquo; : 30, &ldquo;hobby&rdquo; : &ldquo;blog&rdquo; }
+{ &ldquo;</em>id&rdquo; : ObjectId(&ldquo;58392222a8589d99c931303d&rdquo;), &ldquo;name&rdquo; : &ldquo;ichiro&rdquo;, &ldquo;age&rdquo; : 43, &ldquo;hobby&rdquo; : &ldquo;baseball&rdquo; }
+```</p></blockquote>
+
+<h4>MongoDBにアクセスして全データを取得</h4>
+
+<p>データの作成も完了したので、実際にGETリクエストでMongoDBからデータを取得する処理を書いてみましょう。<br/>
+(ReadMeではPerfect-HTTPServerを利用しない方法で書かれていたため本記事とは若干異なります。)</p>
+
+<h5>テンプレートファイルの確認</h5>
+
+<p>まずは、初めから作成されている処理内容を確認します。<br/>
+説明は下記ソースコードにコメントを書いたので参照ください。</p>
+
+<p>```objective-c
+// main.swift
+import PerfectLib
+import PerfectHTTP
+import PerfectHTTPServer</p>
+
+<p>// HTTPサーバの生成
+let server = HTTPServer()</p>
+
+<p>// リクエストに対するルーティングを設定
+var routes = Routes()
+routes.add(method: .get, uri: &ldquo;/&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+// レスポンスヘッダーの設定
+response.setHeader(.contentType, value: "text/html")
+// レスポンスボディの設定
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Hello, world!&lt;/title&gt;&lt;body&gt;Hello, world!&lt;/body&gt;&lt;/html&gt;")
+// レスポンス完了処理
+response.completed()
+}
+</code></pre>
+
+<p>)</p>
+
+<p>// サーバにルーティング設定を適用
+server.addRoutes(routes)</p>
+
+<p>// ポートを設定
+server.serverPort = 8181</p>
+
+<p>// ドキュメントルートのパスを設定
+server.documentRoot = &ldquo;./webroot&rdquo;</p>
+
+<p>// arguments.swiftで定義されているメソッド
+// 更なるサーバ定義が必要な場合はここを見ましょう(SSLなど)
+configureServer(server)</p>
+
+<p>do {</p>
+
+<pre><code>// HTTPサーバの起動
+try server.start()
+</code></pre>
+
+<p>} catch PerfectError.networkError(let err, let msg) {</p>
+
+<pre><code>print("Network error thrown: \(err) \(msg)")
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記をXcodeをからRunさせた状態で <code>http://localhost:8181</code> にアクセスしてみましょう。<br/>
+Hello Worldの結果が得られるはずです。</p>
+
+<p><img src="/images/perfect-mongo_2.png" alt="Hello World" /></p>
+
+<h5>MongoDB関連処理ファイルの作成</h5>
+
+<p>続いて、MongoDBへの接続・切断やデータ取得などの処理を作成していきます。<br/>
+これは別クラスの中に書いていきましょう。</p>
+
+<p>今回はMongoDB関連の処理をハンドリングするということで<code>mongoHandler.swift</code>というファイルを作成します。<br/>
+因みにただ作成しただけでは、XcodeがCompile対象として正しく認識してくれないので、自身で設定を変えましょう。<br/>
+下図のようにTARGETSから実行ファイルを選択して、Compile Sourcesとして<code>mongoHandler.swift</code>を追加してください。</p>
+
+<p><img src="/images/perfect-mongo_3.png" alt="Compile Sourcesに追加" /></p>
+
+<p>では実際のソースを見ていきましょう。</p>
+
+<p>```objective-c
+// mongoHandler.swift</p>
+
+<p>import PerfectLib
+import PerfectHTTP
+import MongoDB</p>
+
+<p>class MongoHandler {</p>
+
+<p>  var client: MongoClient?
+  var database: MongoDatabase?
+  var collection: MongoCollection?</p>
+
+<p>  // MongoDBへの接続処理
+  fileprivate func connect() {</p>
+
+<pre><code>// コネクション確立
+client = try! MongoClient(uri: "mongodb://localhost")
+
+// testデータベースへの接続
+database = client?.getDatabase(name: "test")
+
+// testCollectionコレクションへの接続
+self.collection = database?.getCollection(name: "testCollection")
+</code></pre>
+
+<p>  }</p>
+
+<p>  // MongoDBからの切断処理
+  fileprivate func close() {</p>
+
+<pre><code>collection?.close()
+database?.close()
+client?.close()
+</code></pre>
+
+<p>  }</p>
+
+<p>  func searchAll(request: HTTPRequest, _ response: HTTPResponse) {</p>
+
+<pre><code>// MongoDBへの接続
+connect()
+// 指定コレクションが見つからない場合は処理終了
+guard let collection = self.collection else {
+  return
+}
+
+// データ全件取得のためBSONオブジェクトを初期化してクエリとして設定
+let fnd = collection.find(query: BSON())
+
+// データ格納用に配列を定義
+var arr = [String]()
+
+// 取得したデータを配列に格納する
+// fndはMongoCursor型であり、for文での繰り返し処理が可能
+for x in fnd! {
+    arr.append(x.asString)
+}
+
+// JSONStringに変換
+let returning = "{\"data\":[\(arr.joined(separator: ","))]}"
+
+// レスポンスデータとして設定
+response.appendBody(string: returning)
+// レスポンス処理完了
+response.completed()
+
+// MongoDBから切断
+close()
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>MongoDBへの接続・切断処理は共通処理となることは容易に想像できるため、切り出しました。</p>
+
+<h5>main.swiftからmongoHandler.swiftを呼び出す</h5>
+
+<p>さて、<code>main.swift</code>から<code>mongoHandler.swift</code>を呼び出してみましょう。</p>
+
+<p>```objective-c
+// main.swift
+// MongoHandlerの初期化
+let mongoHandler = MongoHandler()</p>
+
+<p>// GETリクエストでMongoDBのデータ全取得
+routes.add(method: .get, uri: &ldquo;/mongo&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+mongoHandler.searchAll(request: request, response)
+</code></pre>
+
+<p>})
+```</p>
+
+<p>これで<code>http://localhost:8181</code>にアクセスすれば下図のような結果が得られるはずです。</p>
+
+<p><img src="/images/perfect-mongo_4.png" alt="データ全件取得結果" /></p>
+
+<h4>MongoDBにアクセスして指定のクエリでデータを取得</h4>
+
+<p>全件取得の方法はわかったので、続いてクエリありの検索を実行してみましょう。<br/>
+先程述べた通り、下記のようなデータが格納されています。</p>
+
+<p>```
+// データの確認</p>
+
+<blockquote><p>db.testCollection.find()
+{ &ldquo;<em>id&rdquo; : ObjectId(&ldquo;58391469a8589d99c931303c&rdquo;), &ldquo;name&rdquo; : &ldquo;takahiro&rdquo;, &ldquo;age&rdquo; : 30, &ldquo;hobby&rdquo; : &ldquo;blog&rdquo; }
+{ &ldquo;</em>id&rdquo; : ObjectId(&ldquo;58392222a8589d99c931303d&rdquo;), &ldquo;name&rdquo; : &ldquo;ichiro&rdquo;, &ldquo;age&rdquo; : 43, &ldquo;hobby&rdquo; : &ldquo;baseball&rdquo; }
+```</p></blockquote>
+
+<p><code>name</code>、<code>age</code>、<code>hobby</code>を指定して検索するのはそんなに難しくないと思います。</p>
+
+<h5>nameを指定してデータを取得</h5>
+
+<p>わかりやすいところからと言うことで<code>name</code>を指定してデータを取得してみます。<br/>
+まずは<code>mongoHandler.swift</code>にクエリ指定のメソッドを追加しましょう。</p>
+
+<p>```objective-c
+// mongoHandler.swift
+import PerfectLib
+import PerfectHTTP
+import MongoDB</p>
+
+<p>class MongoHandler {</p>
+
+<pre><code>var client: MongoClient?
+var database: MongoDatabase?
+var collection: MongoCollection?
+
+    fileprivate func connect() {
+
+    // open a connection
+    client = try! MongoClient(uri: "mongodb://localhost")
+
+    // set database, assuming "test" exists
+    database = client?.getDatabase(name: "test")
+
+    // define collection
+    self.collection = database?.getCollection(name: "testCollection")
+}
+
+fileprivate func close() {
+    collection?.close()
+    database?.close()
+    client?.close()
+}
+
+    // searchAllメソッドは省略
+
+    // =====ここから追加========================================================
+    func search(query: BSON, request: HTTPRequest, _ response: HTTPResponse) {
+        // MongoDBへの接続
+        connect()
+
+        // 指定コレクションが見つからない場合は処理終了
+  guard let collection = self.collection else {
+      return
+  }
+
+  // クエリを指定して検索
+  let fnd = collection.find(query: query)
+
+  // データ格納用に配列を定義
+  var arr = [String]()
+
+        // 取得したデータを配列に格納する
+    // fndはMongoCursor型であり、for文での繰り返し処理が可能
+  for x in fnd! {
+      arr.append(x.asString)
+  }
+
+  // JSONStringに変換
+  let returning = "{\"data\":[\(arr.joined(separator: ","))]}"
+
+  // レスポンスデータとして設定
+  response.appendBody(string: returning)
+        // レスポンス処理完了
+  response.completed()
+
+        // MongoDBから切断
+  close()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p><code>searchAll</code>との違いは引数に<code>BSON</code>型の<code>query</code>を追加しているところです。</p>
+
+<p>続いて、<code>main.swift</code>にGETリクエストで<code>name</code>パラメータをキャッチできるように処理を追加していきましょう。</p>
+
+<p>```objective-c
+// main.swift
+import PerfectLib
+import PerfectHTTP
+import PerfectHTTPServer
+import MongoDB                  // ここを追加</p>
+
+<p>// 省略</p>
+
+<p>// nameパラメータを指定したGETリクエストのハンドリング
+routes.add(method: .get, uri: &ldquo;/mongo/name/{name}&rdquo;, handler: {
+  request, response in</p>
+
+<pre><code>// BSON型オブジェクトの初期化(クエリとして渡す)
+</code></pre>
+
+<p>  let bson = BSON()
+  defer {</p>
+
+<pre><code>    // 処理完了時にBSONオブジェクトを削除
+bson.close()
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// クエリとして渡すパラメータをセット
+</code></pre>
+
+<p>  bson.append(key: &ldquo;name&rdquo;, string: request.urlVariables[&ldquo;name&rdquo;]!)</p>
+
+<pre><code>// クエリを指定して検索
+</code></pre>
+
+<p>  mongoHandler.search(query: bson, request: request, response)
+})
+```</p>
+
+<p>これだけで準備万端です。<br/>
+<code>http://localhost:8181/name/takahiro</code>にアクセスすると下記結果が得られます。</p>
+
+<p><img src="/images/perfect-mongo_5.png" alt="nameパラメータを指定したGETリクエスト結果" />_</p>
+
+<h5>ObjectIdを指定してデータを取得</h5>
+
+<p>続いて、少しクエリの書き方に迷うかもしれない<code>ObjectId</code>を指定したデータ検索をしてみましょう。<br/>
+<code>mongoHandler.swift</code>には特に変更がありません。<br/>
+<code>main.swift</code>のみ変更していきます。</p>
+
+<p>```objective-c
+// main.swift
+import PerfectLib
+import PerfectHTTP
+import PerfectHTTPServer
+import MongoDB
+import libmongoc                // ここを追加</p>
+
+<p>// 省略</p>
+
+<p>// ObjectIdパラメータを指定したGETリクエストのハンドリング
+routes.add(method: .get, uri: &ldquo;/mongo/oid/{oid}&rdquo;, handler: {
+  request, response in</p>
+
+<pre><code>// BSON型オブジェクトの初期化(クエリとして渡す)
+</code></pre>
+
+<p>  let bson = BSON()
+  defer {</p>
+
+<pre><code>    // 処理完了時にBSONオブジェクトを削除
+bson.close()
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// bson_oid_t型のオブジェクトの初期化
+</code></pre>
+
+<p>  var oid: bson_oid_t = bson_oid_t()</p>
+
+<pre><code>// String型からbson_oid_t型に変換
+</code></pre>
+
+<p>  bson_oid_init_from_string(&amp;oid, request.urlVariables[&ldquo;oid&rdquo;])</p>
+
+<pre><code>// クエリとして渡すパラメータをセット
+</code></pre>
+
+<p>  bson.append(key: &ldquo;_id&rdquo;, oid: oid)</p>
+
+<pre><code>// クエリを指定して検索
+</code></pre>
+
+<p>  mongoHandler.search(query: bson, request: request, response)
+})
+```</p>
+
+<p>肝なのが、<code>import libmongoc</code>をしているということです。<br/>
+このライブラリの各種メソッドを利用することでServer Side Swiftから<code>ObjectId</code>を指定したデータ検索が可能になります。</p>
+
+<p>少し詳しく説明すると、<br/>
+クエリとして<code>ObjectId</code>を渡すためには<code>public func append(key k: String, oid: bson_oid_t) -&gt; Bool</code>を利用する必要があります。<br/>
+しかし、このメソッドの第二引数をよく見ると、<code>bson_oid_t</code>型となっています。</p>
+
+<p>GETリクエストの時点で<code>bson_oid_t</code>型でパラメータを渡すわけにもいかないので、  サーバサイド側で変換する必要があります。<br/>
+そのために利用するメソッドが<code>void bson_oid_init_from_string (bson_oid_t *oid, const char *str);</code>です。<br/>
+筆者もSwiftで初めて利用したのですが、このメソッドは戻り値が<code>void</code>型のため何も返ってきません。<br/>
+が、第一引数に参照渡しとして<code>bson_oid_t</code>型オブジェクトを設定することで、メソッドの処理結果が<code>oid</code>に格納されます。<br/>
+これでめでたくクエリとして<code>ObjectId</code>が設定できるわけです。</p>
+
+<p>では、<code>http://localhost:8181/oid/58392222a8589d99c931303d</code>にアクセスしてみましょう。</p>
+
+<p><img src="/images/perfect-mongo_6.png" alt="ObjectIdパラメータを指定したGETリクエスト結果" /></p>
+
+<h4>MongoDBにデータを保存</h4>
+
+<p>検索に関してはざっと見てきたので、MongoDBへの保存処理も見ていきましょう。</p>
+
+<h5>insertメソッドでデータを保存</h5>
+
+<p>保存には<code>MongoClient</code>の<code>insert</code>メソッドを利用します。<br/>
+(他にも<code>save</code>メソッドもあります。)</p>
+
+<p>まずは <code>mongoHandler.swift</code> へのメソッド追加からです。</p>
+
+<p>```objective-c
+// mongoHandler.swift
+func save(query: BSON, request: HTTPRequest, response: HTTPResponse) {</p>
+
+<pre><code>// MongoDBへの接続
+connect()
+
+// 指定コレクションが見つからない場合は処理終了
+</code></pre>
+
+<p>  guard let collection = self.collection else {</p>
+
+<pre><code>return
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// データの保存処理
+</code></pre>
+
+<p>  let insert = collection.insert(document: query) as MongoResult</p>
+
+<pre><code>// データ保存結果によって返却値を変更
+</code></pre>
+
+<p>  var returning = &ldquo;Failed&rdquo;
+  switch insert {
+  case .success:</p>
+
+<pre><code>returning = "Succeeded"
+</code></pre>
+
+<p>  default:</p>
+
+<pre><code>returning = "Failed"
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// レスポンスデータとして設定
+</code></pre>
+
+<p>  response.appendBody(string: returning)</p>
+
+<pre><code>// レスポンス処理完了
+</code></pre>
+
+<p>  response.completed()</p>
+
+<pre><code>// MongoDBから切断
+</code></pre>
+
+<p>  close()
+}
+```</p>
+
+<p>次にPOSTで届いたリクエストパラメータがJSONStringなのでDictionary型に変換します。<br/>
+その処理を <code>decode.swift</code> ファイルを新規作成して追加します。</p>
+
+<p>```objective-c
+// decode.swift
+import PerfectHTTPServer
+import PerfectLib</p>
+
+<p>func decode(postBody: String?) &ndash;> [String: Any]? {
+  do {</p>
+
+<pre><code>guard let decoded = try postBody?.jsonDecode() as? [String:Any] else {
+  return [:]
+}
+print(decoded)
+return decoded
+} catch {
+return [:]
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>そして <code>main.swift</code> にPOSTリクエストのハンドリング処理を書きます。</p>
+
+<p>```objective-c
+// main.swift
+routes.add(method: .post, uri: &ldquo;/mongo/&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+// BSON型オブジェクトの初期化(クエリとして渡す)
+</code></pre>
+
+<p>  let bson = BSON()
+  defer {</p>
+
+<pre><code>    // 処理完了時にBSONオブジェクトを削除
+bson.close()
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// JSONString型をDictionary型に変換
+</code></pre>
+
+<p>  let decodedParam = decode(postBody: request.postBodyString)</p>
+
+<pre><code>// 各パラメータ単位でBSONオブジェクトに格納
+</code></pre>
+
+<p>  for (key, value) in decodedParam! {</p>
+
+<pre><code>  switch key {
+  case "name":
+      bson.append(key: "name", string: value as! String)
+  case "age":
+      bson.append(key: "age", int32: Int32(value as! Int))
+  case "hobby":
+      bson.append(key: "hobby", string: value as! String)
+  default:
+      break
+  }
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// データ保存
+</code></pre>
+
+<p>  mongoHandler.save(query: bson, request: request, response: response)
+})
+```</p>
+
+<p>これで処理は完成です。<br/>
+ではPOSTリクエストを投げてみましょう。</p>
+
+<p><code>
+$ curl http://localhost:8181/mongo -X POST -H "Content-Type: application/json" -d '{"name":"Hanako", "age": 24, "hobby": "game"}'
+</code></p>
+
+<p>再度、MongoDBを検索してみると下記のような結果が得られるはずです。</p>
+
+<p>```
+// データの確認</p>
+
+<blockquote><p>db.testCollection.find()
+{ &ldquo;<em>id&rdquo; : ObjectId(&ldquo;58391469a8589d99c931303c&rdquo;), &ldquo;name&rdquo; : &ldquo;takahiro&rdquo;, &ldquo;age&rdquo; : 30, &ldquo;hobby&rdquo; : &ldquo;blog&rdquo; }
+{ &ldquo;</em>id&rdquo; : ObjectId(&ldquo;58392222a8589d99c931303d&rdquo;), &ldquo;name&rdquo; : &ldquo;ichiro&rdquo;, &ldquo;age&rdquo; : 43, &ldquo;hobby&rdquo; : &ldquo;baseball&rdquo; }
+{ &ldquo;_id&rdquo; : ObjectId(&ldquo;583afcaedcab265c1821fb51&rdquo;), &ldquo;name&rdquo; : &ldquo;Hanako&rdquo;, &ldquo;age&rdquo; : 24, &ldquo;hobby&rdquo; : &ldquo;game&rdquo; }
+```</p></blockquote>
+
+<p>因みに、<code>main.swift</code>でリクエストパラメータとして取得した<code>age</code>を <strong>Int32</strong> 型に変換しているのには理由があります。<br/>
+これを仮に <code>bson.append(key: "age", int: value as! Int)</code> とした場合、MongoDBには <code>NumberLong</code>として保存されてしまいます。 <br/>
+これは32bitか64bitかの違いですね。</p>
+
+<h5>insertメソッドのMongoInsertFlagについて</h5>
+
+<p>先程、<code>insert</code>メソッドを利用しましたが、実は第一引数のみ持っている <code>insert</code> メソッドを利用していました。<br/>
+実は他にも <code>public func insert(document: BSON, flag: MongoInsertFlag = .none) -&gt; Result</code> といった第二引数を持つ <code>insert</code> メソッドが存在します。</p>
+
+<p>少し気になったのでこの <code>MongoInsertFlag</code>について調べてみました。<br/>
+<code>MongoInsertFlag</code>は<code>MongoCollection.swift</code>内に <strong>enum</strong> として定義されています。</p>
+
+<p>```objective-c
+public enum MongoInsertFlag: Int {</p>
+
+<pre><code>case none
+case continueOnError
+case noValidate
+
+var mongoFlag: mongoc_insert_flags_t {
+    switch self {
+    case .none:
+        return MONGOC_INSERT_NONE
+    case .continueOnError:
+        return MONGOC_INSERT_CONTINUE_ON_ERROR
+    case .noValidate:
+        return mongoc_insert_flags_t(rawValue: MONGOC_INSERT_NO_VALIDATE)
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここで<code>MONGOC_INSERT_NONE</code>, <code>MONGOC_INSERT_CONTINUE_ON_ERROR</code>, <code>MONGOC_INSERT_NO_VALIDATE</code>の3つがフラグとして用意されていることがわかります。<br/>
+これらはそれぞれ次のような意味とのことです。</p>
+
+<ul>
+<li><code>MONGOC_INSERT_NONE</code>
+
+<ul>
+<li>特別何もしません。</li>
+</ul>
+</li>
+<li><code>MONGOC_INSERT_CONTINUE_ON_ERROR</code>
+
+<ul>
+<li>途中でエラーが発生したとしても後続の<code>insert</code>処理がある場合は続ける</li>
+</ul>
+</li>
+<li><code>MONGOC_INSERT_NO_VALIDATE</code>
+
+<ul>
+<li>インサート前に値のバリデーションチェックをしない
+
+<ul>
+<li>MongoDBへの保存処理前にAPサーバ時点などでバリデーションチェックはした方が良い</li>
+</ul>
+</li>
+<li>これをすることで処理時間を短縮することができる</li>
+</ul>
+</li>
+</ul>
+
+
+<h4>MongoDBのデータを更新</h4>
+
+<p>MongoDBへの更新処理も見ていきましょう。</p>
+
+<h5>updateメソッドでデータを保存</h5>
+
+<p>保存には<code>MongoClient</code>の<code>update</code>メソッドを利用します。</p>
+
+<p><code>mongoHandler.swift</code>にメソッドを追加します。</p>
+
+<p>```objective-c
+// mongoHandler.swift
+func update(update: BSON, selector: BSON, request: HTTPRequest, response: HTTPResponse) {</p>
+
+<pre><code>// MongoDBへの接続
+connect()
+
+// 指定コレクションが見つからない場合は処理終了
+</code></pre>
+
+<p>  guard let collection = self.collection else {</p>
+
+<pre><code>return
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// データの更新
+</code></pre>
+
+<p>  let updated = collection.update(update: update, selector: query)</p>
+
+<pre><code>// データ更新結果によって返却値を変更
+</code></pre>
+
+<p>  var returning = &ldquo;Failed&rdquo;
+  switch updated {
+  case .success:</p>
+
+<pre><code>returning = "Succeeded"
+</code></pre>
+
+<p>  default:</p>
+
+<pre><code>returning = "Failed"
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// レスポンスデータとして設定
+</code></pre>
+
+<p>  response.appendBody(string: returning)</p>
+
+<pre><code>// レスポンス処理完了
+</code></pre>
+
+<p>  response.completed()</p>
+
+<pre><code>// MongoDBから切断
+</code></pre>
+
+<p>  close()
+}
+```</p>
+
+<p>そして <code>main.swift</code> にPUTリクエストのハンドリング処理を書きます。</p>
+
+<p>```objective-c
+// main.swift
+routes.add(method: .post, uri: &ldquo;/mongo/&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+// BSON型オブジェクトの初期化(更新内容として渡す)
+</code></pre>
+
+<p>  let updateBson = BSON()</p>
+
+<pre><code>// BSON型オブジェクトの初期化(クエリとして渡す)
+let selectorBson = BSON()
+</code></pre>
+
+<p>  defer {</p>
+
+<pre><code>    // 処理完了時にBSONオブジェクトを削除
+updateBson.close()
+    selectorBson.close()
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// JSONString型をDictionary型に変換
+</code></pre>
+
+<p>  let decodedParam = decode(postBody: request.postBodyString)</p>
+
+<pre><code>// 各パラメータ単位でBSONオブジェクトに格納
+</code></pre>
+
+<p>  for (key, value) in decodedParam! {</p>
+
+<pre><code>  switch key {
+  case "name":
+      updateBson.append(key: "name", string: value as! String)
+  case "age":
+      updateBson.append(key: "age", int32: Int32(value as! Int))
+  case "hobby":
+      updateBson.append(key: "hobby", string: value as! String)
+  default:
+      break
+  }
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// データ更新
+</code></pre>
+
+<p>  mongoHandler.update(update: updateBson, query: selectorBson, request: request, response: response)
+})
+```</p>
+
+<p>基本的にはPOSTと同じ感じで処理を書くことができます。<br/>
+しかしながら気をつけなくてはいけないのが、<strong>$setが利用できない</strong> ということです。<br/>
+通常、MongoDBでは、 <strong>$setを使わないと</strong> &hellip;</p>
+
+<p>```
+// データの確認</p>
+
+<blockquote><p>db.testCollection.find();
+{ &ldquo;_id&rdquo; : ObjectId(&ldquo;583afcaedcab265c1821fb51&rdquo;), &ldquo;name&rdquo; : &ldquo;Hanako&rdquo;, &ldquo;age&rdquo; : 24, &ldquo;hobby&rdquo; : &ldquo;game&rdquo; }</p></blockquote>
+
+<p>// データの更新</p>
+
+<blockquote><p>db.testCollection.update({_id: ObjectId(&ldquo;583afcaedcab265c1821fb51&rdquo;)}, {&ldquo;hobby&rdquo;: &ldquo;go shopping&rdquo;});</p></blockquote>
+
+<p>// データの確認</p>
+
+<blockquote><p>db.testCollection.find();
+{ &ldquo;_id&rdquo; : ObjectId(&ldquo;583afcaedcab265c1821fb51&rdquo;), &ldquo;hobby&rdquo; : &ldquo;go shopping&rdquo; }
+```</p></blockquote>
+
+<p>となってしまいます。<br/>
+現状、<code>Perfect-MongoDB</code>に実装されているメソッドを見ると<code>$set</code>はないようです。<br/>
+そのため、今回はあえてPOST同様に全てのパラメータをクライアント側から下記のように投げることにしました。</p>
+
+<p><code>
+$ curl http://localhost:8181/mongo/583afcaedcab265c1821fb51 -X PUT -H "Content-Type: application/json" -d '{"name" : "Hanako", "age" : 24, "hobby": "game"}'
+</code></p>
+
+<h5>updateメソッドのMongoUpdateFlagについて</h5>
+
+<p><code>update</code>メソッドにも実は<code>MongoUpdateFlag</code>というオプションを設定できるメソッドが存在します。<br/>
+<code>MongoUpdateFlag</code>は<code>MongoInsertFlag</code>と同じく <strong>enum</strong> として定義されています。</p>
+
+<p>```objective-c
+public enum MongoUpdateFlag: Int {</p>
+
+<pre><code>case none
+case upsert
+case multiUpdate
+case noValidate
+
+var mongoFlag: mongoc_update_flags_t {
+    switch self {
+    case .none:
+        return MONGOC_UPDATE_NONE
+    case .upsert:
+        return MONGOC_UPDATE_UPSERT
+    case .multiUpdate:
+        return MONGOC_UPDATE_MULTI_UPDATE
+    case .noValidate:
+        return mongoc_update_flags_t(rawValue: MONGOC_UPDATE_NO_VALIDATE)
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>それぞれのフラグの意味は下記の通りです。</p>
+
+<ul>
+<li><code>MONGO_UPDATE_NONE</code>
+
+<ul>
+<li>特別何もしません</li>
+</ul>
+</li>
+<li><code>MONGOC_UPDATE_UPSERT</code>
+
+<ul>
+<li>検索に引っかからない場合は<code>insert</code>します</li>
+</ul>
+</li>
+<li><code>MONGOC_UPDATE_MULTI_UPDATE</code>
+
+<ul>
+<li>検索にヒットする件数が複数の場合は全て更新します</li>
+</ul>
+</li>
+<li><code>MONGOC_UPDATE_NO_VALIDATE</code>
+
+<ul>
+<li>アップデート前に値のバリデーションチェックをしません</li>
+</ul>
+</li>
+</ul>
+
+
+<h4>MongoDBのデータを削除</h4>
+
+<p>MongoDBからのデータ削除処理も見ていきましょう。</p>
+
+<h5>removeメソッドでデータを保存</h5>
+
+<p>保存には<code>MongoClient</code>の<code>remove</code>メソッドを利用します。</p>
+
+<p><code>mongoHandler.swift</code>にメソッドを追加します。</p>
+
+<p>```objective-c
+// mongoHandler.swift
+func delete(query: BSON, request: HTTPRequest, response: HTTPResponse) {</p>
+
+<pre><code>// MongoDBへの接続
+connect()
+
+// 指定コレクションが見つからない場合は処理終了
+</code></pre>
+
+<p>  guard let collection = self.collection else {</p>
+
+<pre><code>return
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// データ削除処理
+</code></pre>
+
+<p>  let removed = collection.remove(selector: query, flag: .none)</p>
+
+<pre><code>// データ削除結果によって返却値を変更
+</code></pre>
+
+<p>  var returning = &ldquo;Failed&rdquo;    <br/>
+  switch removed {
+  case .success:</p>
+
+<pre><code>returning = "Succeeded"
+</code></pre>
+
+<p>  default:</p>
+
+<pre><code>returning = "Failed"
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// レスポンスデータとして設定
+</code></pre>
+
+<p>  response.appendBody(string: returning)</p>
+
+<pre><code>// レスポンス処理完了
+</code></pre>
+
+<p>  response.completed()</p>
+
+<pre><code>// MongoDBから切断
+</code></pre>
+
+<p>  close()
+}
+```</p>
+
+<p>そして <code>main.swift</code> にDELETEリクエストのハンドリング処理を書きます。</p>
+
+<p>```objective-c
+// main.swift
+routes.add(method: .delete, uri: &ldquo;/mongo/{oid}&rdquo;, handler: {
+  request, response in</p>
+
+<pre><code>// BSON型オブジェクトの初期化(クエリとして渡す)
+</code></pre>
+
+<p>  let bson = BSON()
+  defer {</p>
+
+<pre><code>    // 処理完了時にBSONオブジェクトを削除
+bson.close()
+</code></pre>
+
+<p>  }</p>
+
+<p>  var oid: bson_oid_t = bson_oid_t()
+  bson_oid_init_from_string(&amp;oid, request.urlVariables[&ldquo;oid&rdquo;])
+  bson.append(key: &ldquo;_id&rdquo;, oid: oid)</p>
+
+<pre><code>// データ削除
+</code></pre>
+
+<p>  mongoHandler.delete(query: bson, request: request, response: response)
+})
+```</p>
+
+<p>下記のようなDELETEリクエストを投げてみればデータが削除されていることが確認できるはずです。</p>
+
+<p><code>
+$ curl http://localhost:8181/mongo/583afcaedcab265c1821fb51 -X DELETE -H "Content-Type: application/json"
+</code></p>
+
+<h5>removeメソッドのMongoRemoveFlagについて</h5>
+
+<p><code>remove</code>メソッドにも実は<code>MongoRemoveFlag</code>というオプションを設定できるメソッドが存在します。<br/>
+<code>MongoRemoveFlag</code>は<code>MongoUpdateFlag</code>と同じく <strong>enum</strong> として定義されています。</p>
+
+<p>```objective-c
+public enum MongoRemoveFlag: Int {</p>
+
+<pre><code>case none
+case singleRemove
+
+var mongoFlag: mongoc_remove_flags_t {
+    switch self {
+    case .none:
+        return MONGOC_REMOVE_NONE
+    case .singleRemove:
+        return MONGOC_REMOVE_SINGLE_REMOVE
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>フラグの意味は下記の通りです。</p>
+
+<ul>
+<li><code>MONGOC_REMOVE_NONE</code>
+
+<ul>
+<li>特に何のオプションもつけません。</li>
+<li>検索にヒットしたデータは全て削除します。</li>
+</ul>
+</li>
+<li><code>MONGOC_REMOVE_SINGLE_REMOVE</code>
+
+<ul>
+<li>初めに該当したデータ1件のみを削除します。</li>
+</ul>
+</li>
+</ul>
+
+
+<h3>まとめ</h3>
+
+<p>以上で基本的なCRUDに対応したAPサーバとDBサーバをSwiftとMongoDBで構築することができました。<br/>
+これから何かサービスでも&hellip;と思っていたら時間切れ&hellip;<br/>
+今回は一旦ここまでとしたいと思いますが、今後の展望としてはSwift製iOSアプリと連携させてiOSアプリを作成するか、もしくはReact / Reduxを使ったWebサービスと連携させたいと企んでいます。<br/>
+処理速度とかリソースの消費具合とかは全然比較もしていないのでわからないですが、Swiftによるサーバサイド構築によるメリットも今後Appleさんが？明らかにしてくれるかもしれません。</p>
+
+<p>何と言っても新しい技術や取り組みは楽しいですね！！<br/>
+と言ったところで本日はここまで。</p>
+
+<h3>参考URL</h3>
+
+<ul>
+<li><a href="http://perfect.org/docs/MongoDB.html">Perfect MongoDB Documentation</a></li>
+<li><a href="http://mongoc.org/libbson/1.3.5/bson_oid_init_from_string.html">Libbson API Reference: Bson Oid Init</a></li>
+<li><a href="http://mongoc.org/libmongoc/1.4.0/updating-document.html">Libbson API Reference: Update Document</a></li>
+<li><a href="http://mongoc.org/libmongoc/1.0.0/mongoc_insert_flags_t.html">MongoDB C Driver API Reference: Insert Flag</a></li>
+<li><a href="http://mongoc.org/libmongoc/1.2.3/mongoc_update_flags_t.html">MongoDB C Driver API Reference: Update Flag</a></li>
+<li><a href="http://mongoc.org/libmongoc/1.3.2/mongoc_remove_flags_t.html">MongoDB C Driver API Reference: Remove Flag</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Server Side Swift: Perfect を使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/10/30/swift-perfect/"/>
+    <updated>2016-10-30T22:48:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/10/30/swift-perfect</id>
+    <content type="html"><![CDATA[<h3>Server Side SwiftライブラリのPerfect</h3>
+
+<p>本日は以前書いたサーバサイドSwiftの続きを書きます！<br/>
+と言いたかったところなのですが、Swift ExpressはSwift3.0やXcode8に対応しておらず、何もできなかったため、方向転換して最もSTAR数の多い<a href="https://github.com/PerfectlySoft/Perfect">PerfectlySoft/Perfect</a>を使うことにしました。</p>
+
+<p>よくよく見るとMySQLだけでなくMongoDB接続用にもモジュールが用意されており、なかなか良さそうではないですか！！<br/>
+とは言いつつも、そんなにすぐにMaster Of Perfectにはなれないので少しずつ見ていくことにします。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<h4>チュートリアルを触ってみる</h4>
+
+<p>まずは何はともあれGitHubの <em>Getting Started</em> からやらないと話になりません。<br/>
+手順は簡単です。</p>
+
+<p>１．テンプレートプロジェクトをクローンする<br/>
+<code>git clone https://github.com/PerfectlySoft/PerfectTemplate.git</code></p>
+
+<p>２．ビルドを実行する<br/>
+クローンした<code>PerfectTemplate</code>フォルダ内に入り、ビルドを実行しましょう。</p>
+
+<p><code>
+$ cd PerfectTemplate
+$ swift build
+</code></p>
+
+<p>３．サーバを起動します<br/>
+なんと後は下記コマンドでサーバを起動するだけです。</p>
+
+<p><code>.build/debug/PerfectTemplate</code></p>
+
+<p>正しく起動すれば、下記ログが出力されます。<br/>
+<code>Starting HTTP server on 0.0.0.0:8181 with document root ./webroot</code><br/>
+またログの指示通りChromeで<code>http://localhost:8181/</code>にアクセスすれば<code>Hello World</code>が拝めます。</p>
+
+<h4>ルーティングの書き方について学ぶ</h4>
+
+<p>では次に簡単なルーティングについて学んでいきましょう。<br/>
+チュートリアルでは、下記GETリクエストのみ受け付けていました。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .get, uri: &ldquo;/&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.setHeader(.contentType, value: "text/html")
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Hello, world!&lt;/title&gt;&lt;body&gt;Hello, world!&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>最も単純なGETリクエストですね。<br/>
+では、<code>ID: 100</code>のユーザ情報を取得するGETリクエストはどう受け付けるのでしょうか。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .get, uri: &ldquo;/user/{id}&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.setHeader(.contentType, value: "text/html")
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You GET UserInfo with \(request.urlVariables)&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>たったのこれだけです。<br/>
+では、POSTリクエストの受け付けはどうでしょうか。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .post, uri: &ldquo;/user&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You POSTed user data to catch your POST request.&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>これも簡単ですね。<br/>
+書き方に若干の違いはあれど、最早Node.jsとそんなに変わらん&hellip;</p>
+
+<p>おまけで、POSTリクエストで届いたJSONStringをバラバラっと分解して返却してみました。<br/>
+そのためにまずはJSONStringをデコードする処理を実装します。</p>
+
+<p>```javascript
+// decode.swift
+import PerfectHTTPServer
+import PerfectLib</p>
+
+<p>func decode(postBody: String?) &ndash;> [String: Any]? {</p>
+
+<pre><code>do {
+    guard let decoded = try postBody?.jsonDecode() as? [String:Any] else {
+        return [:]
+    }
+    print(decoded)
+    return decoded
+} catch {
+    return [:]
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これを下記のように利用します。</p>
+
+<p>```javascript
+// main.swift
+var routes = Routes()
+routes.add(method: .post, uri: &ldquo;/user&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+
+var userInfo = ""
+let decodedParam = decode(postBody: request.postBodyString)
+for (key, value) in decodedParam! {
+    switch key {
+        case "name":
+            userInfo = userInfo + "name is \(value as! String).\n"
+        case "email":
+            userInfo = userInfo + "email is \(value as! String)."
+        default:
+            break
+    }
+}
+response.appendBody(string: "&lt;html&gt;&lt;body&gt;POST handler: \(userInfo)&lt;/body&gt;&lt;/html&gt;")
+response.completed()
+</code></pre>
+
+<p>})
+```</p>
+
+<p>さて、実装できたのでクライアントからリクエストを投げてみます。</p>
+
+<p><code>
+// クライアントからPOSTリクエストを投げます
+curl http://localhost:8181/user -X POST -H "Content-Type: application/json" -d '{"name":"Ichiro", "email": "xxx@gmail.com"}'
+// 結果
+&lt;html&gt;&lt;body&gt;POST handler: name is Ichiro.
+email is xxx@gmail.com.&lt;/body&gt;&lt;/html&gt;xxxx:PerfectTemplate
+</code></p>
+
+<h3>まとめ</h3>
+
+<p>さて今回は<code>Perfect</code>を使ったサーバサイドSwiftを見てみました。<br/>
+まだまだ基本的なリクエストの受付しかみていませんが、既にいろいろなモジュールが用意されているようなので、継続的に見ていきたいと思います。<br/>
+やっぱりライブラリを作るなら、最新の状況についていかないと見捨てられるな〜と思ってしまいました。<br/>
+(今回で言うと、Swift3やXcode8とかですね。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ReSwiftを勉強してみよう！(1)]]></title>
+    <link href="http://grandbig.github.io/blog/2016/09/03/reswift-1/"/>
+    <updated>2016-09-03T19:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/09/03/reswift-1</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日は最近JavaScript界では浸透してきている<code>Redux</code>についてSwiftを通して勉強していきたいと思います。<br/>
+<code>Redux</code>に関する日本語の記事はそれなりにあるもののSwift版ライブラリである<code>ReSwift</code>に関する日本語の記事は少ないため、筆者が少しでも記事を増やせたら良いなという思いがあります。<br/>
+と言いつつも、いきなり有効性の高い有良記事を書くことはハードルが高いため、簡単な勉強から始めて行く次第です。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>ReSwiftとは</h3>
+
+<p><code>ReSwift</code>とは<code>Redux</code>のSwift版ライブラリです。<br/>
+<a href="https://github.com/ReSwift/ReSwift">GitHub: ReSwift/ReSwift</a>が公式ページとなります。</p>
+
+<p>上記公式ページのイントロをざっくり訳すと&hellip;<br/>
+(意味が間違っていたらごめんなさい&hellip;)</p>
+
+<p>ReSwiftはSwiftで<a href="https://github.com/reactjs/redux">Redux</a>ライクな一方向のデータフローアーキテクチャを実装したものです。ReSwiftを使うことで、次の3つの関係性でアプリを構成することを手助けします。</p>
+
+<ul>
+<li><strong>State</strong> : 全てのアプリの状態を管理します。複雑な状態の管理やデバッグのし易さを手助けするなど、メリットは数多くあります。</li>
+<li><strong>Views</strong> : 状態変化したときにViewを更新します。状態に対してシンプルなビジュアルを実現します。</li>
+<li><strong>State Changes</strong> : <code>actions</code>を通した状態変化の実行のみを担当します。<code>actions</code>は状態変化を表現する小さなモジュールを指します。限られた状態変化を担うため、大人数で開発する際にアプリを簡単に理解することができるメリットがあります。</li>
+</ul>
+
+
+<p>また、ReSwiftは下記の3つの原則に従って構成されます。</p>
+
+<ul>
+<li><strong>The Store</strong> : アプリの状態(State)を保持するアプリ内で唯一の存在です。StoreにActionsが発送されることによってのみ状態(State)は変化します。状態(State)が変化したら必ず、Storeが全てのオブザーバに通知します。</li>
+<li><strong>Actions</strong> : アプリの状態(State)がどんな変化なのかを宣言します。Storeによって消費され、Reducerに渡されます。Reducerは各Actionで引き起こされる異なる状態変化を実装することによってActionを扱います。</li>
+<li><strong>Reducers</strong> : 現在のActionとStateに基いて、新しいStateを生成する純粋な関数を提供します。</li>
+</ul>
+
+
+<p>というように、何となく、この辺りを理解すれば良さそうですね。<br/>
+まずは、公式ページに載っている最も簡単な『Counterサンプルアプリ』から上記の内容を直にコードで理解していきたいと思います。</p>
+
+<h3>CounterサンプルアプリからReSwiftを理解しよう</h3>
+
+<p>公式ページのREADMEには<a href="https://github.com/ReSwift/CounterExample">CounterExample</a>が紹介されています。<br/>
+公開されているサンプルアプリの中で最も簡単なサンプルなはずなので、これを見ていきたいと思います。</p>
+
+<p>最終的なフォルダ構成は下記になります。<br/>
+(関係のないファイルは除いています。)</p>
+
+<p><code>objective-c
+ReSwiftSample
+┣━━ State
+┃   ┗━━ AppState.swift
+┣━━ Actions
+┃   ┗━━ CounterActions.swift
+┣━━ Reducers
+┃   ┗━━ CounterReducers.swift
+┣━━ ViewController.swift
+┣━━ AppDelegate.swift
+┗━━ Main.storyboard
+</code></p>
+
+<p>では早速、1つずつ見ていきましょう。</p>
+
+<h4>ReSwiftをCocoaPodsでインストール</h4>
+
+<p>例によってCocoaPodsでインストールします。</p>
+
+<p>```objective-c
+use_frameworks!</p>
+
+<p>target &lsquo;ReSwiftSample&rsquo; do</p>
+
+<pre><code>pod 'ReSwift'
+</code></pre>
+
+<p>end</p>
+
+<p>target &lsquo;ReSwiftSampleTests&rsquo; do</p>
+
+<pre><code>pod 'ReSwift'
+</code></pre>
+
+<p>end</p>
+
+<p>target &lsquo;ReSwiftSampleUITests&rsquo; do</p>
+
+<pre><code>pod 'ReSwift'
+</code></pre>
+
+<p>end
+```</p>
+
+<p>これで<code>pod install</code>すればOKです。</p>
+
+<h4>State</h4>
+
+<p>準備が整ったところでコードを具体的に見ていきましょう。
+まずは<code>AppState.swift</code>を見ていきます。</p>
+
+<p>```objective-c
+//AppState.swift
+import Foundation
+import ReSwift</p>
+
+<p>struct AppState: StateType {</p>
+
+<pre><code>var counter: Int
+</code></pre>
+
+<p>}
+```</p>
+
+<p>今回のアプリは単純なカウントアップアプリなので、上記では<code>AppState</code>の1つのプロパティとして <strong>カウントの状態(counter)</strong> を定義しています。</p>
+
+<h4>Action</h4>
+
+<p>続いて<code>CounterActions.swift</code>を見ていきます。</p>
+
+<p>```objective-c
+// CounterActions.swift
+import Foundation
+import ReSwift</p>
+
+<p>struct CounterActionIncrease: Action {}
+struct CounterActionDecrease: Action {}
+```</p>
+
+<p>カウントアップの動作には <strong>『増加(Increase)』</strong> と <strong>『減少(Decrease)』</strong> の2つがあるため、それぞれのActionを定義します。<br/>
+ここで注意したいのはActionは関数(<code>func</code>)ではなく構造体(<code>struct</code>)であるということです。<br/>
+先に述べたようにActionは状態の宣言であり、Reducerに渡されて、処理を判別するために利用されるからです。</p>
+
+<h4>Reducer</h4>
+
+<p>そして、<code>CounterReducers.swift</code>を見ていきます。</p>
+
+<p>```objective-c
+// CounterReducers.swift
+struct CounterReducer: Reducer {</p>
+
+<pre><code>func handleAction(action: Action, state: AppState?) -&gt; AppState {
+    var state = state ?? AppState()
+
+    switch action {
+        case _ as CounterActionIncrease:
+            state.counter += 1
+        case _ as CounterActionDecrease:
+            state.counter -= 1
+        default:
+            break
+    }
+
+    return state
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>先に述べましたが、Reducerは引数として渡されたStateとActionの2つから新規のStateを返却します。<br/>
+重要なのは、 <strong>新規のStateを返却する</strong> ということです。<br/>
+これは<code>var state = state ?? AppState()</code>を見るとわかるかと思います。<br/>
+既に<code>state</code>オブジェクトがある場合は値渡しで新規<code>AppState</code>型に内容を格納しています。<br/>
+もし、<code>state</code>オブジェクトがなければ、初期化して作成しています。</p>
+
+<p>そして<code>switch</code>文で各Actionごとに最適な処理を実行しています。<br/>
+(今回の場合は『Increase』と『Decrease』)</p>
+
+<h4>Store</h4>
+
+<p>モジュールの作成が完了したので、実装していきます。<br/>
+先に述べたように<code>Store</code>はアプリの状態(State)を保持するアプリ内で <strong>唯一の存在</strong> です。<br/>
+よって、<code>AppDelegate.swift</code>で次のように定義します。</p>
+
+<p>```objective-c
+// AppDelegate.swift
+import UIKit
+import ReSwift</p>
+
+<p>let mainStore = Store<AppState>(</p>
+
+<pre><code>reducer: CounterReducer(),
+state: nil
+</code></pre>
+
+<p>)</p>
+
+<p>@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記では<code>Store</code>型の<code>mainStore</code>を定義しています。<br/>
+Reducerとして<code>CounterReducer</code>を定義しています。<br/>
+Stateは初期値<code>nil</code>として定義しています。</p>
+
+<h4>View層への実装</h4>
+
+<p>最後にユーザの操作が走った際の処理の実装について見ていきます。<br/>
+状態変化の監視開始/終了を下記で実施します。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import ReSwift</p>
+
+<p>class ViewController: UIViewController, StoreSubscriber {</p>
+
+<pre><code>override func viewWillAppear(animated: Bool) {
+    super.viewWillAppear(animated)
+    mainStore.subscribe(self)   // 状態変化の監視開始
+}
+
+override func viewWillDisappear(animated: Bool) {
+    super.viewWillDisappear(animated)
+    mainStore.unsubscribe(self) // 状態変化の監視終了
+}
+
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いて、ユーザ操作からのReducerへのAction発送部分です。</p>
+
+<p>```objective-c
+// ViewController.swift
+@IBAction func increaseButtonTapped(sender: AnyObject) {</p>
+
+<pre><code>mainStore.dispatch(
+    CounterActionIncrease()
+)
+</code></pre>
+
+<p>}</p>
+
+<p>@IBAction func decreaseButtonTapped(sender: AnyObject) {</p>
+
+<pre><code>mainStore.dispatch(
+    CounterActionDecrease()
+)
+</code></pre>
+
+<p>}
+```</p>
+
+<ul>
+<li>『増加』ボタンタップ時にStoreが『CounterActionIncreaseというAction』をReducerへdispatch(発送)します。</li>
+<li>『減少』ボタンタップ時にStoreが『CounterActionDecreaseというAction』をReducerへdispatch(発送)します。</li>
+</ul>
+
+
+<p>そして、新しいStateが返却された際に実行すべき処理を書くために<code>StoreSubscriber</code>プロトコルに<code>newState</code>メソッドが定義されています。<br/>
+よって、</p>
+
+<p>```objective-c
+// ViewController.swift
+class ViewController: UIViewController, StoreSubscriber {</p>
+
+<pre><code>@IBOutlet weak var counterLabel: UILabel!
+
+...
+
+func newState(state: AppState) {
+    counterLabel.text = "\(state.counter)"
+}
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のように実装することで<code>newState</code>メソッド内で任意の処理を書くことができます。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか？<br/>
+今回は公式の最も簡単なサンプルについて見ていきましたが、少々ReSwiftの扱い方が見えてきた気がします。<br/>
+また、ReSwiftが有能であるが故にReduxであればもっと自分で書かなければいけなさそうなところもカバーしてくれているように見えました。<br/>
+実践での活用なRxSwift同様にいろいろなリスク管理的な意味で難しいのかもしれませんが、もっとReSwiftを理解することで想定を上回るメリットを示し、実践で利用できるかもしれません。</p>
+
+<p>そんなことを夢見ながら今後は、別の公式サンプルを見つつ理解を深めていきたい思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[RxSwiftを勉強してみよう！(3)]]></title>
+    <link href="http://grandbig.github.io/blog/2016/08/30/rxswift-3/"/>
+    <updated>2016-08-30T16:42:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/08/30/rxswift-3</id>
+    <content type="html"><![CDATA[<h3>RxSwiftのメソッドを見てみよう</h3>
+
+<p>前回に引き続きRxSwiftを勉強したいと思います。<br/>
+今回は<a href="https://github.com/ReactiveX/RxSwift/blob/master/Documentation/API.md">GitHub: Reactive/RxSwift API一覧</a>からメインのメソッドを見ていきたいと思います。</p>
+
+<h4>asObservable</h4>
+
+<p>これは<code>ReactiveX</code>で定義されている<code>From</code>オペレータと同義です。<br/>
+様々なオブジェクトを<code>Observable</code>型のデータに変換するためのオペレータです。</p>
+
+<p>利用例は下記です。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let array: [Int] = [1, 2, 3, 4, 5]
+let variable = Variable(array)
+variable.asObservable.subscribe { (event) in</p>
+
+<pre><code>print("Event is \(event)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>variable.value = [6, 7, 8]</p>
+
+<p>// 結果は下記です。
+Event is Next([1, 2, 3, 4, 5])
+Event is Next([6, 7, 8])
+Event is Completed
+```</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>create</h4>
+
+<p>0から<code>Observable</code>型のデータを生成するためのオペレータです。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let source = Observable.create { (observer: AnyObserver<Int>) &ndash;> Disposable in</p>
+
+<pre><code>observer.onNext(1)
+observer.onCompleted()
+
+return AnonymousDisposable {
+    print("Disposed")
+}
+</code></pre>
+
+<p>}</p>
+
+<p>source.subscribeNext { (elem) in</p>
+
+<pre><code>print("Event is \(elem)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です
+Event is 1
+Disposed
+```</p>
+
+<h4>deferred</h4>
+
+<p>Subscribeされたタイミングで<code>Observable</code>型のデータを生成するオペレータです。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let source = Observable.deferred { () &ndash;> Observable<Int> in</p>
+
+<pre><code>return Observable.just(1)
+</code></pre>
+
+<p>}
+source.subscribeNext { (elem) in</p>
+
+<pre><code>print("Elem is \(elem)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です
+Event is 1
+```</p>
+
+<h4>empty</h4>
+
+<p>空の(何の値も持たない)<code>Observable</code>型のデータを生成するオペレータです。<br/>
+通常通り、終了処理は実行されます。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let source: Observable<Int> = Observable.empty()
+source.subscribeNext { (elem) in</p>
+
+<pre><code>print("Elem is \(elem)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です。
+// 空のため何も出力されません
+```</p>
+
+<h4>never</h4>
+
+<p>空の(何の値も持たない)<code>Observable</code>型のデータを生成するオペレータです。<br/>
+<code>empty</code>と異なるのは終了処理が実行されないことです。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let source: Observable<Int> = Observable.never()
+source.subscribeNext { (elem) in</p>
+
+<pre><code>print("Elem is \(elem)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です。
+// 空のため何も出力されません
+```</p>
+
+<h4>error</h4>
+
+<p>空の(何の値も持たない)<code>Observable</code>型のデータを生成するオペレータです。<br/>
+<code>empty</code>, <code>never</code>と異なり、エラーを持った終了処理を実行します。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let error = NSError(domain: &ldquo;test&rdquo;, code: -1, userInfo: nil)
+let source: Observable<Int> = Observable.error(error)
+source.subscribeError { (error) in</p>
+
+<pre><code>print("Error is \(error)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です。
+Error is Error Domain=test Code=-1 &ldquo;(null)&rdquo;
+```</p>
+
+<h4>toObservable</h4>
+
+<p>様々なオブジェクトを<code>Observable</code>型のデータに変換するためのオペレータです。<br/>
+<code>asObservable</code>とは利用方法が異なります。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let array: [Int] = [1, 2, 3]
+array.toObservable().subscribeNext { (elem) in</p>
+
+<pre><code>print("Number is \(elem)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です。
+Number is 1
+Number is 2
+Number is 3
+```</p>
+
+<h4>interval</h4>
+
+<p>一定期間あけて処理を実行するためのオペレータです。<br/>
+<code>JavaScript</code>で言うところの<code>setTimeInterval</code>です。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let timer: Observable<Int> = Observable.interval(5.0, scheduler: MainScheduler.instance)
+timer.subscribeNext { (count) in</p>
+
+<pre><code>print("log output")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です。
+// 5秒後に実行されます。
+log output
+```</p>
+
+<h4>just</h4>
+
+<p>引数に指定した特定の型を返却する<code>Observable</code>型のデータを生成するためのオペレータです。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let source = Observable.just(1)
+source.subscribeNext { (elem) in</p>
+
+<pre><code>print("Elem is \(elem)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です。
+Elem is 1
+```</p>
+
+<h4>of</h4>
+
+<p>様々なオブジェクトを<code>Observable</code>型のデータに変換するためのオペレータです。<br/>
+<code>asObservable</code>や<code>toObservable</code>とは利用方法が異なります。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let source = Observable.of(1)
+source.subscribeNext { (elem) in</p>
+
+<pre><code>print("Elem is \(elem)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です。
+Elem is 1
+```</p>
+
+<h4>range</h4>
+
+<p>特定の範囲の<code>Int</code>型を持つ<code>Observable</code>型データを生成するオペレータです。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let source: Observable<Int> = Observable.range(start: 1, count: 3)
+source.subscribeNext { (elem) in</p>
+
+<pre><code>print("Elem is \(elem)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です。
+Elem is 1
+Elem is 2
+Elem is 3
+```</p>
+
+<h4>repeatElement</h4>
+
+<p>指定した回数、処理を実行するときに利用する<code>Observable</code>型データを生成するオペレータです。<br/>
+<code>take</code>メソッドを利用して回数を指定します。</p>
+
+<p>```objective-c
+let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
+
+<p>let source = Observable.repeatElement(1).take(3)
+source.subscribeNext { (elem) in</p>
+
+<pre><code>print("Elem is \(elem)")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)</p>
+
+<p>// 結果は下記です。
+Elem is 1
+Elem is 1
+Elem is 1
+```</p>
+
+<h4>timer</h4>
+
+<p>一定時間経過後に処理を実行したい場合に利用するオペレータです。<br/>
+<code>JavaScript</code>で言うところの<code>setTimeout</code>です。</p>
+
+<p>```objective-c
+let timer: Observable<Int> = Observable.timer(5.0, scheduler: MainScheduler.instance)
+timer.subscribeNext { (count) in</p>
+
+<pre><code>print("log output")
+</code></pre>
+
+<p>}.addDisposableTo(disposeBag)
+```</p>
+
+<h3>まとめ</h3>
+
+<p>さて、今回は<code>Creating Observables</code>のみを取り上げさせて頂きましたが、いかがでしたでしょうか？<br/>
+筆者もイマイチ使い方がわからなかったオペレータがたくさんあったので、多少なりとも使えそうな気がしてきました。<br/>
+<code>Transforming Observables</code>, <code>Filtering Observables</code> &hellip;. と全て見ていけると良いのですが、結構数が多いですね。<br/>
+時間があるときに続きを書きたいと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[RxSwiftを勉強してみよう！(2)]]></title>
+    <link href="http://grandbig.github.io/blog/2016/08/29/rxswift-2/"/>
+    <updated>2016-08-29T22:40:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/08/29/rxswift-2</id>
+    <content type="html"><![CDATA[<h3>RxSwiftの公式Exampleを覗いてみる(2)</h3>
+
+<p>前回に引き続きRxSwiftの公式Exampleを見ていきたいと思います。<br/>
+公式ソースは<a href="https://github.com/ReactiveX/RxSwift">GitHub: ReactiveX/RxSwift</a>からダウンロードできます。</p>
+
+<h4>GeolocationExample</h4>
+
+<p>位置情報を用いたときのRxの有効性が表現されているのでしょうか？<br/>
+早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>まずは、<code>CoreLocation</code>のコア部分をラップしている<code>GeolocationService</code>です。</p>
+
+<p>```objective-c
+import Foundation
+import CoreLocation
+import RxSwift
+import RxCocoa</p>
+
+<p>class GeolocationService {</p>
+
+<pre><code>static let instance = GeolocationService()
+// (1)
+private (set) var authorized: Driver&lt;Bool&gt;
+private (set) var location: Driver&lt;CLLocationCoordinate2D&gt;
+
+private let locationManager = CLLocationManager()
+
+private init() {
+    locationManager.distanceFilter = kCLDistanceFilterNone
+    locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+
+    // (2)
+    authorized = Observable.deferred { [weak locationManager] in
+        let status = CLLocationManager.authorizationStatus()
+        guard let locationManager = locationManager else {
+            // (3)
+            return Observable.just(status)
+        }
+        return locationManager
+            .rx_didChangeAuthorizationStatus
+            .startWith(status) // (4)
+        }
+        .asDriver(onErrorJustReturn: CLAuthorizationStatus.NotDetermined) // (5)
+        .map {
+            switch $0 {
+                case .AuthorizedAlways:
+                    return true
+                default:
+                    return false
+            }
+        }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記ソースでポイントとなる部分を見ていきます。</p>
+
+<p>(1): <code>Driver</code><br/>
+末尾に参考URLとして上げさせて頂いた記事に書かれているのですが、<br/>
+<code>Driver</code>型で定義することで、エラー発生時の処理<code>asDriver</code>オペレータで続けて書くことができます。</p>
+
+<p>(2): <code>deferred</code><br/>
+ObserverがSubscribe(購読)されたタイミングで動的にObservableを生成します。<br/>
+※ 因みに新規ObservableをSubscribeタイミングで毎回生成します。</p>
+
+<p>(3): <code>just</code><br/>
+引数に取った特定の型を返却するObservableを生成します。<br/>
+この場合は<code>CLAuthorizationStatus</code>型のObservableです。</p>
+
+<p>(4): <code>startWith</code><br/>
+想定したemit対象値の前に何らかの値をemitしたい場合に利用します。<br/>
+この場合、<code>rx_didChangeAuthoricationStatus</code>をemitする前にということでしょうか。<br/>
+(これが恐らく、一番わかりやすい例です → <a href="http://www.introtorx.com/Content/v1.0.10621.0/12_CombiningSequences.html#StartWith">Introduction to Rx: startWith</a>)</p>
+
+<p>(5): <code>asDriver</code><br/>
+(1)で説明した<code>Driver</code>に関係するオペレータです。<br/>
+エラーが発生した場合に<code>onErrorJustReturn</code>で指定した値を返却して処理を続けます。</p>
+
+<p>続いて、<code>GeolocationService</code>を利用している<code>GeolocationViewController</code>です。</p>
+
+<p>```objective-c
+import Foundation
+import UIKit
+import RxSwift
+import RxCocoa</p>
+
+<p>// (6)
+private extension UILabel {</p>
+
+<pre><code>var rx_driveCoordinates: AnyObserver&lt;CLLocationCoordinate2D&gt; {
+    return UIBindingObserver(UIElement: self) { label, location in
+        label.text = "Lat: \(location.latitude)\nLon: \(location.longitude)"
+    }.asObserver()
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// (7)
+private extension UIView {</p>
+
+<pre><code>var rx_driveAuthorization: AnyObserver&lt;Bool&gt; {
+    return UIBindingObserver(UIElement: self) { view, authorized in
+        if authorized {
+            view.hidden = true
+            view.superview?.sendSubviewToBack(view)
+        }
+        else {
+            view.hidden = false
+            view.superview?.bringSubviewToFront(view)
+        }
+    }.asObserver()
+}
+</code></pre>
+
+<p>}</p>
+
+<p>class GeolocationViewController: ViewController {</p>
+
+<pre><code>@IBOutlet weak private var noGeolocationView: UIView!
+@IBOutlet weak private var button: UIButton!
+@IBOutlet weak private var button2: UIButton!
+@IBOutlet weak var label: UILabel!
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    let geolocationService = GeolocationService.instance
+
+    geolocationService.authorized
+        .drive(noGeolocationView.rx_driveAuthorization) // (8)
+        .addDisposableTo(disposeBag)
+
+    geolocationService.location
+        .drive(label.rx_driveCoordinates) // (8)
+        .addDisposableTo(disposeBag)
+
+    button.rx_tap
+        .bindNext { [weak self] in
+            self?.openAppPreferences()
+        }
+        .addDisposableTo(disposeBag)
+
+    button2.rx_tap
+        .bindNext { [weak self] in
+            self?.openAppPreferences()
+        }
+        .addDisposableTo(disposeBag)
+}
+
+private func openAppPreferences() {
+    UIApplication.sharedApplication().openURL(NSURL(string: UIApplicationOpenSettingsURLString)!)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>(6): <code>rx_driveCoordinates</code><br/>
+見ての通りここで<code>UILabel</code>の<code>extension</code>をしています。<br/>
+<code>UILabel</code>の<code>text</code>内容を任意の値で返却するために作成しています。<br/>
+(<code>asObserver</code>をつけることで<code>rx_driveCoordinates</code>という<code>AnyObserver</code>型の変数定義を実現しています。)</p>
+
+<p>(7): <code>rx_driveAuthorization</code><br/>
+同じく<code>UIView</code>の<code>extension</code>をしています。<br/>
+<code>authorized</code>の値でViewの表示/非表示を切り替えています。</p>
+
+<p>(8): <code>drive</code><br/>
+ここで新たにSubscriptionを生成して、引数に取ったObserverに処理の実行を要請しています。</p>
+
+<p>今回のExampleを見てみると下記のようなメリットが感じられます。</p>
+
+<ul>
+<li>Rxを利用することで非同期処理を直列的に書ける</li>
+<li>エラーハンドリングを直列的に書けることで後処理も直列的に統一して見れる(<code>jQuery</code>の<code>ajax</code>メソッドの<code>always</code>的なイメージ)</li>
+<li>処理の拡張がRxで用意されたメソッドで比較的に容易に書ける</li>
+</ul>
+
+
+<h3>Rxで把握しておきたいAPI一覧</h3>
+
+<p>RxSwiftをインストールすると中にドキュメントが含まれています。<br/>
+<a href="https://github.com/ReactiveX/RxSwift/blob/master/Documentation/API.md">API.md</a>を読むだけでもかなり理解が進むと思われます。</p>
+
+<p>特に言語がSwiftであるが故に他のRxフレームワークとはメソッド名が異なる場合があります。<br/>
+(<code>defer</code>でなく<code>deferred</code>、<code>repeat</code>でなく<code>repeatElement</code>など)</p>
+
+<p>一度は目を通しておくと良いかもしれません。<br/>
+と言いつつ、筆者も全然見れていませんが&hellip;</p>
+
+<h3>まとめ</h3>
+
+<p>さて、今回は公式Exampleの1つを見るだけに留まりましたが如何でしたでしょうか？<br/>
+筆者としてはRxの使い方の理解がだいぶ進んだ気がしております。<br/>
+引き続きRxに関する勉強は続けていきたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://qiita.com/yuzushioh/items/0a4483502c5c8569790a">RxSwift/RxCocoa Driver Unitについてまとめてみた。</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

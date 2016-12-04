@@ -1,0 +1,895 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: iBeacon | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/ibeacon/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2016-12-04T22:19:41+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iOSで検知可能なiBeaconの数について(別UUIDの場合)]]></title>
+    <link href="http://grandbig.github.io/blog/2015/11/16/multi-ibeacon-region-2/"/>
+    <updated>2015-11-16T00:15:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/11/16/multi-ibeacon-region-2</id>
+    <content type="html"><![CDATA[<h4>iOSで検知可能なCLBeaconRegionの数について</h4>
+
+<p>さて、今日は久しぶりにiBeaconについて書きます。<br/>
+以前、<a href="http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region/">複数のiBeaconを検知しよう！(別UUIDの場合)</a>で別UUIDの複数のiBeaconを検知する方法について書きました。<br/>
+今回は、その限界数について見ていきたいと思います。</p>
+
+<p><a href="https://developer.apple.com/jp/documentation/LocationAwarenessPG.pdf">位置情報とマッププログラミングガイド</a>を読むと、地理的領域の観測は最大20個まで可能とされています。<br/>
+しかし、iBeacon領域の観測について最大数が書かれていませんでした。<br/>
+Googleで調べてもなかなか出てこなかったので、自分で調べることにしました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>結果から言うと、iBeacon領域の観測は <strong>最大20個</strong> まで可能でした。<br/>
+(地理的領域の観測と同じでした。)</p>
+
+<p>因みに、下記ソースで確認しています。</p>
+
+<p>```objective-c
+import UIKit
+import CoreLocation</p>
+
+<p>class ViewController: UIViewController, CLLocationManagerDelegate {</p>
+
+<pre><code>var lm:CLLocationManager?
+var uuids:[String]?
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    self.lm = CLLocationManager()
+    self.lm?.delegate = self
+
+    self.uuids = [ ここにUUIDの文字列を20個以上用意 ]
+
+    self.lm?.requestAlwaysAuthorization()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func locationManager(manager: CLLocationManager, didChangeAuthorizationStatus status: CLAuthorizationStatus) {
+    // 位置情報サービスの許可状態が変更した場合に呼び出される処理
+    if(status == .AuthorizedAlways) {
+        for(var i=0; i &lt; self.uuids.count; i++) {
+            let uuidString = self.uuids[i]
+            let uuid = NSUUID.init(UUIDString: uuidString)
+            let beaconRegion = CLBeaconRegion.init(proximityUUID: uuid!, identifier: ("beaconRegion"+String(i)))
+            self.lm?.startMonitoringForRegion(beaconRegion)
+        }
+    }
+}
+
+func locationManager(manager: CLLocationManager, didStartMonitoringForRegion region: CLRegion) {
+    // Regionのモニタリングが開始したときに呼び出される処理
+    print("\(region)")
+}
+
+func locationManager(manager: CLLocationManager, didDetermineState state: CLRegionState, forRegion region: CLRegion) {
+    // Regionに対する状態が変化したときに呼び出される処理
+    switch(state) {
+    case .Inside:
+        print("Inside: \(region)")
+        break
+    case .Outside:
+        print("Outside: \(region)")
+        break
+    case .Unknown:
+        print("Unknown: \(region)")
+        break
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p><code>viewDidLoad</code>内でuuidsの初期化を行っていますが、ここで20個UUIDを設定すると、<code>didDetermineState</code>内でログが20回出力されました。<br/>
+しかし、21個以上UUIDを設定した場合は、先ほどと同じく20回のログ出力となり、21個目以降に設定したUUIDに関してはログ出力されませんでした。<br/>
+つまり、先に設定したUUIDが有効で、21個目以降のUUIDは無効ということになります。</p>
+
+<p>複数のUUIDを大量に使う際には気をつけましょう。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iBeaconはバッテリを使う？使わない？]]></title>
+    <link href="http://grandbig.github.io/blog/2015/10/10/ibeacon-battery/"/>
+    <updated>2015-10-10T22:26:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/10/10/ibeacon-battery</id>
+    <content type="html"><![CDATA[<h4>iBeaconのバッテリ消費量を調査しよう</h4>
+
+<p>さて、今回はiBeaconを利用したサービスを始める上でネックとなる(正確にはネックと思われがちな)バッテリの消費量について書きたいと思います。<br/>
+iPhoneでiBeaconを利用する場合、 <strong>Bluetooth</strong> だけでなく、 <strong>位置情報サービス</strong> をONにする必要があります。</p>
+
+<p><img src="/images/ibeacon-setting1.png" alt="iBeaconを使うための設定" /></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>一般的なユーザのイメージだと、スマートフォンでなるべくバッテリ消費量を抑えたいのであれば、『 <strong>Bluetooth</strong> や <strong>位置情報サービス</strong> をOFFにすべし！！』というのが定説になっていることかと思います。<br/>
+しかし、開発者からしてみれば、 <strong>Bluetooth</strong> によるバッテリ消費には疑問があります。というのも現在多くのユーザが持っているスマートフォンでは、搭載されているBluetoothが4.0以上になっていることも珍しくありません。<br/>
+であるならば、ほとんどのユーザは超低消費電力の <strong>BLE</strong> の恩恵を受けており、Bluetoothによる電池の消費は誤差の範囲と言えます。</p>
+
+<p>だがしかし、幾ら開発者が『 <strong>Bluetooth</strong> はバッテリを消費しません！』と声高らかに訴えたとしても、ユーザからは『自らのサービスを利用してもらうための体の良い発言』と捉えられてしまうかもしれません。<br/>
+であるならが、開発者にできることはただ一つ、データで数値で示すということではないでしょうか？<br/>
+ということで今回はXcodeによるバッテリ消費量の計測を交えながらiBeaconのバッテリ消費量に迫っていきたいと思います。</p>
+
+<h4>Xcodeでアプリのバッテリ消費量を計測しよう</h4>
+
+<p>ではXcodeを使ったアプリのバッテリ消費量の計測方法を紹介したいと思います。<br/>
+まずは、計測したいiPhone側で設定項目を確認しましょう。</p>
+
+<ol>
+<li>設定アプリを起動</li>
+<li>デベロッパを選択</li>
+<li>Loggingを選択</li>
+<li>Start Recordingを選択</li>
+</ol>
+
+
+<p>※ 1度でも開発用のアプリをビルドしてインストールしていれば『デベロッパ』の項目が出るはずです。</p>
+
+<p><img src="/images/ibeacon-setting2.png" alt="iPhoneの設定" /></p>
+
+<p>でなければ、<br/>
+Xcode > Product > ProfileからiPhoneにアプリをインストールしましょう。</p>
+
+<p><img src="/images/ibeacon-setting3.png" alt="Xcode &gt; Product &gt; Profile" /></p>
+
+<p>これで計測が開始されるので、計測終了時に同じ手順で <strong>Stop Recording</strong> を選択しましょう。<br/>
+計測が完了したら、Xcodeで取込みを開始します。</p>
+
+<p>Xcode > Product > ProfileでInstrumentsを起動します。<br/>
+その中の <strong>Energy Diagnostics</strong> を選択します。</p>
+
+<p><img src="/images/ibeacon-setting4.png" alt="バッテリ計測にはこれ！" /></p>
+
+<p>すると、下図のようなウィンドウが表示されます。</p>
+
+<p><img src="/images/ibeacon-setting5.png" alt="Energy Diagnosticsウィンドウ" /></p>
+
+<h4>iBeaconの結果について</h4>
+
+<p>ここまでは計測方法について説明しました。<br/>
+では、iBeaconを使った場合の結果は結局どうなうのでしょうか？</p>
+
+<p>もちろん調べましたので、さくっとご紹介します。</p>
+
+<p><img src="/images/ibeacon-setting6.png" alt="iBeaconを使った時のバッテリ消費について" /></p>
+
+<p>【結果】</p>
+
+<ul>
+<li>iBeaconはGPSを利用しない
+上記グラフを見ると、Bluetoothはオレンジ色になっていますが、GPSは緑色のままだと思います。オレンジはONを表し、緑はOFFを表します。</li>
+<li>バッテリ消費率は ディスプレイ > 通信 > Bluetoothの順に消費率が高い
+Energy Usage Levelを見ると、Display Brightness Levelが反応しているときが最も高く、その次にNetworkが反応しているときというのがわかります。</li>
+</ul>
+
+
+<p>この結果からもわかるように、iBeaconはGPSを利用していないんです！<br/>
+因みに、Bluetoothだけで言えば、1時間あたり1%も利用しません。Bluetoothを介して音楽を聞いたり、3G/4G/Wi-Fiなどで秒間何らかの通信をしたりすれば、バッテリは消費しますが、Bluetoothが原因というよりも、Bluetoothをトリガーとしたやり取りが原因ということなんですね。</p>
+
+<p>このことがユーザにもっと浸透する＆開発者がBluetoothの誤解を広めないようにすることができれば、世の中でiBeaconを利用したサービスがユーザに様々なメリットを提供してくれるのだと期待しています。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Kontakt.ioのSmart Beaconのパラメータを書き換えてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/07/20/write-kontakt-beacon/"/>
+    <updated>2015-07-20T00:01:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/07/20/write-kontakt-beacon</id>
+    <content type="html"><![CDATA[<h4>Kontakt.ioのSmart Beaconのパラメータの書き換え方法</h4>
+
+<p>さて、続きを書いていきます。<br/>
+前回、Kontakt.ioのSmart Beaconを検知するところまで書きました。<br/>
+本記事では、必要に応じて、パラメータを変更する方法について書きたいと思います。</p>
+
+<p>手順は<a href="http://docs.kontakt.io/ios-sdk/quickstart/#beacon-configuration">Kontakt.ioの公式ページのBeacon Configuration</a>に書かれていますが、<code>/device/update</code>に引っかかったり、REST APIを叩こうとしたりすることもあるかもしれないので、紹介します。(筆者は初めきちんと読まずにいろいろと実行してしまいました&hellip;)</p>
+
+<p>では、早速書いていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>Objective-C編</h5>
+
+<p>さて、まずはObjective-Cです。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<p>@interface ViewController ()<KTKBluetoothManagerDelegate></p>
+
+<p>@property(strong, nonatomic) KTKBeaconManager <em>bm;
+@property(strong, nonatomic) KTKBeaconDevice </em>bd;
+@property(assign, nonatomic) BOOL flag;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];</p>
+
+<p>  <em>bm = [KTKBeaconManager new];
+  </em>bm.delegate = self;
+  _flag = NO;
+}</p></li>
+<li><p>(void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];</p>
+
+<p>  // iBeaconデバイスの検索開始
+  [_bm startFindingDevices];
+}</p></li>
+<li><p>(void)viewDidDisappear:(BOOL)animated {
+  [super viewDidDisappear:animated];</p>
+
+<p>  // iBeaconデバイスの検索停止
+  [_bm stopFindingDevices];
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning {
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<h1>pragma mark &ndash; KTKBluetoothManagerDelegate</h1>
+
+<ul>
+<li><p>(void)bluetoothManager:(KTKBluetoothManager <em>)bluetoothManager didChangeDevices:(NSSet </em>)devices {</p>
+
+<p>  if(!<em>bd) {
+      // 利用したいKTKBeaconDeviceが見つかっていない場合
+       NSArray <em>deviceArray = [devices allObjects];
+       for(id device in deviceArray) {
+          KTKBeaconDevice </em>beacon = device;
+          if([beacon.uniqueID isEqualToString:@&ldquo;****&rdquo;]) {
+              // 利用したいiBeaconを格納
+              </em>bd = beacon;
+          }
+       }
+  } else {
+      // 利用したいKTKBeaconDeviceが見つかった場合
+      KTKCharacteristicDescriptor <em>descriptor;
+      descriptor = [_bd characteristicDescriptorWithType:kKTKCharacteristicDescriptorTypeMajor];
+      NSError </em>err;
+      // iBeaconデバイスに接続
+      BOOL connected = [<em>bd connectWithPassword:@&ldquo;****&rdquo; andError:&amp;err];
+      if(connected &amp;&amp; !err) {
+          // 接続できた場合
+          // パラメータ値の取得
+          err = [</em>bd readValueForCharacteristicWithDescriptor:descriptor];
+          if(!err) {
+              NSString *valueString = [_bd stringForCharacteristicWithDescriptor:descriptor];
+              NSLog(@&ldquo;value: %@&rdquo;, valueString);</p>
+
+<pre><code>          if(!_flag) {
+              // パラメータの書き換え処理
+              err = [_bd writeString:@"20053" forCharacteristicWithDescriptor:descriptor];
+          }
+          // iBeaconデバイスから切断
+          [_bd disconnect];
+      }
+  }
+</code></pre>
+
+<p>  }
+}</p></li>
+</ul>
+
+
+<p>@end
+```</p>
+
+<p>上記処理を実行後、Kontakt.ioの専用アプリで確認すれば、パラメータの値が変更されていることを確認できます。</p>
+
+<h5>Swift編</h5>
+
+<p>続いて、Swiftのコードも書いてみます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController, KTKBluetoothManagerDelegate {</p>
+
+<pre><code>let bm:KTKBeaconManager = KTKBeaconManager()
+var bd:KTKBeaconDevice? = KTKBeaconDevice()
+var flag:Bool = false
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    self.bm.delegate = self;
+}
+
+override func viewDidAppear(animated: Bool) {
+    super.viewDidAppear(animated)
+
+    // iBeaconデバイスの検索開始
+    bm.startFindingDevices()
+}
+
+override func viewDidDisappear(animated: Bool) {
+    super.viewDidDisappear(animated)
+
+    // iBeaconデバイスの検索停止
+    bm.stopFindingDevices()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func bluetoothManager(bluetoothManager: KTKBluetoothManager!, didChangeDevices devices: Set&lt;NSObject&gt;!) {
+    if self.bd?.uniqueID == "****" {
+        // 利用したいKTKBeaconDeviceが見つかった場合
+        let descriptor:KTKCharacteristicDescriptor = self.bd!.characteristicDescriptorWithType(kKTKCharacteristicDescriptorTypeMajor)
+        var err:NSError?
+        // iBeaconデバイスに接続
+        let connected:Bool = self.bd!.connectWithPassword("****", andError: &amp;err)
+        if connected {
+            // 接続できた場合
+            // パラメータ値の取得
+            err = self.bd!.readValueForCharacteristicWithDescriptor(descriptor)
+            if err == nil {
+                let valueString = self.bd!.stringForCharacteristicWithDescriptor(descriptor)
+                println("\(valueString)")
+                if self.flag == false {
+                    // パラメータの書き換え処理
+                    err = self.bd!.writeString("20053", forCharacteristicWithDescriptor: descriptor)
+                    self.flag = true;
+                }
+                // iBeaconデバイスから切断
+                self.bd?.disconnect()
+            }
+        }
+    } else {
+        // 利用したいKTKBeaconDeviceが見つかっていない場合
+        let deviceArray:[AnyObject] = Array(devices)
+        for device in deviceArray  {
+            let beacon:KTKBeaconDevice = device as! KTKBeaconDevice
+            if beacon.uniqueID == "****" {
+                // 利用したいiBeaconを格納
+                self.bd = beacon
+            }
+        }
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>こちらも専用アプリでパラメータ値が書き換わっていることを確認できました。<br/>
+Kontakt.ioの制御特性を活かしたサービスを企画できる可能性を感じました。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Kontakt.ioのSmart Beaconを使ってみた]]></title>
+    <link href="http://grandbig.github.io/blog/2015/07/18/start-kontakt-beacon/"/>
+    <updated>2015-07-18T22:40:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/07/18/start-kontakt-beacon</id>
+    <content type="html"><![CDATA[<h4>Kontakt.ioのSmart Beaconを使ってみよう</h4>
+
+<p>さて、久しぶりの更新です。<br/>
+実は先日、以前から気になっていた<a href="https://store.kontakt.io/our-products/1-bluetooth-beacon.html">Kontakt.io Smart Beacon</a>を購入してみました。<br/>
+あまり海外の製品を購入することがないので、届くか心配でしたが、ばっちり自宅に届きました笑</p>
+
+<p>なぜ、Kontakt.ioのSmart Beaconに着目していたかというと、筆者が知る限り、最も発信出力(TxPower)を弱くすることが可能なBeaconだからです。<br/>
+<a href="https://support.kontakt.io/hc/en-gb/articles/201621521-Transmission-power-Range-and-RSSI">仕様書</a>を見てみると、出力を-30[dBm]にまで下げることができ、その電波距離は実に2[m]程度らしいです。</p>
+
+<p>また、SDKが充実しており、発信出力を自由に変更できるところもポイント高いですね。<br/>
+さて、今回は基本的な実装から見て行きましょう！(何回かに分けて記事にしようと思います。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>SDKをプロジェクトに追加</h4>
+
+<p>まずは、SDKを使える状態に持っていきます。</p>
+
+<h5>Objective-C編</h5>
+
+<p>CocoaPodsで提供されていますので、簡単です。</p>
+
+<ol>
+<li>Projectファイルと同じ階層に<code>Podfile</code>を作成します</li>
+<li><code>pod 'KontaktSDK'</code>と記載します</li>
+<li><code>pod install</code>を実行します</li>
+</ol>
+
+
+<p>以上でプロジェクトへの追加完了です。</p>
+
+<h5>Swift編</h5>
+
+<p>CocoaPods使いましょう！</p>
+
+<ol>
+<li>Projectファイルと同じ階層に<code>Podfile</code>を作成します</li>
+<li><code>pod 'KontaktSDK'</code>と記載します</li>
+<li><code>pod install</code>を実行します</li>
+<li>Bridging-Headerファイルを作成します
+<code>ProjectName-Bridging-Header.h</code>ファイルを作成し、Build Settings > Swift Compiler > Objective-C Bridging Headerにパスを設定</li>
+<li>Bridging-Headerファイルに必要なライブラリを<code>import</code>します</li>
+</ol>
+
+
+<p>下記は、Buid Settingsの設定です。<br/>
+<img src="/images/kontakt1.png" alt="Bridging-Headerファイルの設定" /></p>
+
+<p>下記はBridging-Headerファイルの中身です。</p>
+
+<p>```objective-c</p>
+
+<h1>ifndef KontaktSwiftTest_KontaktSwiftTest_Bridging_Header_h</h1>
+
+<h1>define KontaktSwiftTest_KontaktSwiftTest_Bridging_Header_h</h1>
+
+<h1>import &lt;Foundation/Foundation.h></h1>
+
+<h1>import &lt;CoreLocation/CoreLocation.h></h1>
+
+<h1>import &lt;CoreBluetooth/CoreBluetooth.h></h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<h1>endif</h1>
+
+<p>```</p>
+
+<h4>Kontakt.ioのBeaconを検知してみよう</h4>
+
+<p>これで準備が整ったので、実際にソースを書いて、Beaconを検知してみましょう！</p>
+
+<h5>Objective-C編</h5>
+
+<p>ViewController.mにどんどん書いていきます。</p>
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<h1>import &ldquo;KontaktSDK.h&rdquo;</h1>
+
+<p>@interface ViewController ()<KTKLocationManagerDelegate></p>
+
+<p>@property(strong, nonatomic) KTKLocationManager *lm;</p>
+
+<p>@end</p>
+
+<p>@implementation ViewController</p>
+
+<ul>
+<li><p>(void)viewDidLoad {
+  [super viewDidLoad];</p>
+
+<p>  <em>lm = [KTKLocationManager new];
+  </em>lm.delegate = self;</p>
+
+<p>  if ([KTKLocationManager canMonitorBeacons]) {
+      KTKRegion *region = [KTKRegion alloc] init];
+      region.uuid = @&ldquo;AF41A130-E105-4F13-9483-316B7101B0A9&rdquo;;
+      [_lm setRegions:@[region]];]
+  }
+}</p></li>
+<li><p>(void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];</p>
+
+<p>  [_lm startMonitoringBeacons];
+}</p></li>
+<li><p>(void)viewDidDisappear:(BOOL)animated {
+  [super viewDidDisappear:animated];</p>
+
+<p>  [_lm stopMonitoringBeacons];
+}</p></li>
+<li><p>(void)didReceiveMemoryWarning {
+  [super didReceiveMemoryWarning];
+}</p></li>
+</ul>
+
+
+<h1>pragma mark &ndash; KTKLocationManagerDelegate</h1>
+
+<ul>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didChangeState:(KTKLocationManagerState)state withError:(NSError </em>)error {
+  if(state == KTKLocationManagerStateFailed) {
+      NSLog(@&ldquo;Something went wrong with your Location Services settings. Check OS settings.&rdquo;);
+  }
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didEnterRegion:(KTKRegion </em>)region {
+  NSLog(@&ldquo;Enter region %@&rdquo;, region.uuid);
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didExitRegion:(KTKRegion </em>)region {
+  NSLog(@&ldquo;Exit region %@&rdquo;, region.uuid);
+}</p></li>
+<li><p>(void)locationManager:(KTKLocationManager <em>)locationManager didRangeBeacons:(NSArray </em>)beacons {
+  NSLog(@&ldquo;Ranged beacons count: %lu&rdquo;, [beacons count]);
+}</p></li>
+</ul>
+
+
+<p>@end</p>
+
+<p>```</p>
+
+<h5>Swift編</h5>
+
+<p><code>ViwController.swift</code>にどんどん書いていきます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController, KTKLocationManagerDelegate {</p>
+
+<pre><code>let lm:KTKLocationManager = KTKLocationManager()
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    if(KTKLocationManager.canMonitorBeacons()) {
+        let region:KTKRegion = KTKRegion()
+        region.uuid = "AF41A130-E105-4F13-9483-316B7101B0A9"
+        lm.setRegions([region])
+        self.lm.delegate = self
+    }
+}
+
+override func viewDidAppear(animated: Bool) {
+    super.viewDidAppear(animated)
+
+    lm.startMonitoringBeacons()
+}
+
+override func viewDidDisappear(animated: Bool) {
+    super.viewDidDisappear(animated)
+
+    lm.stopMonitoringBeacons()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func locationManager(locationManager: KTKLocationManager!, didChangeState state: KTKLocationManagerState, withError error: NSError!) {
+    if(state == .Failed) {
+        println("Something went wrong with your Location Services settings. Check OS settings.")
+    }
+}
+
+func locationManager(locationManager: KTKLocationManager!, didEnterRegion region: KTKRegion!) {
+    println("Enter region \(region.uuid)")
+}
+
+func locationManager(locationManager: KTKLocationManager!, didExitRegion region: KTKRegion!) {
+    println("Exit region \(region.uuid)")
+}
+
+func locationManager(locationManager: KTKLocationManager!, didRangeBeacons beacons: [AnyObject]!) {
+    println("Ranged beacons count: \(beacons.count)")
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これでKontakt.ioのSmart Beaconを検知することができるようになりました。<br/>
+次回はAPI連携して、Beaconのパラメータを変えてみたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[複数のiBeaconを検知しよう！(別UUIDの場合)]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region/"/>
+    <updated>2015-06-14T23:43:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/14/multi-ibeacon-region</id>
+    <content type="html"><![CDATA[<h4>複数のiBeacon(別UUIDのiBeacon)を検知する方法</h4>
+
+<p>さて、本日は別々のUUIDを持ったiBeacon信号を補足したいと思います。<br/>
+iBeaconは案外、電波が遠くまで飛ぶため、幾つかのUUIDを補足できるようにしておくことで、うまく<code>didEnterRegion</code>, <code>didExitRegion</code>を使い、レンジングでのみ取得可能な値を効果的に使うことができるかもしれません。<br/>
+今回はiOS8以上を対象に下記サンプルソースを書きました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>```objective-c
+// ViewController.m</p>
+
+<h1>import &ldquo;ViewController.h&rdquo;</h1>
+
+<p>@interface ViewController ()</p>
+
+<p>@property (strong, nonatomic) CLLocationManager <em>locationManager;
+@property (strong, nonatomic) NSUUID </em>proximityUUID1, <em>proximityUUID2;
+@property (strong, nonatomic) CLBeaconRegion </em>beaconRegion1, <em>beaconRegion2;
+@property (strong, nonatomic) CLBeacon </em>nearestBeacon;
+@property (strong, nonatomic) NSString *str;</p>
+
+<p>@end</p>
+
+<ul>
+<li><p>(void)viewDidLoad
+{
+  [super viewDidLoad];</p>
+
+<p>  self.locationManager = [[CLLocationManager alloc] init];
+  self.locationManager.delegate = self;</p>
+
+<p>  self.proximityUUID1 = [[NSUUID alloc] initWithUUIDString:@&ldquo;8D4DB809-032F-4771-96F3-99BD5C25F924&rdquo;];
+  self.beaconRegion1 = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID1 identifier:@&ldquo;com.takahiro.ibeaconSample&rdquo;];
+  self.proximityUUID2 = [[NSUUID alloc] initWithUUIDString:@&ldquo;1AE93327-B172-4C5D-BBF7-F52B959FD4EB&rdquo;];
+  self.beaconRegion2 = [[CLBeaconRegion alloc] initWithProximityUUID: self.proximityUUID1 identifier:@&ldquo;com.takahiro.ibeaconSample2&rdquo;];</p>
+
+<p>  [self.locationManager requestAlwaysAuthorization];
+}</p></li>
+</ul>
+
+
+<p>// ユーザの位置情報の許可状態を確認するメソッド
+&ndash; (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{</p>
+
+<pre><code>if (status == kCLAuthorizationStatusAuthorizedAlways) {
+    // Beaconのモニタリングを開始
+    [self.locationManager startMonitoringForRegion:self.beaconRegion1];
+    [self.locationManager startMonitoringForRegion:self.beaconRegion2];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// 指定した領域に入った場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didEnterRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>[self sendLocalNotificationForMessage:@"Enter Region"];
+</code></pre>
+
+<p>}</p>
+
+<p>// 指定した領域から出た場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didExitRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>[self sendLocalNotificationForMessage:@"Exit Region"];
+</code></pre>
+
+<p>}</p>
+
+<p>// iBeacon領域内に既にいるか/いないかの判定
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion </em>)region
+{</p>
+
+<pre><code>switch (state) {
+    case CLRegionStateInside:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+            [self.locationManager startRangingBeaconsInRegion:self.beaconRegion1];
+            [self.locationManager startRangingBeaconsInRegion:self.beaconRegion2];
+        }
+        break;
+    case CLRegionStateOutside:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+        }
+        break;
+    case CLRegionStateUnknown:
+        if([region isMemberOfClass:[CLBeaconRegion class]] &amp;&amp; [CLLocationManager isRangingAvailable]){
+        }
+        break;
+    default:
+        break;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// Beacon信号を検出した場合
+&ndash; (void)locationManager:(CLLocationManager <em>)manager didRangeBeacons:(NSArray </em>)beacons inRegion:(CLBeaconRegion *)region
+{</p>
+
+<pre><code>if (beacons.count &gt; 0) {
+    self.nearestBeacon = beacons.firstObject;
+    NSString *rangeMessage;
+
+    switch(self.nearestBeacon.proximity) {
+        case CLProximityImmediate:
+            rangeMessage = @"Range Immediate";
+            break;
+        case CLProximityNear:
+            rangeMessage = @"Range Near";
+            break;
+        case CLProximityFar:
+            rangeMessage = @"Range Far";
+            break;
+        default:
+            rangeMessage = @"Range Unknown";
+            break;
+    }
+
+    self.str = [[NSString alloc] initWithFormat:@"%f [m]", self.nearestBeacon.accuracy];
+    [self sendLocalNotificationForMessage:self.str];
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// ローカルプッシュ
+&ndash; (void)sendLocalNotificationForMessage:(NSString *)message
+{</p>
+
+<pre><code>UILocalNotification *localNotification = [UILocalNotification new];
+localNotification.alertBody = message;
+localNotification.fireDate = [NSDate date];
+localNotification.soundName = nil;
+[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ローカルプッシュを可能にするために<code>AppDelegate.m</code>に下記書式を追加しましょう。</p>
+
+<p>```objective-c
+// AppDelegate.m
+&ndash; (BOOL)application:(UIApplication <em>)application didFinishLaunchingWithOptions:(NSDictionary </em>)launchOptions
+{</p>
+
+<pre><code>...
+
+if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)]) {
+    [[UIApplication sharedApplication] registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|UIUserNotificationTypeSound categories:nil]];
+}
+
+return YES;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントは<code>CLBeaconRegion</code>を作成するときに指定する<code>UUID</code>と<code>identifier</code>が共にユニークであることです。<br/>
+<code>UUID</code>のみを別々にしても<code>identifier</code>が同じだと別のiBeacon領域と見なされないので注意が必要です。</p>
+
+<p>別々のiBeacon領域が作成できれば、<code>didEnterRegion</code>, <code>didExitRegion</code>などのデリゲートメソッドはそれぞれのiBeacon領域に対して発生します。<br/>
+もし、比較的狭い空間で複数のiBeaconを設置して、アプリをFG起動しない前提で人流解析をしたい場合は複数のiBeacon領域(別々のUUIDを持ったiBeacon領域)を用意することも１つの手だと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

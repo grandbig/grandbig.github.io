@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Redux | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/redux/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2016-12-04T22:19:41+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[ReSwiftを勉強してみよう！(1)]]></title>
+    <link href="http://grandbig.github.io/blog/2016/09/03/reswift-1/"/>
+    <updated>2016-09-03T19:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/09/03/reswift-1</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日は最近JavaScript界では浸透してきている<code>Redux</code>についてSwiftを通して勉強していきたいと思います。<br/>
+<code>Redux</code>に関する日本語の記事はそれなりにあるもののSwift版ライブラリである<code>ReSwift</code>に関する日本語の記事は少ないため、筆者が少しでも記事を増やせたら良いなという思いがあります。<br/>
+と言いつつも、いきなり有効性の高い有良記事を書くことはハードルが高いため、簡単な勉強から始めて行く次第です。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>ReSwiftとは</h3>
+
+<p><code>ReSwift</code>とは<code>Redux</code>のSwift版ライブラリです。<br/>
+<a href="https://github.com/ReSwift/ReSwift">GitHub: ReSwift/ReSwift</a>が公式ページとなります。</p>
+
+<p>上記公式ページのイントロをざっくり訳すと&hellip;<br/>
+(意味が間違っていたらごめんなさい&hellip;)</p>
+
+<p>ReSwiftはSwiftで<a href="https://github.com/reactjs/redux">Redux</a>ライクな一方向のデータフローアーキテクチャを実装したものです。ReSwiftを使うことで、次の3つの関係性でアプリを構成することを手助けします。</p>
+
+<ul>
+<li><strong>State</strong> : 全てのアプリの状態を管理します。複雑な状態の管理やデバッグのし易さを手助けするなど、メリットは数多くあります。</li>
+<li><strong>Views</strong> : 状態変化したときにViewを更新します。状態に対してシンプルなビジュアルを実現します。</li>
+<li><strong>State Changes</strong> : <code>actions</code>を通した状態変化の実行のみを担当します。<code>actions</code>は状態変化を表現する小さなモジュールを指します。限られた状態変化を担うため、大人数で開発する際にアプリを簡単に理解することができるメリットがあります。</li>
+</ul>
+
+
+<p>また、ReSwiftは下記の3つの原則に従って構成されます。</p>
+
+<ul>
+<li><strong>The Store</strong> : アプリの状態(State)を保持するアプリ内で唯一の存在です。StoreにActionsが発送されることによってのみ状態(State)は変化します。状態(State)が変化したら必ず、Storeが全てのオブザーバに通知します。</li>
+<li><strong>Actions</strong> : アプリの状態(State)がどんな変化なのかを宣言します。Storeによって消費され、Reducerに渡されます。Reducerは各Actionで引き起こされる異なる状態変化を実装することによってActionを扱います。</li>
+<li><strong>Reducers</strong> : 現在のActionとStateに基いて、新しいStateを生成する純粋な関数を提供します。</li>
+</ul>
+
+
+<p>というように、何となく、この辺りを理解すれば良さそうですね。<br/>
+まずは、公式ページに載っている最も簡単な『Counterサンプルアプリ』から上記の内容を直にコードで理解していきたいと思います。</p>
+
+<h3>CounterサンプルアプリからReSwiftを理解しよう</h3>
+
+<p>公式ページのREADMEには<a href="https://github.com/ReSwift/CounterExample">CounterExample</a>が紹介されています。<br/>
+公開されているサンプルアプリの中で最も簡単なサンプルなはずなので、これを見ていきたいと思います。</p>
+
+<p>最終的なフォルダ構成は下記になります。<br/>
+(関係のないファイルは除いています。)</p>
+
+<p><code>objective-c
+ReSwiftSample
+┣━━ State
+┃   ┗━━ AppState.swift
+┣━━ Actions
+┃   ┗━━ CounterActions.swift
+┣━━ Reducers
+┃   ┗━━ CounterReducers.swift
+┣━━ ViewController.swift
+┣━━ AppDelegate.swift
+┗━━ Main.storyboard
+</code></p>
+
+<p>では早速、1つずつ見ていきましょう。</p>
+
+<h4>ReSwiftをCocoaPodsでインストール</h4>
+
+<p>例によってCocoaPodsでインストールします。</p>
+
+<p>```objective-c
+use_frameworks!</p>
+
+<p>target &lsquo;ReSwiftSample&rsquo; do</p>
+
+<pre><code>pod 'ReSwift'
+</code></pre>
+
+<p>end</p>
+
+<p>target &lsquo;ReSwiftSampleTests&rsquo; do</p>
+
+<pre><code>pod 'ReSwift'
+</code></pre>
+
+<p>end</p>
+
+<p>target &lsquo;ReSwiftSampleUITests&rsquo; do</p>
+
+<pre><code>pod 'ReSwift'
+</code></pre>
+
+<p>end
+```</p>
+
+<p>これで<code>pod install</code>すればOKです。</p>
+
+<h4>State</h4>
+
+<p>準備が整ったところでコードを具体的に見ていきましょう。
+まずは<code>AppState.swift</code>を見ていきます。</p>
+
+<p>```objective-c
+//AppState.swift
+import Foundation
+import ReSwift</p>
+
+<p>struct AppState: StateType {</p>
+
+<pre><code>var counter: Int
+</code></pre>
+
+<p>}
+```</p>
+
+<p>今回のアプリは単純なカウントアップアプリなので、上記では<code>AppState</code>の1つのプロパティとして <strong>カウントの状態(counter)</strong> を定義しています。</p>
+
+<h4>Action</h4>
+
+<p>続いて<code>CounterActions.swift</code>を見ていきます。</p>
+
+<p>```objective-c
+// CounterActions.swift
+import Foundation
+import ReSwift</p>
+
+<p>struct CounterActionIncrease: Action {}
+struct CounterActionDecrease: Action {}
+```</p>
+
+<p>カウントアップの動作には <strong>『増加(Increase)』</strong> と <strong>『減少(Decrease)』</strong> の2つがあるため、それぞれのActionを定義します。<br/>
+ここで注意したいのはActionは関数(<code>func</code>)ではなく構造体(<code>struct</code>)であるということです。<br/>
+先に述べたようにActionは状態の宣言であり、Reducerに渡されて、処理を判別するために利用されるからです。</p>
+
+<h4>Reducer</h4>
+
+<p>そして、<code>CounterReducers.swift</code>を見ていきます。</p>
+
+<p>```objective-c
+// CounterReducers.swift
+struct CounterReducer: Reducer {</p>
+
+<pre><code>func handleAction(action: Action, state: AppState?) -&gt; AppState {
+    var state = state ?? AppState()
+
+    switch action {
+        case _ as CounterActionIncrease:
+            state.counter += 1
+        case _ as CounterActionDecrease:
+            state.counter -= 1
+        default:
+            break
+    }
+
+    return state
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>先に述べましたが、Reducerは引数として渡されたStateとActionの2つから新規のStateを返却します。<br/>
+重要なのは、 <strong>新規のStateを返却する</strong> ということです。<br/>
+これは<code>var state = state ?? AppState()</code>を見るとわかるかと思います。<br/>
+既に<code>state</code>オブジェクトがある場合は値渡しで新規<code>AppState</code>型に内容を格納しています。<br/>
+もし、<code>state</code>オブジェクトがなければ、初期化して作成しています。</p>
+
+<p>そして<code>switch</code>文で各Actionごとに最適な処理を実行しています。<br/>
+(今回の場合は『Increase』と『Decrease』)</p>
+
+<h4>Store</h4>
+
+<p>モジュールの作成が完了したので、実装していきます。<br/>
+先に述べたように<code>Store</code>はアプリの状態(State)を保持するアプリ内で <strong>唯一の存在</strong> です。<br/>
+よって、<code>AppDelegate.swift</code>で次のように定義します。</p>
+
+<p>```objective-c
+// AppDelegate.swift
+import UIKit
+import ReSwift</p>
+
+<p>let mainStore = Store<AppState>(</p>
+
+<pre><code>reducer: CounterReducer(),
+state: nil
+</code></pre>
+
+<p>)</p>
+
+<p>@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記では<code>Store</code>型の<code>mainStore</code>を定義しています。<br/>
+Reducerとして<code>CounterReducer</code>を定義しています。<br/>
+Stateは初期値<code>nil</code>として定義しています。</p>
+
+<h4>View層への実装</h4>
+
+<p>最後にユーザの操作が走った際の処理の実装について見ていきます。<br/>
+状態変化の監視開始/終了を下記で実施します。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import ReSwift</p>
+
+<p>class ViewController: UIViewController, StoreSubscriber {</p>
+
+<pre><code>override func viewWillAppear(animated: Bool) {
+    super.viewWillAppear(animated)
+    mainStore.subscribe(self)   // 状態変化の監視開始
+}
+
+override func viewWillDisappear(animated: Bool) {
+    super.viewWillDisappear(animated)
+    mainStore.unsubscribe(self) // 状態変化の監視終了
+}
+
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いて、ユーザ操作からのReducerへのAction発送部分です。</p>
+
+<p>```objective-c
+// ViewController.swift
+@IBAction func increaseButtonTapped(sender: AnyObject) {</p>
+
+<pre><code>mainStore.dispatch(
+    CounterActionIncrease()
+)
+</code></pre>
+
+<p>}</p>
+
+<p>@IBAction func decreaseButtonTapped(sender: AnyObject) {</p>
+
+<pre><code>mainStore.dispatch(
+    CounterActionDecrease()
+)
+</code></pre>
+
+<p>}
+```</p>
+
+<ul>
+<li>『増加』ボタンタップ時にStoreが『CounterActionIncreaseというAction』をReducerへdispatch(発送)します。</li>
+<li>『減少』ボタンタップ時にStoreが『CounterActionDecreaseというAction』をReducerへdispatch(発送)します。</li>
+</ul>
+
+
+<p>そして、新しいStateが返却された際に実行すべき処理を書くために<code>StoreSubscriber</code>プロトコルに<code>newState</code>メソッドが定義されています。<br/>
+よって、</p>
+
+<p>```objective-c
+// ViewController.swift
+class ViewController: UIViewController, StoreSubscriber {</p>
+
+<pre><code>@IBOutlet weak var counterLabel: UILabel!
+
+...
+
+func newState(state: AppState) {
+    counterLabel.text = "\(state.counter)"
+}
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のように実装することで<code>newState</code>メソッド内で任意の処理を書くことができます。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか？<br/>
+今回は公式の最も簡単なサンプルについて見ていきましたが、少々ReSwiftの扱い方が見えてきた気がします。<br/>
+また、ReSwiftが有能であるが故にReduxであればもっと自分で書かなければいけなさそうなところもカバーしてくれているように見えました。<br/>
+実践での活用なRxSwift同様にいろいろなリスク管理的な意味で難しいのかもしれませんが、もっとReSwiftを理解することで想定を上回るメリットを示し、実践で利用できるかもしれません。</p>
+
+<p>そんなことを夢見ながら今後は、別の公式サンプルを見つつ理解を深めていきたい思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

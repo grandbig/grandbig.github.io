@@ -1,0 +1,661 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>REBL600FRを検知するiOSアプリを開発してみた！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="REBL600FRを検知 引き続き、REBL600FRを用いて遊んでみたいと思います。
+前回のREBL600FRをiBeaconとして検知してみた！では既存のアプリを拝借してREBL600FRを検知していました。
+今回はそこを自作してみたいと思います。 そのためにCoreBluetooth. &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2015/02/08/bl600sample2/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">REBL600FRを検知するiOSアプリを開発してみた！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-02-08T21:11:00+09:00" pubdate data-updated="true">Feb 8<span>th</span>, 2015</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h4>REBL600FRを検知</h4>
+
+<p>引き続き、REBL600FRを用いて遊んでみたいと思います。<br/>
+前回の<a href="http://grandbig.github.io/blog/2015/02/07/bl600sample/">REBL600FRをiBeaconとして検知してみた！</a>では既存のアプリを拝借してREBL600FRを検知していました。<br/>
+今回はそこを自作してみたいと思います。</p>
+
+<p>そのためにCoreBluetooth.frameworkを使います。<br/>
+まずは、REBL600FRの発信するBLEを検知してみましょう。</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.mファイル</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
+</span><span class='line'><span class="cp">#import &lt;CoreBluetooth/CoreBluetooth.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span><span class="o">&lt;</span><span class="n">CBCentralManagerDelegate</span><span class="p">,</span> <span class="n">CBPeripheralDelegate</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span><span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CBCentralManager</span> <span class="o">*</span><span class="n">cm</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span><span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CBPeripheral</span> <span class="o">*</span><span class="n">connectedPeripheral</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">ViewController</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 1: CBCentralManagerの初期化</span>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">cm</span> <span class="o">=</span> <span class="p">[</span><span class="n">CBCentralManager</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithDelegate:</span><span class="n">self</span> <span class="nl">queue:</span><span class="nb">nil</span> <span class="nl">options:</span><span class="nb">nil</span><span class="p">];]</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">didReceiveMemoryWarning</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">super</span> <span class="n">didReceiveMemoryWarning</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#pragma mark - CBCentralManagerDelegate</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">centralManagerDidUpdateState:</span><span class="p">(</span><span class="n">CBCentralManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">central</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">central</span><span class="p">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">CBCentralManagerStatePoweredOn</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// Centralとして機能可能な場合</span>
+</span><span class='line'>      <span class="c1">// 2: Peripheralのスキャンを開始</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">cm</span> <span class="nl">scanForPeripheralsWithServices:</span><span class="nb">nil</span> <span class="nl">options:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記ソースの説明をします。<br/>
+1でCBCentralManagerを初期化すると、centralManagerDidUpdateStateメソッドが呼び出されます。<br/>
+そこで、Centralとして機能する(BluetoothがONで正常である)場合に限り、scanForPeripheralsWithServicesメソッドを実行することでPeripheralのスキャンを開始します。</p>
+
+<p>今回は、<code>scanForPeripheralsWithServices</code>の<code>serviceUUIDs</code>と<code>options</code>をnilにしています。<br/>
+もし、あらかじめスキャンしたいBLEのUUIDが決まっているのであれば、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">NSArray</span> <span class="o">*</span><span class="n">services</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSArray</span> <span class="nl">arrayWithObjects:</span><span class="p">[</span><span class="n">CBUUID</span> <span class="nl">UUIDWithString:</span><span class="s">@&quot;C6D0F826-CCBA-4738-97CE-81491F748039&quot;</span><span class="p">],</span> <span class="nb">nil</span><span class="p">];</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>といったように指定してあげましょう。<br/>
+※ nilの指定は非推奨とされています。</p>
+
+<p>また、optionsには<code>CBCentralManagerScanOptionAllowDuplicatesKey</code>と<code>CBCentralManagerScanOptionSolicitedServiceUUIDsKey</code>を指定可能となっています。<br/>
+<code>CBCentralManagerScanOptionAllowDuplicatesKey</code>を明示的指定しない場合はデフォルトNOと判断されます。<br/>
+YESにした場合、Peripheralからアドバタイズパケットを受信する度にペリフェラル発見通知が実行されます。</p>
+
+<p><code>CBCentralManagerScanOptionSolicitedServiceUUIDsKey</code>にはスキャンしたいUUIDの配列を指定できます。<br/>
+servicesで既に指定しているので、実際のところ何が違うのでしょうか&hellip;。</p>
+
+<p>続いての実装です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">centralManagerDidUpdateState:</span><span class="p">(</span><span class="n">CBCentralManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">central</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">centralManager:</span><span class="p">(</span><span class="n">CBCentralManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">central</span> <span class="nf">didDiscoverPeripheral:</span><span class="p">(</span><span class="n">CBPeripheral</span> <span class="o">*</span><span class="p">)</span><span class="nv">peripheral</span> <span class="nf">advertisementData:</span><span class="p">(</span><span class="n">NSDictionary</span> <span class="o">*</span><span class="p">)</span><span class="nv">advertisementData</span> <span class="nf">RSSI:</span><span class="p">(</span><span class="n">NSNumber</span> <span class="o">*</span><span class="p">)</span><span class="nv">RSSI</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">RSSI</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">advertisementData</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>scanForPeripheralsWithServices</code>実行後にPeripheralを発見した場合、<code>didDiscoverPeripheral</code>メソッドが呼び出されます。<br/>
+このメソッドでは、<code>advertisementData</code>と<code>RSSI</code>の値を取得できます。</p>
+
+<p>では、実際に取得できる値を見てみましょう。<br/>
+<code>scanForPeripheralsWithServices</code>が実行された後に、REBL600FRのスイッチをONにします。</p>
+
+<p><img src="/images/REBL600FR_3.jpg" alt="REBL600FRのスイッチをONにしましょう。" /></p>
+
+<p>すると、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">RSSI</span> <span class="o">=</span> <span class="o">-</span><span class="mi">94</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">advertisementData</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">kCBAdvDataChannel</span> <span class="o">=</span> <span class="mi">37</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">kCBAdvDataIsConnectable</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">kCBAdvDataLocalName</span> <span class="o">=</span> <span class="s">&quot;Laird iBeacon&quot;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>と値を取得できました。<br/>
+<code>kCBAdvDataChannel</code>はBLEデバイスの発見と接続に利用するアドバタイズメントチャネルのことで、<code>kCBAdvDataIsConnectable</code>は接続可能なPeripheralかどうか判別する値(1であれば接続可)で、<code>kCBAdvDataLocalName</code>はPeripheralの名前のことです。</p>
+
+<p>Appleの<a href="https://developer.apple.com/library/prerelease/ios/documentation/CoreBluetooth/Reference/CBCentralManagerDelegate_Protocol/index.html#//apple_ref/doc/constant_group/Advertisement_Data_Retrieval_Keys">CBCentralManagerDelegate Protocol Reference</a>を見ると、advertisementDataには他にも取得可能な値が入っていることがあるようです。</p>
+
+<h4>REBL600FRに接続</h4>
+
+<p>次に、先ほど発見することができたREBL600FRに接続してみたいと思います。<br/>
+<code>didDiscoverPeripheral</code>が実行されたときに検知したperipheralに接続するようにしてみます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">centralManager:</span><span class="p">(</span><span class="n">CBCentralManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">central</span> <span class="nf">didDiscoverPeripheral:</span><span class="p">(</span><span class="n">CBPeripheral</span> <span class="o">*</span><span class="p">)</span><span class="nv">peripheral</span> <span class="nf">advertisementData:</span><span class="p">(</span><span class="n">NSDictionary</span> <span class="o">*</span><span class="p">)</span><span class="nv">advertisementData</span> <span class="nf">RSSI:</span><span class="p">(</span><span class="n">NSNumber</span> <span class="o">*</span><span class="p">)</span><span class="nv">RSSI</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">RSSI</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">advertisementData</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">connectedPeripheral</span> <span class="o">=</span> <span class="n">peripheral</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">connectedPeripheral</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// Peripheralへの接続処理</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">cm</span> <span class="nl">connectPeripheral:</span><span class="n">self</span><span class="p">.</span><span class="n">connectedPeripheral</span> <span class="nl">options:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>connectPeripheral</code>メソッドで接続したいPeripheralに接続することができます。<br/>
+このとき<code>options</code>には<code>CBConnectPeripheralOptionNotifyOnConnectionKey</code>, <code>CBConnectPeripheralOptionNotifyOnDisconnectionKey</code>, <code>CBConnectPeripheralOptionNotifyOnNotificationKey</code>の3種類のいずれかを指定可能です。<br/>
+それぞれ、Peripheralと接続, Peripherlと切断, PeripheralからNotificationを受信した場合にアラートを表示したい場合に指定します。</p>
+
+<p>接続が確立された場合に<code>centralManager:didConnectPeripheral:</code>メソッドが呼び出されます。<br/>
+この中で、Peripheralが提供するサービスを検索する処理を書いてみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Peripheralと接続できた場合に呼び出される処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">centralManager:</span><span class="p">(</span><span class="n">CBCentralManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">central</span> <span class="nf">didConnectPeripheral:</span><span class="p">(</span><span class="n">CBPeripheral</span> <span class="o">*</span><span class="p">)</span><span class="nv">peripheral</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="c1">// スキャンの停止</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">cm</span> <span class="n">stopScan</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// Peripheralのサービスを検索</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">connectedPeripheral</span> <span class="nl">discoverServices:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>電池の消耗を防ぐために、接続が確立された後はPeripheralのスキャンを停止します。<br/>
+<code>discoverServices</code>メソッドでPeripheralのサービスを検索します。<br/>
+引数には検索したいサービスのUUIDの配列を指定可能です。<br/>
+nilにした場合は全てのサービスを検索します。こちらもnilの指定は非推奨とされています。</p>
+
+<p>サービスが見つかると、<code>didDiscoverServices:</code>メソッドが呼び出されます。<br/>
+そこでさらに、サービスが持っているキャラクタリスティックを検索します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#pragma mark - CBPeripheralDelegate</span>
+</span><span class='line'><span class="c1">// Servicesが見つかったときに呼び出される処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">peripheral:</span><span class="p">(</span><span class="n">CBPeripheral</span> <span class="o">*</span><span class="p">)</span><span class="nv">peripheral</span> <span class="nf">didDiscoverServices:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSArray</span> <span class="o">*</span><span class="n">services</span> <span class="o">=</span> <span class="n">peripheral</span><span class="p">.</span><span class="n">services</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">for</span><span class="p">(</span><span class="n">CBService</span> <span class="o">*</span><span class="n">service</span> <span class="k">in</span> <span class="n">services</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;Service UUID: %@&quot;</span><span class="p">,</span> <span class="n">service</span><span class="p">.</span><span class="n">UUID</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// Characteristicsの検索</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">peripheral</span> <span class="nl">discoverCharacteristics:</span><span class="nb">nil</span> <span class="nl">forService:</span><span class="n">service</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>キャラクタリスティックの検索は<code>discoverCharacteristics:</code>メソッドを使います。<br/>
+例によって、引数の<code>characteristicUUIDs</code>はnilを指定することで、全てのキャラクタリスティックを検索しています。<br/>
+もちろんnilは非推奨とされています。</p>
+
+<p>今回は取得できた全てのサービスに対して、全てのキャラクタリスティックを検索するため、上記のようにfor文を使っています。</p>
+
+<p>キャラクタリスティックが見つかると、<code>didDiscoverCharacteristicsForService:</code>メソッドが呼び出されます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">peripheral:</span><span class="p">(</span><span class="n">CBPeripheral</span> <span class="o">*</span><span class="p">)</span><span class="nv">peripheral</span> <span class="nf">didDiscoverCharacteristicsForService:</span><span class="p">(</span><span class="n">CBService</span> <span class="o">*</span><span class="p">)</span><span class="nv">service</span> <span class="nf">error:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">for</span><span class="p">(</span><span class="n">CBCharacteristic</span> <span class="o">*</span><span class="n">characteristic</span> <span class="k">in</span> <span class="n">service</span><span class="p">.</span><span class="n">characteristics</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 値が変わったときに通知を受けたい場合に実行</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">peripheral</span> <span class="nl">setNotifyValue:</span><span class="n">YES</span> <span class="nl">forCharacteristic:</span><span class="n">characteristic</span><span class="p">];</span>
+</span><span class='line'>      <span class="c1">// キャラクタリステックのvalueを知りたい場合に実行</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">peripheral</span> <span class="nl">readValueForCharacteristic:</span><span class="n">characteristic</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>setNotifyValue</code>はキャラクタリステックの値が変わったときに<code>didUpdateNotificationStateForCharacteristic:error:</code>を呼び出すために<code>YES</code>で設定しています。<br/>
+<code>readValueForCharacteristic:</code>メソッドは検索して見つかったキャラクタリステックの値を読むために実行しています。</p>
+
+<p>因みに、<code>CBCharacteristic</code>クラスはプロパティに<code>properties</code>を持っています。<br/>
+これは、そのデータが <strong>Read Only</strong> なのか <strong>Read and Write</strong> なのかを判別するために利用します。<br/>
+REBL600FRの場合、characteristicsをNSLogでログ出力してみると、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Read Onlyの例</span>
+</span><span class='line'><span class="nl">characteristic:</span> <span class="o">&lt;</span><span class="nl">CBCharacteristic:</span> <span class="mh">0x175744d0</span> <span class="n">UUID</span> <span class="o">=</span> <span class="n">Manufacturer</span> <span class="n">Name</span> <span class="n">String</span><span class="p">,</span> <span class="n">Value</span> <span class="o">=</span> <span class="p">(</span><span class="n">null</span><span class="p">),</span> <span class="n">Properties</span> <span class="o">=</span> <span class="mh">0x2</span><span class="p">,</span> <span class="n">Notifying</span> <span class="o">=</span> <span class="n">NO</span><span class="p">,</span> <span class="n">Broadcasting</span> <span class="o">=</span> <span class="n">NO</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Read and Writeの例</span>
+</span><span class='line'><span class="nl">characteristic:</span> <span class="o">&lt;</span><span class="nl">CBCharacteristic:</span> <span class="mh">0x17572690</span> <span class="n">UUID</span> <span class="o">=</span> <span class="mi">569</span><span class="n">A2010</span><span class="o">-</span><span class="n">B87F</span><span class="o">-</span><span class="mi">490</span><span class="n">C</span><span class="o">-</span><span class="mi">92</span><span class="n">CB</span><span class="o">-</span><span class="mi">11</span><span class="n">BA5EA5167C</span><span class="p">,</span> <span class="n">Value</span> <span class="o">=</span> <span class="p">(</span><span class="n">null</span><span class="p">),</span> <span class="n">Properties</span> <span class="o">=</span> <span class="mh">0xA</span><span class="p">,</span> <span class="n">Notifying</span> <span class="o">=</span> <span class="n">NO</span><span class="p">,</span> <span class="n">Broadcasting</span> <span class="o">=</span> <span class="n">NO</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>となりました。<br/>
+<a href="https://developer.apple.com/library/prerelease/ios/documentation/CoreBluetooth/Reference/CBCharacteristic_Class/index.html#//apple_ref/occ/instp/CBCharacteristic/properties">CBCharacteristic Class Reference</a>を見ると、<code>0x2</code>は<code>CBCharacteristicPropertyRead</code>とされていますが、<code>0xA</code>は該当するものが記載されていませんでした。</p>
+
+<p>キャラクタリステックの値の取得が完了すると、<code>didUpdateValueForCharacteristic:error:</code>メソッドが呼ばれます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">peripheral:</span><span class="p">(</span><span class="n">CBPeripheral</span> <span class="o">*</span><span class="p">)</span><span class="nv">peripheral</span> <span class="nf">didUpdateValueForCharacteristic:</span><span class="p">(</span><span class="n">CBCharacteristic</span> <span class="o">*</span><span class="p">)</span><span class="nv">characteristic</span> <span class="nf">error:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSString</span> <span class="o">*</span><span class="n">value</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithData:</span><span class="n">characteristic</span><span class="p">.</span><span class="n">value</span> <span class="nl">encoding:</span><span class="n">NSUTF8StringEncoding</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;value: %@&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これで各パラメータの値が確認できました。<br/>
+気をつけたいのは、major, minor, Tx PowerなどはUTF8でエンコードをかけると文字化けしたログを吐くので、どんな値か見たい場合はエンコードせずにNSDataの値のまま見てみましょう。</p>
+
+<p>う〜ん。今回は時間切れですね&hellip;。<br/>
+次回はREBL600FRのパラメータをiPhoneから書き換えることにチャレンジしたいと思います。</p>
+
+<p>といったところで本日はここまで。<br/>
+ソースはパラメータの書き換えが完了したタイミングでGitHubにアップしたいと思います。</p>
+
+<p>参考:<br/>
+<a href="http://qiita.com/rnamiki/items/ea912393c4fb58e7a9b9">CoreBluetoothで出来る事</a><br/>
+<a href="http://qiita.com/miyatay/items/4d4ce4ccd7905ddc0144">Bluetooth Low Energy（BLE）/ iBeaconとは</a><br/>
+<a href="http://reinforce-lab.github.io/blog/2013/01/25/CBCentralManagerClassReference_jp/">Reinforce-Lab&rsquo;s Blog</a></p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-02-08T21:11:00+09:00" pubdate data-updated="true">Feb 8<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/iot/'>IoT</a>, <a class='category' href='/blog/categories/ibeacon/'>iBeacon</a>, <a class='category' href='/blog/categories/ios/'>ios</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2015/02/08/bl600sample2/" data-via="" data-counturl="http://grandbig.github.io/blog/2015/02/08/bl600sample2/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/02/07/bl600sample/" title="Previous Post: REBL600FRをiBeaconとして検知してみた！">&laquo; REBL600FRをiBeaconとして検知してみた！</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/02/11/bl600sample3/" title="Next Post: REBL600FRの発信パラメータをiOSアプリで変更してみた！">REBL600FRの発信パラメータをiOSアプリで変更してみた！ &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2016/12/05/swift-perfect-mongo/">Server Side SwiftでMongoDBと遊んでみる</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/25/git-ssl-error/">GitのFetchでSSLエラーが出たときの対応</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/20/move-octopress/">Octopress Blogを別PCに移行しようとして苦労した話</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/20/brew-install-db/">HomebrewでMongoDBをインストール</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/03/blog-3-year-anniversary/">技術ブログのアクセスと収入の推移(3周年)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (135)</a></li><li><a href='/blog/categories/swift'>swift (38)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/java'>java (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/location'>location (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li><li><a href='/blog/categories/node'>node (6)</a></li><li><a href='/blog/categories/springboot'>springboot (5)</a></li><li><a href='/blog/categories/apurishen-qing'>アプリ申請 (5)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li><li><a href='/blog/categories/xcode6'>xcode6 (4)</a></li><li><a href='/blog/categories/sqlite'>SQLite (4)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2016 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2015/02/08/bl600sample2/';
+        var disqus_url = 'http://grandbig.github.io/blog/2015/02/08/bl600sample2/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

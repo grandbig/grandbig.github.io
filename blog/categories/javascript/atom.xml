@@ -1,0 +1,723 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: javascript | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/javascript/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2016-12-04T22:19:41+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Node.jsでrouterモジュールでルーティング！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/10/30/node-router/"/>
+    <updated>2016-10-30T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/10/30/node-router</id>
+    <content type="html"><![CDATA[<h3>Expressなしで簡単にルーティングしよう！</h3>
+
+<p>さて、久しぶりにNode.jsについて書きます。<br/>
+筆者が本格的にNode.jsを利用していたのは3〜4年前だったため、Expressをよく利用していました。<br/>
+その後、Expressを利用するほどのリッチな機能を必要としない、簡易的なデモ用のサーバサイドの仕組みを作るのにバリバリ自作ルーティングをしていました。<br/>
+しかし、ここにきてExpressを利用するでもなく、かと言って自作でルーティング処理を書くのも若干面倒だと感じるとき果たしてどうすれば良いのかふと気になりました。<br/>
+「きっと今の世の中なら何らかのモジュールが出ているはず！」と思った筆者は早速探してみることに&hellip;</p>
+
+<p>そこで見つけたのが<a href="https://github.com/pillarjs/router">router</a>です。<br/>
+このモジュールを利用すれば、次のように簡単にルーティングを実装することができます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<p>```javascript
+// server.js
+var http = require(&ldquo;http&rdquo;);
+var Router = require(&ldquo;router&rdquo;);
+var finalhandler = require(&lsquo;finalhandler&rsquo;);
+var bodyParser   = require(&lsquo;body-parser&rsquo;);</p>
+
+<p>function start(route) {</p>
+
+<pre><code>var opts = { mergeParams: true }
+var router = Router(opts);
+var server = http.createServer(function onRequest(req, res) {
+    router(req, res, finalhandler(req, res));
+});
+
+// GETリクエストのハンドリング
+var user = Router(opts);
+router.use('/users/:path', user);
+
+user.get('/', function (req, res) {
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    res.end(req.params.path + '\n')
+});
+
+// POSTリクエストのハンドリング
+var users = Router();
+router.use('/users', users);
+users.use(bodyParser.json());
+
+users.post('/', function (req, res) {
+    if (req.body.value) {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end(req.body.value + '\n');
+    } else {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end('Invalid API Syntax\n');
+    }
+});
+
+server.listen(8888);
+console.log("server has started.");
+</code></pre>
+
+<p>}</p>
+
+<p>exports.start = start;
+```</p>
+
+<p>因みに、 <code>server.js</code> はモジュールとして切り出しています。<br/>
+実際には <code>app.js</code> で呼び出すようにしています。</p>
+
+<p><code>javascript
+// app.js
+var server = require("./server");
+server.start();
+</code></p>
+
+<p>ただ、今後たくさんのリクエストを捌くことを考えると、もう少しリクエスト内容ごとにファイルを分けた方が良いですよね&hellip;<br/>
+と言うことで少々修正します。</p>
+
+<p>```javascript
+// server.js
+var http = require(&ldquo;http&rdquo;);
+var Router = require(&ldquo;router&rdquo;);
+var finalhandler = require(&lsquo;finalhandler&rsquo;);
+var bodyParser   = require(&lsquo;body-parser&rsquo;);
+var users = require(&ldquo;./users&rdquo;);</p>
+
+<p>/<em>*
+ *  サーバ起動処理
+ </em>/
+function start() {</p>
+
+<pre><code>var opts = { mergeParams: true };
+var router = Router(opts);
+var server = http.createServer(function onRequest(req, res) {
+    router(req, res, finalhandler(req, res));
+});
+
+router.use(bodyParser.json());
+router.use('/users/:path', users);  // GETリクエスト
+router.use('/users', users);        // POST, PUT, DELETEリクエスト
+
+server.listen(8888);
+console.log("server has started.");
+</code></pre>
+
+<p>}</p>
+
+<p>exports.start = start;</p>
+
+<p>```</p>
+
+<p>上記のように<code>server.js</code>はサーバ起動だけに絞りました。<br/>
+そしてリクエストを受け付けたあとの処理は下記のように<code>users.js</code>に書きます。</p>
+
+<p>```javascript
+// users.js
+var Router = require(&ldquo;router&rdquo;);
+var opts = { mergeParams: true };
+var router = Router(opts);</p>
+
+<p>router.get(&ldquo;/&rdquo;, function(req, res) {</p>
+
+<pre><code>res.statusCode = 200;
+res.setHeader("Content-Type", "text/plain; charset=utf-8");
+res.end(req.params.path + "\n");
+</code></pre>
+
+<p>});</p>
+
+<p>router.post(&ldquo;/&rdquo;, function(req, res) {</p>
+
+<pre><code>if (req.body.value) {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.end(req.body.value + '\n');
+} else {
+    res.statusCode = 400;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.end('Invalid API Syntax\n');
+}
+</code></pre>
+
+<p>});</p>
+
+<p>module.exports = router;</p>
+
+<p>```</p>
+
+<p>このようにまとめることで可読性高くなるので、ルーティングの意味も出てくるというものですね。<br/>
+因みに、GETとPOSTリクエストを送れば下記のような結果が得られます。</p>
+
+<p>```
+// GETリクエスト
+curl <a href="http://localhost:8888/users/20161029">http://localhost:8888/users/20161029</a>
+// 結果
+20161029</p>
+
+<p>// POSTリクエスト
+curl <a href="http://localhost:8888/users">http://localhost:8888/users</a> -X POST -H &ldquo;Content-Type: application/json&rdquo; -d &lsquo;{&ldquo;value&rdquo;:&ldquo;Sample&rdquo;}&rsquo;
+// 結果
+Sample
+```</p>
+
+<h3>Node.jsでデバッグ</h3>
+
+<p>筆者はこれまで <code>node-inspector</code> を利用していたのですが、何とv6.3.0からデバッグ機能が標準装備されているらしいですね！<br/>
+早速ですが使ってみました。</p>
+
+<p>```
+// Node.jsでデバッグ起動
+node &mdash;inspect app.js
+Debugger listening on port 9229.
+Warning: This is an experimental feature and could change at any time.
+To start debugging, open the following URL in Chrome:</p>
+
+<pre><code>chrome-devtools://devtools/remote/serve_file/@60cd6e859b9f557d2312f5bf532f6aec5f284980/inspector.html?experiments=true&amp;v8only=true&amp;ws=localhost:9229/f1478fd8-33f2-4bca-8ab4-4ac9be3515cb
+</code></pre>
+
+<p>server has started.
+Debugger attached.
+```</p>
+
+<p>出力される <code>chrome-devtools://devtools/remote/serve_file/@....</code> の部分をChromeのアドレスバーに貼りましょう！<br/>
+<code>node-inspcetor</code> さながらのデバッグができるはずです。</p>
+
+<p>因みに、起動時のオプションとして <code>--debug-brk</code> をつけると必ず1行目でデバッグが停止します。<br/>
+一度停めたい場合はオプションを使いましょう。</p>
+
+<h3>まとめ</h3>
+
+<p>今回はNode.jsに触る機会があったため、どうすれば簡単にルーティングが実装できるのか調べてみました。<br/>
+Expressを使っても良かったのですが、極力不要なモジュールを取り込みたくない気持ちがあったので割りと最低限にできて良かったなと思いました。<br/>
+Node.jsは少しずつリハビリしながら思い出していくことにしようかな。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[昔関わったNode.jsを思い出してみる]]></title>
+    <link href="http://grandbig.github.io/blog/2016/07/09/remember-node-js/"/>
+    <updated>2016-07-09T22:20:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/07/09/remember-node-js</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日は久しぶりにNode.jsについて書きたいと思います。<br/>
+筆者が本格的にNode.jsを触っていたのは、3〜4年ほど前で、当時は今ほど存在が浸透してはいませんでした。<br/>
+それが今やサーバサイドの処理作成の選択肢の1つとして普通に検討される時代になりました。<br/>
+正直なところ、最新のNode.jsを追えているわけではないのですが、<br/>
+その本質は今も昔も大きくは変わっていないだろうと思いつつ、筆者の経験を元にNode.jsを見ていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Node.jsとは</h3>
+
+<p>Node.jsは2009年にライアン・ダールによって作成された『JavaScriptをサーバサイドで実行可能にしてくれるプログラム』です。<br/>
+JavaScriptエンジンは <strong>Google V8 JavaScript エンジン</strong> を使っています。<br/>
+因みに、 <strong>Google V8 JavaScript エンジン</strong> とは、</p>
+
+<ul>
+<li>ECMAScript5に準拠</li>
+<li>C++で記述されている</li>
+<li>スタンドアローンで動作可能</li>
+<li>Google Chromeでも使われている</li>
+</ul>
+
+
+<p>というものです。<br/>
+これを見ただけでも何となくすごいな〜と思ってしまいますね笑。</p>
+
+<p>Node.jsの公式サイトは<a href="https://nodejs.org/en/">こちら</a>です。<br/>
+日本ユーザグループサイトもありますが、今は活動的に更新されていません。</p>
+
+<h3>Node.jsの特徴</h3>
+
+<p>続いて、Node.jsの特徴を見ていきましょう。<br/>
+Node.jsの特徴は、何と言っても</p>
+
+<ul>
+<li>イベントループモデル</li>
+<li>Non-blocking I/O</li>
+<li>シングルスレッド</li>
+</ul>
+
+
+<p>ではないでしょうか。<br/>
+筆者がNode.jsを触っていた時は正直全く理解していなかったのですが、<br/>
+これらこそがNode.jsの本質でしょう。</p>
+
+<h4>イベントループモデル</h4>
+
+<p>イベントループモデルと一言聞くと、「なんぞや！？」となってしまいそうですが、</p>
+
+<ul>
+<li>イベントの発火を常に監視しているループ</li>
+<li>イベントの発火を受け付けると、イベントキューに格納される</li>
+<li>受付順にイベントを処理していく</li>
+</ul>
+
+
+<p>という方式のことです。</p>
+
+<h4>Non-blocking I/O</h4>
+
+<p>I/O処理を受け付けた場合、I/O処理が完了するまで待つ(Blockされる)のが通常です。<br/>
+Node.jsではI/O処理を投げつけた間、他にやるべき処理があれば進んで実行してくれます。<br/>
+よって <strong>Non-blocking I/O</strong> と呼ばれています。</p>
+
+<h4>シングルスレッド</h4>
+
+<p>言葉のとおりですが、複数のリクエストを1つのスレッドで実行するということです。<br/>
+複数スレッドを生成するわけではないため、メモリ消費を抑えることができると言われています。</p>
+
+<h3>Node.jsのメリット/デメリット</h3>
+
+<p>Node.jsが全てのアプリケーションに最適なのかと言うとそんなことは当然ありません。<br/>
+Node.jsのメリット/デメリットを理解した上で、採用を検討する必要があるのです。</p>
+
+<h4>Node.jsのメリット</h4>
+
+<p>まずはメリットを見ていきましょう。</p>
+
+<ol>
+<li>大量の軽量な同時リクエストを捌くのが得意</li>
+<li>NoSQLとの親和性が高い</li>
+<li>JavaScriptで書ける</li>
+<li>充実したライブラリが存在している</li>
+</ol>
+
+
+<p>筆者の経験に基づくメリットを4つ上げさせて頂きました。</p>
+
+<p>1つ目の <strong>大量の軽量な同時リクエストを捌くのが得意</strong> というメリットですが、<br/>
+これはNode.jsの特徴で上げたことが関わってきます。<br/>
+Non-blocking I/Oなので、I/Oブロックしないとは言うものの、Node.jsはシングルスレッドなんです。<br/>
+なので、1つのイベント処理の中に非常に時間のかかる処理が含まれていると、そこがネックとなってしまい大量のリクエストを待たせてしまいます。<br/>
+場合によってはクライアント側で設定したタイムアウト時間を上回り期待した結果をユーザが得られなくなるでしょう。</p>
+
+<p>なので1つのイベント(1回のリクエスト)で非常に重い処理を実行させなくてはならない仕様が求められるサービスには向きません。<br/>
+逆に、細かくイベントを分割できて、複数回のリクエストをクライアントから送っても問題のない仕様のサービスには適切と言えます。</p>
+
+<p>2つ目の <strong>NoSQLとの親和性が高い</strong> というメリットですが、<br/>
+筆者は主に <strong>MongoDB</strong> と一緒に利用してきました。<br/>
+MongoDBはドキュメント指向データベースであるため、JSON型のデータをそのまま突っ込めるため非常に使いやすいのです。<br/>
+スキーマレスかつスケールアウトの特徴を存分に活かしたい場合はNoSQLを選択すると思いますが、<br/>
+そこから遡ってNode.jsを選択しても良いでしょう。</p>
+
+<p>3つ目と4つ目のメリットですが、<br/>
+フロントエンドエンジニアであれば、基本的にはJavaScriptを扱えるという人もたくさんいるかと思います。<br/>
+であれば同じ言語のJavaScriptで書けるNode.jsを採用しない手はないでしょう。<br/>
+また、MongoDBもNode.jsもJavaScriptにも言えることですが、初心者を割りとすんなり受け入れてくれる土台が整っているため、<br/>
+1人でサービス提案時のモック作成をしなくてはならないときなどに最適です。<br/>
+(誤解されたくないのが、どの技術も極めるにはかなり大変ということに変わりはないということです。)</p>
+
+<h4>Node.jsのデメリット</h4>
+
+<p>続いてデメリットを見ていきましょう。</p>
+
+<ol>
+<li>重いリクエストを捌くのが苦手</li>
+<li>コールバック地獄</li>
+</ol>
+
+
+<p>1つ目のデメリットはメリットで書いた内容です。<br/>
+2つ目はまさに筆者が3〜4年前に感じていたデメリットです。<br/>
+Non-blocking I/Oの特徴を持つ代わりにソースコードを書いた際に複数回ネストすることが少なくありません。<br/>
+(サーバダウンを防ぐために<code>try-catch</code>を入れようものなら尚更です。)</p>
+
+<p>ただし、v0.12から<code>yield</code>が追加されましたし、<br/>
+今やWebに限らずスマホネイティブの世界でも<code>Promise</code>の利用が珍しくはないため、最早デメリットとも言えなくなったと思われます。</p>
+
+<p>また、筆者的には<br/>
+HTML, CSS, JavaScriptや画像などの静的ファイルを返却するようなWebサーバとしての役割はNginxやApacheに任せてしまって良いという感覚です。<br/>
+むか〜し、計測したイメージが強く残っているからかもしれませんが&hellip;</p>
+
+<h3>Nodeモジュール</h3>
+
+<p>今も忘れない当時使っていた or 助けられたNodeモジュールについて紹介します。</p>
+
+<h4>Express</h4>
+
+<p>これは最も有名なNodeモジュールではないでしょうか？<br/>
+( <strong>Express</strong> の公式サイトは<a href="http://expressjs.com/">こちら</a>です。)</p>
+
+<p><strong>Express</strong> はWebアプリケションフレームワークであり、Webアプリケーションを作成するために必要な機能を提供してくれます。<br/>
+このモジュールがあるため、サーバサイドを非常に簡単に作成することができるのです。<br/>
+(玄人になればなるほどアンチExpressが多い気もしますが&hellip;)</p>
+
+<h4>node-inspector</h4>
+
+<p>続いて、こちらも使わない人の方が少ないのでは？と思うくらい重要な <strong>node-inspector</strong> について紹介します。<br/>
+(GitHubは<a href="https://github.com/node-inspector/node-inspector">こちら</a>です。)</p>
+
+<p>サーバサイドエンジニアはeclipse, IntelliJなどのIDEを利用して開発すると思います。<br/>
+IDEを利用する理由は様々ですが、その中の1つにデバッグ機能があります。<br/>
+<strong>node-inspector</strong> はまるでフロントエンドを開発しているかのごとく、ブラウザ上でデバッグ機能を提供してくれます。</p>
+
+<h4>forever</h4>
+
+<p>次は、 <strong>forever</strong> の紹介です。<br/>
+Node.jsでは想定外のエラーが発生した際にサーバがダウンしてしまいます。<br/>
+サーバがダウンし、イベントループが停止してしまうと、クライアント側からのリクエストを受け付けることができません。<br/>
+そのため、サーバを再起動する必要があるのですが、これを自動的に実行してくれるモジュールが <strong>forever</strong> です。<br/>
+(GitHubは<a href="https://github.com/foreverjs/forever">こちら</a>です。)</p>
+
+<h4>log4js-node</h4>
+
+<p>先ほども説明した通り、プログラムは所詮、人間が作り上げたものなので、想定外なことは起こりえます。<br/>
+それに対処するためにエンジニアとしては失敗をただの失敗として放置するのではなく、経験として蓄積し、次に活かすのです。<br/>
+その手助けとなるのがログです。</p>
+
+<p><strong>log4js-node</strong> を利用することで、<code>info</code>, <code>debug</code>, <code>warn</code>, <code>error</code>など各種ログを仕込むことが可能となります。</p>
+
+<h4>async</h4>
+
+<p>実は筆者が最も思い出深いモジュールがこの <strong>async</strong> です。<br/>
+Node.jsのデメリットで紹介しましたが、筆者がNode.jsをメインで触っていた3〜4年前はまさにコールバック地獄でした。<br/>
+また、1回のイベント発火内で非同期処理を繰り返し順番に実行したい要望があり、非常に手を焼きました。<br/>
+これを救ってくれたのが <strong>async</strong> なのです。</p>
+
+<p>特に、<code>async.waterfall</code>, <code>async.parallel</code>, <code>async.series</code>, <code>async.eachSeries</code>は必見の価値ありです。<br/>
+(GitHubは<a href="https://github.com/caolan/async">こちら</a>です。)</p>
+
+<h4>その他</h4>
+
+<p>その他にも便利なものがたくさん用意されているので必要に応じて利用すると良いでしょう。</p>
+
+<ul>
+<li><a href="https://github.com/mochajs/mocha">mocha</a>: Node.jsのためのテストフレームワーク</li>
+<li><a href="http://socket.io/">socket.io</a>: WebSocket機能を実装できるモジュール</li>
+<li><a href="http://mongoosejs.com/">mongoose</a>: Node.jsからMongoDBを利用するためのモジュール</li>
+<li><a href="https://github.com/mysqljs/mysql">mysql</a>: Node.jsからMySQLを利用するためのモジュール</li>
+<li><a href="https://github.com/balderdashy/sails">sails</a>: Ruby on RailsライクなMVCフレームワーク</li>
+</ul>
+
+
+<h3>Node.jsを勉強するための近道</h3>
+
+<p>最後にNode.jsの勉強方法について紹介したいと思います。<br/>
+筆者的には、まずは <strong>JavaScript</strong> をきちんと学ぶことが必要だと思います。<br/>
+クライアントサイドから始めても、サーバサイドから始めても構わないのですが、クライアントサイドからの方が始めやすいのではないでしょうか。</p>
+
+<p>また、サーバサイドでNode.jsというものが何かを学ぶのであれば、<br/>
+<a href="http://www.nodebeginner.org/index-jp.html">Nodeビギナーズブック</a>を1回は読んでおくことをオススメします。<br/>
+市販されている本を読むよりも本質的な部分を理解できると思います。<br/>
+(あと、未だにNode.js関連の本って全然ないので&hellip;。)</p>
+
+<h3>まとめ</h3>
+
+<p>さていかがでしたでしょうか？<br/>
+Node.jsはまだまだ新しい技術ですし、これからもっと学ぶべきことが増えてくることでしょう。<br/>
+筆者も極力最新を追えるように精進したいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://www.atmarkit.co.jp/ait/articles/1103/23/news101_2.html">naveでNode.jsのバージョン管理＆イベントループ詳説 </a></li>
+<li><a href="http://www.slideshare.net/shigeki_ohtsu/processnext-tick-nodejs">そうだったのか！ よくわかる process.nextTick() node.jsのイベントループを理解する</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftとJava8とJavaScriptでreduce / filter / map / flatMap]]></title>
+    <link href="http://grandbig.github.io/blog/2016/06/12/filter-map/"/>
+    <updated>2016-06-12T21:01:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/06/12/filter-map</id>
+    <content type="html"><![CDATA[<h4>SwiftとJava8とJavaScriptを比較してみよう！</h4>
+
+<p>本日は前々から気になっていた『SwiftとJava8とJavaScript』の比較をしてみたいと思います。<br/>
+と言っても難しいことをやるわけではなく、今回はreduce, filter, map, flatMapメソッドの書き方を比較してみます。</p>
+
+<p>筆者個人としては、どうしてもSwiftやJava8から書き方やメソッドの意味の理解を始めようとすると時間がかかってしまいます。<br/>
+なので、JavaScriptから入って比較することで理解が促進することがあるのです。</p>
+
+<p>では早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>reduceメソッド</h4>
+
+<p>まずは<code>reduce</code>メソッドです。</p>
+
+<h5>JavaScript</h5>
+
+<p>```javascript
+var array = [1, 2, 3, 4, 5];
+var reduced = array.reduce(function(previus, current) {</p>
+
+<pre><code>return previous + current;
+</code></pre>
+
+<p>}, 0);</p>
+
+<p>// 結果 &ndash;> 15
+```</p>
+
+<h5>Swift</h5>
+
+<p>```objective-c
+let array = [1, 2, 3, 4, 5]
+let reduced = array.reduce(0) { (previous, current) &ndash;> Int in</p>
+
+<pre><code>previous + current
+</code></pre>
+
+<p>}</p>
+
+<p>// 結果 &ndash;> 15
+```</p>
+
+<h5>Java8</h5>
+
+<p>```java
+List<Integer> integerList = Arrays.asList(1, 2, 3, 4, 5);
+Optional<Integer> sum = list.stream().reduce((previous, current) &ndash;> previous + current);</p>
+
+<p>// 結果 &ndash;> 15
+```</p>
+
+<h4>filterメソッド</h4>
+
+<p>次に<code>filter</code>メソッドです。</p>
+
+<h5>JavaScript</h5>
+
+<p>```javascript
+var array = [1, 50, 800, 3, 44];
+var filtered = array.filter(function(elem) {</p>
+
+<pre><code>return elem &gt;= 10;
+</code></pre>
+
+<p>});</p>
+
+<p>// 結果 &ndash;> [50, 800, 44]
+```</p>
+
+<h5>Swift</h5>
+
+<p>```objective-c
+let array = [1, 50, 800, 3, 44]
+var filtered = array.filter { (elem) &ndash;> Bool in</p>
+
+<pre><code>elem &gt;= 10
+</code></pre>
+
+<p>}</p>
+
+<p>// 結果 &ndash;> [50, 800, 44]
+```</p>
+
+<h5>Java8</h5>
+
+<p>```java
+List<Integer> list = Arrays.asList(1, 50, 800, 3, 44);
+List<Integer> filteredList = new ArrayList<Integer>();
+list.stream().filter(elem &ndash;> elem >= 10).forEach(elem &ndash;> filteredList.add(elem));</p>
+
+<p>// 結果 &ndash;> [50, 800, 44]
+```</p>
+
+<h4>mapメソッド</h4>
+
+<p>続いて<code>map</code>メソッドです。</p>
+
+<h5>JavaScript</h5>
+
+<p>```javascript
+var array = [1, 2, 3, 4, 5];
+var mapped = array.map(function(elem) {</p>
+
+<pre><code>return elem * elem;
+</code></pre>
+
+<p>});</p>
+
+<p>// 結果 &ndash;> [1, 4, 9, 16, 25]
+```</p>
+
+<h5>Swift</h5>
+
+<p>```objective-c
+let array = [1, 2, 3, 4, 5]
+var mapped = array.map { (elem) &ndash;> Int in</p>
+
+<pre><code>elem * elem
+</code></pre>
+
+<p>}</p>
+
+<p>// 結果 &ndash;> [1, 4, 9, 16, 25]
+```</p>
+
+<h5>Java8</h5>
+
+<p>```java
+List<Integer> list = Arrays.asList(1, 2, 3, 4, 5);
+List<Integer> mappedList = new ArrayList<Integer>();
+list.stream().map(elem &ndash;> elem * elem).forEach(elem &ndash;> mappedList.add(elem));</p>
+
+<p>// 結果 &ndash;> [1, 4, 9, 16, 25]
+```</p>
+
+<h4>flatMapメソッド</h4>
+
+<p>最後に<code>flatMap</code>メソッドです。<br/>
+(と言いつつ、処理の意味的には<code>flatten</code>しか入っていませんね&hellip;)</p>
+
+<h5>JavaScript</h5>
+
+<p>JavaScriptでは標準で<code>flatMap</code>メソッドは実装されていません。<br/>
+自作するしかないわけですが、<code>flatMap = flatten + map</code>なので下記のように書けます。</p>
+
+<p>```javascript
+var listArrayList = [[1, 2], [3], [4, 5]]
+var flatMappedList = Array.prototype.concat.apply([], listArrayList).map(function(elem) {</p>
+
+<pre><code>return elem;
+</code></pre>
+
+<p>});</p>
+
+<p>// 結果 &ndash;> [1, 2, 3, 4, 5]
+```</p>
+
+<h5>Swift</h5>
+
+<p>```objective-c
+var listArrayList:[Int]] = []
+let list1: [Int] = [1, 2]
+let list2: [Int] = [3]
+let list3: [Int] = [4, 5]
+listArrayList.append(list1)
+listArrayList.append(list2)
+listArrayList.append(list3)</p>
+
+<p>let flatMappedList = listArrayList.flatMap { (elem) &ndash;> [Int] in</p>
+
+<pre><code>return elem
+</code></pre>
+
+<p>}</p>
+
+<p>// 結果 &ndash;> [1, 2, 3, 4, 5]
+```</p>
+
+<h5>Java8</h5>
+
+<p>```java
+List&lt;List<Integer>> listArrayList = new ArrayList&lt;List<Integer>>();
+List<Integer> list1 = Arrays.asList(1, 2);
+List<Integer> list2 = Arrays.asList(3);
+List<Integer> list3 = Arrays.asList(4, 5);
+listArrayList.add(list1);
+listArrayList.add(list2);
+listArrayList.add(list3);
+List<Integer> flatMappedList = new ArrayList<Integer>();
+listArrayList.stream().flatMap(elem &ndash;> elem.stream()).forEach(elem &ndash;> flatMappedList.add(elem));</p>
+
+<p>// 結果 &ndash;> [1, 2, 3, 4, 5]
+```</p>
+
+<p>さていかがでしたでしょうか？<br/>
+1つの言語を極めれば、何となく他の言語でも書き方がわかるという話を聞いたりすると思うのですが、こういったことの延長戦にある話なんだろうなと思ったりました。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+</feed>
