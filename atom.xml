@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-12-04T22:19:07+09:00</updated>
+  <updated>2016-12-06T08:56:16+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,591 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[ReSwiftを勉強してみよう！(2)]]></title>
+    <link href="http://grandbig.github.io/blog/2016/12/06/reswift-2/"/>
+    <updated>2016-12-06T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/12/06/reswift-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>こちらは<a href="http://qiita.com/advent-calendar/2016/ios2">iOS その2 Advent Calendar 2016</a> 6日目の記事です。</p>
+
+<p>今年は仕事でiOSを触る機会がめっきりと減ってしまったのですが、<br/>
+「やはり１年を振り返るのならiOS Advent Calendarは欠かせないでしょう」ということで投稿することにしました。</p>
+
+<p>最近、筆者が仕事で着手し始めた <strong>Redux</strong> に関連するということで <strong>ReSwift</strong> について見ていきたいと思います。<br/>
+タイトルが <strong>(2)</strong> になっているのは、<br/>
+以前に興味を持って自主的に取り組んでみた<a href="http://grandbig.github.io/blog/2016/09/03/reswift-1/">ReSwiftを勉強してみよう！(1)</a>の続きという意味です。<br/>
+しかし、Advent Calendarの記事でもあるので本記事のみで完結する形で書きたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>今回は公式GitHubに上がっている<a href="https://github.com/ReSwift/CounterExample-Navigation-TimeTravel">CounterExample-Navigation-TimeTravel</a>を元にReSwiftを勉強していきたいと思います。</p>
+
+<h3>ReSwiftに出てくるモノと役割</h3>
+
+<p>ReSwiftに出てくるモノと役割について改めて見直しをしてみましょう。</p>
+
+<ul>
+<li>Store
+
+<ul>
+<li>アプリ内で必ず1つの存在</li>
+<li>アプリの状態を管理する</li>
+<li>Stateを更新するための<code>dispatch</code>を提供する
+
+<ul>
+<li>言い換えれば<code>dispatch(action)</code>をすることでStoreにStateの変更を知らせられる</li>
+</ul>
+</li>
+<li>Stateの状態を追えるように<code>subscribe</code>を提供する
+
+<ul>
+<li>言い換えれば<code>subscribe(listener)</code>をすることでlistenerは<code>getState</code>を通してStateの状態を取得できる</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+
+<p>サンプルでは下記が該当します。<br/>
+Storeの宣言は下記のようになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="n">var</span> <span class="n">mainStore</span> <span class="o">=</span> <span class="n">RecordingMainStore</span><span class="o">&lt;</span><span class="n">AppState</span><span class="o">&gt;</span><span class="p">(</span>
+</span><span class='line'>      <span class="nl">reducer:</span> <span class="n">AppReducer</span><span class="p">(),</span>
+</span><span class='line'>      <span class="nl">state:</span> <span class="nb">nil</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">typeMaps:</span><span class="p">[</span><span class="n">counterActionTypeMap</span><span class="p">,</span> <span class="n">ReSwiftRouter</span><span class="p">.</span><span class="n">typeMap</span><span class="p">],</span>
+</span><span class='line'>      <span class="nl">recording:</span> <span class="s">&quot;recording.json&quot;</span>
+</span><span class='line'><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このサンプルでは<a href="https://github.com/ReSwift/ReSwift-Recorder">ReSwiftRecorder</a>モジュールを利用しているため通常のStore宣言とは異なります。<br/>
+ですが、重要なのは、<code>reducer</code>に<code>AppReducer()</code>を指定していることと、Storeが管理するStateの初期値を<code>state: nil</code>としているということです。</p>
+
+<ul>
+<li>State
+
+<ul>
+<li>アプリの状態</li>
+</ul>
+</li>
+</ul>
+
+
+<p>サンプルでは下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppState.swift</span>
+</span><span class='line'><span class="k">struct</span> <span class="nl">AppState:</span> <span class="n">StateType</span><span class="p">,</span> <span class="n">HasNavigationState</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">counter:</span> <span class="n">Int</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">navigationState:</span> <span class="n">NavigationState</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>サンプルでは<code>CounterViewController</code>でカウント数の増加および減少をさせる処理が実装されており、<br/>
+<code>tabBarController</code>や<code>Button</code>のアクションなどで表示される画面を切り替える処理が実装されているため上記のように<code>counter</code>と<code>navigationState</code>の2つでアプリの状態を表すと定義しています。</p>
+
+<ul>
+<li>Action
+
+<ul>
+<li>何をするアクションなのかを表すオブジェクト</li>
+<li><code>type</code>プロパティを必ず持つ</li>
+</ul>
+</li>
+<li>ActionCreator
+
+<ul>
+<li>Actionを作成するメソッド</li>
+</ul>
+</li>
+</ul>
+
+
+<p>サンプルでは下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// CounterAction.swift</span>
+</span><span class='line'><span class="k">struct</span> <span class="nl">CounterActionIncrease:</span> <span class="n">StandardActionConvertible</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">static</span> <span class="n">let</span> <span class="n">type</span> <span class="o">=</span> <span class="s">&quot;COUNTER_ACTION_INCREASE&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">init</span><span class="p">()</span> <span class="p">{}</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">_</span> <span class="nl">standardAction:</span> <span class="n">StandardAction</span><span class="p">)</span> <span class="p">{}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">toStandardAction</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">StandardAction</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">StandardAction</span><span class="p">(</span><span class="nl">type:</span> <span class="n">CounterActionIncrease</span><span class="p">.</span><span class="n">type</span><span class="p">,</span> <span class="nl">payload:</span> <span class="p">[</span><span class="o">:</span><span class="p">],</span> <span class="nl">isTypedAction:</span> <span class="n">true</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>サンプルの<code>CounterAction.swift</code>の<code>CounterActionIncrease</code>はActionおよびActionCreatorの役割を兼ねています。</p>
+
+<ul>
+<li>Reducer
+
+<ul>
+<li>ActionとStateから新たなStateを作成して返す</li>
+<li>ポイントはStateを更新するのではなく、 <strong>新しく作成したState</strong> を返すということ</li>
+</ul>
+</li>
+</ul>
+
+
+<p>サンプルでは下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// CounterReducer.swift</span>
+</span><span class='line'><span class="k">struct</span> <span class="nl">AppReducer:</span> <span class="n">Reducer</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">handleAction</span><span class="p">(</span><span class="nl">action:</span> <span class="n">Action</span><span class="p">,</span> <span class="nl">state:</span> <span class="n">AppState</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AppState</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">AppState</span><span class="p">(</span>
+</span><span class='line'>            <span class="nl">counter:</span> <span class="n">counterReducer</span><span class="p">(</span><span class="nl">action:</span> <span class="n">action</span><span class="p">,</span> <span class="nl">counter:</span> <span class="n">state</span><span class="o">?</span><span class="p">.</span><span class="n">counter</span><span class="p">),</span>
+</span><span class='line'>            <span class="nl">navigationState:</span> <span class="n">NavigationReducer</span><span class="p">.</span><span class="n">handleAction</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="nl">state:</span> <span class="n">state</span><span class="o">?</span><span class="p">.</span><span class="n">navigationState</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">func</span> <span class="n">counterReducer</span><span class="p">(</span><span class="nl">action:</span> <span class="n">Action</span><span class="p">,</span> <span class="nl">counter:</span> <span class="n">Int</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Int</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="n">counter</span> <span class="o">=</span> <span class="n">counter</span> <span class="o">??</span> <span class="mi">0</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">switch</span> <span class="n">action</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">_</span> <span class="n">as</span> <span class="nl">CounterActionIncrease:</span>
+</span><span class='line'>        <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">_</span> <span class="n">as</span> <span class="nl">CounterActionDecrease:</span>
+</span><span class='line'>        <span class="n">counter</span> <span class="o">-=</span> <span class="mi">1</span>
+</span><span class='line'>    <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>        <span class="k">break</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">counter</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>サンプルでは、<code>handleAction</code>メソッドで「引数として受け取った<code>action</code>と<code>state</code>から作成した<code>AppState</code>を返却」しています。<br/>
+カウントアップの処理がReducerに伝わった場合には、<br/>
+<code>counterReducer</code>メソッドでそのActionに合わせて新たに必要なStateの情報を生成しています。<br/>
+(カウントアップの場合は<code>CounterActionIncrease</code>アクションなので<code>counter += 1</code>しています。)</p>
+
+<h3>ReSwiftに出てくるモノ同士の連携</h3>
+
+<p>1個1個のモノと役割については理解が進みました。<br/>
+続いて、それらの連携について見ていきましょう。<br/>
+そのためには<code>ViewController</code>を見ていくのがわかりやすいかなと思います。</p>
+
+<h4>カウントアップ・ダウンに見る連携</h4>
+
+<p>まずは<code>CounterViewController</code>ですが、<br/>
+「+」や「-」ボタンをタップすることで画面中央に表示されたカウントを増減させる画面です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// CounterViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">ReSwiftRouter</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">CounterViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">StoreSubscriber</span><span class="p">,</span> <span class="n">Routable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">static</span> <span class="n">let</span> <span class="n">identifier</span> <span class="o">=</span> <span class="s">&quot;CounterViewController&quot;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">var</span> <span class="nl">counterLabel:</span> <span class="n">UILabel</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewWillAppear</span><span class="p">(</span><span class="n">_</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">mainStore</span><span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewWillDisappear</span><span class="p">(</span><span class="n">_</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">mainStore</span><span class="p">.</span><span class="n">unsubscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">newState</span><span class="p">(</span><span class="nl">state:</span> <span class="n">AppState</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// 新規Stateをキャッチ</span>
+</span><span class='line'>    <span class="c1">// 画面のラベルを更新</span>
+</span><span class='line'>    <span class="n">counterLabel</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;\(state.counter)&quot;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">increaseButtonTapped</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
+</span><span class='line'>      <span class="n">CounterActionIncrease</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">decreaseButtonTapped</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
+</span><span class='line'>      <span class="n">CounterActionDecrease</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>細かく見ていきましょう。<br/>
+Storeの役割で説明した「Stateの状態を追えるように<code>subscribe</code>を提供する」に相当する部分が、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">override</span> <span class="n">func</span> <span class="nf">viewWillAppear</span><span class="p">(</span><span class="n">_</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">mainStore</span><span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">override</span> <span class="n">func</span> <span class="nf">viewWillDisappear</span><span class="p">(</span><span class="n">_</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">mainStore</span><span class="p">.</span><span class="n">unsubscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>になります。<br/>
+<code>viewWillAppear</code>で<code>subscribe</code>を実行することで、その画面が表示されるときにStateの監視を開始して、<code>viewWillDisappear</code>で<code>unsubscribe</code>を実行することで、その画面が非表示になるときにStateの監視を終了することにしています。</p>
+
+<p>また、「Stateを更新するための<code>dispatch</code>を提供する」に相当する部分が、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">increaseButtonTapped</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
+</span><span class='line'>    <span class="n">CounterActionIncrease</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">decreaseButtonTapped</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
+</span><span class='line'>    <span class="n">CounterActionDecrease</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>になります。<br/>
+ユーザが「+」ボタンをタップしたときに<code>increaseButtonTapped</code>が呼び出されます。<br/>
+そのときに上記アクションが実行されたことを<code>dispatch</code>を実行することでStoreに知らせています。<br/>
+<code>decreaseButtonTapped</code>も同様です。</p>
+
+<h4>画面切り替えに見る連携</h4>
+
+<p>続いて<code>tabBarController</code>による画面の切り替えですが、これもこのサンプルでは状態変化として扱っています。<br/>
+ただし、<code>ReSwiftRouter</code>モジュールで役割を担っているので、これを利用すれば開発者が新たに書く部分は非常に少なくなります。</p>
+
+<p><code>UITabBarControllerDelegate</code>を利用してタブをタップしたタイミングをキャッチします。
+そのときに、<code>ReSwiftRouter</code>の<code>SetRouteAction</code>を利用してタブによる画面切り替えのアクションをStoreに伝えています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">AppDelegate:</span> <span class="n">UITabBarControllerDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">tabBarController</span><span class="p">(</span><span class="n">_</span> <span class="nl">tabBarController:</span> <span class="n">UITabBarController</span><span class="p">,</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">shouldSelect</span> <span class="nl">viewController:</span> <span class="n">UIViewController</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="n">viewController</span> <span class="n">is</span> <span class="n">CounterViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
+</span><span class='line'>        <span class="n">SetRouteAction</span><span class="p">([</span><span class="s">&quot;TabBarViewController&quot;</span><span class="p">,</span> <span class="n">CounterViewController</span><span class="p">.</span><span class="n">identifier</span><span class="p">])</span>
+</span><span class='line'>      <span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="n">viewController</span> <span class="n">is</span> <span class="n">StatsViewController</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
+</span><span class='line'>        <span class="n">SetRouteAction</span><span class="p">([</span><span class="s">&quot;TabBarViewController&quot;</span><span class="p">,</span> <span class="n">StatsViewController</span><span class="p">.</span><span class="n">identifier</span><span class="p">])</span>
+</span><span class='line'>      <span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">false</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因みに、<code>SetRouteAction</code>は下記のように定義されています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">SetRouteAction:</span> <span class="n">StandardActionConvertible</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">route:</span> <span class="n">Route</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">animated:</span> <span class="n">Bool</span>
+</span><span class='line'>  <span class="n">public</span> <span class="k">static</span> <span class="n">let</span> <span class="n">type</span> <span class="o">=</span> <span class="s">&quot;RE_SWIFT_ROUTER_SET_ROUTE&quot;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">public</span> <span class="n">init</span> <span class="p">(</span><span class="n">_</span> <span class="nl">route:</span> <span class="n">Route</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">Bool</span> <span class="o">=</span> <span class="n">true</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">route</span> <span class="o">=</span> <span class="n">route</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">animated</span> <span class="o">=</span> <span class="n">animated</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">public</span> <span class="n">init</span><span class="p">(</span><span class="n">_</span> <span class="nl">action:</span> <span class="n">StandardAction</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">route</span> <span class="o">=</span> <span class="n">action</span><span class="p">.</span><span class="n">payload</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;route&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">!</span> <span class="n">Route</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">animated</span> <span class="o">=</span> <span class="n">action</span><span class="p">.</span><span class="n">payload</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;animated&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">!</span> <span class="n">Bool</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">public</span> <span class="n">func</span> <span class="n">toStandardAction</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">StandardAction</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">StandardAction</span><span class="p">(</span>
+</span><span class='line'>      <span class="nl">type:</span> <span class="n">SetRouteAction</span><span class="p">.</span><span class="n">type</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">payload:</span> <span class="p">[</span><span class="s">&quot;route&quot;</span><span class="o">:</span> <span class="n">route</span> <span class="n">as</span> <span class="n">AnyObject</span><span class="p">,</span> <span class="s">&quot;animated&quot;</span><span class="o">:</span> <span class="n">animated</span> <span class="n">as</span> <span class="n">AnyObject</span><span class="p">],</span>
+</span><span class='line'>      <span class="nl">isTypedAction:</span> <span class="n">true</span>
+</span><span class='line'>    <span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>中身を見てみると<code>CounterAction</code>と同様に<code>toStandardAction</code>を利用しているのがわかります。<br/>
+デバッグしていくとわかりますが、<code>tabBarController</code>を通した画面の切り替えでは、カウントアップやカウントダウンは無関係であるため<code>AppReducer</code>ではcountの状態を増減させることはありません。<br/>
+変化するのは<code>AppState.navigationState</code>のみです。<br/>
+こちらも追っていくとわかるのですが、下記の<code>NavigationReducer</code>に処理が引き継がれています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="n">NavigationReducer</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">public</span> <span class="k">static</span> <span class="n">func</span> <span class="n">handleAction</span><span class="p">(</span><span class="n">_</span> <span class="nl">action:</span> <span class="n">Action</span><span class="p">,</span> <span class="nl">state:</span> <span class="n">NavigationState</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NavigationState</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">state</span> <span class="o">=</span> <span class="n">state</span> <span class="o">??</span> <span class="n">NavigationState</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">switch</span> <span class="n">action</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">let</span> <span class="n">action</span> <span class="n">as</span> <span class="nl">SetRouteAction:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">setRoute</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="nl">setRouteAction:</span> <span class="n">action</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">let</span> <span class="n">action</span> <span class="n">as</span> <span class="nl">SetRouteSpecificData:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">setRouteSpecificData</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="nl">route:</span> <span class="n">action</span><span class="p">.</span><span class="n">route</span><span class="p">,</span> <span class="nl">data:</span> <span class="n">action</span><span class="p">.</span><span class="n">data</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>      <span class="k">break</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">state</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">static</span> <span class="n">func</span> <span class="n">setRoute</span><span class="p">(</span><span class="n">_</span> <span class="nl">state:</span> <span class="n">NavigationState</span><span class="p">,</span> <span class="nl">setRouteAction:</span> <span class="n">SetRouteAction</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NavigationState</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="n">state</span> <span class="o">=</span> <span class="n">state</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">state</span><span class="p">.</span><span class="n">route</span> <span class="o">=</span> <span class="n">setRouteAction</span><span class="p">.</span><span class="n">route</span>
+</span><span class='line'>    <span class="n">state</span><span class="p">.</span><span class="n">changeRouteAnimated</span> <span class="o">=</span> <span class="n">setRouteAction</span><span class="p">.</span><span class="n">animated</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">state</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>    <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このように、<code>NavigationReducer</code>の中で<code>NavigationState</code>型のオブジェクトを生成して返しています。<br/>
+なので、アプリの状態である<code>AppState</code>が持つのは、</p>
+
+<ul>
+<li>counter: アプリのカウント状態</li>
+<li>navigationState: アプリの画面状態</li>
+</ul>
+
+
+<p>と言えます。</p>
+
+<h3>まとめ</h3>
+
+<p>相変わらず、(流行っていないというのもあるかもしれませんが&hellip;)ReSwiftに関する日本語の記事が少ないですね。<br/>
+恐らく、Web業界のようにFluxやReduxが実際のサービスに取り入れられているとは言い難いのでしょう。<br/>
+その理由として考えられるのは、iOSの場合はデフォルトとしてStoryboardやViewControllerというものが存在し、Appleもそれをそのまま利用することを推奨しているからかもしれません。<br/>
+しかしながら、複雑なアプリが世の中で求められるようになるに従って『ViewControllerの肥大化』や『複数人での開発による統一性の崩れ』といった課題により真剣に考えざるを得なくなってきました
+。<br/>
+必ずしも、これらの課題を解決するためにReSwiftを使わなければならないということはないのですが、1つの方法論として知っておくことで選択肢も増えてきます。<br/>
+ただ、WebでReact&amp;Reduxを取り入れるのと同様に理解するためのハードルが高くもあるので現場で嫌がられることもあるかもしれません。<br/>
+また、保守性として高いとは決して言えません。開発メンバーの入れ替えが発生したときにReSwiftを勉強するコストが発生します。<br/>
+Webと違ってそこまで浸透しているとは言えないため、より導入が難しいと言えるでしょう。<br/>
+ここにある種の矛盾が生じているわけですね&hellip;</p>
+
+<p>筆者がちょうどReact&amp;Reduxに触れる機会が増えてきたため、良い機会だと思って、iOSでのReSwiftの利用メリットなどを合わせて考えていきたいと思っています。<br/>
+そろそろ個人でのアプリ開発も復活させたい気持ちもありますし、その際には積極的に導入してみようかな&hellip;</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Server Side SwiftでMongoDBと遊んでみる]]></title>
@@ -6400,241 +6985,6 @@ Node.jsはまだまだ新しい技術ですし、これからもっと学ぶべ�
 </script>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[SwiftとJava8でOptional型を比較してみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/06/19/swift-java-optional/"/>
-    <updated>2016-06-19T21:12:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/06/19/swift-java-optional</id>
-    <content type="html"><![CDATA[<h4>SwiftとJava8のOptional型を比較してみよう！</h4>
-
-<p>本日はSwiftとJava8のOptional型について比較してみたいと思います。<br/>
-最近チラチラとJava8を見かける機会が多いのですが、Swiftと同じくOptional型という概念があるんだ〜と何となく思っていました。<br/>
-が、実際に全く同じというわけではないと思うので比較したいと思ったわけです。<br/>
-ということで早速見ていきましょう！</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h5>SwiftのOptional型とは</h5>
-
-<p>まずはSwiftのOptional型から見ていきましょう。<br/>
-SwiftはObjective-Cでよく発生していた『思いがけず<code>nil</code>が入ったプロパティにアクセスしてExceptionが発生する』という事象を回避できる <strong>Optional型</strong> という概念があります。<br/>
-Swiftでは <strong>Optional型</strong> と <strong>非Optional型</strong> を変数定義時に明示的に利用することでこういったExceptionを回避することが可能なのです。</p>
-
-<ul>
-<li>Optional型: 変数に<code>nil</code>を代入することを <strong>許容します</strong>
-
-<ul>
-<li>Optional型はデータ型の末尾に <strong>『?』</strong> か <strong>『!』</strong> をつけます
-
-<ul>
-<li>『?』: 一般的なOptional型です</li>
-<li>『!』: 暗黙的Optional型です</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>非Optional型: 変数に<code>nil</code>を代入することを <strong>許容しません</strong></li>
-</ul>
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Optional型</span>
-</span><span class='line'><span class="n">var</span> <span class="nl">hoge:</span> <span class="n">Int</span><span class="o">?</span>
-</span><span class='line'><span class="n">var</span> <span class="nl">fuga:</span> <span class="n">Int</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// 非Optional型</span>
-</span><span class='line'><span class="n">var</span> <span class="n">piyo</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>Optional型から値を取得する方法は</h5>
-
-<p>さて、Optional型の宣言方法は先程話した通りです。<br/>
-実際に値を取得する際はOptional型で定義された変数を <strong>アンラップ</strong> する必要があります。</p>
-
-<p>ここで注意したいのが、先に紹介した『!』を使った暗黙的Optional型の場合は <strong>自動的にアンラップする</strong> ので開発者側はアンラップさせる必要がないということです。</p>
-
-<p>アンラップ方法は下記の3通りです。</p>
-
-<ul>
-<li>Forced Unwrapping: 変数に『!』をつけます</li>
-<li>Optional Binding: <code>if</code>文を利用します</li>
-<li>Optional Chaining: 変数に『?』をつけます</li>
-</ul>
-
-
-<p>Forced UnwrappingとOptional Bindeingの例は下記です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">var</span> <span class="nl">hoge:</span> <span class="n">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">1</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Forced Unwrapping</span>
-</span><span class='line'><span class="n">print</span><span class="p">(</span><span class="n">hoge</span><span class="o">!</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Optional Binding</span>
-</span><span class='line'><span class="k">if</span> <span class="n">let</span> <span class="n">fuga</span> <span class="o">=</span> <span class="n">hoge</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">print</span><span class="p">(</span><span class="n">fuga</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>続いてOptional Chainingの例を書きます。<br/>
-まずは下記のようなクラスを定義します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">class</span> <span class="nl">Hoge:</span> <span class="n">NSObject</span> <span class="p">{</span>
-</span><span class='line'>  
-</span><span class='line'>  <span class="n">func</span> <span class="n">hogehoge</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;hogehogeメソッドを実行しました&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記で定義したクラスの<code>hogehoge</code>メソッドをOptional Chaningを利用して実行します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">var</span> <span class="nl">hoge:</span> <span class="n">Hoge</span><span class="o">?</span> <span class="o">=</span> <span class="n">Hoge</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Optional Chaining</span>
-</span><span class='line'><span class="n">hoge</span><span class="o">?</span><span class="p">.</span><span class="n">hogehoge</span><span class="p">()</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>このようにSwiftではコーディングしていく段階でかなり<code>nil</code>に注意する必要があることがわかります。</p>
-
-<h5>Java8のOptional型とは</h5>
-
-<p>次にJava8のOptional型について見ていきましょう！<br/>
-Java8ではOptionalを利用することで</p>
-
-<ul>
-<li><code>null</code>の可能性がある変数をラップしておくことで、値を安全に取り出せる</li>
-<li>実行したメソッドが<code>null</code>を返却する可能性がある場合に、場合分けを短く書ける</li>
-</ul>
-
-
-<p>というメリットがあります。<br/>
-では実際に使い方を見ていきましょう！</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">String</span> <span class="n">hoge</span> <span class="o">=</span> <span class="s">&quot;hoge&quot;</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Optional型にラップする</span>
-</span><span class='line'><span class="n">Optional</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">hogeOpt</span> <span class="o">=</span> <span class="n">Optional</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="n">hoge</span><span class="o">);</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Optional型から値を取り出す</span>
-</span><span class='line'><span class="c1">// getメソッドを使う</span>
-</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">hogeOpt</span><span class="o">.</span><span class="na">get</span><span class="o">());</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// orElseメソッドを使う</span>
-</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">hogeOpt</span><span class="o">.</span><span class="na">orElse</span><span class="o">(</span><span class="s">&quot;default data&quot;</span><span class="o">));</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// orElseGetメソッドを使う</span>
-</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">hogeOpt</span><span class="o">.</span><span class="na">orElseGet</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="s">&quot;default data&quot;</span><span class="o">));</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// ifPresentメソッドを使う</span>
-</span><span class='line'><span class="n">hogeOpt</span><span class="o">.</span><span class="na">ifPresent</span><span class="o">(</span> <span class="n">hoge</span> <span class="o">-&gt;</span> <span class="o">{</span>
-</span><span class='line'>  <span class="c1">// 値があったときにログ出力</span>
-</span><span class='line'>  <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">hoge</span><span class="o">);</span>
-</span><span class='line'><span class="o">});</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記を見ると幾つか値の取得方法があることがわかると思います。<br/>
-それぞれSwiftの表記に近しいところがあると感じました。</p>
-
-<p>例えば、<code>get</code>メソッドは値が<code>null</code>だった場合に<code>NoSuchElementException</code>を投げます。<br/>
-逆に言えば、確実に<code>null</code>が来ない場合の<code>get</code>メソッドが利用できると言えます。<br/>
-これはSwiftで言うところの『Forced Unwrapping』です。</p>
-
-<p><code>orElse</code>や<code>orElseGet</code>はSwiftで言うところのnil合体演算子である『??』を利用しているのとほぼ同等です。<br/>
-(Swiftであれば<code>let val = hoge ?? "default data"</code>みたいな感じですね。)</p>
-
-<p><code>ifPresent</code>メソッドもSwiftで言うところの『Optional Binding』と言えるでしょう。</p>
-
-<h4>まとめ</h4>
-
-<p>さて如何でしたでしょうか？<br/>
-Android Studio 2.2からJava8のラムダ式サポートなんて話も聞こえてきますし、<br/>
-スマートフォンのアプリ開発者は今後、SwiftにもJava8にも関わっていく可能性が十分ありえます。<br/>
-そうなったときに学習コストが高いな〜と避けるのではなく、案外触ってみると「あれ！？似てる&hellip;」なんてことがあるかもしれません。<br/>
-そんな近未来！？を夢見つつブログを書いてみたのでした。<br/>
-ということで今日はここまで。</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="http://qiita.com/maiki055/items/b24378a3707bd35a31a8">どこよりも分かりやすいSwiftの&#8221;?&ldquo;と&rdquo;!&#8221;</a></li>
-<li><a href="http://www.task-notes.com/entry/20150708/1436324400">Java8のOptionalの使い方について</a></li>
-</ul>
-
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
 
 ]]></content>
   </entry>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Redux | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/redux/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2016-12-04T22:19:41+09:00</updated>
+  <updated>2016-12-06T08:56:51+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,466 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[ReSwiftを勉強してみよう！(2)]]></title>
+    <link href="http://grandbig.github.io/blog/2016/12/06/reswift-2/"/>
+    <updated>2016-12-06T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/12/06/reswift-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>こちらは<a href="http://qiita.com/advent-calendar/2016/ios2">iOS その2 Advent Calendar 2016</a> 6日目の記事です。</p>
+
+<p>今年は仕事でiOSを触る機会がめっきりと減ってしまったのですが、<br/>
+「やはり１年を振り返るのならiOS Advent Calendarは欠かせないでしょう」ということで投稿することにしました。</p>
+
+<p>最近、筆者が仕事で着手し始めた <strong>Redux</strong> に関連するということで <strong>ReSwift</strong> について見ていきたいと思います。<br/>
+タイトルが <strong>(2)</strong> になっているのは、<br/>
+以前に興味を持って自主的に取り組んでみた<a href="http://grandbig.github.io/blog/2016/09/03/reswift-1/">ReSwiftを勉強してみよう！(1)</a>の続きという意味です。<br/>
+しかし、Advent Calendarの記事でもあるので本記事のみで完結する形で書きたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>今回は公式GitHubに上がっている<a href="https://github.com/ReSwift/CounterExample-Navigation-TimeTravel">CounterExample-Navigation-TimeTravel</a>を元にReSwiftを勉強していきたいと思います。</p>
+
+<h3>ReSwiftに出てくるモノと役割</h3>
+
+<p>ReSwiftに出てくるモノと役割について改めて見直しをしてみましょう。</p>
+
+<ul>
+<li>Store
+
+<ul>
+<li>アプリ内で必ず1つの存在</li>
+<li>アプリの状態を管理する</li>
+<li>Stateを更新するための<code>dispatch</code>を提供する
+
+<ul>
+<li>言い換えれば<code>dispatch(action)</code>をすることでStoreにStateの変更を知らせられる</li>
+</ul>
+</li>
+<li>Stateの状態を追えるように<code>subscribe</code>を提供する
+
+<ul>
+<li>言い換えれば<code>subscribe(listener)</code>をすることでlistenerは<code>getState</code>を通してStateの状態を取得できる</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+
+<p>サンプルでは下記が該当します。<br/>
+Storeの宣言は下記のようになります。</p>
+
+<p>```objective-c
+// AppDelegate.swift
+var mainStore = RecordingMainStore<AppState>(</p>
+
+<pre><code>  reducer: AppReducer(),
+  state: nil,
+  typeMaps:[counterActionTypeMap, ReSwiftRouter.typeMap],
+  recording: "recording.json"
+</code></pre>
+
+<p>)
+```</p>
+
+<p>このサンプルでは<a href="https://github.com/ReSwift/ReSwift-Recorder">ReSwiftRecorder</a>モジュールを利用しているため通常のStore宣言とは異なります。<br/>
+ですが、重要なのは、<code>reducer</code>に<code>AppReducer()</code>を指定していることと、Storeが管理するStateの初期値を<code>state: nil</code>としているということです。</p>
+
+<ul>
+<li>State
+
+<ul>
+<li>アプリの状態</li>
+</ul>
+</li>
+</ul>
+
+
+<p>サンプルでは下記の通りです。</p>
+
+<p>```objective-c
+// AppState.swift
+struct AppState: StateType, HasNavigationState {</p>
+
+<pre><code>var counter: Int
+var navigationState: NavigationState
+</code></pre>
+
+<p>}
+```</p>
+
+<p>サンプルでは<code>CounterViewController</code>でカウント数の増加および減少をさせる処理が実装されており、<br/>
+<code>tabBarController</code>や<code>Button</code>のアクションなどで表示される画面を切り替える処理が実装されているため上記のように<code>counter</code>と<code>navigationState</code>の2つでアプリの状態を表すと定義しています。</p>
+
+<ul>
+<li>Action
+
+<ul>
+<li>何をするアクションなのかを表すオブジェクト</li>
+<li><code>type</code>プロパティを必ず持つ</li>
+</ul>
+</li>
+<li>ActionCreator
+
+<ul>
+<li>Actionを作成するメソッド</li>
+</ul>
+</li>
+</ul>
+
+
+<p>サンプルでは下記の通りです。</p>
+
+<p>```objective-c
+// CounterAction.swift
+struct CounterActionIncrease: StandardActionConvertible {</p>
+
+<pre><code>static let type = "COUNTER_ACTION_INCREASE"
+
+init() {}
+init(_ standardAction: StandardAction) {}
+
+func toStandardAction() -&gt; StandardAction {
+    return StandardAction(type: CounterActionIncrease.type, payload: [:], isTypedAction: true)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>サンプルの<code>CounterAction.swift</code>の<code>CounterActionIncrease</code>はActionおよびActionCreatorの役割を兼ねています。</p>
+
+<ul>
+<li>Reducer
+
+<ul>
+<li>ActionとStateから新たなStateを作成して返す</li>
+<li>ポイントはStateを更新するのではなく、 <strong>新しく作成したState</strong> を返すということ</li>
+</ul>
+</li>
+</ul>
+
+
+<p>サンプルでは下記の通りです。</p>
+
+<p>```objective-c
+// CounterReducer.swift
+struct AppReducer: Reducer {</p>
+
+<pre><code>func handleAction(action: Action, state: AppState?) -&gt; AppState {
+    return AppState(
+        counter: counterReducer(action: action, counter: state?.counter),
+        navigationState: NavigationReducer.handleAction(action, state: state?.navigationState)
+    )
+}
+</code></pre>
+
+<p>}</p>
+
+<p>func counterReducer(action: Action, counter: Int?) &ndash;> Int {</p>
+
+<pre><code>var counter = counter ?? 0
+
+switch action {
+case _ as CounterActionIncrease:
+    counter += 1
+case _ as CounterActionDecrease:
+    counter -= 1
+default:
+    break
+}
+
+return counter
+</code></pre>
+
+<p>}
+```</p>
+
+<p>サンプルでは、<code>handleAction</code>メソッドで「引数として受け取った<code>action</code>と<code>state</code>から作成した<code>AppState</code>を返却」しています。<br/>
+カウントアップの処理がReducerに伝わった場合には、<br/>
+<code>counterReducer</code>メソッドでそのActionに合わせて新たに必要なStateの情報を生成しています。<br/>
+(カウントアップの場合は<code>CounterActionIncrease</code>アクションなので<code>counter += 1</code>しています。)</p>
+
+<h3>ReSwiftに出てくるモノ同士の連携</h3>
+
+<p>1個1個のモノと役割については理解が進みました。<br/>
+続いて、それらの連携について見ていきましょう。<br/>
+そのためには<code>ViewController</code>を見ていくのがわかりやすいかなと思います。</p>
+
+<h4>カウントアップ・ダウンに見る連携</h4>
+
+<p>まずは<code>CounterViewController</code>ですが、<br/>
+「+」や「-」ボタンをタップすることで画面中央に表示されたカウントを増減させる画面です。</p>
+
+<p>```objective-c
+// CounterViewController.swift
+import UIKit
+import ReSwift
+import ReSwiftRouter</p>
+
+<p>class CounterViewController: UIViewController, StoreSubscriber, Routable {</p>
+
+<p>  static let identifier = &ldquo;CounterViewController&rdquo;</p>
+
+<p>  @IBOutlet var counterLabel: UILabel!</p>
+
+<p>  override func viewWillAppear(_ animated: Bool) {</p>
+
+<pre><code>mainStore.subscribe(self)
+</code></pre>
+
+<p>  }</p>
+
+<p>  override func viewWillDisappear(_ animated: Bool) {</p>
+
+<pre><code>mainStore.unsubscribe(self)
+</code></pre>
+
+<p>  }</p>
+
+<p>  func newState(state: AppState) {</p>
+
+<pre><code>// 新規Stateをキャッチ
+// 画面のラベルを更新
+counterLabel.text = "\(state.counter)"
+</code></pre>
+
+<p>  }</p>
+
+<p>  @IBAction func increaseButtonTapped(_ sender: Any) {</p>
+
+<pre><code>mainStore.dispatch(
+  CounterActionIncrease()
+)
+</code></pre>
+
+<p>  }</p>
+
+<p>  @IBAction func decreaseButtonTapped(_ sender: Any) {</p>
+
+<pre><code>mainStore.dispatch(
+  CounterActionDecrease()
+)
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>細かく見ていきましょう。<br/>
+Storeの役割で説明した「Stateの状態を追えるように<code>subscribe</code>を提供する」に相当する部分が、</p>
+
+<p>```objective-c
+override func viewWillAppear(_ animated: Bool) {
+  mainStore.subscribe(self)
+}</p>
+
+<p>override func viewWillDisappear(_ animated: Bool) {
+  mainStore.unsubscribe(self)
+}
+```</p>
+
+<p>になります。<br/>
+<code>viewWillAppear</code>で<code>subscribe</code>を実行することで、その画面が表示されるときにStateの監視を開始して、<code>viewWillDisappear</code>で<code>unsubscribe</code>を実行することで、その画面が非表示になるときにStateの監視を終了することにしています。</p>
+
+<p>また、「Stateを更新するための<code>dispatch</code>を提供する」に相当する部分が、</p>
+
+<p>```objective-c
+@IBAction func increaseButtonTapped(_ sender: Any) {
+  mainStore.dispatch(</p>
+
+<pre><code>CounterActionIncrease()
+</code></pre>
+
+<p>  )
+}</p>
+
+<p>@IBAction func decreaseButtonTapped(_ sender: Any) {
+  mainStore.dispatch(</p>
+
+<pre><code>CounterActionDecrease()
+</code></pre>
+
+<p>  )
+}
+```</p>
+
+<p>になります。<br/>
+ユーザが「+」ボタンをタップしたときに<code>increaseButtonTapped</code>が呼び出されます。<br/>
+そのときに上記アクションが実行されたことを<code>dispatch</code>を実行することでStoreに知らせています。<br/>
+<code>decreaseButtonTapped</code>も同様です。</p>
+
+<h4>画面切り替えに見る連携</h4>
+
+<p>続いて<code>tabBarController</code>による画面の切り替えですが、これもこのサンプルでは状態変化として扱っています。<br/>
+ただし、<code>ReSwiftRouter</code>モジュールで役割を担っているので、これを利用すれば開発者が新たに書く部分は非常に少なくなります。</p>
+
+<p><code>UITabBarControllerDelegate</code>を利用してタブをタップしたタイミングをキャッチします。
+そのときに、<code>ReSwiftRouter</code>の<code>SetRouteAction</code>を利用してタブによる画面切り替えのアクションをStoreに伝えています。</p>
+
+<p>```objective-c
+// AppDelegate.swift
+extension AppDelegate: UITabBarControllerDelegate {</p>
+
+<p>  func tabBarController(_ tabBarController: UITabBarController,</p>
+
+<pre><code>shouldSelect viewController: UIViewController) -&gt; Bool {
+
+if viewController is CounterViewController {
+
+  mainStore.dispatch(
+    SetRouteAction(["TabBarViewController", CounterViewController.identifier])
+  )
+} else if viewController is StatsViewController {
+  mainStore.dispatch(
+    SetRouteAction(["TabBarViewController", StatsViewController.identifier])
+  )
+}
+    return false
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>因みに、<code>SetRouteAction</code>は下記のように定義されています。</p>
+
+<p>```objective-c
+public struct SetRouteAction: StandardActionConvertible {</p>
+
+<p>  let route: Route
+  let animated: Bool
+  public static let type = &ldquo;RE_SWIFT_ROUTER_SET_ROUTE&rdquo;</p>
+
+<p>  public init (_ route: Route, animated: Bool = true) {</p>
+
+<pre><code>self.route = route
+self.animated = animated
+</code></pre>
+
+<p>  }</p>
+
+<p>  public init(_ action: StandardAction) {</p>
+
+<pre><code>self.route = action.payload!["route"] as! Route
+self.animated = action.payload!["animated"] as! Bool
+</code></pre>
+
+<p>  }</p>
+
+<p>  public func toStandardAction() &ndash;> StandardAction {</p>
+
+<pre><code>return StandardAction(
+  type: SetRouteAction.type,
+  payload: ["route": route as AnyObject, "animated": animated as AnyObject],
+  isTypedAction: true
+)
+</code></pre>
+
+<p>  }<br/>
+}
+```</p>
+
+<p>中身を見てみると<code>CounterAction</code>と同様に<code>toStandardAction</code>を利用しているのがわかります。<br/>
+デバッグしていくとわかりますが、<code>tabBarController</code>を通した画面の切り替えでは、カウントアップやカウントダウンは無関係であるため<code>AppReducer</code>ではcountの状態を増減させることはありません。<br/>
+変化するのは<code>AppState.navigationState</code>のみです。<br/>
+こちらも追っていくとわかるのですが、下記の<code>NavigationReducer</code>に処理が引き継がれています。</p>
+
+<p>```objective-c
+public struct NavigationReducer {</p>
+
+<p>  public static func handleAction(_ action: Action, state: NavigationState?) &ndash;> NavigationState {</p>
+
+<pre><code>let state = state ?? NavigationState()
+
+switch action {
+case let action as SetRouteAction:
+  return setRoute(state, setRouteAction: action)
+case let action as SetRouteSpecificData:
+  return setRouteSpecificData(state, route: action.route, data: action.data)
+default:
+  break
+}
+
+return state
+</code></pre>
+
+<p>  }</p>
+
+<p>  static func setRoute(_ state: NavigationState, setRouteAction: SetRouteAction) &ndash;> NavigationState {</p>
+
+<pre><code>var state = state
+
+state.route = setRouteAction.route
+state.changeRouteAnimated = setRouteAction.animated
+
+return state
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>&lt;省略&gt;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>このように、<code>NavigationReducer</code>の中で<code>NavigationState</code>型のオブジェクトを生成して返しています。<br/>
+なので、アプリの状態である<code>AppState</code>が持つのは、</p>
+
+<ul>
+<li>counter: アプリのカウント状態</li>
+<li>navigationState: アプリの画面状態</li>
+</ul>
+
+
+<p>と言えます。</p>
+
+<h3>まとめ</h3>
+
+<p>相変わらず、(流行っていないというのもあるかもしれませんが&hellip;)ReSwiftに関する日本語の記事が少ないですね。<br/>
+恐らく、Web業界のようにFluxやReduxが実際のサービスに取り入れられているとは言い難いのでしょう。<br/>
+その理由として考えられるのは、iOSの場合はデフォルトとしてStoryboardやViewControllerというものが存在し、Appleもそれをそのまま利用することを推奨しているからかもしれません。<br/>
+しかしながら、複雑なアプリが世の中で求められるようになるに従って『ViewControllerの肥大化』や『複数人での開発による統一性の崩れ』といった課題により真剣に考えざるを得なくなってきました
+。<br/>
+必ずしも、これらの課題を解決するためにReSwiftを使わなければならないということはないのですが、1つの方法論として知っておくことで選択肢も増えてきます。<br/>
+ただ、WebでReact&amp;Reduxを取り入れるのと同様に理解するためのハードルが高くもあるので現場で嫌がられることもあるかもしれません。<br/>
+また、保守性として高いとは決して言えません。開発メンバーの入れ替えが発生したときにReSwiftを勉強するコストが発生します。<br/>
+Webと違ってそこまで浸透しているとは言えないため、より導入が難しいと言えるでしょう。<br/>
+ここにある種の矛盾が生じているわけですね&hellip;</p>
+
+<p>筆者がちょうどReact&amp;Reduxに触れる機会が増えてきたため、良い機会だと思って、iOSでのReSwiftの利用メリットなどを合わせて考えていきたいと思っています。<br/>
+そろそろ個人でのアプリ開発も復活させたい気持ちもありますし、その際には積極的に導入してみようかな&hellip;</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[ReSwiftを勉強してみよう！(1)]]></title>

@@ -9,8 +9,8 @@
   <meta name="author" content="Takahiro">
 
   
-  <meta name="description" content="AltBeaconでiBeacon検知(アプリBG起動編) さて、以前、AltBeaconを使ってAndroidでiBeaconを検知しようで基本的な使い方を説明させて頂きました。
-今回はアプリをBackgroundで起動しているときにもiBeaconを検知できるようにしてみようと思います。 &hellip;">
+  <meta name="description" content="最適なWebViewを使って、OAuth2.0認証をしよう！ 本日は、iOSのバージョン毎に最適なWebViewを使ってOAuth2.0認証を実施してみたいと思います。
+やはり、iOS8であればWKWebViewを使いたいですし、iOS7ではUIWebViewしか利用できないという現実があります &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -77,6 +77,117 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/06/06/custom-oauth-webview/">OAuth2.0認証をUIWebView&WKWebViewで実施しよう！</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-06T23:38:00+09:00" pubdate data-updated="true">Jun 6<span>th</span>, 2015</time>
+        
+         | <a href="/blog/2015/06/06/custom-oauth-webview/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>最適なWebViewを使って、OAuth2.0認証をしよう！</h4>
+
+<p>本日は、iOSのバージョン毎に最適なWebViewを使ってOAuth2.0認証を実施してみたいと思います。<br/>
+やはり、iOS8であればWKWebViewを使いたいですし、iOS7ではUIWebViewしか利用できないという現実があります。</p>
+
+<p>WKWebViewとUIWebViewの使い分け処理に関しては、<a href="http://techblog.yahoo.co.jp/ios/let-uiwebview-as-wkwebview/">let UIWebView as WKWebView</a>を参考にさせて頂きました。<br/>
+(あえてObjective-Cで書いています。)</p>
+
+<p>まずは、UIWebViewとWKWebViewの使い分け部分を説明していきます。</p>
+
+<p>共通インターフェースとして<code>WKWebViewProtocol.h</code>を作成します。<br/>
+共通化したい処理を書き出しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// WKWebViewProtocol.h</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#import &lt;UIKit/UIKit.h&gt;</span>
+</span><span class='line'><span class="cp">#import &lt;WebKit/WebKit.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@protocol</span> <span class="nc">WKWebViewProtocol</span> <span class="o">&lt;</span><span class="n">NSObject</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span> <span class="n">NSString</span> <span class="o">*</span><span class="n">title</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span> <span class="n">NSURL</span> <span class="o">*</span><span class="n">URL</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">readonly</span><span class="p">,</span> <span class="n">getter</span><span class="o">=</span><span class="n">isLoading</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="n">loading</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">readonly</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="n">canGoBack</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">readonly</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="n">canGoForward</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">loadRequest:</span><span class="p">(</span><span class="n">NSURLRequest</span> <span class="o">*</span><span class="p">)</span><span class="nv">request</span><span class="p">;</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">stopLoading</span><span class="p">;</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">evaluateJavaScript:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">javaScriptString</span> <span class="nf">completionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="kt">id</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="p">))</span><span class="nv">completionHandler</span><span class="p">;</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">goBack</span><span class="p">;</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">goForward</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/06/06/custom-oauth-webview/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -721,67 +832,6 @@ SwiftはObjective-Cと型の表現が変わりました。<br/>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/05/09/timer-progresshud/">一定時間内は画面タップをさせない！</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-05-09T23:37:00+09:00" pubdate data-updated="true">May 9<span>th</span>, 2015</time>
-        
-         | <a href="/blog/2015/05/09/timer-progresshud/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h4>SVProgressHUDとNSTimerを使う</h4>
-
-<p>さて、本日はさくっとメモしておきます。<br/>
-できると思っていて当然できた話なので、本当にメモです笑。</p>
-
-<p><a href="https://github.com/AFNetworking/AFNetworking">AFNetworking</a>などでどこかしらのサーバに通信している間、画面をユーザに触らせたくないことがあるかもしれません。<br/>
-そんなときはローディングウィンドウを<a href="https://github.com/TransitApp/SVProgressHUD">SVProgressHUD</a>で表示し、 <strong>NSTimer</strong> を使って時間で操ります。</p>
-
-<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/05/09/timer-progresshud/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/11/">&larr; Older</a>
@@ -799,6 +849,10 @@ SwiftはObjective-Cと型の表現が変わりました。<br/>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2016/12/06/reswift-2/">ReSwiftを勉強してみよう！(2)</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2016/12/05/swift-perfect-mongo/">Server Side SwiftでMongoDBと遊んでみる</a>
       </li>
     
@@ -812,10 +866,6 @@ SwiftはObjective-Cと型の表現が変わりました。<br/>
     
       <li class="post">
         <a href="/blog/2016/11/20/brew-install-db/">HomebrewでMongoDBをインストール</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2016/11/03/blog-3-year-anniversary/">技術ブログのアクセスと収入の推移(3周年)</a>
       </li>
     
   </ul>
@@ -837,7 +887,7 @@ SwiftはObjective-Cと型の表現が変わりました。<br/>
 </section>
 <section>
 	<h1>Top Categories</h1>
-		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (135)</a></li><li><a href='/blog/categories/swift'>swift (38)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/java'>java (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/location'>location (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li><li><a href='/blog/categories/node'>node (6)</a></li><li><a href='/blog/categories/springboot'>springboot (5)</a></li><li><a href='/blog/categories/apurishen-qing'>アプリ申請 (5)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li><li><a href='/blog/categories/xcode6'>xcode6 (4)</a></li><li><a href='/blog/categories/sqlite'>SQLite (4)</a></li></ul>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (136)</a></li><li><a href='/blog/categories/swift'>swift (39)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/java'>java (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/location'>location (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li><li><a href='/blog/categories/node'>node (6)</a></li><li><a href='/blog/categories/springboot'>springboot (5)</a></li><li><a href='/blog/categories/apurishen-qing'>アプリ申請 (5)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li><li><a href='/blog/categories/xcode6'>xcode6 (4)</a></li><li><a href='/blog/categories/sqlite'>SQLite (4)</a></li></ul>
 </section>
 <aside>
 	<h3>
