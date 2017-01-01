@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-01-01T12:54:20+09:00</updated>
+  <updated>2017-01-01T15:46:07+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,369 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(3)]]></title>
+    <link href="http://grandbig.github.io/blog/2017/01/01/redux-base-3/"/>
+    <updated>2017-01-01T14:18:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/01/01/redux-base-3</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>前回の<a href="http://grandbig.github.io/blog/2017/01/01/redux-base-2/">iOSエンジニアが苦しんだReduxの基礎(2)</a>で素のReactと素のReduxを組み合わせたExampleについて見ていきました。<br/>
+今回は<code>connect()</code>を使ったReact&amp;ReduxによるWebサイトの実装について見ていきたいと思います。<br/>
+では早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Counterサンプルで学ぼう！</h3>
+
+<p><a href="http://redux.js.org/docs/introduction/Examples.html">公式ReduxページのExample</a>の先頭に書かれている <strong>Counter</strong> を見ていきましょう。<br/>
+本来は素のReactと素のReduxを使ったExampleではあるのですが、今回の説明のために改変します。<br/>
+実装するWebサイトは下図の通りです。</p>
+
+<p><img src="http://grandbig.github.io/images/redux_base_1.png" alt="Counter Example画面" /></p>
+
+<p>実装されている機能としては下記の4つになります。</p>
+
+<ul>
+<li>「+」ボタンを選択するとClick数が+1される</li>
+<li>「-」ボタンを選択するとClick数が-1される</li>
+<li>「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される</li>
+<li>「Increment async」ボタンを選択すると1秒後にClick数が+1される</li>
+</ul>
+
+
+<p>前回と異なるのはReactとReduxの連携に <strong>connect()</strong> を利用しているという点です。<br/>
+では1つ1つ見ていきましょう。</p>
+
+<h4>フォルダ構成</h4>
+
+<p>まずはフォルダ構成を見ていきます。<br/>
+(説明のために一部変更を加えています。)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">counter</span>
+</span><span class='line'><span class="err">├──</span> <span class="kr">public</span>
+</span><span class='line'><span class="err">│</span>     <span class="err">└──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">html</span>
+</span><span class='line'><span class="err">└──</span> <span class="nx">src</span>
+</span><span class='line'>     <span class="err">├──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'>     <span class="err">├──</span> <span class="nx">actions</span>
+</span><span class='line'>     <span class="err">│</span>     <span class="err">└──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'>     <span class="err">├──</span> <span class="nx">reducers</span>
+</span><span class='line'>     <span class="err">│</span>     <span class="err">└──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'>     <span class="err">├──</span> <span class="nx">components</span>
+</span><span class='line'>     <span class="err">│</span>     <span class="err">└──</span> <span class="nx">Counter</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'>     <span class="err">└──</span> <span class="nx">node_modules</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>素の連携とconnect()による連携の比較</h4>
+
+<p><code>Actions</code>, <code>Reducers</code>, <code>Components</code>に関しては、<a href="http://grandbig.github.io/blog/2017/01/01/redux-base-2/">前回</a>と同じなので割愛します。<br/>
+前回は、ReactとReduxの連携部分を下記のように書いていました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// src/index.js</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">React</span> <span class="nx">from</span> <span class="s1">&#39;react&#39;</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">ReactDOM</span> <span class="nx">from</span> <span class="s1">&#39;react-dom&#39;</span>
+</span><span class='line'><span class="kr">import</span> <span class="p">{</span> <span class="nx">createStore</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;redux&#39;</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">Counter</span> <span class="nx">from</span> <span class="s1">&#39;./components/Counter&#39;</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">counter</span> <span class="nx">from</span> <span class="s1">&#39;./reducers&#39;</span>
+</span><span class='line'><span class="kr">import</span> <span class="p">{</span> <span class="nx">increment</span><span class="p">,</span> <span class="nx">decrement</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;./actions&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kr">const</span> <span class="nx">store</span> <span class="o">=</span> <span class="nx">createStore</span><span class="p">(</span><span class="nx">counter</span><span class="p">)</span>
+</span><span class='line'><span class="kr">const</span> <span class="nx">rootEl</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;root&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="kr">const</span> <span class="nx">render</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">ReactDOM</span><span class="p">.</span><span class="nx">render</span><span class="p">(</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="nx">Counter</span>
+</span><span class='line'>    <span class="nx">value</span><span class="o">=</span><span class="p">{</span><span class="nx">store</span><span class="p">.</span><span class="nx">getState</span><span class="p">()}</span>
+</span><span class='line'>    <span class="nx">onIncrement</span><span class="o">=</span><span class="p">{()</span> <span class="o">=&gt;</span> <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">(</span><span class="nx">increment</span><span class="p">())}</span>
+</span><span class='line'>    <span class="nx">onDecrement</span><span class="o">=</span><span class="p">{()</span> <span class="o">=&gt;</span> <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">(</span><span class="nx">decrement</span><span class="p">())}</span>
+</span><span class='line'>  <span class="o">/&gt;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">rootEl</span>
+</span><span class='line'><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">render</span><span class="p">()</span>
+</span><span class='line'><span class="nx">store</span><span class="p">.</span><span class="nx">subscribe</span><span class="p">(</span><span class="nx">render</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>今回はこの連携を<code>connect()</code>を利用して実装します。</p>
+
+<p>まずは、必要なモジュールを追加しましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// src/index.js</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">React</span> <span class="nx">from</span> <span class="s1">&#39;react&#39;</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">ReactDOM</span> <span class="nx">from</span> <span class="s1">&#39;react-dom&#39;</span>
+</span><span class='line'><span class="kr">import</span> <span class="p">{</span> <span class="nx">createStore</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;redux&#39;</span>
+</span><span class='line'><span class="c1">// Providerとconnectを追加</span>
+</span><span class='line'><span class="kr">import</span> <span class="p">{</span> <span class="nx">Provider</span><span class="p">,</span> <span class="nx">connect</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;react-redux&#39;</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">Counter</span> <span class="nx">from</span> <span class="s1">&#39;./components/Counter&#39;</span>
+</span><span class='line'><span class="kr">import</span> <span class="p">{</span> <span class="nx">increment</span><span class="p">,</span> <span class="nx">decrement</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;./actions/index&#39;</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">counter</span> <span class="nx">from</span> <span class="s1">&#39;./reducers&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>connect()</code>で連携します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// src/index.js</span>
+</span><span class='line'><span class="kd">function</span> <span class="nx">mapStateToProps</span> <span class="p">(</span><span class="nx">state</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="p">{</span> <span class="nx">value</span><span class="o">:</span> <span class="nx">state</span> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">function</span> <span class="nx">mapDispatchToProps</span> <span class="p">(</span><span class="nx">dispatch</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">onIncrement</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">increment</span><span class="p">()),</span>
+</span><span class='line'>    <span class="nx">onDecrement</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">decrement</span><span class="p">())</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">let</span> <span class="nx">AppContainer</span> <span class="o">=</span> <span class="nx">connect</span><span class="p">(</span>
+</span><span class='line'>  <span class="nx">mapStateToProps</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">mapDispatchToProps</span>
+</span><span class='line'><span class="p">)(</span><span class="nx">Counter</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="kr">const</span> <span class="nx">render</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">ReactDOM</span><span class="p">.</span><span class="nx">render</span><span class="p">(</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="nx">Provider</span> <span class="nx">store</span><span class="o">=</span><span class="p">{</span><span class="nx">store</span><span class="p">}</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="o">&lt;</span><span class="nx">AppContainer</span> <span class="o">/&gt;</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="err">/Provider&gt;,</span>
+</span><span class='line'>  <span class="nx">rootEl</span>
+</span><span class='line'><span class="p">)</span>
+</span><span class='line'><span class="nx">render</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>1つ1つ見ていきましょう。<br/>
+<code>connect()</code>は4つの引数をセットできるのですが、中でも重要なのが次の2つです。</p>
+
+<ol>
+<li><code>mapStateToProps</code></li>
+<li><code>mapDispatchToProps</code></li>
+</ol>
+
+
+<p>です。<br/>
+全ては<a href="https://github.com/reactjs/react-redux/blob/master/docs/api.md">react-reduxのReadme</a>に書かれているのですが、ソースと合わせて見ていきます。<br/>
+まずは、<code>mapStateToProps</code>からです。<br/>
+Readmeには、</p>
+
+<blockquote><p>If specified, the component will subscribe to Redux store updates. Any time it updates, mapStateToProps will be called. Its result must be a plain object*, and it will be merged into the component’s props. If you omit it, the component will not be subscribed to the Redux store.</p></blockquote>
+
+<p>と書かれていますね。<br/>
+これはソースで比較しても明らかです。<br/>
+前回までは、『 <strong>Stateの変更結果として描画に反映させる</strong> 』ために下記のようにしていました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// subscribeの第一引数にrenderメソッドを指定</span>
+</span><span class='line'><span class="nx">store</span><span class="p">.</span><span class="nx">subscribe</span><span class="p">(</span><span class="nx">render</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記のように、<code>store.subscribe</code>に<code>render</code>メソッドを渡すことで、<code>dispatch</code>実行して<code>State</code>の状態が変化したときに、毎回<code>render</code>メソッドが実行されていました。<br/>
+今回は<code>connect()</code>を利用しているので<code>store.subscribe</code>が書かれていないことがわかると思います。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// src/index.js</span>
+</span><span class='line'><span class="kd">function</span> <span class="nx">mapStateToProps</span> <span class="p">(</span><span class="nx">state</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="p">{</span> <span class="nx">value</span><span class="o">:</span> <span class="nx">state</span> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// connectメソッドの第一引数は「stateを引数に持つメソッド」</span>
+</span><span class='line'><span class="c1">// connectメソッドの第一引数にmapStateToPropsを設定</span>
+</span><span class='line'><span class="kd">let</span> <span class="nx">AppContainer</span> <span class="o">=</span> <span class="nx">connect</span><span class="p">(</span>
+</span><span class='line'>  <span class="nx">mapStateToProps</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">mapDispatchToProps</span>
+</span><span class='line'><span class="p">)(</span><span class="nx">Counter</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ですが、やっていることは同じで『Stateが変更されてStoreにそれが伝えられたときに <strong>mapStateToPropsは毎回実行</strong> されます。』
+もし、<code>mapStateToProps</code>を<code>connect()</code>の第一引数に指定しなかった場合、『 <strong>Stateの変更結果として描画に反映させる</strong> 』ことができません。</p>
+
+<p>また、<code>return { value: state }</code>をすることで<code>Counter Component</code>の<code>propTypes</code>である<code>value</code>に値を渡しています。</p>
+
+<p>続いて、<code>mapDispatchToProps</code>を見ていきます。<br/>
+Readmeには、</p>
+
+<blockquote><p>If an object is passed, each function inside it will be assumed to be a Redux action creator. An object with the same function names, but with every action creator wrapped into a dispatch call so they may be invoked directly, will be merged into the component’s props. If a function is passed, it will be given dispatch.</p></blockquote>
+
+<p>と書かれていますね。<br/>
+これは少々わかりづらいのですが、<code>Counter Component</code>がクリックしたタイミングで<code>store.dispatch</code>に<code>Action Creators</code>である<code>increment</code>や<code>decrement</code>で作成した<code>Actions</code>を渡せるように実装することを実現しています。<br/>
+前回までは、『 <strong>StoreにStateの変更を知らせる</strong> 』ために下記のようにしていました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// src/index.js</span>
+</span><span class='line'><span class="kr">const</span> <span class="nx">render</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">ReactDOM</span><span class="p">.</span><span class="nx">render</span><span class="p">(</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="nx">Counter</span>
+</span><span class='line'>    <span class="nx">value</span><span class="o">=</span><span class="p">{</span><span class="nx">store</span><span class="p">.</span><span class="nx">getState</span><span class="p">()}</span>
+</span><span class='line'>    <span class="nx">onIncrement</span><span class="o">=</span><span class="p">{()</span> <span class="o">=&gt;</span> <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">(</span><span class="nx">increment</span><span class="p">())}</span>
+</span><span class='line'>    <span class="nx">onDecrement</span><span class="o">=</span><span class="p">{()</span> <span class="o">=&gt;</span> <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">(</span><span class="nx">decrement</span><span class="p">())}</span>
+</span><span class='line'>  <span class="o">/&gt;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">rootEl</span>
+</span><span class='line'><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このように直接<code>Counter Component</code>に<code>onIncrement</code>および<code>onDecrement</code>を渡していました。<br/>
+<code>connect()</code>を利用すると、第二引数の<code>mapDispatchToProps</code>の戻り値として<code>Action Creators</code>を設定することで実現できます。<br/>
+これにより、<code>Counter Component</code>の<code>propTypes</code>である<code>onIncrement</code>と<code>onDecrement</code>に値を渡すことができます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// src/index.js</span>
+</span><span class='line'><span class="kd">function</span> <span class="nx">mapDispatchToProps</span> <span class="p">(</span><span class="nx">dispatch</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">onIncrement</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">increment</span><span class="p">()),</span>
+</span><span class='line'>    <span class="nx">onDecrement</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">decrement</span><span class="p">())</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// connectメソッドの第二引数は「dispatchを引数に持つメソッド」</span>
+</span><span class='line'><span class="c1">// connectメソッドの第二引数にmapDispatchToPropsを設定</span>
+</span><span class='line'><span class="kd">let</span> <span class="nx">AppContainer</span> <span class="o">=</span> <span class="nx">connect</span><span class="p">(</span>
+</span><span class='line'>  <span class="nx">mapStateToProps</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">mapDispatchToProps</span>
+</span><span class='line'><span class="p">)(</span><span class="nx">Counter</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>まとめ</h3>
+
+<p>これで<code>connect()</code>が何をしているのかが少しは見えてきました。<br/>
+実行している処理内容がわかってくると、</p>
+
+<ul>
+<li><code>connect()</code>: ReactとReduxを<code>connect</code>(接続)する</li>
+<li><code>mapStateToProps</code>: <code>State</code>を<code>Props</code>に<code>map</code>(マッピング)する</li>
+<li><code>mapDispatchToProps</code>: <code>Dispatch</code>を<code>Props</code>に<code>map</code>(マッピング)する</li>
+</ul>
+
+
+<p>のように名称がそのものを表していたことが改めてわかります。<br/>
+(理解促進してくれるような名称になっていますね。)</p>
+
+<p>次回はさらに処理を簡略化して書くのに使われる<code>redux-actions</code>を利用した実装について見ていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(2)]]></title>
@@ -6854,429 +7217,6 @@ ObserverがSubscribe(購読)されたタイミングで動的にObservableを生
 
 <ul>
 <li><a href="http://qiita.com/yuzushioh/items/0a4483502c5c8569790a">RxSwift/RxCocoa Driver Unitについてまとめてみた。</a></li>
-</ul>
-
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RxSwiftを勉強してみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/08/21/rxswift-1/"/>
-    <updated>2016-08-21T18:09:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/08/21/rxswift-1</id>
-    <content type="html"><![CDATA[<h3>RxSwiftとは</h3>
-
-<p>Reactive Extensions(以下、Rx)のSwift版です。<br/>
-と一言で言っても、「Rxとはなんぞや？？」となってしまうかと思います。<br/>
-(多分に漏れず、筆者もそうです&hellip;)<br/>
-そこで、いろいろと調べてみると、</p>
-
-<ul>
-<li>「非同期/イベント/時間に関する処理をLINQの形式で簡潔かつ宣言的に記述すること」ができるのが特徴</li>
-<li>観測可能 (observable) なシーケンスと LINQ スタイルのクエリ演算子を使って、非同期なイベントベースのプログラムを合成するライブラリ</li>
-</ul>
-
-
-<p>なんて話が出てきます。<br/>
-確かに非同期処理はソースコードが複雑になりやすいので、何となくRxは良さそうな気がしてきました。<br/>
-今回はまず触って慣れてみようということで見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>RxSwiftでUI</h3>
-
-<p>まずはRxSwiftの書き方を覚えるためにUI関連から見てきましょう。</p>
-
-<h4>サンプル画面</h4>
-
-<p>下記のように画面を作成します。<br/>
-<img src="http://grandbig.github.io/images/rxswift_1.png" alt="サンプル画面" /></p>
-
-<h4>RxSwiftのインストール</h4>
-
-<p>下記のように<code>Podfile</code>を作成します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">target</span> <span class="err">&#39;</span><span class="n">RxSwiftSample</span><span class="err">&#39;</span> <span class="k">do</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxSwift</span><span class="err">&#39;</span><span class="p">,</span>    <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">2.0</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxCocoa</span><span class="err">&#39;</span><span class="p">,</span>    <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">2.0</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">target</span> <span class="err">&#39;</span><span class="n">RxSwiftSampleTests</span><span class="err">&#39;</span> <span class="k">do</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxBlocking</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">2.0</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxTests</span><span class="err">&#39;</span><span class="p">,</span>    <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">2.0</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">target</span> <span class="err">&#39;</span><span class="n">RxSwiftSampleUITests</span><span class="err">&#39;</span> <span class="k">do</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxBlocking</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">2.0</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxTests</span><span class="err">&#39;</span><span class="p">,</span>    <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">2.0</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">end</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>そして、<code>pod install</code>を実行します。</p>
-
-<h4>RxSwiftを用いたUIアクションを実装</h4>
-
-<p>下記のようにアクションを実装します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// UI部品</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">sampleBtn:</span> <span class="n">UIButton</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">sampleTextField:</span> <span class="n">UITextField</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">sampleLabel:</span> <span class="n">UILabel</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// 自動unsubscribeのために必要</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// ボタンタップアクション</span>
-</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">sampleBtn</span><span class="p">.</span><span class="n">rx_tap</span><span class="p">.</span><span class="n">subscribeNext</span> <span class="p">{</span> <span class="p">[</span><span class="n">unowned</span> <span class="n">self</span><span class="p">]</span> <span class="n">_</span> <span class="k">in</span>
-</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">showAlert</span><span class="p">()</span>
-</span><span class='line'>      <span class="p">}.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// テキストフィールドの入力アクション</span>
-</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">sampleTextField</span><span class="p">.</span><span class="n">rx_text</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="s">&quot;Your Text is \($0)&quot;</span> <span class="p">}</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">bindTo</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">sampleTextField</span><span class="p">.</span><span class="n">rx_text</span><span class="p">)</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">func</span> <span class="n">showAlert</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">let</span> <span class="n">alert</span> <span class="o">=</span> <span class="n">UIAlertController</span><span class="p">(</span><span class="nl">title:</span> <span class="s">&quot;Sample Alert&quot;</span><span class="p">,</span> <span class="nl">message:</span> <span class="s">&quot;Can you see a sample alert?&quot;</span><span class="p">,</span> <span class="nl">preferredStyle:</span> <span class="p">.</span><span class="n">Alert</span><span class="p">)</span>
-</span><span class='line'>      <span class="n">let</span> <span class="n">ok</span> <span class="o">=</span> <span class="n">UIAlertAction</span><span class="p">(</span><span class="nl">title:</span> <span class="s">&quot;OK&quot;</span><span class="p">,</span> <span class="nl">style:</span> <span class="p">.</span><span class="n">Default</span><span class="p">)</span> <span class="p">{</span> <span class="p">(</span><span class="n">action</span><span class="p">)</span> <span class="k">in</span>
-</span><span class='line'>          <span class="c1">// 特に何もしない</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="n">alert</span><span class="p">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">ok</span><span class="p">)</span>
-</span><span class='line'>      <span class="n">presentViewController</span><span class="p">(</span><span class="n">alert</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">true</span><span class="p">,</span> <span class="nl">completion:</span> <span class="nb">nil</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記のUIアクションはあまりにも単純な例であるため、恩恵を受けられている気はしないですね&hellip;<br/>
-いつものようにXcodeでアクションを繋げているのと同じ気がする&hellip;</p>
-
-<h3>RxSwiftの公式Exampleを覗いてみる</h3>
-
-<p>先ほどの例ではイマイチ良さがわからなかったので、公式のExampleを覗いてみます。<br/>
-公式のExampleは<a href="https://github.com/ReactiveX/RxSwift">GitHub: ReactiveX/RxSwift</a>からダウンロードできます。</p>
-
-<h4>NumbersViewController</h4>
-
-<p>最も簡単なExampleはこれになるかと思います。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">NumbersViewController:</span> <span class="n">ViewController</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">number1:</span> <span class="n">UITextField</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">number2:</span> <span class="n">UITextField</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">number3:</span> <span class="n">UITextField</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">result:</span> <span class="n">UILabel</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
-</span><span class='line'>      <span class="c1">// 注目！！</span>
-</span><span class='line'>      <span class="n">Observable</span><span class="p">.</span><span class="n">combineLatest</span><span class="p">(</span><span class="n">number1</span><span class="p">.</span><span class="n">rx_text</span><span class="p">,</span> <span class="n">number2</span><span class="p">.</span><span class="n">rx_text</span><span class="p">,</span> <span class="n">number3</span><span class="p">.</span><span class="n">rx_text</span><span class="p">)</span> <span class="p">{</span> <span class="n">textValue1</span><span class="p">,</span> <span class="n">textValue2</span><span class="p">,</span> <span class="n">textValue3</span> <span class="o">-&gt;</span> <span class="n">Int</span> <span class="k">in</span>
-</span><span class='line'>          <span class="k">return</span> <span class="p">(</span><span class="n">Int</span><span class="p">(</span><span class="n">textValue1</span><span class="p">)</span> <span class="o">??</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">Int</span><span class="p">(</span><span class="n">textValue2</span><span class="p">)</span> <span class="o">??</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">Int</span><span class="p">(</span><span class="n">textValue3</span><span class="p">)</span> <span class="o">??</span> <span class="mi">0</span><span class="p">)</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">$0</span><span class="p">.</span><span class="n">description</span> <span class="p">}</span>
-</span><span class='line'>      <span class="p">.</span><span class="n">bindTo</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">rx_text</span><span class="p">)</span>
-</span><span class='line'>      <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ここで注目したいのは<code>Observable.combineLatest</code>です。<br/>
-Exampleではこれを利用して一気に3つの<code>UITextField</code>から値を取得して、合計値を計算しています。<br/>
-<code>Obsertvable.combineLatest</code>は名前から察することができると思いますが、3つの<code>UITextField</code>のいずれかの値が変わったタイミングで合計値が再計算されます。</p>
-
-<p>これだけでも少し便利な感じが伝わってきました。</p>
-
-<h4>SimpleValidationViewController</h4>
-
-<p>続いて着手しやすいExampleはこちらになりそうです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">let</span> <span class="n">minimalUsernameLength</span> <span class="o">=</span> <span class="mi">5</span>
-</span><span class='line'><span class="n">let</span> <span class="n">minimalPasswordLength</span> <span class="o">=</span> <span class="mi">5</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="n">SimpleValidationViewController</span> <span class="o">:</span> <span class="n">ViewController</span> <span class="p">{</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">usernameOutlet:</span> <span class="n">UITextField</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">usernameValidOutlet:</span> <span class="n">UILabel</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">passwordOutlet:</span> <span class="n">UITextField</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">passwordValidOutlet:</span> <span class="n">UILabel</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">doSomethingOutlet:</span> <span class="n">UIButton</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">usernameValidOutlet</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Username has to be at least \(minimalUsernameLength) characters&quot;</span>
-</span><span class='line'>      <span class="n">passwordValidOutlet</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Password has to be at least \(minimalPasswordLength) characters&quot;</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// 注目！！</span>
-</span><span class='line'>      <span class="n">let</span> <span class="n">usernameValid</span> <span class="o">=</span> <span class="n">usernameOutlet</span><span class="p">.</span><span class="n">rx_text</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">$0</span><span class="p">.</span><span class="n">characters</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;=</span> <span class="n">minimalUsernameLength</span> <span class="p">}</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">shareReplay</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">let</span> <span class="n">passwordValid</span> <span class="o">=</span> <span class="n">passwordOutlet</span><span class="p">.</span><span class="n">rx_text</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">$0</span><span class="p">.</span><span class="n">characters</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;=</span> <span class="n">minimalPasswordLength</span> <span class="p">}</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">shareReplay</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">let</span> <span class="n">everythingValid</span> <span class="o">=</span> <span class="n">Observable</span><span class="p">.</span><span class="n">combineLatest</span><span class="p">(</span><span class="n">usernameValid</span><span class="p">,</span> <span class="n">passwordValid</span><span class="p">)</span> <span class="p">{</span> <span class="n">$0</span> <span class="o">&amp;&amp;</span> <span class="n">$1</span> <span class="p">}</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">shareReplay</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">usernameValid</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">bindTo</span><span class="p">(</span><span class="n">passwordOutlet</span><span class="p">.</span><span class="n">rx_enabled</span><span class="p">)</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">usernameValid</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">bindTo</span><span class="p">(</span><span class="n">usernameValidOutlet</span><span class="p">.</span><span class="n">rx_hidden</span><span class="p">)</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">passwordValid</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">bindTo</span><span class="p">(</span><span class="n">passwordValidOutlet</span><span class="p">.</span><span class="n">rx_hidden</span><span class="p">)</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">everythingValid</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">bindTo</span><span class="p">(</span><span class="n">doSomethingOutlet</span><span class="p">.</span><span class="n">rx_enabled</span><span class="p">)</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">doSomethingOutlet</span><span class="p">.</span><span class="n">rx_tap</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">subscribeNext</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="k">in</span> <span class="n">self</span><span class="o">?</span><span class="p">.</span><span class="n">showAlert</span><span class="p">()</span> <span class="p">}</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">func</span> <span class="n">showAlert</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">let</span> <span class="n">alertView</span> <span class="o">=</span> <span class="n">UIAlertView</span><span class="p">(</span>
-</span><span class='line'>          <span class="nl">title:</span> <span class="s">&quot;RxExample&quot;</span><span class="p">,</span>
-</span><span class='line'>          <span class="nl">message:</span> <span class="s">&quot;This is wonderful&quot;</span><span class="p">,</span>
-</span><span class='line'>          <span class="nl">delegate:</span> <span class="nb">nil</span><span class="p">,</span>
-</span><span class='line'>          <span class="nl">cancelButtonTitle:</span> <span class="s">&quot;OK&quot;</span>
-</span><span class='line'>      <span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">alertView</span><span class="p">.</span><span class="n">show</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ここで注目したいのは<code>shareReplay(1)</code>という記述です。<br/>
-このExampleでは、<br/>
-<code>username</code>のバリデーションをクリアしていれば、<code>passwordOutlet.rx_enabled</code>と<code>usernameValidOutlet.rx_hidden</code>の2つを実行するように実装されています。</p>
-
-<p>通常だと、<code>usernameValid</code>が2回実行されてしまうところを<code>shareReplay(1)</code>をつけることで、最適な回数だけ実行してくれます。<br/>
-詳しくは、<a href="http://qiita.com/kazu0620/items/bde4a65e82a10bd33f88">hareReplayをちゃんと書いてお行儀良くストリームを購読しよう</a>を読むと良いでしょう。</p>
-
-<p>ここまで来ると<code>RxSwift</code>の有効性を許容せざるを得ませんね。</p>
-
-<h3>まとめ</h3>
-
-<p>今回簡単に触っただけでも、Rxはかなり有効なものであると感じました。<br/>
-非同期処理や互いに関連性を持つ複雑な処理を実装する際にはぜひRxを使ってみたいと思いました。</p>
-
-<p>本当はもっとExampleを追っていきたいのですが、一旦ここまでとさせて頂きます。<br/>
-(単なる時間切れなので、続きは必ず書きたいを思っています。)</p>
-
-<p>ということで本日はここまで。</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="https://github.com/ReactiveX/RxSwift">GitHub: ReactiveX/RxSwift</a></li>
-<li><a href="http://qiita.com/nakailand/items/8b54dc9b4b39b0809c57">RxSwiftの道標</a></li>
-<li><a href="http://qiita.com/usamik26/items/2bbd0b8d304ab42b2279">RxSwift で UIKit を扱う基本</a></li>
-<li><a href="http://okapies.hateblo.jp/entry/2015/03/04/031148">関数型プログラマのための Rx 入門（前編）</a></li>
 </ul>
 
 

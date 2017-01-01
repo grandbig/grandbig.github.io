@@ -4,7 +4,7 @@
   <title><![CDATA[Category: web | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/web/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-01-01T12:54:20+09:00</updated>
+  <updated>2017-01-01T15:46:07+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,284 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(3)]]></title>
+    <link href="http://grandbig.github.io/blog/2017/01/01/redux-base-3/"/>
+    <updated>2017-01-01T14:18:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/01/01/redux-base-3</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>前回の<a href="http://grandbig.github.io/blog/2017/01/01/redux-base-2/">iOSエンジニアが苦しんだReduxの基礎(2)</a>で素のReactと素のReduxを組み合わせたExampleについて見ていきました。<br/>
+今回は<code>connect()</code>を使ったReact&amp;ReduxによるWebサイトの実装について見ていきたいと思います。<br/>
+では早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Counterサンプルで学ぼう！</h3>
+
+<p><a href="http://redux.js.org/docs/introduction/Examples.html">公式ReduxページのExample</a>の先頭に書かれている <strong>Counter</strong> を見ていきましょう。<br/>
+本来は素のReactと素のReduxを使ったExampleではあるのですが、今回の説明のために改変します。<br/>
+実装するWebサイトは下図の通りです。</p>
+
+<p><img src="/images/redux_base_1.png" alt="Counter Example画面" /></p>
+
+<p>実装されている機能としては下記の4つになります。</p>
+
+<ul>
+<li>「+」ボタンを選択するとClick数が+1される</li>
+<li>「-」ボタンを選択するとClick数が-1される</li>
+<li>「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される</li>
+<li>「Increment async」ボタンを選択すると1秒後にClick数が+1される</li>
+</ul>
+
+
+<p>前回と異なるのはReactとReduxの連携に <strong>connect()</strong> を利用しているという点です。<br/>
+では1つ1つ見ていきましょう。</p>
+
+<h4>フォルダ構成</h4>
+
+<p>まずはフォルダ構成を見ていきます。<br/>
+(説明のために一部変更を加えています。)</p>
+
+<p>```javascript
+counter
+├── public
+│     └── index.html
+└── src</p>
+
+<pre><code> ├── index.js
+ ├── actions
+ │     └── index.js
+ ├── reducers
+ │     └── index.js
+ ├── components
+ │     └── Counter.js
+ └── node_modules
+</code></pre>
+
+<p>```</p>
+
+<h4>素の連携とconnect()による連携の比較</h4>
+
+<p><code>Actions</code>, <code>Reducers</code>, <code>Components</code>に関しては、<a href="http://grandbig.github.io/blog/2017/01/01/redux-base-2/">前回</a>と同じなので割愛します。<br/>
+前回は、ReactとReduxの連携部分を下記のように書いていました。</p>
+
+<p>```javascript
+// src/index.js
+import React from &lsquo;react&rsquo;
+import ReactDOM from &lsquo;react-dom&rsquo;
+import { createStore } from &lsquo;redux&rsquo;
+import Counter from &lsquo;./components/Counter&rsquo;
+import counter from &lsquo;./reducers&rsquo;
+import { increment, decrement } from &lsquo;./actions&rsquo;</p>
+
+<p>const store = createStore(counter)
+const rootEl = document.getElementById(&lsquo;root&rsquo;)</p>
+
+<p>const render = () => ReactDOM.render(
+  &lt;Counter</p>
+
+<pre><code>value={store.getState()}
+onIncrement={() =&gt; store.dispatch(increment())}
+onDecrement={() =&gt; store.dispatch(decrement())}
+</code></pre>
+
+<p>  />,
+  rootEl
+)</p>
+
+<p>render()
+store.subscribe(render)
+```</p>
+
+<p>今回はこの連携を<code>connect()</code>を利用して実装します。</p>
+
+<p>まずは、必要なモジュールを追加しましょう。</p>
+
+<p><code>javascript
+// src/index.js
+import React from 'react'
+import ReactDOM from 'react-dom'
+import { createStore } from 'redux'
+// Providerとconnectを追加
+import { Provider, connect } from 'react-redux'
+import Counter from './components/Counter'
+import { increment, decrement } from './actions/index'
+import counter from './reducers'
+</code></p>
+
+<p><code>connect()</code>で連携します。</p>
+
+<p>```javascript
+// src/index.js
+function mapStateToProps (state) {
+  return { value: state }
+}</p>
+
+<p>function mapDispatchToProps (dispatch) {
+  return {</p>
+
+<pre><code>onIncrement: () =&gt; dispatch(increment()),
+onDecrement: () =&gt; dispatch(decrement())
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>let AppContainer = connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(Counter)</p>
+
+<p>const render = () => ReactDOM.render(
+  <Provider store={store}></p>
+
+<pre><code>&lt;AppContainer /&gt;
+</code></pre>
+
+<p>  </Provider>,
+  rootEl
+)
+render()
+```</p>
+
+<p>1つ1つ見ていきましょう。<br/>
+<code>connect()</code>は4つの引数をセットできるのですが、中でも重要なのが次の2つです。</p>
+
+<ol>
+<li><code>mapStateToProps</code></li>
+<li><code>mapDispatchToProps</code></li>
+</ol>
+
+
+<p>です。<br/>
+全ては<a href="https://github.com/reactjs/react-redux/blob/master/docs/api.md">react-reduxのReadme</a>に書かれているのですが、ソースと合わせて見ていきます。<br/>
+まずは、<code>mapStateToProps</code>からです。<br/>
+Readmeには、</p>
+
+<blockquote><p>If specified, the component will subscribe to Redux store updates. Any time it updates, mapStateToProps will be called. Its result must be a plain object*, and it will be merged into the component’s props. If you omit it, the component will not be subscribed to the Redux store.</p></blockquote>
+
+<p>と書かれていますね。<br/>
+これはソースで比較しても明らかです。<br/>
+前回までは、『 <strong>Stateの変更結果として描画に反映させる</strong> 』ために下記のようにしていました。</p>
+
+<p><code>javascript
+// subscribeの第一引数にrenderメソッドを指定
+store.subscribe(render)
+</code></p>
+
+<p>上記のように、<code>store.subscribe</code>に<code>render</code>メソッドを渡すことで、<code>dispatch</code>実行して<code>State</code>の状態が変化したときに、毎回<code>render</code>メソッドが実行されていました。<br/>
+今回は<code>connect()</code>を利用しているので<code>store.subscribe</code>が書かれていないことがわかると思います。</p>
+
+<p>```javascript
+// src/index.js
+function mapStateToProps (state) {
+  return { value: state }
+}</p>
+
+<p>// connectメソッドの第一引数は「stateを引数に持つメソッド」
+// connectメソッドの第一引数にmapStateToPropsを設定
+let AppContainer = connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(Counter)
+```</p>
+
+<p>ですが、やっていることは同じで『Stateが変更されてStoreにそれが伝えられたときに <strong>mapStateToPropsは毎回実行</strong> されます。』
+もし、<code>mapStateToProps</code>を<code>connect()</code>の第一引数に指定しなかった場合、『 <strong>Stateの変更結果として描画に反映させる</strong> 』ことができません。</p>
+
+<p>また、<code>return { value: state }</code>をすることで<code>Counter Component</code>の<code>propTypes</code>である<code>value</code>に値を渡しています。</p>
+
+<p>続いて、<code>mapDispatchToProps</code>を見ていきます。<br/>
+Readmeには、</p>
+
+<blockquote><p>If an object is passed, each function inside it will be assumed to be a Redux action creator. An object with the same function names, but with every action creator wrapped into a dispatch call so they may be invoked directly, will be merged into the component’s props. If a function is passed, it will be given dispatch.</p></blockquote>
+
+<p>と書かれていますね。<br/>
+これは少々わかりづらいのですが、<code>Counter Component</code>がクリックしたタイミングで<code>store.dispatch</code>に<code>Action Creators</code>である<code>increment</code>や<code>decrement</code>で作成した<code>Actions</code>を渡せるように実装することを実現しています。<br/>
+前回までは、『 <strong>StoreにStateの変更を知らせる</strong> 』ために下記のようにしていました。</p>
+
+<p>```javascript
+// src/index.js
+const render = () => ReactDOM.render(
+  &lt;Counter</p>
+
+<pre><code>value={store.getState()}
+onIncrement={() =&gt; store.dispatch(increment())}
+onDecrement={() =&gt; store.dispatch(decrement())}
+</code></pre>
+
+<p>  />,
+  rootEl
+)
+```</p>
+
+<p>このように直接<code>Counter Component</code>に<code>onIncrement</code>および<code>onDecrement</code>を渡していました。<br/>
+<code>connect()</code>を利用すると、第二引数の<code>mapDispatchToProps</code>の戻り値として<code>Action Creators</code>を設定することで実現できます。<br/>
+これにより、<code>Counter Component</code>の<code>propTypes</code>である<code>onIncrement</code>と<code>onDecrement</code>に値を渡すことができます。</p>
+
+<p>```javascript
+// src/index.js
+function mapDispatchToProps (dispatch) {
+  return {</p>
+
+<pre><code>onIncrement: () =&gt; dispatch(increment()),
+onDecrement: () =&gt; dispatch(decrement())
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>// connectメソッドの第二引数は「dispatchを引数に持つメソッド」
+// connectメソッドの第二引数にmapDispatchToPropsを設定
+let AppContainer = connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(Counter)
+```</p>
+
+<h3>まとめ</h3>
+
+<p>これで<code>connect()</code>が何をしているのかが少しは見えてきました。<br/>
+実行している処理内容がわかってくると、</p>
+
+<ul>
+<li><code>connect()</code>: ReactとReduxを<code>connect</code>(接続)する</li>
+<li><code>mapStateToProps</code>: <code>State</code>を<code>Props</code>に<code>map</code>(マッピング)する</li>
+<li><code>mapDispatchToProps</code>: <code>Dispatch</code>を<code>Props</code>に<code>map</code>(マッピング)する</li>
+</ul>
+
+
+<p>のように名称がそのものを表していたことが改めてわかります。<br/>
+(理解促進してくれるような名称になっていますね。)</p>
+
+<p>次回はさらに処理を簡略化して書くのに使われる<code>redux-actions</code>を利用した実装について見ていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(2)]]></title>
