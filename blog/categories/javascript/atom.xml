@@ -4,7 +4,7 @@
   <title><![CDATA[Category: javascript | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/javascript/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-01-01T02:25:45+09:00</updated>
+  <updated>2017-01-01T12:23:06+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,735 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(2)]]></title>
+    <link href="http://grandbig.github.io/blog/2017/01/01/redux-base-2/"/>
+    <updated>2017-01-01T00:41:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/01/01/redux-base-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>早くも2017年になってしまいましたね。<br/>
+本年もよろしくお願い致します。</p>
+
+<p>今回は<a href="http://grandbig.github.io/blog/2016/12/31/redux-base-1/">iOSエンジニアが苦しんだReduxの基礎(1)</a>の続きを書いていきたいと思います。<br/>
+前回はReduxのみを利用したWebサイトの実装について話をしましたが、今回はReactと組み合わせて行きたいと思います。<br/>
+では早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Counterサンプルで学ぼう！</h3>
+
+<p><a href="http://redux.js.org/docs/introduction/Examples.html">公式ReduxページのExample</a>の先頭に書かれている <strong>Counter</strong> を見ていきましょう。<br/>
+実現するWebサイトは <strong>Counter Vanilla</strong> と同じで下図のようになります。</p>
+
+<p><img src="/images/redux_base_1.png" alt="Counter Example画面" /></p>
+
+<p>実装されている機能としては下記の4つになります。</p>
+
+<ul>
+<li>「+」ボタンを選択するとClick数が+1される</li>
+<li>「-」ボタンを選択するとClick数が-1される</li>
+<li>「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される</li>
+<li>「Increment async」ボタンを選択すると1秒後にClick数が+1される</li>
+</ul>
+
+
+<p>前回と異なるのはViewに <strong>React</strong> を利用しているという点です。<br/>
+では1つ1つ見ていきましょう。</p>
+
+<h4>フォルダ構成</h4>
+
+<p>まずはフォルダ構成を見ていきます。<br/>
+(説明のために一部変更を加えています。)</p>
+
+<p>```javascript
+counter
+├── public
+│     └── index.html
+└── src</p>
+
+<pre><code> ├── index.js
+ ├── actions
+ │     └── index.js
+ ├── reducers
+ │     └── index.js
+ ├── components
+ │     └── Counter.js
+ └── node_modules
+</code></pre>
+
+<p>```</p>
+
+<h4>Actions</h4>
+
+<p>今回<code>Actions</code>は<code>actions/index.js</code>にまとめています。<br/>
+<code>Actions</code>と<code>Action Creators</code>について復習しておきます。</p>
+
+<ul>
+<li><code>Actions</code>
+
+<ul>
+<li>何をするアクションなのかを表すオブジェクト</li>
+<li><code>type</code>プロパティを必ず持つ</li>
+</ul>
+</li>
+<li><code>Action Creators</code>
+
+<ul>
+<li><code>Action</code>を作成するメソッド</li>
+</ul>
+</li>
+</ul>
+
+
+<p>```javascript
+// actions/index.js
+const INCREMENT = { type: &lsquo;INCREMENT&rsquo; }
+const DECREMENT = { type: &lsquo;DECREMENT&rsquo; }</p>
+
+<p>export increment = () => {
+  return INCREMENT;
+}
+export decrement = () => {
+  return DECREMENT;
+}
+```</p>
+
+<h4>Reducers</h4>
+
+<p>今回<code>Reducers</code>は<code>reducers/index.js</code>にまとめています。<br/>
+<code>Reducers</code>についても復習しておきます。</p>
+
+<ul>
+<li><code>Action</code>と<code>State</code>から新たな<code>State</code>を作成して返す</li>
+<li>ポイントは<code>State</code>を更新するのではなく、 新しく作成した<code>State</code> を返すということ</li>
+</ul>
+
+
+<p>```javascript
+// reducers/index.js
+export default (state = 0, action) => {
+  // stateの初期値を0に設定
+  switch (action.type) {</p>
+
+<pre><code>case 'INCREMENT':
+  return state + 1
+case 'DECREMENT':
+  return state - 1
+default:
+  return state
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h4>Components</h4>
+
+<p>今回は<code>React</code>を利用するので、描画部分を表現する<code>Components</code>を作成する必要があります。<br/>
+<code>Components</code>には<code>Presentational Component</code>と<code>Container Component</code>の2種類が存在します。</p>
+
+<ul>
+<li><code>Presentational Component</code>
+
+<ul>
+<li>画面の描画を担当する<code>Component</code></li>
+</ul>
+</li>
+<li><code>Container Component</code>
+
+<ul>
+<li><code>Presentational Component</code>にデータやコールバックを渡す<code>Component</code></li>
+</ul>
+</li>
+</ul>
+
+
+<p>本記事のExampleは簡単なため、<code>Presentational Component</code>のみ利用しています。<br/>
+<code>Presentational Component</code>は<code>components/Counter.js</code>が該当します。<br/>
+ソースコードは下記の通りです。</p>
+
+<p>```javascript
+// components/Counter.js
+import React, { Component, PropTypes } from &lsquo;react&rsquo;</p>
+
+<p>class Counter extends Component {
+  static propTypes = {</p>
+
+<pre><code>value: PropTypes.number.isRequired,
+onIncrement: PropTypes.func.isRequired,
+onDecrement: PropTypes.func.isRequired
+</code></pre>
+
+<p>  }</p>
+
+<p>  incrementIfOdd = () => {</p>
+
+<pre><code>if (this.props.value % 2 !== 0) {
+  // valueが奇数の場合のみonIncrementを実行
+  this.props.onIncrement()
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  incrementAsync = () => {</p>
+
+<pre><code>// 1病後にonIncrementを実行
+setTimeout(this.props.onIncrement, 1000)
+</code></pre>
+
+<p>  }</p>
+
+<p>  render() {</p>
+
+<pre><code>// 描画処理
+const { value, onIncrement, onDecrement } = this.props
+return (
+  &lt;p&gt;
+    Clicked: {value} times
+    {' '}
+    &lt;button onClick={onIncrement}&gt;
+      +
+    &lt;/button&gt;
+    {' '}
+    &lt;button onClick={onDecrement}&gt;
+      -
+    &lt;/button&gt;
+    {' '}
+    &lt;button onClick={this.incrementIfOdd}&gt;
+      Increment if odd
+    &lt;/button&gt;
+    {' '}
+    &lt;button onClick={this.incrementAsync}&gt;
+      Increment async
+    &lt;/button&gt;
+  &lt;/p&gt;
+)
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>export default Counter
+```</p>
+
+<p><code>Counter Component</code>で最も重要なポイントは、<br/>
+『描画には<code>value</code>, <code>onIncrement</code>, <code>onDecrement</code>の3つが必須』という点です。</p>
+
+<h3>Store</h3>
+
+<p>今回<code>Store</code>は<code>src/index.js</code>にまとめられています。<br/>
+<code>Store</code>についても復習しておきましょう。</p>
+
+<ul>
+<li>アプリ内で必ず1つの存在</li>
+<li>アプリの状態を管理する</li>
+<li><code>State</code>を更新するための<code>dispatch</code>を提供する
+
+<ul>
+<li>言い換えれば<code>dispatch(action)</code>をすることで<code>Store</code>に<code>State</code>の変更を知らせられる</li>
+</ul>
+</li>
+<li><code>State</code>の状態を追えるように<code>subscribe</code>を提供する
+
+<ul>
+<li>言い換えれば<code>subscribe(listener)</code>をすることで<code>listener</code>は<code>getState</code>を通して<code>State</code>の状態を取得できる</li>
+</ul>
+</li>
+</ul>
+
+
+<p>```javascript
+// src/index.js
+import React from &lsquo;react&rsquo;
+import ReactDOM from &lsquo;react-dom&rsquo;
+import { createStore } from &lsquo;redux&rsquo;
+import Counter from &lsquo;./components/Counter&rsquo;
+import counter from &lsquo;./reducers&rsquo;
+import { increment, decrement } from &lsquo;./actions&rsquo;</p>
+
+<p>const store = createStore(counter)
+const rootEl = document.getElementById(&lsquo;root&rsquo;)</p>
+
+<p>const render = () => ReactDOM.render(
+  &lt;Counter</p>
+
+<pre><code>value={store.getState()}
+onIncrement={() =&gt; store.dispatch(increment)}
+onDecrement={() =&gt; store.dispatch(decrement)}
+</code></pre>
+
+<p>  />,
+  rootEl
+)</p>
+
+<p>render()
+store.subscribe(render)
+```</p>
+
+<p>少し詳しくポイントを見ていきましょう。<br/>
+冒頭で必要なモジュールを読み込んでいます。</p>
+
+<p><code>javascript
+import React from 'react'
+import ReactDOM from 'react-dom'
+import { createStore } from 'redux'
+import Counter from './components/Counter'        // Component
+import counter from './reducers'                  // Reducer
+import { increment, decrement } from './actions'  // Action
+</code></p>
+
+<p>そして、下記のように<code>store</code>を作成しています。</p>
+
+<p><code>javascript
+// カウントアップ・ダウンのReducerを引数にStoreを生成
+const store = createStore(counter)
+</code></p>
+
+<p>また、前回は<code>HTML</code>に全て構成を書いていましたが、今回は<code>React</code>を利用していますので、下記のように描画をしています。</p>
+
+<p>```javascript
+// id=&ldquo;root"のDOMを取得
+const rootEl = document.getElementById(&lsquo;root&rsquo;)</p>
+
+<p>// 描画メソッド
+const render = () => ReactDOM.render(
+  {/<em> Counter Componentの呼び出し </em>/}
+  &lt;Counter</p>
+
+<pre><code>value={store.getState()}
+onIncrement={() =&gt; store.dispatch(increment)}
+onDecrement={() =&gt; store.dispatch(decrement)}
+</code></pre>
+
+<p>  />,
+  rootEl
+)</p>
+
+<p>// 初期描画処理
+render()
+```</p>
+
+<p><code>Counter Component</code>の3つの必須<code>propTypes</code>に下記を渡しています。</p>
+
+<ul>
+<li>value: <code>State</code>の値(<code>store.getState()</code>)</li>
+<li>onIncrement: <code>Store</code>に<code>State</code>の増加を通知(<code>() =&gt; store.dispatch(increment)</code>)</li>
+<li>onDecrement: <code>Store</code>に<code>State</code>の減少を通知(<code>() =&gt; store.dispatch(decrement)</code>)</li>
+</ul>
+
+
+<p>上記のようにすることで、<br/>
+クリックしたタイミングで<code>store.dispatch</code>に<code>Action Creators</code>である<code>increment</code>および<code>decrement</code>で作成した<code>Actions</code>を渡せるようになりました。<br/>
+これにより、『 <strong>StoreにStateの変更を知らせる</strong> 』ことができます。</p>
+
+<p>その後、<code>render()</code>で描画処理を実行しています。</p>
+
+<p>最後に、<code>listener</code>処理です。</p>
+
+<p><code>javascript
+// subscribeの第一引数にrenderメソッドを指定
+store.subscribe(render)
+</code></p>
+
+<p>上記のように、<code>store.subscribe</code>に<code>render</code>メソッドを渡すことで、<code>dispatch</code>実行して<code>State</code>の状態が変化したときに、毎回<code>render</code>メソッドが実行されることになります。<br/>
+こうすることで、『 <strong>Stateの変更結果として描画に反映させる</strong> 』ことができます。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、前回の素のReduxから、『ReactとReduxをそれぞれ素で利用する』ところまで進んできました。<br/>
+ここまで割りとすんなり理解できたのであれば、<code>connect()</code>を利用したReact&amp;Reduxの実装の理解までもう少しだと思います。<br/>
+Reduxの理解を促進する上で重要なのは、</p>
+
+<ul>
+<li>ユーザの操作結果を<code>Store</code>に伝えること</li>
+<li><code>Store</code>の変更に応じて画面を再描画すること</li>
+</ul>
+
+
+<p>だと思っています。<br/>
+ここまでの流れさえ理解できてしまえば、応用的な内容も躓かずに理解できるはずです。<br/>
+さて次回はいよいよ<code>connect()</code>を利用したReact&amp;Reduxの実装について見ていきます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(1)]]></title>
+    <link href="http://grandbig.github.io/blog/2016/12/31/redux-base-1/"/>
+    <updated>2016-12-31T01:17:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/12/31/redux-base-1</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今年も残すところ1日となりましたね。<br/>
+筆者にとって2016年は新しいことだらけの1年となりました。<br/>
+技術的にもこれまで触ってこなかったものに挑戦する機会を得ることができました。<br/>
+その1つは本日のお題である <strong>Redux</strong> です。<br/>
+実は現在進行系で理解に苦しんでいる途中なので、休暇中に理解を促進する意味も込めて記事を書きたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Reduxは難しい！？</h3>
+
+<p>ここ最近、iOSエンジニアとして活動してきた筆者にとって <strong>なぜReduxが難しいと感じたのか</strong> について語りたいと思います。<br/>
+結論から言うと、 <strong>ReactとReduxを組み合わせた場合の実装から入ったため</strong> 難しく感じたのではないかと思っています。<br/>
+具体的には、ReactとReduxの公式ページや様々な紹介ページを読むと必ず出てくる <strong>connect()</strong> がかなり難しいと感じました。</p>
+
+<p>プロジェクトに参画するタイミングによっては悠長に勉強をしている場合ではないと思いますが、<br/>
+まずは素のReduxを理解することが最も近道だと実体験として感じました。</p>
+
+<p>では、素のReduxはどうやって学べば良いのでしょうか？<br/>
+Reduxで検索をしてもほとんどの場合、Reactと一緒に使われている記事しか出てこないと思います。<br/>
+答えは簡単です！<br/>
+(当たり前ではあるのですが、)公式のExampleを勉強すれば良いのです。</p>
+
+<h3>Counter Vanilla サンプルで学ぼう！</h3>
+
+<p><a href="http://redux.js.org/docs/introduction/Examples.html">公式ReduxページのExample</a>の先頭に書かれている <strong>Counter Vanilla</strong> を見ていきましょう。<br/>
+ソースコードは下記のようになっています。<br/>
+(少々、Reduxの原則と照らし合わせられるようにソースコードを改変しています。)</p>
+
+<p>```javascript</p>
+
+<!-- index.html -->
+
+
+<p>&lt;!DOCTYPE html>
+<html>
+  <head></p>
+
+<pre><code>&lt;title&gt;Redux basic example&lt;/title&gt;
+&lt;script src="https://unpkg.com/redux@latest/dist/redux.min.js"&gt;&lt;/script&gt;
+</code></pre>
+
+<p>  </head>
+  <body></p>
+
+<pre><code>&lt;div&gt;
+  &lt;p&gt;
+    Clicked: &lt;span id="value"&gt;0&lt;/span&gt; times
+    &lt;button id="increment"&gt;+&lt;/button&gt;
+    &lt;button id="decrement"&gt;-&lt;/button&gt;
+    &lt;button id="incrementIfOdd"&gt;Increment if odd&lt;/button&gt;
+    &lt;button id="incrementAsync"&gt;Increment async&lt;/button&gt;
+  &lt;/p&gt;
+&lt;/div&gt;
+&lt;script&gt;
+  const INCREMENT = { type: 'INCREMENT' };
+  const DECREMENT = { type: 'DECREMENT' };
+
+  function increment() {
+    return INCREMENT;
+  }
+  function decrement() {
+    return DECREMENT;
+  }
+
+  function counter(state, action) {
+    if (typeof state === 'undefined') {
+      return 0
+    }
+
+    switch (action.type) {
+      case 'INCREMENT':
+        return state + 1
+      case 'DECREMENT':
+        return state - 1
+      default:
+        return state
+    }
+  }
+
+  var store = Redux.createStore(counter)
+  var valueEl = document.getElementById('value')
+
+  function render() {
+    valueEl.innerHTML = store.getState().toString()
+  }
+
+  render()
+  store.subscribe(render)
+
+  document.getElementById('increment')
+    .addEventListener('click', function () {
+      store.dispatch(increment())
+    })
+
+  document.getElementById('decrement')
+    .addEventListener('click', function () {
+      store.dispatch(decrement())
+    })
+
+  document.getElementById('incrementIfOdd')
+    .addEventListener('click', function () {
+      if (store.getState() % 2 !== 0) {
+        store.dispatch(increment())
+      }
+    })
+
+  document.getElementById('incrementAsync')
+    .addEventListener('click', function () {
+      setTimeout(function () {
+        store.dispatch(increment())
+      }, 1000)
+    })
+&lt;/script&gt;
+</code></pre>
+
+<p>  </body>
+</html>
+```</p>
+
+<p>ブラウザに表示される画面は下記のようになります。<br/>
+<img src="/images/redux_base_1.png" alt="Counter Example画面" /></p>
+
+<p>実装されている機能としては下記の4つになります。</p>
+
+<ul>
+<li>「+」ボタンを選択するとClick数が+1される</li>
+<li>「-」ボタンを選択するとClick数が-1される</li>
+<li>「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される</li>
+<li>「Increment async」ボタンを選択すると1秒後にClick数が+1される</li>
+</ul>
+
+
+<p>これだけを見せられても実装内容がよくわからない(かもしれない)ですよね？<br/>
+そこで1つ1つReduxの原則と照らし合わせつつ見ていきましょう。</p>
+
+<h4>Actions</h4>
+
+<p><code>Actions</code>とは</p>
+
+<ul>
+<li>何をするアクションなのかを表すオブジェクト</li>
+<li><code>type</code>プロパティを必ず持つ</li>
+</ul>
+
+
+<p>です。<br/>
+Exampleでは、下記に当たります。</p>
+
+<p><code>javascript
+const INCREMENT = { type: 'INCREMENT' }
+const DECREMENT = { type: 'DECREMENT' }
+</code></p>
+
+<h4>Action Creators</h4>
+
+<p><code>Action Creators</code>とは</p>
+
+<ul>
+<li><code>Action</code>を作成するメソッド</li>
+</ul>
+
+
+<p>です。<br/>
+Exampleでは、下記に当たります。</p>
+
+<p><code>javascript
+function increment() {
+  return INCREMENT
+}
+function decrement() {
+  return DECREMENT
+}
+</code></p>
+
+<h4>Reducers</h4>
+
+<p><code>Reducers</code>とは</p>
+
+<ul>
+<li><code>Action</code>と<code>State</code>から新たな<code>State</code>を作成して返す</li>
+<li>ポイントは<code>State</code>を更新するのではなく、 新しく作成した<code>State</code> を返すということ</li>
+</ul>
+
+
+<p>です。<br/>
+Exampleでは、下記に当たります。<br/>
+※Counter Exampleのため、<code>state</code>は <strong>カウント数</strong> を表します。</p>
+
+<p>```javascript
+function counter(state, action) {
+  if (typeof state === &lsquo;undefined&rsquo;) {</p>
+
+<pre><code>// 初期値は0として返却する
+return 0
+</code></pre>
+
+<p>  }</p>
+
+<p>  switch (action.type) {</p>
+
+<pre><code>case 'INCREMENT':
+  return state + 1
+case 'DECREMENT':
+  return state - 1
+default:
+  return state
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h4>Store</h4>
+
+<p><code>Store</code>とは</p>
+
+<ul>
+<li>アプリ内で必ず1つの存在</li>
+<li>アプリの状態を管理する</li>
+<li><code>State</code>を更新するための<code>dispatch</code>を提供する
+
+<ul>
+<li>言い換えれば<code>dispatch(action)</code>をすることで<code>Store</code>に<code>State</code>の変更を知らせられる</li>
+</ul>
+</li>
+<li><code>State</code>の状態を追えるように<code>subscribe</code>を提供する
+
+<ul>
+<li>言い換えれば<code>subscribe(listener)</code>をすることで<code>listener</code>は<code>getState</code>を通して<code>State</code>の状態を取得できる</li>
+</ul>
+</li>
+</ul>
+
+
+<p>です。<br/>
+Exampleでは下記のように<code>store</code>を作成しています。</p>
+
+<p><code>javascript
+// Storeを作成するためのcreateStoreメソッドの第一引数にReducerを渡す
+var store = Redux.createStore(counter)
+</code></p>
+
+<p>今回はCounter Exampleであるため、</p>
+
+<ul>
+<li>「+」ボタンを選択したら「+1」された結果が表示される</li>
+<li>「-」ボタンを選択したら「-1」された結果が表示される</li>
+</ul>
+
+
+<p>ようになっています。<br/>
+よって、「+ / -」ボタンをクリックしたタイミングで</p>
+
+<ul>
+<li>Storeに<code>state</code>の変更を知らせる</li>
+<li><code>state</code>の変更を結果として描画に反映させる</li>
+</ul>
+
+
+<p>必要があります。<br/>
+これはStore項目の冒頭で書いた<code>dispatch</code>と<code>listener</code>を利用することで達成できます。</p>
+
+<p>まずは<code>dispatch</code>から見ていきましょう。</p>
+
+<p>```javascript
+// 「+」ボタンを選択した場合
+document.getElementById(&lsquo;increment&rsquo;)
+  .addEventListener(&lsquo;click&rsquo;, function () {</p>
+
+<pre><code>store.dispatch(increment())
+</code></pre>
+
+<p>  })</p>
+
+<p>// 「-」ボタンを選択した場合
+document.getElementById(&lsquo;decrement&rsquo;)
+  .addEventListener(&lsquo;click&rsquo;, function () {</p>
+
+<pre><code>store.dispatch(decrement())
+</code></pre>
+
+<p>  })
+```</p>
+
+<p>上記のようにクリックしたタイミングで<code>store.dispatch</code>に<code>Action Creators</code>である<code>increment()</code>および<code>decrement()</code>で作成した<code>Actions</code>を渡しています。<br/>
+こうすることで、『 <strong>Storeにstateの変更を知らせる</strong> 』ことができます。</p>
+
+<p>次に<code>listener</code>から見ていきましょう。</p>
+
+<p><code>javascript
+// Click数を示すDOMの取得
+var valueEl = document.getElementById('value')
+// 最新のstateの状態をClick数に反映するメソッド
+function render() {
+  valueEl.innerHTML = store.getState().toString()
+}
+// 初期状態を表示するために実行
+render()
+// subscribeの第一引数にrenderメソッドを指定
+store.subscribe(render)
+</code></p>
+
+<p>上記のように、<code>store.subscribe</code>に<code>render</code>メソッドを渡すことで、<code>dispatch</code>実行して<code>state</code>の状態が変化したときに、毎回<code>render</code>メソッドが実行されることになります。<br/>
+こうすることで、『 <strong>stateの変更結果として描画に反映させる</strong> 』ことができます。<br/>
+<code>subscribe</code>は<code>state</code>の状態を監視する役割を持っていることがわかると思います。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+今回はReduxの本質を理解するために、あえてReactを利用するExampleは選択しませんでした。<br/>
+「React&amp;Reduxが全然わからん！！」という方はゆっくりと時間をとってReduxからチャレンジしてみることをオススメします。<br/>
+次回はReactとの組み合わせを見ていきたいと思います。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://redux.js.org/docs/introduction/Examples.html">公式ReduxページのExample</a></li>
+<li><a href="http://grandbig.github.io/blog/2016/12/06/reswift-2/">ReSwiftを勉強してみよう(2)</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Node.jsでrouterモジュールでルーティング！]]></title>
@@ -230,8 +959,6 @@ Node.jsは少しずつリハビリしながら思い出していくことにし�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-
 
 ]]></content>
   </entry>
@@ -482,8 +1209,6 @@ Node.jsはまだまだ新しい技術ですし、これからもっと学ぶべ�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-
 
 ]]></content>
   </entry>
