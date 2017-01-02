@@ -4,7 +4,7 @@
   <title><![CDATA[Category: FE | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/fe/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-01-01T15:46:07+09:00</updated>
+  <updated>2017-01-03T01:25:25+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,188 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(4)]]></title>
+    <link href="http://grandbig.github.io/blog/2017/01/02/redux-base-4/"/>
+    <updated>2017-01-02T23:56:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/01/02/redux-base-4</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p><a href="http://grandbig.github.io/blog/2017/01/01/redux-base-3/">前回</a>で<code>connect()</code>を使ったReact&amp;ReduxでのWebサイトの実装について見ていきました。<br/>
+今回は処理簡略化するためによく使われる<code>redux-actions</code>を利用した書き方について見ていきましょう。<br/>
+これもまた基本が理解できていないとハマりポイントとなるため、知っておきたい内容の１つになります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Counterサンプルで学ぼう！</h3>
+
+<p><a href="http://redux.js.org/docs/introduction/Examples.html">公式ReduxページのExample</a>の先頭に書かれている <strong>Counter</strong> を見ていきましょう。<br/>
+今回もわかりやすさのために同じサンプルを利用します。(<code>redux-actions</code>を利用した実装に改変しています。)<br/>
+実装するWebサイトは下図の通りです。</p>
+
+<p><img src="/images/redux_base_1.png" alt="Counter Example画面" /></p>
+
+<p>実装されている機能としては下記の4つになります。</p>
+
+<ul>
+<li>「+」ボタンを選択するとClick数が+1される</li>
+<li>「-」ボタンを選択するとClick数が-1される</li>
+<li>「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される</li>
+<li>「Increment async」ボタンを選択すると1秒後にClick数が+1される</li>
+</ul>
+
+
+<h4>フォルダ構成</h4>
+
+<p>まずは例によってフォルダ構成を見ていきます。</p>
+
+<p>```javascript
+counter
+├── public
+│     └── index.html
+└── src</p>
+
+<pre><code> ├── index.js
+ ├── actions
+ │     └── index.js
+ ├── reducers
+ │     └── index.js
+ ├── components
+ │     └── Counter.js
+ └── node_modules
+</code></pre>
+
+<p>```</p>
+
+<h4>redux-actionsを利用したActionsの実装</h4>
+
+<p>これまで<code>Actions</code>および<code>Create Actions</code>はシンプルに下記のように実装していました。</p>
+
+<p>```javascript
+// actions/index.js
+const INCREMENT = { type: &lsquo;INCREMENT&rsquo; }
+const DECREMENT = { type: &lsquo;DECREMENT&rsquo; }</p>
+
+<p>export function increment() {
+  return INCREMENT;
+}
+export function decrement() {
+  return DECREMENT;
+}
+```</p>
+
+<p>これを<code>redux-actions</code>を利用すると下記のように実装できます。</p>
+
+<p>```javascript
+// actions/index.js
+import { createAction } from &lsquo;redux-actions&rsquo;</p>
+
+<p>export const INCREMENT = (&lsquo;INCREMENT&rsquo;)
+export const DECREMENT = (&lsquo;DECREMENT&rsquo;)</p>
+
+<p>export const increment = createAction(INCREMENT)
+export const decrement = createAction(DECREMENT)
+```</p>
+
+<p>ポイントは<code>createAction</code>メソッドを利用している点です。<br/>
+このメソッドは「第一引数を指定すること」 = 「<code>type</code>プロパティを設定したオブジェクトを返却すること」になります。<br/>
+つまり、</p>
+
+<p>```javascript
+export const increment = createAction(INCREMENT)</p>
+
+<p>/<em>
+createActionでやっていることを素で書くと下記の通り
+export const increment = () => {
+  return { type: &lsquo;INCREMENT&rsquo; }
+}
+</em>/
+```</p>
+
+<p>ということです。</p>
+
+<h4>redux-actionsを利用したReducersの実装</h4>
+
+<p>これまで<code>Reducers</code>の実装は下記のようにしていました。</p>
+
+<p>```javascript
+// reducers/index.js
+export default (state = 0, action) => {
+  switch (action.type) {</p>
+
+<pre><code>case 'INCREMENT':
+  return state + 1
+case 'DECREMENT':
+  return state - 1
+default:
+  return state
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>これを<code>redux-actions</code>を利用すると下記のように実装できます。</p>
+
+<p>```javascript
+// reducers/index.js
+import { handleActions } from &lsquo;redux-actions&rsquo;</p>
+
+<p>const initialState = 0</p>
+
+<p>export default handleActions({
+  INCREMENT: (state, action) => {</p>
+
+<pre><code>return state + 1
+</code></pre>
+
+<p>  },
+  DECREMENT: (state, action) => {</p>
+
+<pre><code>return state - 1
+</code></pre>
+
+<p>  }
+}, initialState)
+```</p>
+
+<p>ポイントは<code>handleActions</code>メソッドを利用している点です。<br/>
+<code>handleActions</code>は第一引数に各<code>Reducer</code>をマッピングするのに利用し、第二引数で<code>state</code>の初期値を設定します。<br/>
+第二引数で設定する初期値を予め<code>const initialState = 0</code>とすることで、<code>(state = 0, action)</code>の代わりの役目を果たしています。</p>
+
+<h3>まとめ</h3>
+
+<p>今回はおまけ回として書いてみました。<br/>
+やっと基本的なことが少しずつわかってきた段階なので、これからもっと学ばなければいけないことが多いと感じています。<br/>
+<code>Redux</code>は他の言語でも特徴をまねたライブラリがわんさか出てきているので、ここで学んだことがWebに閉じた話ではなく、いろいろなところで活かせると信じています。<br/>
+これからも機を見て、<code>Redux</code>について書いていければと思います。<br/>
+ということで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(3)]]></title>

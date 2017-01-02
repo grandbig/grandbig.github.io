@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-01-01T15:46:07+09:00</updated>
+  <updated>2017-01-03T01:25:25+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,238 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(4)]]></title>
+    <link href="http://grandbig.github.io/blog/2017/01/02/redux-base-4/"/>
+    <updated>2017-01-02T23:56:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/01/02/redux-base-4</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p><a href="http://grandbig.github.io/blog/2017/01/01/redux-base-3/">前回</a>で<code>connect()</code>を使ったReact&amp;ReduxでのWebサイトの実装について見ていきました。<br/>
+今回は処理簡略化するためによく使われる<code>redux-actions</code>を利用した書き方について見ていきましょう。<br/>
+これもまた基本が理解できていないとハマりポイントとなるため、知っておきたい内容の１つになります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Counterサンプルで学ぼう！</h3>
+
+<p><a href="http://redux.js.org/docs/introduction/Examples.html">公式ReduxページのExample</a>の先頭に書かれている <strong>Counter</strong> を見ていきましょう。<br/>
+今回もわかりやすさのために同じサンプルを利用します。(<code>redux-actions</code>を利用した実装に改変しています。)<br/>
+実装するWebサイトは下図の通りです。</p>
+
+<p><img src="http://grandbig.github.io/images/redux_base_1.png" alt="Counter Example画面" /></p>
+
+<p>実装されている機能としては下記の4つになります。</p>
+
+<ul>
+<li>「+」ボタンを選択するとClick数が+1される</li>
+<li>「-」ボタンを選択するとClick数が-1される</li>
+<li>「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される</li>
+<li>「Increment async」ボタンを選択すると1秒後にClick数が+1される</li>
+</ul>
+
+
+<h4>フォルダ構成</h4>
+
+<p>まずは例によってフォルダ構成を見ていきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">counter</span>
+</span><span class='line'><span class="err">├──</span> <span class="kr">public</span>
+</span><span class='line'><span class="err">│</span>     <span class="err">└──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">html</span>
+</span><span class='line'><span class="err">└──</span> <span class="nx">src</span>
+</span><span class='line'>     <span class="err">├──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'>     <span class="err">├──</span> <span class="nx">actions</span>
+</span><span class='line'>     <span class="err">│</span>     <span class="err">└──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'>     <span class="err">├──</span> <span class="nx">reducers</span>
+</span><span class='line'>     <span class="err">│</span>     <span class="err">└──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'>     <span class="err">├──</span> <span class="nx">components</span>
+</span><span class='line'>     <span class="err">│</span>     <span class="err">└──</span> <span class="nx">Counter</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'>     <span class="err">└──</span> <span class="nx">node_modules</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>redux-actionsを利用したActionsの実装</h4>
+
+<p>これまで<code>Actions</code>および<code>Create Actions</code>はシンプルに下記のように実装していました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// actions/index.js</span>
+</span><span class='line'><span class="kr">const</span> <span class="nx">INCREMENT</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">type</span><span class="o">:</span> <span class="s1">&#39;INCREMENT&#39;</span> <span class="p">}</span>
+</span><span class='line'><span class="kr">const</span> <span class="nx">DECREMENT</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">type</span><span class="o">:</span> <span class="s1">&#39;DECREMENT&#39;</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kr">export</span> <span class="kd">function</span> <span class="nx">increment</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nx">INCREMENT</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="kr">export</span> <span class="kd">function</span> <span class="nx">decrement</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nx">DECREMENT</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これを<code>redux-actions</code>を利用すると下記のように実装できます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// actions/index.js</span>
+</span><span class='line'><span class="kr">import</span> <span class="p">{</span> <span class="nx">createAction</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;redux-actions&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kr">export</span> <span class="kr">const</span> <span class="nx">INCREMENT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;INCREMENT&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="kr">export</span> <span class="kr">const</span> <span class="nx">DECREMENT</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;DECREMENT&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="kr">export</span> <span class="kr">const</span> <span class="nx">increment</span> <span class="o">=</span> <span class="nx">createAction</span><span class="p">(</span><span class="nx">INCREMENT</span><span class="p">)</span>
+</span><span class='line'><span class="kr">export</span> <span class="kr">const</span> <span class="nx">decrement</span> <span class="o">=</span> <span class="nx">createAction</span><span class="p">(</span><span class="nx">DECREMENT</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ポイントは<code>createAction</code>メソッドを利用している点です。<br/>
+このメソッドは「第一引数を指定すること」 = 「<code>type</code>プロパティを設定したオブジェクトを返却すること」になります。<br/>
+つまり、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kr">export</span> <span class="kr">const</span> <span class="nx">increment</span> <span class="o">=</span> <span class="nx">createAction</span><span class="p">(</span><span class="nx">INCREMENT</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm">createActionでやっていることを素で書くと下記の通り</span>
+</span><span class='line'><span class="cm">export const increment = () =&gt; {</span>
+</span><span class='line'><span class="cm">  return { type: &#39;INCREMENT&#39; }</span>
+</span><span class='line'><span class="cm">}</span>
+</span><span class='line'><span class="cm">*/</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ということです。</p>
+
+<h4>redux-actionsを利用したReducersの実装</h4>
+
+<p>これまで<code>Reducers</code>の実装は下記のようにしていました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// reducers/index.js</span>
+</span><span class='line'><span class="kr">export</span> <span class="k">default</span> <span class="p">(</span><span class="nx">state</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">action</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">switch</span> <span class="p">(</span><span class="nx">action</span><span class="p">.</span><span class="nx">type</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="s1">&#39;INCREMENT&#39;</span><span class="o">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">state</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>    <span class="k">case</span> <span class="s1">&#39;DECREMENT&#39;</span><span class="o">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">state</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span class='line'>    <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">state</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これを<code>redux-actions</code>を利用すると下記のように実装できます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// reducers/index.js</span>
+</span><span class='line'><span class="kr">import</span> <span class="p">{</span> <span class="nx">handleActions</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;redux-actions&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kr">const</span> <span class="nx">initialState</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>
+</span><span class='line'><span class="kr">export</span> <span class="k">default</span> <span class="nx">handleActions</span><span class="p">({</span>
+</span><span class='line'>  <span class="nx">INCREMENT</span><span class="o">:</span> <span class="p">(</span><span class="nx">state</span><span class="p">,</span> <span class="nx">action</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nx">state</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="p">},</span>
+</span><span class='line'>  <span class="nx">DECREMENT</span><span class="o">:</span> <span class="p">(</span><span class="nx">state</span><span class="p">,</span> <span class="nx">action</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nx">state</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">},</span> <span class="nx">initialState</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ポイントは<code>handleActions</code>メソッドを利用している点です。<br/>
+<code>handleActions</code>は第一引数に各<code>Reducer</code>をマッピングするのに利用し、第二引数で<code>state</code>の初期値を設定します。<br/>
+第二引数で設定する初期値を予め<code>const initialState = 0</code>とすることで、<code>(state = 0, action)</code>の代わりの役目を果たしています。</p>
+
+<h3>まとめ</h3>
+
+<p>今回はおまけ回として書いてみました。<br/>
+やっと基本的なことが少しずつわかってきた段階なので、これからもっと学ばなければいけないことが多いと感じています。<br/>
+<code>Redux</code>は他の言語でも特徴をまねたライブラリがわんさか出てきているので、ここで学んだことがWebに閉じた話ではなく、いろいろなところで活かせると信じています。<br/>
+これからも機を見て、<code>Redux</code>について書いていければと思います。<br/>
+ということで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(3)]]></title>
@@ -6886,339 +7118,6 @@ Stateは初期値<code>nil</code>として定義しています。</p>
 時間があるときに続きを書きたいと思います。</p>
 
 <p>と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RxSwiftを勉強してみよう！(2)]]></title>
-    <link href="http://grandbig.github.io/blog/2016/08/29/rxswift-2/"/>
-    <updated>2016-08-29T22:40:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/08/29/rxswift-2</id>
-    <content type="html"><![CDATA[<h3>RxSwiftの公式Exampleを覗いてみる(2)</h3>
-
-<p>前回に引き続きRxSwiftの公式Exampleを見ていきたいと思います。<br/>
-公式ソースは<a href="https://github.com/ReactiveX/RxSwift">GitHub: ReactiveX/RxSwift</a>からダウンロードできます。</p>
-
-<h4>GeolocationExample</h4>
-
-<p>位置情報を用いたときのRxの有効性が表現されているのでしょうか？<br/>
-早速見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>まずは、<code>CoreLocation</code>のコア部分をラップしている<code>GeolocationService</code>です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="n">GeolocationService</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">static</span> <span class="n">let</span> <span class="n">instance</span> <span class="o">=</span> <span class="n">GeolocationService</span><span class="p">()</span>
-</span><span class='line'>  <span class="c1">// (1)</span>
-</span><span class='line'>  <span class="n">private</span> <span class="p">(</span><span class="n">set</span><span class="p">)</span> <span class="n">var</span> <span class="nl">authorized:</span> <span class="n">Driver</span><span class="o">&lt;</span><span class="n">Bool</span><span class="o">&gt;</span>
-</span><span class='line'>  <span class="n">private</span> <span class="p">(</span><span class="n">set</span><span class="p">)</span> <span class="n">var</span> <span class="nl">location:</span> <span class="n">Driver</span><span class="o">&lt;</span><span class="n">CLLocationCoordinate2D</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">private</span> <span class="n">let</span> <span class="n">locationManager</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">private</span> <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">locationManager</span><span class="p">.</span><span class="n">distanceFilter</span> <span class="o">=</span> <span class="n">kCLDistanceFilterNone</span>
-</span><span class='line'>      <span class="n">locationManager</span><span class="p">.</span><span class="n">desiredAccuracy</span> <span class="o">=</span> <span class="n">kCLLocationAccuracyBestForNavigation</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// (2)</span>
-</span><span class='line'>      <span class="n">authorized</span> <span class="o">=</span> <span class="n">Observable</span><span class="p">.</span><span class="n">deferred</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">locationManager</span><span class="p">]</span> <span class="k">in</span>
-</span><span class='line'>          <span class="n">let</span> <span class="n">status</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">.</span><span class="n">authorizationStatus</span><span class="p">()</span>
-</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="n">locationManager</span> <span class="o">=</span> <span class="n">locationManager</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>              <span class="c1">// (3)</span>
-</span><span class='line'>              <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">locationManager</span>
-</span><span class='line'>              <span class="p">.</span><span class="n">rx_didChangeAuthorizationStatus</span>
-</span><span class='line'>              <span class="p">.</span><span class="n">startWith</span><span class="p">(</span><span class="n">status</span><span class="p">)</span> <span class="c1">// (4)</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">asDriver</span><span class="p">(</span><span class="nl">onErrorJustReturn:</span> <span class="n">CLAuthorizationStatus</span><span class="p">.</span><span class="n">NotDetermined</span><span class="p">)</span> <span class="c1">// (5)</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">map</span> <span class="p">{</span>
-</span><span class='line'>              <span class="k">switch</span> <span class="n">$0</span> <span class="p">{</span>
-</span><span class='line'>                  <span class="k">case</span> <span class="p">.</span><span class="nl">AuthorizedAlways:</span>
-</span><span class='line'>                      <span class="k">return</span> <span class="n">true</span>
-</span><span class='line'>                  <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>                      <span class="k">return</span> <span class="n">false</span>
-</span><span class='line'>              <span class="p">}</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記ソースでポイントとなる部分を見ていきます。</p>
-
-<p>(1): <code>Driver</code><br/>
-末尾に参考URLとして上げさせて頂いた記事に書かれているのですが、<br/>
-<code>Driver</code>型で定義することで、エラー発生時の処理<code>asDriver</code>オペレータで続けて書くことができます。</p>
-
-<p>(2): <code>deferred</code><br/>
-ObserverがSubscribe(購読)されたタイミングで動的にObservableを生成します。<br/>
-※ 因みに新規ObservableをSubscribeタイミングで毎回生成します。</p>
-
-<p>(3): <code>just</code><br/>
-引数に取った特定の型を返却するObservableを生成します。<br/>
-この場合は<code>CLAuthorizationStatus</code>型のObservableです。</p>
-
-<p>(4): <code>startWith</code><br/>
-想定したemit対象値の前に何らかの値をemitしたい場合に利用します。<br/>
-この場合、<code>rx_didChangeAuthoricationStatus</code>をemitする前にということでしょうか。<br/>
-(これが恐らく、一番わかりやすい例です → <a href="http://www.introtorx.com/Content/v1.0.10621.0/12_CombiningSequences.html#StartWith">Introduction to Rx: startWith</a>)</p>
-
-<p>(5): <code>asDriver</code><br/>
-(1)で説明した<code>Driver</code>に関係するオペレータです。<br/>
-エラーが発生した場合に<code>onErrorJustReturn</code>で指定した値を返却して処理を続けます。</p>
-
-<p>続いて、<code>GeolocationService</code>を利用している<code>GeolocationViewController</code>です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// (6)</span>
-</span><span class='line'><span class="n">private</span> <span class="n">extension</span> <span class="n">UILabel</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">rx_driveCoordinates:</span> <span class="n">AnyObserver</span><span class="o">&lt;</span><span class="n">CLLocationCoordinate2D</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="n">UIBindingObserver</span><span class="p">(</span><span class="nl">UIElement:</span> <span class="n">self</span><span class="p">)</span> <span class="p">{</span> <span class="n">label</span><span class="p">,</span> <span class="n">location</span> <span class="k">in</span>
-</span><span class='line'>          <span class="n">label</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Lat: \(location.latitude)</span><span class="se">\n</span><span class="s">Lon: \(location.longitude)&quot;</span>
-</span><span class='line'>      <span class="p">}.</span><span class="n">asObserver</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// (7)</span>
-</span><span class='line'><span class="n">private</span> <span class="n">extension</span> <span class="n">UIView</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">rx_driveAuthorization:</span> <span class="n">AnyObserver</span><span class="o">&lt;</span><span class="n">Bool</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="n">UIBindingObserver</span><span class="p">(</span><span class="nl">UIElement:</span> <span class="n">self</span><span class="p">)</span> <span class="p">{</span> <span class="n">view</span><span class="p">,</span> <span class="n">authorized</span> <span class="k">in</span>
-</span><span class='line'>          <span class="k">if</span> <span class="n">authorized</span> <span class="p">{</span>
-</span><span class='line'>              <span class="n">view</span><span class="p">.</span><span class="n">hidden</span> <span class="o">=</span> <span class="n">true</span>
-</span><span class='line'>              <span class="n">view</span><span class="p">.</span><span class="n">superview</span><span class="o">?</span><span class="p">.</span><span class="n">sendSubviewToBack</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>          <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>              <span class="n">view</span><span class="p">.</span><span class="n">hidden</span> <span class="o">=</span> <span class="n">false</span>
-</span><span class='line'>              <span class="n">view</span><span class="p">.</span><span class="n">superview</span><span class="o">?</span><span class="p">.</span><span class="n">bringSubviewToFront</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>      <span class="p">}.</span><span class="n">asObserver</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">GeolocationViewController:</span> <span class="n">ViewController</span> <span class="p">{</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">noGeolocationView:</span> <span class="n">UIView</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">button:</span> <span class="n">UIButton</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">button2:</span> <span class="n">UIButton</span><span class="o">!</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">label:</span> <span class="n">UILabel</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">let</span> <span class="n">geolocationService</span> <span class="o">=</span> <span class="n">GeolocationService</span><span class="p">.</span><span class="n">instance</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">geolocationService</span><span class="p">.</span><span class="n">authorized</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">drive</span><span class="p">(</span><span class="n">noGeolocationView</span><span class="p">.</span><span class="n">rx_driveAuthorization</span><span class="p">)</span> <span class="c1">// (8)</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">geolocationService</span><span class="p">.</span><span class="n">location</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">drive</span><span class="p">(</span><span class="n">label</span><span class="p">.</span><span class="n">rx_driveCoordinates</span><span class="p">)</span> <span class="c1">// (8)</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">button</span><span class="p">.</span><span class="n">rx_tap</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">bindNext</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="k">in</span>
-</span><span class='line'>              <span class="n">self</span><span class="o">?</span><span class="p">.</span><span class="n">openAppPreferences</span><span class="p">()</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">button2</span><span class="p">.</span><span class="n">rx_tap</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">bindNext</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="k">in</span>
-</span><span class='line'>              <span class="n">self</span><span class="o">?</span><span class="p">.</span><span class="n">openAppPreferences</span><span class="p">()</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>          <span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">private</span> <span class="n">func</span> <span class="n">openAppPreferences</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">UIApplication</span><span class="p">.</span><span class="n">sharedApplication</span><span class="p">().</span><span class="n">openURL</span><span class="p">(</span><span class="n">NSURL</span><span class="p">(</span><span class="nl">string:</span> <span class="n">UIApplicationOpenSettingsURLString</span><span class="p">)</span><span class="o">!</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>(6): <code>rx_driveCoordinates</code><br/>
-見ての通りここで<code>UILabel</code>の<code>extension</code>をしています。<br/>
-<code>UILabel</code>の<code>text</code>内容を任意の値で返却するために作成しています。<br/>
-(<code>asObserver</code>をつけることで<code>rx_driveCoordinates</code>という<code>AnyObserver</code>型の変数定義を実現しています。)</p>
-
-<p>(7): <code>rx_driveAuthorization</code><br/>
-同じく<code>UIView</code>の<code>extension</code>をしています。<br/>
-<code>authorized</code>の値でViewの表示/非表示を切り替えています。</p>
-
-<p>(8): <code>drive</code><br/>
-ここで新たにSubscriptionを生成して、引数に取ったObserverに処理の実行を要請しています。</p>
-
-<p>今回のExampleを見てみると下記のようなメリットが感じられます。</p>
-
-<ul>
-<li>Rxを利用することで非同期処理を直列的に書ける</li>
-<li>エラーハンドリングを直列的に書けることで後処理も直列的に統一して見れる(<code>jQuery</code>の<code>ajax</code>メソッドの<code>always</code>的なイメージ)</li>
-<li>処理の拡張がRxで用意されたメソッドで比較的に容易に書ける</li>
-</ul>
-
-
-<h3>Rxで把握しておきたいAPI一覧</h3>
-
-<p>RxSwiftをインストールすると中にドキュメントが含まれています。<br/>
-<a href="https://github.com/ReactiveX/RxSwift/blob/master/Documentation/API.md">API.md</a>を読むだけでもかなり理解が進むと思われます。</p>
-
-<p>特に言語がSwiftであるが故に他のRxフレームワークとはメソッド名が異なる場合があります。<br/>
-(<code>defer</code>でなく<code>deferred</code>、<code>repeat</code>でなく<code>repeatElement</code>など)</p>
-
-<p>一度は目を通しておくと良いかもしれません。<br/>
-と言いつつ、筆者も全然見れていませんが&hellip;</p>
-
-<h3>まとめ</h3>
-
-<p>さて、今回は公式Exampleの1つを見るだけに留まりましたが如何でしたでしょうか？<br/>
-筆者としてはRxの使い方の理解がだいぶ進んだ気がしております。<br/>
-引き続きRxに関する勉強は続けていきたいと思います。<br/>
-と言ったところで本日はここまで。</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="http://qiita.com/yuzushioh/items/0a4483502c5c8569790a">RxSwift/RxCocoa Driver Unitについてまとめてみた。</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: web | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/web/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-01-01T15:46:07+09:00</updated>
+  <updated>2017-01-03T01:25:25+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,188 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(4)]]></title>
+    <link href="http://grandbig.github.io/blog/2017/01/02/redux-base-4/"/>
+    <updated>2017-01-02T23:56:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/01/02/redux-base-4</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p><a href="http://grandbig.github.io/blog/2017/01/01/redux-base-3/">前回</a>で<code>connect()</code>を使ったReact&amp;ReduxでのWebサイトの実装について見ていきました。<br/>
+今回は処理簡略化するためによく使われる<code>redux-actions</code>を利用した書き方について見ていきましょう。<br/>
+これもまた基本が理解できていないとハマりポイントとなるため、知っておきたい内容の１つになります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Counterサンプルで学ぼう！</h3>
+
+<p><a href="http://redux.js.org/docs/introduction/Examples.html">公式ReduxページのExample</a>の先頭に書かれている <strong>Counter</strong> を見ていきましょう。<br/>
+今回もわかりやすさのために同じサンプルを利用します。(<code>redux-actions</code>を利用した実装に改変しています。)<br/>
+実装するWebサイトは下図の通りです。</p>
+
+<p><img src="/images/redux_base_1.png" alt="Counter Example画面" /></p>
+
+<p>実装されている機能としては下記の4つになります。</p>
+
+<ul>
+<li>「+」ボタンを選択するとClick数が+1される</li>
+<li>「-」ボタンを選択するとClick数が-1される</li>
+<li>「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される</li>
+<li>「Increment async」ボタンを選択すると1秒後にClick数が+1される</li>
+</ul>
+
+
+<h4>フォルダ構成</h4>
+
+<p>まずは例によってフォルダ構成を見ていきます。</p>
+
+<p>```javascript
+counter
+├── public
+│     └── index.html
+└── src</p>
+
+<pre><code> ├── index.js
+ ├── actions
+ │     └── index.js
+ ├── reducers
+ │     └── index.js
+ ├── components
+ │     └── Counter.js
+ └── node_modules
+</code></pre>
+
+<p>```</p>
+
+<h4>redux-actionsを利用したActionsの実装</h4>
+
+<p>これまで<code>Actions</code>および<code>Create Actions</code>はシンプルに下記のように実装していました。</p>
+
+<p>```javascript
+// actions/index.js
+const INCREMENT = { type: &lsquo;INCREMENT&rsquo; }
+const DECREMENT = { type: &lsquo;DECREMENT&rsquo; }</p>
+
+<p>export function increment() {
+  return INCREMENT;
+}
+export function decrement() {
+  return DECREMENT;
+}
+```</p>
+
+<p>これを<code>redux-actions</code>を利用すると下記のように実装できます。</p>
+
+<p>```javascript
+// actions/index.js
+import { createAction } from &lsquo;redux-actions&rsquo;</p>
+
+<p>export const INCREMENT = (&lsquo;INCREMENT&rsquo;)
+export const DECREMENT = (&lsquo;DECREMENT&rsquo;)</p>
+
+<p>export const increment = createAction(INCREMENT)
+export const decrement = createAction(DECREMENT)
+```</p>
+
+<p>ポイントは<code>createAction</code>メソッドを利用している点です。<br/>
+このメソッドは「第一引数を指定すること」 = 「<code>type</code>プロパティを設定したオブジェクトを返却すること」になります。<br/>
+つまり、</p>
+
+<p>```javascript
+export const increment = createAction(INCREMENT)</p>
+
+<p>/<em>
+createActionでやっていることを素で書くと下記の通り
+export const increment = () => {
+  return { type: &lsquo;INCREMENT&rsquo; }
+}
+</em>/
+```</p>
+
+<p>ということです。</p>
+
+<h4>redux-actionsを利用したReducersの実装</h4>
+
+<p>これまで<code>Reducers</code>の実装は下記のようにしていました。</p>
+
+<p>```javascript
+// reducers/index.js
+export default (state = 0, action) => {
+  switch (action.type) {</p>
+
+<pre><code>case 'INCREMENT':
+  return state + 1
+case 'DECREMENT':
+  return state - 1
+default:
+  return state
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>これを<code>redux-actions</code>を利用すると下記のように実装できます。</p>
+
+<p>```javascript
+// reducers/index.js
+import { handleActions } from &lsquo;redux-actions&rsquo;</p>
+
+<p>const initialState = 0</p>
+
+<p>export default handleActions({
+  INCREMENT: (state, action) => {</p>
+
+<pre><code>return state + 1
+</code></pre>
+
+<p>  },
+  DECREMENT: (state, action) => {</p>
+
+<pre><code>return state - 1
+</code></pre>
+
+<p>  }
+}, initialState)
+```</p>
+
+<p>ポイントは<code>handleActions</code>メソッドを利用している点です。<br/>
+<code>handleActions</code>は第一引数に各<code>Reducer</code>をマッピングするのに利用し、第二引数で<code>state</code>の初期値を設定します。<br/>
+第二引数で設定する初期値を予め<code>const initialState = 0</code>とすることで、<code>(state = 0, action)</code>の代わりの役目を果たしています。</p>
+
+<h3>まとめ</h3>
+
+<p>今回はおまけ回として書いてみました。<br/>
+やっと基本的なことが少しずつわかってきた段階なので、これからもっと学ばなければいけないことが多いと感じています。<br/>
+<code>Redux</code>は他の言語でも特徴をまねたライブラリがわんさか出てきているので、ここで学んだことがWebに閉じた話ではなく、いろいろなところで活かせると信じています。<br/>
+これからも機を見て、<code>Redux</code>について書いていければと思います。<br/>
+ということで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSエンジニアが苦しんだReduxの基礎(3)]]></title>
@@ -1184,94 +1366,6 @@ getCurrentPosition() and watchPosition() are deprecated on insecure origins, and
 といったところでiOS Second Stage Advent Calendar 23日目の記事は終了となります。<br/>
 ありがとうございました！<br/>
 (また来年、帰ってくるかも!?)</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[超簡単Windows AzureでのWebサイト構築]]></title>
-    <link href="http://grandbig.github.io/blog/2015/12/13/use-windows-azure/"/>
-    <updated>2015-12-13T02:07:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2015/12/13/use-windows-azure</id>
-    <content type="html"><![CDATA[<h4>Windows AzureでWebサイトを構築しよう</h4>
-
-<p>さて、本日はWinsows Azureを使って簡単にWebサイトを構築したいと思います。<br/>
-筆者は数年ぶりにWindows Azureを触ったため、UI・UXが結構変わっているなという印象を受けました。</p>
-
-<p>Webアプリケーションを開発するとき、ページビューのみであれば、ローカル環境で十分でしょう。<br/>
-しかし、位置情報やBeaconなどのIoT関連のアプリケーションを開発する場合、ローカル環境のWebページを閲覧できないこともあるでしょう。<br/>
-そんなときはどうしてもサーバが欲しくなりますね。<br/>
-筆者はWindows Azureをオススメしたいと思います。(AWSは使ったことないけど&hellip;)</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>それでは早速、簡単にWebサイトを構築する方法について説明しましょう。</p>
-
-<p>１. ポータルサイトからサーバを新規作成</p>
-
-<p><img src="/images/windows-azure-1.png" alt="サーバを新規作成" /></p>
-
-<p>２. Web+モバイル > Web Appを選択</p>
-
-<p><img src="/images/windows-azure-2.png" alt="サーバを新規作成２" /></p>
-
-<p>３. Webアプリ名を決めて作成</p>
-
-<p><img src="/images/windows-azure-3.png" alt="サーバを新規作成３" /></p>
-
-<p>４. デプロイを待つ</p>
-
-<p><img src="/images/windows-azure-4.png" alt="サーバを新規作成４" /></p>
-
-<p>５. サーバ詳細画面に遷移</p>
-
-<p><img src="/images/windows-azure-5.png" alt="サーバの新規作成が完了" /></p>
-
-<p>６. サーバのデプロイ完了通知を受け取る</p>
-
-<p><img src="/images/windows-azure-6.png" alt="サーバのデプロイ完了通知" /></p>
-
-<p>７. リソースの設定</p>
-
-<p><img src="/images/windows-azure-7.png" alt="サーバにリソースを設定" /></p>
-
-<p>※筆者の場合はGitHubのリポジトリと同期させます。</p>
-
-<p>８. リポジトリの同期</p>
-
-<p><img src="/images/windows-azure-8.png" alt="リポジトリの同期" /></p>
-
-<p>９. サーバ環境の完成</p>
-
-<p><img src="/images/windows-azure-9.png" alt="サーバ環境が完成しました" /></p>
-
-<p>本当にたったのこれだけでWebサイトを構築できるのです。<br/>
-Node.jsなどをインストールしてAPサーバを構築する場合は少々手間がかかりますが、Webサーバを構築するだけなら簡単です。<br/>
-ぜひ機会があれば使ってみて欲しいものです。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
 ]]></content>
   </entry>
   
