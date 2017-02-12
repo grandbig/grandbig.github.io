@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-02-04T23:25:01+09:00</updated>
+  <updated>2017-02-12T18:02:30+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,208 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Notificationとメインスレッド/サブスレッド]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/12/notification-and-thread/"/>
+    <updated>2017-02-12T17:15:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/12/notification-and-thread</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今日は久々にiOS関連の話を書きたいと思います。<br/>
+正直なところSwiftを触って思ったのですが、今やXcodeではSwift3が標準装備されているため書き方が変わっており、業務で触らないまでも遅れを取らないように勉強しなきゃな&hellip;なんて感じてしまいました。</p>
+
+<p>本日のお題は<br/>
+『<code>Notification</code>はメインスレッド/サブスレッドのどちらで実行されるのか』<br/>
+という話です。</p>
+
+<p>筆者の理解では、普通に使う限りメインスレッドだと思っていたのですが、「使い方に寄るのでは？」なんて話題が上がったこともあって、調べてみたくなりました。<br/>
+その調べ方と調査結果を書いていきます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Notificationとは</h3>
+
+<p>まずは、<code>Notification</code>とは何かという話から始めましょう。<br/>
+その名の通り、アプリ内で通知を行う仕組みを実装するために利用します。<br/>
+少し前までは<code>NSNotification</code>という名前でしたので、こちらの名前の方がしっくりくるiOSエンジニアの方々は多いのではないでしょうか。</p>
+
+<p>使い方は非常に簡単です。</p>
+
+<p>１．監視対象のメソッドを登録する</p>
+
+<p><img src="/images/notification_1.png" alt="監視対象のメソッドを登録" /></p>
+
+<p><code>objective-c
+// 登録時にはaddObserverメソッドを利用する
+NotificationCenter.default.addObserver(self, selector: #selector(self.doSomething), name: NSNotification.Name("SomeNotification"), object: nil)
+</code></p>
+
+<p>２．監視対象メソッドの呼び出しを要求する</p>
+
+<p><img src="/images/notification_2.png" alt="監視対象メソッドの呼び出し要求" /></p>
+
+<p><code>objective-c
+// 呼び出し要求時にはpostメソッドを利用する
+NotificationCenter.default.post(name: NSNotification.Name("SomeNotification"), object: nil)
+</code></p>
+
+<p>３．監視対象メソッドを実行する</p>
+
+<p><img src="/images/notification_3.png" alt="監視対象メソッドを実行" /></p>
+
+<h3>Notificationとメインスレッド/サブスレッドの調査</h3>
+
+<p>さて、本題に入ります。<br/>
+<code>Notification</code>はメインスレッド/サブスレッドどちらで実行されるのでしょうか。</p>
+
+<h4>普通に呼び出す場合</h4>
+
+<p>まずは特異なことをせず、普通に実行してみます。<br/>
+要件としては下記になります。</p>
+
+<ul>
+<li>アプリ起動時に<code>doSomething</code>メソッドを<code>NotificationCenter</code>に登録する</li>
+<li>ボタンタップ時に<code>doSomething</code>メソッドの呼び出しを要求する</li>
+<li><code>doSomething</code>メソッド内でメインスレッド/サブスレッドの判定処理を実行する</li>
+</ul>
+
+
+<p>ソースコードは下記となります。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()
+    NotificationCenter.default.addObserver(self, selector: #selector(doSomething), name: NSNotification.Name("SomeNotification"), object: nil)
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func doSomething() {
+    print("このメソッドは\(Thread.isMainThread)で動いています。(false: サブスレッド, true: メインスレッド)")
+}
+@IBAction func checkThread(_ sender: Any) {
+    NotificationCenter.default.post(name: NSNotification.Name("SomeNotification"), object: nil)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>結果は「呼び出し先の処理実行は <strong>メインスレッド</strong> 」となりました。</p>
+
+<h4>GCDを利用して、サブスレッド内でメソッドを呼び出す</h4>
+
+<p>次はサブスレッドで監視対象メソッドの呼び出し要求を実施します。<br/>
+ソースコードは下記の通りです。</p>
+
+<p>```objective-c
+import UIKit</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()
+    NotificationCenter.default.addObserver(self, selector: #selector(doSomething), name: NSNotification.Name("SomeNotification"), object: nil)
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func doSomething() {
+    print("このメソッドは\(Thread.isMainThread)で動いています。(0: サブスレッド, 1: メインスレッド)")
+}
+@IBAction func checkThread(_ sender: Any) {
+    DispatchQueue.global().async {
+        NotificationCenter.default.post(name: NSNotification.Name("SomeNotification"), object: nil)
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>結果は「呼び出し先の処理実行は <strong>サブスレッド</strong> 」となりました。</p>
+
+<h4>GCDを利用して、メインスレッド内でメソッドを呼び出す</h4>
+
+<p>今度はGCDを利用したメインスレッド内で監視対象メソッドの呼び出し要求を実施してみます。<br/>
+ソースコードは下記の通りです。</p>
+
+<p>```objective-c
+import UIKit</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()NotificationCenter.default.addObserver(self, selector: #selector(doSomething), name: NSNotification.Name("SomeNotification"), object: nil)
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func doSomething() {
+    print("このメソッドは\(Thread.isMainThread)で動いています。(0: サブスレッド, 1: メインスレッド)")
+}
+@IBAction func checkThread(_ sender: Any) {
+    DispatchQueue.global().async {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: NSNotification.Name("SomeNotification"), object: nil)
+        }
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>結果は「呼び出し先の処理実行は <strong>メインスレッド</strong> 」となりました。</p>
+
+<h3>まとめ</h3>
+
+<p>調査結果をまとめると次の通りです。</p>
+
+<p>「要求 <strong>元</strong> と <strong>同じスレッド</strong> で監視対象メソッドは実行されます。」<br/>
+※登録時(<code>addObserver</code>)のスレッドは無関係です。</p>
+
+<p>さて如何でしたでしょうか？<br/>
+普段考えずに利用している様々な処理が実際にはどのスレッドで実行されるのか、どういった書き方をするとどのスレッドで実行されうるのか調べてみることも面白いですね。<br/>
+ふとしたときにまた調べてみようと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[ReSwiftを勉強してみよう！(2)]]></title>
@@ -2106,335 +2308,6 @@ func newState(state: AppState) {
 
 <p>そんなことを夢見ながら今後は、別の公式サンプルを見つつ理解を深めていきたい思います。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RxSwiftを勉強してみよう！(3)]]></title>
-    <link href="http://grandbig.github.io/blog/2016/08/30/rxswift-3/"/>
-    <updated>2016-08-30T16:42:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/08/30/rxswift-3</id>
-    <content type="html"><![CDATA[<h3>RxSwiftのメソッドを見てみよう</h3>
-
-<p>前回に引き続きRxSwiftを勉強したいと思います。<br/>
-今回は<a href="https://github.com/ReactiveX/RxSwift/blob/master/Documentation/API.md">GitHub: Reactive/RxSwift API一覧</a>からメインのメソッドを見ていきたいと思います。</p>
-
-<h4>asObservable</h4>
-
-<p>これは<code>ReactiveX</code>で定義されている<code>From</code>オペレータと同義です。<br/>
-様々なオブジェクトを<code>Observable</code>型のデータに変換するためのオペレータです。</p>
-
-<p>利用例は下記です。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let array: [Int] = [1, 2, 3, 4, 5]
-let variable = Variable(array)
-variable.asObservable.subscribe { (event) in</p>
-
-<pre><code>print("Event is \(event)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>variable.value = [6, 7, 8]</p>
-
-<p>// 結果は下記です。
-Event is Next([1, 2, 3, 4, 5])
-Event is Next([6, 7, 8])
-Event is Completed
-```</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>create</h4>
-
-<p>0から<code>Observable</code>型のデータを生成するためのオペレータです。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let source = Observable.create { (observer: AnyObserver<Int>) &ndash;> Disposable in</p>
-
-<pre><code>observer.onNext(1)
-observer.onCompleted()
-
-return AnonymousDisposable {
-    print("Disposed")
-}
-</code></pre>
-
-<p>}</p>
-
-<p>source.subscribeNext { (elem) in</p>
-
-<pre><code>print("Event is \(elem)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です
-Event is 1
-Disposed
-```</p>
-
-<h4>deferred</h4>
-
-<p>Subscribeされたタイミングで<code>Observable</code>型のデータを生成するオペレータです。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let source = Observable.deferred { () &ndash;> Observable<Int> in</p>
-
-<pre><code>return Observable.just(1)
-</code></pre>
-
-<p>}
-source.subscribeNext { (elem) in</p>
-
-<pre><code>print("Elem is \(elem)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です
-Event is 1
-```</p>
-
-<h4>empty</h4>
-
-<p>空の(何の値も持たない)<code>Observable</code>型のデータを生成するオペレータです。<br/>
-通常通り、終了処理は実行されます。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let source: Observable<Int> = Observable.empty()
-source.subscribeNext { (elem) in</p>
-
-<pre><code>print("Elem is \(elem)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です。
-// 空のため何も出力されません
-```</p>
-
-<h4>never</h4>
-
-<p>空の(何の値も持たない)<code>Observable</code>型のデータを生成するオペレータです。<br/>
-<code>empty</code>と異なるのは終了処理が実行されないことです。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let source: Observable<Int> = Observable.never()
-source.subscribeNext { (elem) in</p>
-
-<pre><code>print("Elem is \(elem)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です。
-// 空のため何も出力されません
-```</p>
-
-<h4>error</h4>
-
-<p>空の(何の値も持たない)<code>Observable</code>型のデータを生成するオペレータです。<br/>
-<code>empty</code>, <code>never</code>と異なり、エラーを持った終了処理を実行します。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let error = NSError(domain: &ldquo;test&rdquo;, code: -1, userInfo: nil)
-let source: Observable<Int> = Observable.error(error)
-source.subscribeError { (error) in</p>
-
-<pre><code>print("Error is \(error)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です。
-Error is Error Domain=test Code=-1 &ldquo;(null)&rdquo;
-```</p>
-
-<h4>toObservable</h4>
-
-<p>様々なオブジェクトを<code>Observable</code>型のデータに変換するためのオペレータです。<br/>
-<code>asObservable</code>とは利用方法が異なります。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let array: [Int] = [1, 2, 3]
-array.toObservable().subscribeNext { (elem) in</p>
-
-<pre><code>print("Number is \(elem)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です。
-Number is 1
-Number is 2
-Number is 3
-```</p>
-
-<h4>interval</h4>
-
-<p>一定期間あけて処理を実行するためのオペレータです。<br/>
-<code>JavaScript</code>で言うところの<code>setTimeInterval</code>です。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let timer: Observable<Int> = Observable.interval(5.0, scheduler: MainScheduler.instance)
-timer.subscribeNext { (count) in</p>
-
-<pre><code>print("log output")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です。
-// 5秒後に実行されます。
-log output
-```</p>
-
-<h4>just</h4>
-
-<p>引数に指定した特定の型を返却する<code>Observable</code>型のデータを生成するためのオペレータです。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let source = Observable.just(1)
-source.subscribeNext { (elem) in</p>
-
-<pre><code>print("Elem is \(elem)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です。
-Elem is 1
-```</p>
-
-<h4>of</h4>
-
-<p>様々なオブジェクトを<code>Observable</code>型のデータに変換するためのオペレータです。<br/>
-<code>asObservable</code>や<code>toObservable</code>とは利用方法が異なります。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let source = Observable.of(1)
-source.subscribeNext { (elem) in</p>
-
-<pre><code>print("Elem is \(elem)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です。
-Elem is 1
-```</p>
-
-<h4>range</h4>
-
-<p>特定の範囲の<code>Int</code>型を持つ<code>Observable</code>型データを生成するオペレータです。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let source: Observable<Int> = Observable.range(start: 1, count: 3)
-source.subscribeNext { (elem) in</p>
-
-<pre><code>print("Elem is \(elem)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です。
-Elem is 1
-Elem is 2
-Elem is 3
-```</p>
-
-<h4>repeatElement</h4>
-
-<p>指定した回数、処理を実行するときに利用する<code>Observable</code>型データを生成するオペレータです。<br/>
-<code>take</code>メソッドを利用して回数を指定します。</p>
-
-<p>```objective-c
-let disposeBag = DisposeBag()   // 自動unsubscribeのために必要</p>
-
-<p>let source = Observable.repeatElement(1).take(3)
-source.subscribeNext { (elem) in</p>
-
-<pre><code>print("Elem is \(elem)")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)</p>
-
-<p>// 結果は下記です。
-Elem is 1
-Elem is 1
-Elem is 1
-```</p>
-
-<h4>timer</h4>
-
-<p>一定時間経過後に処理を実行したい場合に利用するオペレータです。<br/>
-<code>JavaScript</code>で言うところの<code>setTimeout</code>です。</p>
-
-<p>```objective-c
-let timer: Observable<Int> = Observable.timer(5.0, scheduler: MainScheduler.instance)
-timer.subscribeNext { (count) in</p>
-
-<pre><code>print("log output")
-</code></pre>
-
-<p>}.addDisposableTo(disposeBag)
-```</p>
-
-<h3>まとめ</h3>
-
-<p>さて、今回は<code>Creating Observables</code>のみを取り上げさせて頂きましたが、いかがでしたでしょうか？<br/>
-筆者もイマイチ使い方がわからなかったオペレータがたくさんあったので、多少なりとも使えそうな気がしてきました。<br/>
-<code>Transforming Observables</code>, <code>Filtering Observables</code> &hellip;. と全て見ていけると良いのですが、結構数が多いですね。<br/>
-時間があるときに続きを書きたいと思います。</p>
-
-<p>と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

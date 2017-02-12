@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-02-04T23:24:21+09:00</updated>
+  <updated>2017-02-12T18:01:53+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,272 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Notificationとメインスレッド/サブスレッド]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/12/notification-and-thread/"/>
+    <updated>2017-02-12T17:15:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/12/notification-and-thread</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今日は久々にiOS関連の話を書きたいと思います。<br/>
+正直なところSwiftを触って思ったのですが、今やXcodeではSwift3が標準装備されているため書き方が変わっており、業務で触らないまでも遅れを取らないように勉強しなきゃな&hellip;なんて感じてしまいました。</p>
+
+<p>本日のお題は<br/>
+『<code>Notification</code>はメインスレッド/サブスレッドのどちらで実行されるのか』<br/>
+という話です。</p>
+
+<p>筆者の理解では、普通に使う限りメインスレッドだと思っていたのですが、「使い方に寄るのでは？」なんて話題が上がったこともあって、調べてみたくなりました。<br/>
+その調べ方と調査結果を書いていきます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Notificationとは</h3>
+
+<p>まずは、<code>Notification</code>とは何かという話から始めましょう。<br/>
+その名の通り、アプリ内で通知を行う仕組みを実装するために利用します。<br/>
+少し前までは<code>NSNotification</code>という名前でしたので、こちらの名前の方がしっくりくるiOSエンジニアの方々は多いのではないでしょうか。</p>
+
+<p>使い方は非常に簡単です。</p>
+
+<p>１．監視対象のメソッドを登録する</p>
+
+<p><img src="http://grandbig.github.io/images/notification_1.png" alt="監視対象のメソッドを登録" /></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 登録時にはaddObserverメソッドを利用する</span>
+</span><span class='line'><span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">addObserver</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="nl">selector:</span> <span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">doSomething</span><span class="p">),</span> <span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>２．監視対象メソッドの呼び出しを要求する</p>
+
+<p><img src="http://grandbig.github.io/images/notification_2.png" alt="監視対象メソッドの呼び出し要求" /></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 呼び出し要求時にはpostメソッドを利用する</span>
+</span><span class='line'><span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">post</span><span class="p">(</span><span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>３．監視対象メソッドを実行する</p>
+
+<p><img src="http://grandbig.github.io/images/notification_3.png" alt="監視対象メソッドを実行" /></p>
+
+<h3>Notificationとメインスレッド/サブスレッドの調査</h3>
+
+<p>さて、本題に入ります。<br/>
+<code>Notification</code>はメインスレッド/サブスレッドどちらで実行されるのでしょうか。</p>
+
+<h4>普通に呼び出す場合</h4>
+
+<p>まずは特異なことをせず、普通に実行してみます。<br/>
+要件としては下記になります。</p>
+
+<ul>
+<li>アプリ起動時に<code>doSomething</code>メソッドを<code>NotificationCenter</code>に登録する</li>
+<li>ボタンタップ時に<code>doSomething</code>メソッドの呼び出しを要求する</li>
+<li><code>doSomething</code>メソッド内でメインスレッド/サブスレッドの判定処理を実行する</li>
+</ul>
+
+
+<p>ソースコードは下記となります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">addObserver</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="nl">selector:</span> <span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">doSomething</span><span class="p">),</span> <span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">doSomething</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;このメソッドは\(Thread.isMainThread)で動いています。(false: サブスレッド, true: メインスレッド)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">checkThread</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">post</span><span class="p">(</span><span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>結果は「呼び出し先の処理実行は <strong>メインスレッド</strong> 」となりました。</p>
+
+<h4>GCDを利用して、サブスレッド内でメソッドを呼び出す</h4>
+
+<p>次はサブスレッドで監視対象メソッドの呼び出し要求を実施します。<br/>
+ソースコードは下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">addObserver</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="nl">selector:</span> <span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">doSomething</span><span class="p">),</span> <span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">doSomething</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;このメソッドは\(Thread.isMainThread)で動いています。(0: サブスレッド, 1: メインスレッド)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">checkThread</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">DispatchQueue</span><span class="p">.</span><span class="n">global</span><span class="p">().</span><span class="n">async</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">post</span><span class="p">(</span><span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>結果は「呼び出し先の処理実行は <strong>サブスレッド</strong> 」となりました。</p>
+
+<h4>GCDを利用して、メインスレッド内でメソッドを呼び出す</h4>
+
+<p>今度はGCDを利用したメインスレッド内で監視対象メソッドの呼び出し要求を実施してみます。<br/>
+ソースコードは下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span><span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">addObserver</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="nl">selector:</span> <span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">doSomething</span><span class="p">),</span> <span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">doSomething</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;このメソッドは\(Thread.isMainThread)で動いています。(0: サブスレッド, 1: メインスレッド)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">checkThread</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">DispatchQueue</span><span class="p">.</span><span class="n">global</span><span class="p">().</span><span class="n">async</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">DispatchQueue</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">async</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">post</span><span class="p">(</span><span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>結果は「呼び出し先の処理実行は <strong>メインスレッド</strong> 」となりました。</p>
+
+<h3>まとめ</h3>
+
+<p>調査結果をまとめると次の通りです。</p>
+
+<p>「要求 <strong>元</strong> と <strong>同じスレッド</strong> で監視対象メソッドは実行されます。」<br/>
+※登録時(<code>addObserver</code>)のスレッドは無関係です。</p>
+
+<p>さて如何でしたでしょうか？<br/>
+普段考えずに利用している様々な処理が実際にはどのスレッドで実行されるのか、どういった書き方をするとどのスレッドで実行されうるのか調べてみることも面白いですね。<br/>
+ふとしたときにまた調べてみようと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSエンジニアが苦しんだReactアニメーション]]></title>
@@ -33,10 +299,6 @@
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-
-<!-- mapDispatchToPropsContainer
- -->
 
 
 <h3>Counterサンプルにアニメーションを追加しよう！</h3>
@@ -6964,400 +7226,6 @@ Adminは『Production用以外の自身のプロジェクト用のCertificates�
 </script>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[ReSwiftを勉強してみよう！(1)]]></title>
-    <link href="http://grandbig.github.io/blog/2016/09/03/reswift-1/"/>
-    <updated>2016-09-03T19:51:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/09/03/reswift-1</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>本日は最近JavaScript界では浸透してきている<code>Redux</code>についてSwiftを通して勉強していきたいと思います。<br/>
-<code>Redux</code>に関する日本語の記事はそれなりにあるもののSwift版ライブラリである<code>ReSwift</code>に関する日本語の記事は少ないため、筆者が少しでも記事を増やせたら良いなという思いがあります。<br/>
-と言いつつも、いきなり有効性の高い有良記事を書くことはハードルが高いため、簡単な勉強から始めて行く次第です。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>ReSwiftとは</h3>
-
-<p><code>ReSwift</code>とは<code>Redux</code>のSwift版ライブラリです。<br/>
-<a href="https://github.com/ReSwift/ReSwift">GitHub: ReSwift/ReSwift</a>が公式ページとなります。</p>
-
-<p>上記公式ページのイントロをざっくり訳すと&hellip;<br/>
-(意味が間違っていたらごめんなさい&hellip;)</p>
-
-<p>ReSwiftはSwiftで<a href="https://github.com/reactjs/redux">Redux</a>ライクな一方向のデータフローアーキテクチャを実装したものです。ReSwiftを使うことで、次の3つの関係性でアプリを構成することを手助けします。</p>
-
-<ul>
-<li><strong>State</strong> : 全てのアプリの状態を管理します。複雑な状態の管理やデバッグのし易さを手助けするなど、メリットは数多くあります。</li>
-<li><strong>Views</strong> : 状態変化したときにViewを更新します。状態に対してシンプルなビジュアルを実現します。</li>
-<li><strong>State Changes</strong> : <code>actions</code>を通した状態変化の実行のみを担当します。<code>actions</code>は状態変化を表現する小さなモジュールを指します。限られた状態変化を担うため、大人数で開発する際にアプリを簡単に理解することができるメリットがあります。</li>
-</ul>
-
-
-<p>また、ReSwiftは下記の3つの原則に従って構成されます。</p>
-
-<ul>
-<li><strong>The Store</strong> : アプリの状態(State)を保持するアプリ内で唯一の存在です。StoreにActionsが発送されることによってのみ状態(State)は変化します。状態(State)が変化したら必ず、Storeが全てのオブザーバに通知します。</li>
-<li><strong>Actions</strong> : アプリの状態(State)がどんな変化なのかを宣言します。Storeによって消費され、Reducerに渡されます。Reducerは各Actionで引き起こされる異なる状態変化を実装することによってActionを扱います。</li>
-<li><strong>Reducers</strong> : 現在のActionとStateに基いて、新しいStateを生成する純粋な関数を提供します。</li>
-</ul>
-
-
-<p>というように、何となく、この辺りを理解すれば良さそうですね。<br/>
-まずは、公式ページに載っている最も簡単な『Counterサンプルアプリ』から上記の内容を直にコードで理解していきたいと思います。</p>
-
-<h3>CounterサンプルアプリからReSwiftを理解しよう</h3>
-
-<p>公式ページのREADMEには<a href="https://github.com/ReSwift/CounterExample">CounterExample</a>が紹介されています。<br/>
-公開されているサンプルアプリの中で最も簡単なサンプルなはずなので、これを見ていきたいと思います。</p>
-
-<p>最終的なフォルダ構成は下記になります。<br/>
-(関係のないファイルは除いています。)</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">ReSwiftSample</span>
-</span><span class='line'><span class="err">┣━━</span> <span class="n">State</span>
-</span><span class='line'><span class="err">┃</span>   <span class="err">┗━━</span> <span class="n">AppState</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">┣━━</span> <span class="n">Actions</span>
-</span><span class='line'><span class="err">┃</span>   <span class="err">┗━━</span> <span class="n">CounterActions</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">┣━━</span> <span class="n">Reducers</span>
-</span><span class='line'><span class="err">┃</span>   <span class="err">┗━━</span> <span class="n">CounterReducers</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">┣━━</span> <span class="n">ViewController</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">┣━━</span> <span class="n">AppDelegate</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">┗━━</span> <span class="n">Main</span><span class="p">.</span><span class="n">storyboard</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>では早速、1つずつ見ていきましょう。</p>
-
-<h4>ReSwiftをCocoaPodsでインストール</h4>
-
-<p>例によってCocoaPodsでインストールします。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">target</span> <span class="err">&#39;</span><span class="n">ReSwiftSample</span><span class="err">&#39;</span> <span class="k">do</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">ReSwift</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">target</span> <span class="err">&#39;</span><span class="n">ReSwiftSampleTests</span><span class="err">&#39;</span> <span class="k">do</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">ReSwift</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">target</span> <span class="err">&#39;</span><span class="n">ReSwiftSampleUITests</span><span class="err">&#39;</span> <span class="k">do</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">ReSwift</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">end</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これで<code>pod install</code>すればOKです。</p>
-
-<h4>State</h4>
-
-<p>準備が整ったところでコードを具体的に見ていきましょう。
-まずは<code>AppState.swift</code>を見ていきます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">//AppState.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">struct</span> <span class="nl">AppState:</span> <span class="n">StateType</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">counter:</span> <span class="n">Int</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>今回のアプリは単純なカウントアップアプリなので、上記では<code>AppState</code>の1つのプロパティとして <strong>カウントの状態(counter)</strong> を定義しています。</p>
-
-<h4>Action</h4>
-
-<p>続いて<code>CounterActions.swift</code>を見ていきます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// CounterActions.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">struct</span> <span class="nl">CounterActionIncrease:</span> <span class="n">Action</span> <span class="p">{}</span>
-</span><span class='line'><span class="k">struct</span> <span class="nl">CounterActionDecrease:</span> <span class="n">Action</span> <span class="p">{}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>カウントアップの動作には <strong>『増加(Increase)』</strong> と <strong>『減少(Decrease)』</strong> の2つがあるため、それぞれのActionを定義します。<br/>
-ここで注意したいのはActionは関数(<code>func</code>)ではなく構造体(<code>struct</code>)であるということです。<br/>
-先に述べたようにActionは状態の宣言であり、Reducerに渡されて、処理を判別するために利用されるからです。</p>
-
-<h4>Reducer</h4>
-
-<p>そして、<code>CounterReducers.swift</code>を見ていきます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// CounterReducers.swift</span>
-</span><span class='line'><span class="k">struct</span> <span class="nl">CounterReducer:</span> <span class="n">Reducer</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">func</span> <span class="n">handleAction</span><span class="p">(</span><span class="nl">action:</span> <span class="n">Action</span><span class="p">,</span> <span class="nl">state:</span> <span class="n">AppState</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AppState</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">var</span> <span class="n">state</span> <span class="o">=</span> <span class="n">state</span> <span class="o">??</span> <span class="n">AppState</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="k">switch</span> <span class="n">action</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">case</span> <span class="n">_</span> <span class="n">as</span> <span class="nl">CounterActionIncrease:</span>
-</span><span class='line'>              <span class="n">state</span><span class="p">.</span><span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
-</span><span class='line'>          <span class="k">case</span> <span class="n">_</span> <span class="n">as</span> <span class="nl">CounterActionDecrease:</span>
-</span><span class='line'>              <span class="n">state</span><span class="p">.</span><span class="n">counter</span> <span class="o">-=</span> <span class="mi">1</span>
-</span><span class='line'>          <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>              <span class="k">break</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="k">return</span> <span class="n">state</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>先に述べましたが、Reducerは引数として渡されたStateとActionの2つから新規のStateを返却します。<br/>
-重要なのは、 <strong>新規のStateを返却する</strong> ということです。<br/>
-これは<code>var state = state ?? AppState()</code>を見るとわかるかと思います。<br/>
-既に<code>state</code>オブジェクトがある場合は値渡しで新規<code>AppState</code>型に内容を格納しています。<br/>
-もし、<code>state</code>オブジェクトがなければ、初期化して作成しています。</p>
-
-<p>そして<code>switch</code>文で各Actionごとに最適な処理を実行しています。<br/>
-(今回の場合は『Increase』と『Decrease』)</p>
-
-<h4>Store</h4>
-
-<p>モジュールの作成が完了したので、実装していきます。<br/>
-先に述べたように<code>Store</code>はアプリの状態(State)を保持するアプリ内で <strong>唯一の存在</strong> です。<br/>
-よって、<code>AppDelegate.swift</code>で次のように定義します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">let</span> <span class="n">mainStore</span> <span class="o">=</span> <span class="n">Store</span><span class="o">&lt;</span><span class="n">AppState</span><span class="o">&gt;</span><span class="p">(</span>
-</span><span class='line'>  <span class="nl">reducer:</span> <span class="n">CounterReducer</span><span class="p">(),</span>
-</span><span class='line'>  <span class="nl">state:</span> <span class="nb">nil</span>
-</span><span class='line'><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
-</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span> <span class="p">{</span>
-</span><span class='line'>  <span class="p">...</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記では<code>Store</code>型の<code>mainStore</code>を定義しています。<br/>
-Reducerとして<code>CounterReducer</code>を定義しています。<br/>
-Stateは初期値<code>nil</code>として定義しています。</p>
-
-<h4>View層への実装</h4>
-
-<p>最後にユーザの操作が走った際の処理の実装について見ていきます。<br/>
-状態変化の監視開始/終了を下記で実施します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">StoreSubscriber</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewWillAppear</span><span class="p">(</span><span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewWillAppear</span><span class="p">(</span><span class="n">animated</span><span class="p">)</span>
-</span><span class='line'>      <span class="n">mainStore</span><span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span> <span class="c1">// 状態変化の監視開始</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewWillDisappear</span><span class="p">(</span><span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewWillDisappear</span><span class="p">(</span><span class="n">animated</span><span class="p">)</span>
-</span><span class='line'>      <span class="n">mainStore</span><span class="p">.</span><span class="n">unsubscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span>   <span class="c1">// 状態変化の監視終了</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="p">...</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>続いて、ユーザ操作からのReducerへのAction発送部分です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
-</span><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">increaseButtonTapped</span><span class="p">(</span><span class="nl">sender:</span> <span class="n">AnyObject</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
-</span><span class='line'>      <span class="n">CounterActionIncrease</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">decreaseButtonTapped</span><span class="p">(</span><span class="nl">sender:</span> <span class="n">AnyObject</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
-</span><span class='line'>      <span class="n">CounterActionDecrease</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>『増加』ボタンタップ時にStoreが『CounterActionIncreaseというAction』をReducerへdispatch(発送)します。</li>
-<li>『減少』ボタンタップ時にStoreが『CounterActionDecreaseというAction』をReducerへdispatch(発送)します。</li>
-</ul>
-
-
-<p>そして、新しいStateが返却された際に実行すべき処理を書くために<code>StoreSubscriber</code>プロトコルに<code>newState</code>メソッドが定義されています。<br/>
-よって、</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
-</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">StoreSubscriber</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">counterLabel:</span> <span class="n">UILabel</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="p">...</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">func</span> <span class="n">newState</span><span class="p">(</span><span class="nl">state:</span> <span class="n">AppState</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">counterLabel</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;\(state.counter)&quot;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="p">...</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>のように実装することで<code>newState</code>メソッド内で任意の処理を書くことができます。</p>
-
-<h3>まとめ</h3>
-
-<p>さて、如何でしたでしょうか？<br/>
-今回は公式の最も簡単なサンプルについて見ていきましたが、少々ReSwiftの扱い方が見えてきた気がします。<br/>
-また、ReSwiftが有能であるが故にReduxであればもっと自分で書かなければいけなさそうなところもカバーしてくれているように見えました。<br/>
-実践での活用なRxSwift同様にいろいろなリスク管理的な意味で難しいのかもしれませんが、もっとReSwiftを理解することで想定を上回るメリットを示し、実践で利用できるかもしれません。</p>
-
-<p>そんなことを夢見ながら今後は、別の公式サンプルを見つつ理解を深めていきたい思います。<br/>
-と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
 
 ]]></content>
   </entry>
