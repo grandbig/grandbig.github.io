@@ -3,7 +3,7 @@ layout: post
 title: "昔関わったNode.jsを思い出してみる"
 date: 2016-07-09 22:20
 comments: true
-categories: node javascript
+categories: node javascript BE
 ---
 
 ###はじめに
@@ -50,7 +50,7 @@ Node.jsの特徴は、何と言っても
 これらこそがNode.jsの本質でしょう。  
 
 ####イベントループモデル
-イベントループモデルと一言聞くと、「なんぞや！？」となってしまいそうですが、 
+イベントループモデルと一言聞くと、「なんぞや！？」となってしまいそうですが、
 
 * イベントの発火を常に監視しているループ  
 * イベントの発火を受け付けると、イベントキューに格納される  
@@ -188,7 +188,7 @@ Node.jsはまだまだ新しい技術ですし、これからもっと学ぶべ�
 筆者も極力最新を追えるように精進したいと思います。  
 と言ったところで本日はここまで。  
 
-参考: 
+参考:
 
 * [naveでNode.jsのバージョン管理＆イベントループ詳説 ](http://www.atmarkit.co.jp/ait/articles/1103/23/news101_2.html)  
 * [そうだったのか！ よくわかる process.nextTick() node.jsのイベントループを理解する](http://www.slideshare.net/shigeki_ohtsu/processnext-tick-nodejs)  
@@ -199,4 +199,3 @@ Node.jsはまだまだ新しい技術ですし、これからもっと学ぶべ�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-

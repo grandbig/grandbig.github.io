@@ -3,7 +3,7 @@ layout: post
 title: "Swift Expressを使ってみよう！"
 date: 2016-07-10 22:56
 comments: true
-categories: ios swift node
+categories: ios swift node BE
 ---
 
 ###今注目のサーバーサイドSwift
@@ -365,7 +365,7 @@ app.use('/', routes);
 
 // route/index.js
 router.get('/', function(req, res, next) {  
-	res.render('index', { title: 'Express' }); 
+	res.render('index', { title: 'Express' });
 }
 ```
 

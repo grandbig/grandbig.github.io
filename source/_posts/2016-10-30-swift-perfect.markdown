@@ -3,7 +3,7 @@ layout: post
 title: "Server Side Swift: Perfect を使ってみよう！"
 date: 2016-10-30 22:48
 comments: true
-categories: ios node swift
+categories: ios node swift BE
 ---
 
 ###Server Side SwiftライブラリのPerfect
@@ -117,7 +117,7 @@ func decode(postBody: String?) -> [String: Any]? {
 var routes = Routes()
 routes.add(method: .post, uri: "/user", handler: {
 	request, response in
-		    
+
 	var userInfo = ""
 	let decodedParam = decode(postBody: request.postBodyString)
 	for (key, value) in decodedParam! {
@@ -156,5 +156,3 @@ email is xxx@gmail.com.</body></html>xxxx:PerfectTemplate
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-

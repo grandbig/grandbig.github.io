@@ -1,0 +1,348 @@
+---
+layout: post
+title: "ReSwiftを勉強してみよう！(2)"
+date: 2016-12-06 00:00
+comments: true
+categories: redux ios swift
+---
+
+###はじめに
+こちらは[iOS その2 Advent Calendar 2016](http://qiita.com/advent-calendar/2016/ios2) 6日目の記事です。  
+
+今年は仕事でiOSを触る機会がめっきりと減ってしまったのですが、  
+「やはり１年を振り返るのならiOS Advent Calendarは欠かせないでしょう」ということで投稿することにしました。  
+
+最近、筆者が仕事で着手し始めた **Redux** に関連するということで **ReSwift** について見ていきたいと思います。  
+タイトルが **(2)** になっているのは、  
+以前に興味を持って自主的に取り組んでみた[ReSwiftを勉強してみよう！(1)](http://grandbig.github.io/blog/2016/09/03/reswift-1/)の続きという意味です。  
+しかし、Advent Calendarの記事でもあるので本記事のみで完結する形で書きたいと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+今回は公式GitHubに上がっている[CounterExample-Navigation-TimeTravel](https://github.com/ReSwift/CounterExample-Navigation-TimeTravel)を元にReSwiftを勉強していきたいと思います。  
+
+###ReSwiftに出てくるモノと役割
+ReSwiftに出てくるモノと役割について改めて見直しをしてみましょう。  
+
+* Store  
+  * アプリ内で必ず1つの存在  
+  * アプリの状態を管理する  
+  * Stateを更新するための`dispatch`を提供する  
+    * 言い換えれば`dispatch(action)`をすることでStoreにStateの変更を知らせられる  
+  * Stateの状態を追えるように`subscribe`を提供する  
+    * 言い換えれば`subscribe(listener)`をすることでlistenerは`getState`を通してStateの状態を取得できる  
+
+サンプルでは下記が該当します。  
+Storeの宣言は下記のようになります。  
+
+```objective-c
+// AppDelegate.swift
+var mainStore = RecordingMainStore<AppState>(
+      reducer: AppReducer(),
+      state: nil,
+      typeMaps:[counterActionTypeMap, ReSwiftRouter.typeMap],
+      recording: "recording.json"
+)
+```
+
+このサンプルでは[ReSwiftRecorder](https://github.com/ReSwift/ReSwift-Recorder)モジュールを利用しているため通常のStore宣言とは異なります。  
+ですが、重要なのは、`reducer`に`AppReducer()`を指定していることと、Storeが管理するStateの初期値を`state: nil`としているということです。  
+
+* State
+  * アプリの状態  
+
+サンプルでは下記の通りです。  
+
+```objective-c
+// AppState.swift
+struct AppState: StateType, HasNavigationState {
+    var counter: Int
+    var navigationState: NavigationState
+}
+```
+
+サンプルでは`CounterViewController`でカウント数の増加および減少をさせる処理が実装されており、  
+`tabBarController`や`Button`のアクションなどで表示される画面を切り替える処理が実装されているため上記のように`counter`と`navigationState`の2つでアプリの状態を表すと定義しています。  
+
+* Action
+  * 何をするアクションなのかを表すオブジェクト  
+  * `type`プロパティを必ず持つ  
+* ActionCreator
+  * Actionを作成するメソッド  
+
+サンプルでは下記の通りです。  
+
+```objective-c
+// CounterAction.swift
+struct CounterActionIncrease: StandardActionConvertible {
+
+    static let type = "COUNTER_ACTION_INCREASE"
+
+    init() {}
+    init(_ standardAction: StandardAction) {}
+
+    func toStandardAction() -> StandardAction {
+        return StandardAction(type: CounterActionIncrease.type, payload: [:], isTypedAction: true)
+    }
+
+}
+```
+
+サンプルの`CounterAction.swift`の`CounterActionIncrease`はActionおよびActionCreatorの役割を兼ねています。  
+
+* Reducer
+  * ActionとStateから新たなStateを作成して返す  
+  * ポイントはStateを更新するのではなく、 **新しく作成したState** を返すということ  
+
+サンプルでは下記の通りです。  
+
+```objective-c
+// CounterReducer.swift
+struct AppReducer: Reducer {
+
+    func handleAction(action: Action, state: AppState?) -> AppState {
+        return AppState(
+            counter: counterReducer(action: action, counter: state?.counter),
+            navigationState: NavigationReducer.handleAction(action, state: state?.navigationState)
+        )
+    }
+
+}
+
+func counterReducer(action: Action, counter: Int?) -> Int {
+    var counter = counter ?? 0
+
+    switch action {
+    case _ as CounterActionIncrease:
+        counter += 1
+    case _ as CounterActionDecrease:
+        counter -= 1
+    default:
+        break
+    }
+
+    return counter
+}
+```
+
+サンプルでは、`handleAction`メソッドで「引数として受け取った`action`と`state`から作成した`AppState`を返却」しています。  
+カウントアップの処理がReducerに伝わった場合には、  
+`counterReducer`メソッドでそのActionに合わせて新たに必要なStateの情報を生成しています。  
+(カウントアップの場合は`CounterActionIncrease`アクションなので`counter += 1`しています。)  
+
+###ReSwiftに出てくるモノ同士の連携
+1個1個のモノと役割については理解が進みました。  
+続いて、それらの連携について見ていきましょう。  
+そのためには`ViewController`を見ていくのがわかりやすいかなと思います。  
+
+####カウントアップ・ダウンに見る連携
+まずは`CounterViewController`ですが、  
+「+」や「-」ボタンをタップすることで画面中央に表示されたカウントを増減させる画面です。  
+
+```objective-c
+// CounterViewController.swift
+import UIKit
+import ReSwift
+import ReSwiftRouter
+
+class CounterViewController: UIViewController, StoreSubscriber, Routable {
+
+  static let identifier = "CounterViewController"
+
+  @IBOutlet var counterLabel: UILabel!
+
+  override func viewWillAppear(_ animated: Bool) {
+    mainStore.subscribe(self)
+  }
+
+  override func viewWillDisappear(_ animated: Bool) {
+    mainStore.unsubscribe(self)
+  }
+
+  func newState(state: AppState) {
+    // 新規Stateをキャッチ
+    // 画面のラベルを更新
+    counterLabel.text = "\(state.counter)"
+  }
+
+  @IBAction func increaseButtonTapped(_ sender: Any) {
+    mainStore.dispatch(
+      CounterActionIncrease()
+    )
+  }
+
+  @IBAction func decreaseButtonTapped(_ sender: Any) {
+    mainStore.dispatch(
+      CounterActionDecrease()
+    )
+  }
+}
+```
+
+細かく見ていきましょう。  
+Storeの役割で説明した「Stateの状態を追えるように`subscribe`を提供する」に相当する部分が、  
+
+```objective-c
+override func viewWillAppear(_ animated: Bool) {
+  mainStore.subscribe(self)
+}
+
+override func viewWillDisappear(_ animated: Bool) {
+  mainStore.unsubscribe(self)
+}
+```
+
+になります。  
+`viewWillAppear`で`subscribe`を実行することで、その画面が表示されるときにStateの監視を開始して、`viewWillDisappear`で`unsubscribe`を実行することで、その画面が非表示になるときにStateの監視を終了することにしています。  
+
+また、「Stateを更新するための`dispatch`を提供する」に相当する部分が、  
+
+```objective-c
+@IBAction func increaseButtonTapped(_ sender: Any) {
+  mainStore.dispatch(
+    CounterActionIncrease()
+  )
+}
+
+@IBAction func decreaseButtonTapped(_ sender: Any) {
+  mainStore.dispatch(
+    CounterActionDecrease()
+  )
+}
+```
+
+になります。  
+ユーザが「+」ボタンをタップしたときに`increaseButtonTapped`が呼び出されます。  
+そのときに上記アクションが実行されたことを`dispatch`を実行することでStoreに知らせています。  
+`decreaseButtonTapped`も同様です。  
+
+####画面切り替えに見る連携
+続いて`tabBarController`による画面の切り替えですが、これもこのサンプルでは状態変化として扱っています。  
+ただし、`ReSwiftRouter`モジュールで役割を担っているので、これを利用すれば開発者が新たに書く部分は非常に少なくなります。  
+
+`UITabBarControllerDelegate`を利用してタブをタップしたタイミングをキャッチします。
+そのときに、`ReSwiftRouter`の`SetRouteAction`を利用してタブによる画面切り替えのアクションをStoreに伝えています。    
+
+```objective-c
+// AppDelegate.swift
+extension AppDelegate: UITabBarControllerDelegate {
+
+  func tabBarController(_ tabBarController: UITabBarController,
+
+    shouldSelect viewController: UIViewController) -> Bool {
+
+    if viewController is CounterViewController {
+
+      mainStore.dispatch(
+        SetRouteAction(["TabBarViewController", CounterViewController.identifier])
+      )
+    } else if viewController is StatsViewController {
+      mainStore.dispatch(
+        SetRouteAction(["TabBarViewController", StatsViewController.identifier])
+      )
+    }
+        return false
+  }
+}
+```
+
+因みに、`SetRouteAction`は下記のように定義されています。  
+
+```objective-c
+public struct SetRouteAction: StandardActionConvertible {
+
+  let route: Route
+  let animated: Bool
+  public static let type = "RE_SWIFT_ROUTER_SET_ROUTE"
+
+  public init (_ route: Route, animated: Bool = true) {
+    self.route = route
+    self.animated = animated
+  }
+
+  public init(_ action: StandardAction) {
+    self.route = action.payload!["route"] as! Route
+    self.animated = action.payload!["animated"] as! Bool
+  }
+
+  public func toStandardAction() -> StandardAction {
+    return StandardAction(
+      type: SetRouteAction.type,
+      payload: ["route": route as AnyObject, "animated": animated as AnyObject],
+      isTypedAction: true
+    )
+  }  
+}
+```
+
+中身を見てみると`CounterAction`と同様に`toStandardAction`を利用しているのがわかります。  
+デバッグしていくとわかりますが、`tabBarController`を通した画面の切り替えでは、カウントアップやカウントダウンは無関係であるため`AppReducer`ではcountの状態を増減させることはありません。  
+変化するのは`AppState.navigationState`のみです。  
+こちらも追っていくとわかるのですが、下記の`NavigationReducer`に処理が引き継がれています。  
+
+```objective-c
+public struct NavigationReducer {
+
+  public static func handleAction(_ action: Action, state: NavigationState?) -> NavigationState {
+    let state = state ?? NavigationState()
+
+    switch action {
+    case let action as SetRouteAction:
+      return setRoute(state, setRouteAction: action)
+    case let action as SetRouteSpecificData:
+      return setRouteSpecificData(state, route: action.route, data: action.data)
+    default:
+      break
+    }
+
+    return state
+  }
+
+  static func setRoute(_ state: NavigationState, setRouteAction: SetRouteAction) -> NavigationState {
+    var state = state
+
+    state.route = setRouteAction.route
+    state.changeRouteAnimated = setRouteAction.animated
+
+    return state
+  }
+    <省略>
+}
+```
+
+このように、`NavigationReducer`の中で`NavigationState`型のオブジェクトを生成して返しています。  
+なので、アプリの状態である`AppState`が持つのは、  
+
+* counter: アプリのカウント状態
+* navigationState: アプリの画面状態
+
+と言えます。  
+
+###まとめ
+相変わらず、(流行っていないというのもあるかもしれませんが...)ReSwiftに関する日本語の記事が少ないですね。  
+恐らく、Web業界のようにFluxやReduxが実際のサービスに取り入れられているとは言い難いのでしょう。  
+その理由として考えられるのは、iOSの場合はデフォルトとしてStoryboardやViewControllerというものが存在し、Appleもそれをそのまま利用することを推奨しているからかもしれません。  
+しかしながら、複雑なアプリが世の中で求められるようになるに従って『ViewControllerの肥大化』や『複数人での開発による統一性の崩れ』といった課題により真剣に考えざるを得なくなってきました
+。  
+必ずしも、これらの課題を解決するためにReSwiftを使わなければならないということはないのですが、1つの方法論として知っておくことで選択肢も増えてきます。  
+ただ、WebでReact&Reduxを取り入れるのと同様に理解するためのハードルが高くもあるので現場で嫌がられることもあるかもしれません。  
+また、保守性として高いとは決して言えません。開発メンバーの入れ替えが発生したときにReSwiftを勉強するコストが発生します。  
+Webと違ってそこまで浸透しているとは言えないため、より導入が難しいと言えるでしょう。  
+ここにある種の矛盾が生じているわけですね...  
+
+筆者がちょうどReact&Reduxに触れる機会が増えてきたため、良い機会だと思って、iOSでのReSwiftの利用メリットなどを合わせて考えていきたいと思っています。  
+そろそろ個人でのアプリ開発も復活させたい気持ちもありますし、その際には積極的に導入してみようかな...  
+
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>

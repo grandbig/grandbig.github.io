@@ -3,7 +3,7 @@ layout: post
 title: "Swift ExpressでAjax通信してみよう！"
 date: 2016-07-31 23:40
 comments: true
-categories: ios swift
+categories: ios swift BE
 ---
 
 ###Swift ExpressでPOSTリクエスト投げてみよう！
@@ -97,7 +97,7 @@ $(function() {
 		<img class="logo" src="/assets/logo.png"/>
 		<h1>{{hello}} <i><span class="swift">{{swift}}</span> {{express}}</i></h1>
 		<div id="touch">ここをタッチ！！</div>
-															
+
 		<script src="/assets/js/jquery-3.1.0.min.js"></script>
 		<script src="/assets/js/index.js"></script>
 	</body>

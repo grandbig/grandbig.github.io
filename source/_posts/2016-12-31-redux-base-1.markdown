@@ -1,0 +1,281 @@
+---
+layout: post
+title: "iOSエンジニアが苦しんだReduxの基礎(1)"
+date: 2016-12-31 01:17
+comments: true
+categories: redux web FE javascript
+---
+
+###はじめに
+今年も残すところ1日となりましたね。  
+筆者にとって2016年は新しいことだらけの1年となりました。  
+技術的にもこれまで触ってこなかったものに挑戦する機会を得ることができました。  
+その1つは本日のお題である **Redux** です。  
+実は現在進行系で理解に苦しんでいる途中なので、休暇中に理解を促進する意味も込めて記事を書きたいと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+###Reduxは難しい！？
+ここ最近、iOSエンジニアとして活動してきた筆者にとって **なぜReduxが難しいと感じたのか** について語りたいと思います。  
+結論から言うと、 **ReactとReduxを組み合わせた場合の実装から入ったため** 難しく感じたのではないかと思っています。  
+具体的には、ReactとReduxの公式ページや様々な紹介ページを読むと必ず出てくる **connect()** がかなり難しいと感じました。  
+
+プロジェクトに参画するタイミングによっては悠長に勉強をしている場合ではないと思いますが、  
+まずは素のReduxを理解することが最も近道だと実体験として感じました。  
+
+では、素のReduxはどうやって学べば良いのでしょうか？  
+Reduxで検索をしてもほとんどの場合、Reactと一緒に使われている記事しか出てこないと思います。  
+答えは簡単です！  
+(当たり前ではあるのですが、)公式のExampleを勉強すれば良いのです。  
+
+###Counter Vanilla サンプルで学ぼう！
+[公式ReduxページのExample](http://redux.js.org/docs/introduction/Examples.html)の先頭に書かれている **Counter Vanilla** を見ていきましょう。  
+ソースコードは下記のようになっています。  
+(少々、Reduxの原則と照らし合わせられるようにソースコードを改変しています。)  
+
+```javascript
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Redux basic example</title>
+    <script src="https://unpkg.com/redux@latest/dist/redux.min.js"></script>
+  </head>
+  <body>
+    <div>
+      <p>
+        Clicked: <span id="value">0</span> times
+        <button id="increment">+</button>
+        <button id="decrement">-</button>
+        <button id="incrementIfOdd">Increment if odd</button>
+        <button id="incrementAsync">Increment async</button>
+      </p>
+    </div>
+    <script>
+      const INCREMENT = { type: 'INCREMENT' };
+      const DECREMENT = { type: 'DECREMENT' };
+
+      function increment() {
+        return INCREMENT;
+      }
+      function decrement() {
+        return DECREMENT;
+      }
+
+      function counter(state, action) {
+        if (typeof state === 'undefined') {
+          return 0
+        }
+
+        switch (action.type) {
+          case 'INCREMENT':
+            return state + 1
+          case 'DECREMENT':
+            return state - 1
+          default:
+            return state
+        }
+      }
+
+      var store = Redux.createStore(counter)
+      var valueEl = document.getElementById('value')
+
+      function render() {
+        valueEl.innerHTML = store.getState().toString()
+      }
+
+      render()
+      store.subscribe(render)
+
+      document.getElementById('increment')
+        .addEventListener('click', function () {
+          store.dispatch(increment())
+        })
+
+      document.getElementById('decrement')
+        .addEventListener('click', function () {
+          store.dispatch(decrement())
+        })
+
+      document.getElementById('incrementIfOdd')
+        .addEventListener('click', function () {
+          if (store.getState() % 2 !== 0) {
+            store.dispatch(increment())
+          }
+        })
+
+      document.getElementById('incrementAsync')
+        .addEventListener('click', function () {
+          setTimeout(function () {
+            store.dispatch(increment())
+          }, 1000)
+        })
+    </script>
+  </body>
+</html>
+```
+
+ブラウザに表示される画面は下記のようになります。  
+![Counter Example画面](/images/redux_base_1.png)  
+
+実装されている機能としては下記の4つになります。  
+
+* 「+」ボタンを選択するとClick数が+1される  
+* 「-」ボタンを選択するとClick数が-1される  
+* 「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される  
+* 「Increment async」ボタンを選択すると1秒後にClick数が+1される  
+
+これだけを見せられても実装内容がよくわからない(かもしれない)ですよね？  
+そこで1つ1つReduxの原則と照らし合わせつつ見ていきましょう。  
+
+####Actions
+`Actions`とは  
+
+* 何をするアクションなのかを表すオブジェクト  
+* `type`プロパティを必ず持つ  
+
+です。  
+Exampleでは、下記に当たります。  
+
+```javascript
+const INCREMENT = { type: 'INCREMENT' }
+const DECREMENT = { type: 'DECREMENT' }
+```
+
+####Action Creators
+`Action Creators`とは  
+
+* `Action`を作成するメソッド  
+
+です。  
+Exampleでは、下記に当たります。  
+
+```javascript
+function increment() {
+  return INCREMENT
+}
+function decrement() {
+  return DECREMENT
+}
+```
+
+####Reducers
+`Reducers`とは  
+
+* `Action`と`State`から新たな`State`を作成して返す  
+* ポイントは`State`を更新するのではなく、 新しく作成した`State` を返すということ  
+
+です。  
+Exampleでは、下記に当たります。  
+※Counter Exampleのため、`state`は **カウント数** を表します。  
+
+```javascript
+function counter(state, action) {
+  if (typeof state === 'undefined') {
+    // 初期値は0として返却する
+    return 0
+  }
+
+  switch (action.type) {
+    case 'INCREMENT':
+      return state + 1
+    case 'DECREMENT':
+      return state - 1
+    default:
+      return state
+  }
+}
+```
+
+####Store
+`Store`とは  
+
+* アプリ内で必ず1つの存在  
+* アプリの状態を管理する  
+* `State`を更新するための`dispatch`を提供する  
+  * 言い換えれば`dispatch(action)`をすることで`Store`に`State`の変更を知らせられる  
+* `State`の状態を追えるように`subscribe`を提供する  
+  * 言い換えれば`subscribe(listener)`をすることで`listener`は`getState`を通して`State`の状態を取得できる  
+
+です。  
+Exampleでは下記のように`store`を作成しています。  
+
+```javascript
+// Storeを作成するためのcreateStoreメソッドの第一引数にReducerを渡す
+var store = Redux.createStore(counter)
+```
+
+今回はCounter Exampleであるため、  
+
+* 「+」ボタンを選択したら「+1」された結果が表示される  
+* 「-」ボタンを選択したら「-1」された結果が表示される  
+
+ようになっています。  
+よって、「+ / -」ボタンをクリックしたタイミングで  
+
+* Storeに`state`の変更を知らせる  
+* `state`の変更を結果として描画に反映させる  
+
+必要があります。  
+これはStore項目の冒頭で書いた`dispatch`と`listener`を利用することで達成できます。  
+
+まずは`dispatch`から見ていきましょう。  
+
+```javascript
+// 「+」ボタンを選択した場合
+document.getElementById('increment')
+  .addEventListener('click', function () {
+    store.dispatch(increment())
+  })
+
+// 「-」ボタンを選択した場合
+document.getElementById('decrement')
+  .addEventListener('click', function () {
+    store.dispatch(decrement())
+  })
+```
+
+上記のようにクリックしたタイミングで`store.dispatch`に`Action Creators`である`increment()`および`decrement()`で作成した`Actions`を渡しています。  
+こうすることで、『 **Storeにstateの変更を知らせる** 』ことができます。  
+
+次に`listener`から見ていきましょう。  
+
+```javascript
+// Click数を示すDOMの取得
+var valueEl = document.getElementById('value')
+// 最新のstateの状態をClick数に反映するメソッド
+function render() {
+  valueEl.innerHTML = store.getState().toString()
+}
+// 初期状態を表示するために実行
+render()
+// subscribeの第一引数にrenderメソッドを指定
+store.subscribe(render)
+```
+
+上記のように、`store.subscribe`に`render`メソッドを渡すことで、`dispatch`実行して`state`の状態が変化したときに、毎回`render`メソッドが実行されることになります。  
+こうすることで、『 **stateの変更結果として描画に反映させる** 』ことができます。  
+`subscribe`は`state`の状態を監視する役割を持っていることがわかると思います。  
+
+###まとめ
+さて如何でしたでしょうか？  
+今回はReduxの本質を理解するために、あえてReactを利用するExampleは選択しませんでした。  
+「React&Reduxが全然わからん！！」という方はゆっくりと時間をとってReduxからチャレンジしてみることをオススメします。  
+次回はReactとの組み合わせを見ていきたいと思います。  
+
+参考:  
+
+* [公式ReduxページのExample](http://redux.js.org/docs/introduction/Examples.html)  
+* [ReSwiftを勉強してみよう(2)](http://grandbig.github.io/blog/2016/12/06/reswift-2/)  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>

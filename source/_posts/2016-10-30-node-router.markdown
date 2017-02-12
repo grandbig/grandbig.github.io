@@ -3,7 +3,7 @@ layout: post
 title: "Node.jsでrouterモジュールでルーティング！"
 date: 2016-10-30 00:00
 comments: true
-categories: node javascript
+categories: node javascript BE
 ---
 
 ###Expressなしで簡単にルーティングしよう！
@@ -191,4 +191,3 @@ Node.jsは少しずつリハビリしながら思い出していくことにし�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-

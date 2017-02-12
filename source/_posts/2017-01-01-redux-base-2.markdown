@@ -1,0 +1,288 @@
+---
+layout: post
+title: "iOSエンジニアが苦しんだReduxの基礎(2)"
+date: 2017-01-01 00:41
+comments: true
+categories: redux web FE javascript
+---
+
+###はじめに
+早くも2017年になってしまいましたね。  
+本年もよろしくお願い致します。  
+
+今回は[iOSエンジニアが苦しんだReduxの基礎(1)](http://grandbig.github.io/blog/2016/12/31/redux-base-1/)の続きを書いていきたいと思います。  
+前回はReduxのみを利用したWebサイトの実装について話をしましたが、今回はReactと組み合わせて行きたいと思います。  
+では早速見ていきましょう。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+###Counterサンプルで学ぼう！
+[公式ReduxページのExample](http://redux.js.org/docs/introduction/Examples.html)の先頭に書かれている **Counter** を見ていきましょう。  
+実現するWebサイトは **Counter Vanilla** と同じで下図のようになります。  
+
+![Counter Example画面](/images/redux_base_1.png)  
+
+実装されている機能としては下記の4つになります。  
+
+* 「+」ボタンを選択するとClick数が+1される  
+* 「-」ボタンを選択するとClick数が-1される  
+* 「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される  
+* 「Increment async」ボタンを選択すると1秒後にClick数が+1される  
+
+前回と異なるのはViewに **React** を利用しているという点です。  
+では1つ1つ見ていきましょう。  
+
+####フォルダ構成
+まずはフォルダ構成を見ていきます。  
+(説明のために一部変更を加えています。)  
+
+```javascript
+counter
+├── public
+│     └── index.html
+└── src
+     ├── index.js
+     ├── actions
+     │     └── index.js
+     ├── reducers
+     │     └── index.js
+     ├── components
+     │     └── Counter.js
+     └── node_modules
+```
+
+####Actions
+今回`Actions`は`actions/index.js`にまとめています。  
+`Actions`と`Action Creators`について復習しておきます。  
+
+* `Actions`  
+  * 何をするアクションなのかを表すオブジェクト  
+  * `type`プロパティを必ず持つ  
+* `Action Creators`  
+  * `Action`を作成するメソッド  
+
+```javascript
+// actions/index.js
+const INCREMENT = { type: 'INCREMENT' }
+const DECREMENT = { type: 'DECREMENT' }
+
+export function increment() {
+  return INCREMENT;
+}
+export function decrement() {
+  return DECREMENT;
+}
+```
+
+####Reducers
+今回`Reducers`は`reducers/index.js`にまとめています。  
+`Reducers`についても復習しておきます。  
+
+* `Action`と`State`から新たな`State`を作成して返す  
+* ポイントは`State`を更新するのではなく、 新しく作成した`State` を返すということ  
+
+```javascript
+// reducers/index.js
+export default (state = 0, action) => {
+  // stateの初期値を0に設定
+  switch (action.type) {
+    case 'INCREMENT':
+      return state + 1
+    case 'DECREMENT':
+      return state - 1
+    default:
+      return state
+  }
+}
+```
+
+####Components
+今回は`React`を利用するので、描画部分を表現する`Components`を作成する必要があります。  
+`Components`には`Presentational Component`と`Container Component`の2種類が存在します。  
+
+* `Presentational Component`  
+  * 画面の描画を担当する`Component`  
+* `Container Component`  
+  * `Presentational Component`にデータやコールバックを渡す`Component`  
+
+本記事のExampleは簡単なため、`Presentational Component`のみ利用しています。  
+`Presentational Component`は`components/Counter.js`が該当します。  
+ソースコードは下記の通りです。  
+
+```javascript
+// components/Counter.js
+import React, { Component, PropTypes } from 'react'
+
+class Counter extends Component {
+  static propTypes = {
+    value: PropTypes.number.isRequired,
+    onIncrement: PropTypes.func.isRequired,
+    onDecrement: PropTypes.func.isRequired
+  }
+
+  incrementIfOdd = () => {
+    if (this.props.value % 2 !== 0) {
+      // valueが奇数の場合のみonIncrementを実行
+      this.props.onIncrement()
+    }
+  }
+
+  incrementAsync = () => {
+    // 1秒後にonIncrementを実行
+    setTimeout(this.props.onIncrement, 1000)
+  }
+
+  render() {
+    // 描画処理
+    const { value, onIncrement, onDecrement } = this.props
+    return (
+      <p>
+        Clicked: {value} times
+        {' '}
+        <button onClick={onIncrement}>
+          +
+        </button>
+        {' '}
+        <button onClick={onDecrement}>
+          -
+        </button>
+        {' '}
+        <button onClick={this.incrementIfOdd}>
+          Increment if odd
+        </button>
+        {' '}
+        <button onClick={this.incrementAsync}>
+          Increment async
+        </button>
+      </p>
+    )
+  }
+}
+
+export default Counter
+```
+
+`Counter Component`で最も重要なポイントは、  
+『描画には`value`, `onIncrement`, `onDecrement`の3つが必須』という点です。  
+
+###Store
+今回`Store`は`src/index.js`にまとめられています。  
+`Store`についても復習しておきましょう。   
+
+* アプリ内で必ず1つの存在  
+* アプリの状態を管理する  
+* `State`を更新するための`dispatch`を提供する  
+  * 言い換えれば`dispatch(action)`をすることで`Store`に`State`の変更を知らせられる  
+* `State`の状態を追えるように`subscribe`を提供する  
+  * 言い換えれば`subscribe(listener)`をすることで`listener`は`getState`を通して`State`の状態を取得できる  
+
+```javascript
+// src/index.js
+import React from 'react'
+import ReactDOM from 'react-dom'
+import { createStore } from 'redux'
+import Counter from './components/Counter'
+import counter from './reducers'
+import { increment, decrement } from './actions'
+
+const store = createStore(counter)
+const rootEl = document.getElementById('root')
+
+const render = () => ReactDOM.render(
+  <Counter
+    value={store.getState()}
+    onIncrement={() => store.dispatch(increment())}
+    onDecrement={() => store.dispatch(decrement())}
+  />,
+  rootEl
+)
+
+render()
+store.subscribe(render)
+```
+
+少し詳しくポイントを見ていきましょう。  
+冒頭で必要なモジュールを読み込んでいます。  
+
+```javascript
+import React from 'react'
+import ReactDOM from 'react-dom'
+import { createStore } from 'redux'
+import Counter from './components/Counter'        // Component
+import counter from './reducers'                  // Reducer
+import { increment, decrement } from './actions'  // Action
+```
+
+そして、下記のように`store`を作成しています。  
+
+```javascript
+// カウントアップ・ダウンのReducerを引数にStoreを生成
+const store = createStore(counter)
+```
+
+また、前回は`HTML`に全て構成を書いていましたが、今回は`React`を利用していますので、下記のように描画をしています。  
+
+```javascript
+// id="root"のDOMを取得
+const rootEl = document.getElementById('root')
+
+// 描画メソッド
+const render = () => ReactDOM.render(
+  {/* Counter Componentの呼び出し */}
+  <Counter
+    value={store.getState()}
+    onIncrement={() => store.dispatch(increment)}
+    onDecrement={() => store.dispatch(decrement)}
+  />,
+  rootEl
+)
+
+// 初期描画処理
+render()
+```
+
+`Counter Component`の3つの必須`propTypes`に下記を渡しています。  
+
+* value: `State`の値(`store.getState()`)  
+* onIncrement: `Store`に`State`の増加を通知(`() => store.dispatch(increment)`)  
+* onDecrement: `Store`に`State`の減少を通知(`() => store.dispatch(decrement)`)  
+
+上記のようにすることで、  
+クリックしたタイミングで`store.dispatch`に`Action Creators`である`increment`および`decrement`で作成した`Actions`を渡せるようになりました。  
+これにより、『 **StoreにStateの変更を知らせる** 』ことができます。
+
+その後、`render()`で描画処理を実行しています。  
+
+最後に、`listener`処理です。  
+
+```javascript
+// subscribeの第一引数にrenderメソッドを指定
+store.subscribe(render)
+```
+
+上記のように、`store.subscribe`に`render`メソッドを渡すことで、`dispatch`実行して`State`の状態が変化したときに、毎回`render`メソッドが実行されることになります。  
+こうすることで、『 **Stateの変更結果として描画に反映させる** 』ことができます。  
+
+###まとめ
+さて、前回の素のReduxから、『ReactとReduxをそれぞれ素で利用する』ところまで進んできました。  
+ここまで割りとすんなり理解できたのであれば、`connect()`を利用したReact&Reduxの実装の理解までもう少しだと思います。  
+Reduxの理解を促進する上で重要なのは、  
+
+* ユーザの操作結果を`Store`に伝えること  
+* `Store`の変更に応じて画面を再描画すること  
+
+だと思っています。  
+ここまでの流れさえ理解できてしまえば、応用的な内容も躓かずに理解できるはずです。  
+さて次回はいよいよ`connect()`を利用したReact&Reduxの実装について見ていきます。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
