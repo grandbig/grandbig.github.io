@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-02-19T21:43:27+09:00</updated>
+  <updated>2017-02-20T01:34:28+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,321 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Dockerコンテナ内でApache設定を試してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3/"/>
+    <updated>2017-02-19T23:45:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>前回の<a href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/">DockerにWebサーバーを立てよう！</a>に引き続きDocker内Apacheで遊んでみます。<br/>
+前回はUbuntuへのApacheインストールから起動まで見てきました。<br/>
+実際の現場でApacheを利用する際は様々な設定を施す必要があります。<br/>
+本記事ではその一端を少しでも学ぼうということで書いていきます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>DocumentRootの設定</h3>
+
+<p>Apacheでは設定ファイルで静的ファイルのルートパスを設定することができます。<br/>
+デフォルトでは<code>/var/www/html</code>になっています。<br/>
+これは、<code>/etc/apache2/sites-enabled/000-default.conf</code>で次のように定義されています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="o">&lt;</span><span class="nx">VirtualHost</span> <span class="o">*:</span><span class="mi">80</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">The</span> <span class="nx">ServerName</span> <span class="nx">directive</span> <span class="nx">sets</span> <span class="nx">the</span> <span class="nx">request</span> <span class="nx">scheme</span><span class="p">,</span> <span class="nx">hostname</span> <span class="nx">and</span> <span class="nx">port</span> <span class="nx">that</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">the</span> <span class="nx">server</span> <span class="nx">uses</span> <span class="nx">to</span> <span class="nx">identify</span> <span class="nx">itself</span><span class="p">.</span> <span class="nx">This</span> <span class="nx">is</span> <span class="nx">used</span> <span class="nx">when</span> <span class="nx">creating</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">redirection</span> <span class="nx">URLs</span><span class="p">.</span> <span class="nx">In</span> <span class="nx">the</span> <span class="nx">context</span> <span class="nx">of</span> <span class="nx">virtual</span> <span class="nx">hosts</span><span class="p">,</span> <span class="nx">the</span> <span class="nx">ServerName</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">specifies</span> <span class="nx">what</span> <span class="nx">hostname</span> <span class="nx">must</span> <span class="nx">appear</span> <span class="k">in</span> <span class="nx">the</span> <span class="nx">request</span><span class="err">’</span><span class="nx">s</span> <span class="nx">Host</span><span class="o">:</span> <span class="nx">header</span> <span class="nx">to</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">match</span> <span class="k">this</span> <span class="nx">virtual</span> <span class="nx">host</span><span class="p">.</span> <span class="nx">For</span> <span class="nx">the</span> <span class="k">default</span> <span class="nx">virtual</span> <span class="nx">host</span> <span class="p">(</span><span class="k">this</span> <span class="nx">file</span><span class="p">)</span> <span class="k">this</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">value</span> <span class="nx">is</span> <span class="nx">not</span> <span class="nx">decisive</span> <span class="nx">as</span> <span class="nx">it</span> <span class="nx">is</span> <span class="nx">used</span> <span class="nx">as</span> <span class="nx">a</span> <span class="nx">last</span> <span class="nx">resort</span> <span class="nx">host</span> <span class="nx">regardless</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">However</span><span class="p">,</span> <span class="nx">you</span> <span class="nx">must</span> <span class="nx">set</span> <span class="nx">it</span> <span class="k">for</span> <span class="nx">any</span> <span class="nx">further</span> <span class="nx">virtual</span> <span class="nx">host</span> <span class="nx">explicitly</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span><span class="nx">ServerName</span> <span class="nx">www</span><span class="p">.</span><span class="nx">example</span><span class="p">.</span><span class="nx">com</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">ServerAdmin</span> <span class="nx">webmaster</span><span class="err">@</span><span class="nx">localhost</span>
+</span><span class='line'>  <span class="nx">DocumentRoot</span> <span class="o">/</span><span class="kd">var</span><span class="err">/www/html</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Available</span> <span class="nx">loglevels</span><span class="o">:</span> <span class="nx">trace8</span><span class="p">,</span> <span class="p">...,</span> <span class="nx">trace1</span><span class="p">,</span> <span class="nx">debug</span><span class="p">,</span> <span class="nx">info</span><span class="p">,</span> <span class="nx">notice</span><span class="p">,</span> <span class="nx">warn</span><span class="p">,</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">error</span><span class="p">,</span> <span class="nx">crit</span><span class="p">,</span> <span class="nx">alert</span><span class="p">,</span> <span class="nx">emerg</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">It</span> <span class="nx">is</span> <span class="nx">also</span> <span class="nx">possible</span> <span class="nx">to</span> <span class="nx">configure</span> <span class="nx">the</span> <span class="nx">loglevel</span> <span class="k">for</span> <span class="nx">particular</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">modules</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">g</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span><span class="nx">LogLevel</span> <span class="nx">info</span> <span class="nx">ssl</span><span class="o">:</span><span class="nx">warn</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">ErrorLog</span> <span class="nx">$</span><span class="p">{</span><span class="nx">APACHE_LOG_DIR</span><span class="p">}</span><span class="o">/</span><span class="nx">error</span><span class="p">.</span><span class="nx">log</span>
+</span><span class='line'>  <span class="nx">CustomLog</span> <span class="nx">$</span><span class="p">{</span><span class="nx">APACHE_LOG_DIR</span><span class="p">}</span><span class="o">/</span><span class="nx">access</span><span class="p">.</span><span class="nx">log</span> <span class="nx">combined</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">For</span> <span class="nx">most</span> <span class="nx">configuration</span> <span class="nx">files</span> <span class="nx">from</span> <span class="nx">conf</span><span class="o">-</span><span class="nx">available</span><span class="o">/</span><span class="p">,</span> <span class="nx">which</span> <span class="nx">are</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">enabled</span> <span class="nx">or</span> <span class="nx">disabled</span> <span class="nx">at</span> <span class="nx">a</span> <span class="nx">global</span> <span class="nx">level</span><span class="p">,</span> <span class="nx">it</span> <span class="nx">is</span> <span class="nx">possible</span> <span class="nx">to</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">include</span> <span class="nx">a</span> <span class="nx">line</span> <span class="k">for</span> <span class="nx">only</span> <span class="nx">one</span> <span class="nx">particular</span> <span class="nx">virtual</span> <span class="nx">host</span><span class="p">.</span> <span class="nx">For</span> <span class="nx">example</span> <span class="nx">the</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">following</span> <span class="nx">line</span> <span class="nx">enables</span> <span class="nx">the</span> <span class="nx">CGI</span> <span class="nx">configuration</span> <span class="k">for</span> <span class="k">this</span> <span class="nx">host</span> <span class="nx">only</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">after</span> <span class="nx">it</span> <span class="nx">has</span> <span class="nx">been</span> <span class="nx">globally</span> <span class="nx">disabled</span> <span class="kd">with</span> <span class="s2">&quot;a2disconf&quot;</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span><span class="nx">Include</span> <span class="nx">conf</span><span class="o">-</span><span class="nx">available</span><span class="o">/</span><span class="nx">serve</span><span class="o">-</span><span class="nx">cgi</span><span class="o">-</span><span class="nx">bin</span><span class="p">.</span><span class="nx">conf</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/VirtualHost&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">#</span> <span class="nx">vim</span><span class="o">:</span> <span class="nx">syntax</span><span class="o">=</span><span class="nx">apache</span> <span class="nx">ts</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sw</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sts</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sr</span> <span class="nx">noet</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>必要があれば書き換えて使いましょう。</p>
+
+<h3>リバースプロキシ設定</h3>
+
+<p>リバースプロキシとは、</p>
+
+<ul>
+<li>クライアントからのアクセスをキャッチして、特定のサーバへ送るプロキシサーバ</li>
+<li>セキュリティや負荷分散などのために利用される</li>
+</ul>
+
+
+<p>ものです。<br/>
+詳しくは<a href="https://ja.wikipedia.org/wiki/%E3%83%AA%E3%83%90%E3%83%BC%E3%82%B9%E3%83%97%E3%83%AD%E3%82%AD%E3%82%B7">リバースプロキシ &ndash; wiki</a>を見てください。</p>
+
+<p>設定はいたって簡単です。<br/>
+まずは、モジュールの有効化をするために下記コマンドを打ちましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// プロキシモジュールの有効化</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">a2enmod</span> <span class="nx">proxy</span> <span class="nx">proxy_http</span>
+</span><span class='line'><span class="nx">Enabling</span> <span class="nx">module</span> <span class="nx">proxy</span><span class="p">.</span>
+</span><span class='line'><span class="nx">Considering</span> <span class="nx">dependency</span> <span class="nx">proxy</span> <span class="k">for</span> <span class="nx">proxy_http</span><span class="o">:</span>
+</span><span class='line'><span class="nx">Module</span> <span class="nx">proxy</span> <span class="nx">already</span> <span class="nx">enabled</span>
+</span><span class='line'><span class="nx">Enabling</span> <span class="nx">module</span> <span class="nx">proxy_http</span><span class="p">.</span>
+</span><span class='line'><span class="nx">To</span> <span class="nx">activate</span> <span class="nx">the</span> <span class="k">new</span> <span class="nx">configuration</span><span class="p">,</span> <span class="nx">you</span> <span class="nx">need</span> <span class="nx">to</span> <span class="nx">run</span><span class="o">:</span>
+</span><span class='line'>  <span class="nx">service</span> <span class="nx">apache2</span> <span class="nx">restart</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Apacheを再起動</span>
+</span><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">restart</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、設定ファイルを更新します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="o">&lt;</span><span class="nx">IfModule</span> <span class="nx">mod_proxy</span><span class="p">.</span><span class="nx">c</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">If</span> <span class="nx">you</span> <span class="nx">want</span> <span class="nx">to</span> <span class="nx">use</span> <span class="nx">apache2</span> <span class="nx">as</span> <span class="nx">a</span> <span class="nx">forward</span> <span class="nx">proxy</span><span class="p">,</span> <span class="nx">uncomment</span> <span class="nx">the</span>
+</span><span class='line'>  <span class="err">#</span> <span class="s1">&#39;ProxyRequests On&#39;</span> <span class="nx">line</span> <span class="nx">and</span> <span class="nx">the</span> <span class="o">&lt;</span><span class="nx">Proxy</span> <span class="o">*&gt;</span> <span class="nx">block</span> <span class="nx">below</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">WARNING</span><span class="o">:</span> <span class="nx">Be</span> <span class="nx">careful</span> <span class="nx">to</span> <span class="nx">restrict</span> <span class="nx">access</span> <span class="nx">inside</span> <span class="nx">the</span> <span class="o">&lt;</span><span class="nx">Proxy</span> <span class="o">*&gt;</span> <span class="nx">block</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Open</span> <span class="nx">proxy</span> <span class="nx">servers</span> <span class="nx">are</span> <span class="nx">dangerous</span> <span class="nx">both</span> <span class="nx">to</span> <span class="nx">your</span> <span class="nx">network</span> <span class="nx">and</span> <span class="nx">to</span> <span class="nx">the</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Internet</span> <span class="nx">at</span> <span class="nx">large</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">If</span> <span class="nx">you</span> <span class="nx">only</span> <span class="nx">want</span> <span class="nx">to</span> <span class="nx">use</span> <span class="nx">apache2</span> <span class="nx">as</span> <span class="nx">a</span> <span class="nx">reverse</span> <span class="nx">proxy</span><span class="o">/</span><span class="nx">gateway</span> <span class="k">in</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">front</span> <span class="nx">of</span> <span class="nx">some</span> <span class="nx">web</span> <span class="nx">application</span> <span class="nx">server</span><span class="p">,</span> <span class="nx">you</span> <span class="nx">DON</span><span class="err">’</span><span class="nx">T</span> <span class="nx">need</span>
+</span><span class='line'>  <span class="nx">ProxyRequests</span> <span class="nx">Off</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="o">&lt;</span><span class="nx">Proxy</span> <span class="o">*&gt;</span>
+</span><span class='line'>  <span class="err">#</span>   <span class="nx">AddDefaultCharset</span> <span class="nx">off</span>
+</span><span class='line'>  <span class="err">#</span>   <span class="nx">Require</span> <span class="nx">all</span> <span class="nx">denied</span>
+</span><span class='line'>  <span class="err">#</span>   <span class="err">#</span><span class="nx">Require</span> <span class="nx">local</span>
+</span><span class='line'>    <span class="nx">Require</span> <span class="nx">all</span> <span class="nx">granted</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="err">/Proxy&gt;</span>
+</span><span class='line'>  <span class="nx">ProxyPass</span> <span class="o">/</span><span class="nx">hoge</span><span class="o">/</span> <span class="nx">http</span><span class="o">:</span><span class="c1">//localhost:80/hoge.html</span>
+</span><span class='line'>  <span class="nx">ProxyPassReverse</span> <span class="o">/</span><span class="nx">hoge</span><span class="o">/</span> <span class="nx">http</span><span class="o">:</span><span class="c1">//localhost:80/hoge.html</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Enable</span><span class="o">/</span><span class="nx">disable</span> <span class="nx">the</span> <span class="nx">handling</span> <span class="nx">of</span> <span class="nx">HTTP</span><span class="o">/</span><span class="mf">1.1</span> <span class="s2">&quot;Via:&quot;</span> <span class="nx">headers</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span> <span class="p">(</span><span class="s2">&quot;Full&quot;</span> <span class="nx">adds</span> <span class="nx">the</span> <span class="nx">server</span> <span class="nx">version</span><span class="p">;</span> <span class="s2">&quot;Block&quot;</span> <span class="nx">removes</span> <span class="nx">all</span> <span class="nx">outgoing</span> <span class="nx">Via</span><span class="o">:</span> <span class="nx">headers</span><span class="p">)</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Set</span> <span class="nx">to</span> <span class="nx">one</span> <span class="nx">of</span><span class="o">:</span> <span class="nx">Off</span> <span class="o">|</span> <span class="nx">On</span> <span class="o">|</span> <span class="nx">Full</span> <span class="o">|</span> <span class="nx">Block</span>
+</span><span class='line'>  <span class="err">#</span><span class="nx">ProxyVia</span> <span class="nx">Off</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/IfModule&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">#</span> <span class="nx">vim</span><span class="o">:</span> <span class="nx">syntax</span><span class="o">=</span><span class="nx">apache</span> <span class="nx">ts</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sw</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sts</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sr</span> <span class="nx">noet</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記の設定について説明します。</p>
+
+<ul>
+<li><code>ProxyRequests Off</code>: フォワードプロキシをOFFにする設定です</li>
+<li><code>&lt;Proxy *&gt; 〜 &lt;/Proxy&gt;</code>: アクセスパスに対するアクセス権限範囲を設定します</li>
+<li><code>ProxyPass 元のアクセス要求パス 転送パス</code>: クライアントからのアクセス要求を転送します</li>
+<li><code>ProxyPassReverse 元のアクセス要求パス 転送パス</code>: Apache に HTTP リダイレクト応答の Location, Content-Location, URI ヘッダの調整を担います</li>
+</ul>
+
+
+<p>筆者自身、フォワードプロキシという単語を意識して使ったことがなかったのですが、ごくごく普通に使われているものなんですよね&hellip;<br/>
+Apache公式ページの下記記述を見るとよくわかります。</p>
+
+<blockquote><p>ファイアウォールによって 制限されている内部のクライアントにインターネットへのアクセスを 提供するもの</p></blockquote>
+
+<p>どうも<code>ProxyPassReverse</code>は理解するのが厄介だったようで多くの方が記事にしてくれていました。</p>
+
+<ul>
+<li><a href="http://dev.classmethod.jp/server-side/server/introduction_mod_proxy/">mod_proxy再入門 – ProxyPassとProxyPassReverse</a></li>
+<li><a href="http://d.hatena.ne.jp/a666666/20090211/1234348004">やっとわかった、リバースプロキシの設定の意味</a></li>
+</ul>
+
+
+<p>上記設定をしたので下記にアクセスしてみます。<br/>
+<code>http://localhost:15600/hoge/</code><br/>
+結果は下記の通りです。</p>
+
+<p><img src="http://grandbig.github.io/images/docker_reverse_proxy.png" alt="リバースプロキシした画面を表示" /></p>
+
+<p>このために用意した<code>hoge.html</code>が表示されました。</p>
+
+<h3>RewriteRuleの設定</h3>
+
+<p><code>Rewrite</code>モジュールはクライアントからのリクエストを内部変換してリダイレクトするような機能です。</p>
+
+<p>まずはモジュールを有効化させます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">a2enmod</span> <span class="nx">rewrite</span>
+</span><span class='line'><span class="nx">Enabling</span> <span class="nx">module</span> <span class="nx">rewrite</span><span class="p">.</span>
+</span><span class='line'><span class="nx">To</span> <span class="nx">activate</span> <span class="nx">the</span> <span class="k">new</span> <span class="nx">configuration</span><span class="p">,</span> <span class="nx">you</span> <span class="nx">need</span> <span class="nx">to</span> <span class="nx">run</span><span class="o">:</span>
+</span><span class='line'>  <span class="nx">service</span> <span class="nx">apache2</span> <span class="nx">restart</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Apacheを再起動</span>
+</span><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">restart</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、静的ファイルパスへのアクセス制限を変更します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /etc/apache2/apache2.conf</span>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">Directory</span> <span class="o">/</span><span class="kd">var</span><span class="sr">/www/</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="nx">Options</span> <span class="nx">Indexes</span> <span class="nx">FollowSymLinks</span>
+</span><span class='line'>  <span class="nx">AllowOverride</span> <span class="nx">All</span>
+</span><span class='line'>  <span class="nx">Require</span> <span class="nx">all</span> <span class="nx">granted</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/Directory&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>デフォルトでは上記が<code>AllowOverride None</code>だったのを<code>AllowOverride All</code>に変更しています。<br/>
+さらに、<code>.htaccess</code>ファイルを作成して書き換えルールを記載します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /var/www/html/.htaccess</span>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">IfModule</span> <span class="nx">mod_rewrite</span><span class="p">.</span><span class="nx">c</span><span class="o">&gt;</span>
+</span><span class='line'><span class="nx">RewriteEngine</span> <span class="nx">On</span>
+</span><span class='line'><span class="nx">RewriteRule</span> <span class="o">^</span><span class="nx">fuga</span><span class="o">/</span><span class="p">(.</span><span class="o">*</span><span class="p">)</span><span class="nx">$</span> <span class="o">/</span><span class="nx">bar</span><span class="o">/</span><span class="nx">$1</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/IfModule&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>サンプル用に、<code>/var/www/html</code>配下に<code>bar</code>フォルダを作成し、その配下に<code>index.html</code>を作成しました。<br/>
+上記設定をしたので下記にアクセスしてみます。<br/>
+<code>http://localhost:15600/fuga/</code><br/>
+結果は下記の通りです。</p>
+
+<p><img src="http://grandbig.github.io/images/docker_rewrite.png" alt="RewriteRule適用" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて今回はApacheの設定を少し見ることができました。<br/>
+WEBサーバとはどんなものなのか、わかったようでわかっていなかったことが見えてきた気がします。<br/>
+引き続き勉強を続けていきたいものです。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[DockerにWebサーバーを立てよう！]]></title>
@@ -7023,284 +7338,6 @@ NoSQLどころかRDBMSにも馴染みがない一方でAPサーバ周りの構�
 MongoDBやRedisも中途半端にかじって終わってる感があるのでもっと勉強したいと思っていましたが、Cassandraとかかなり実用途ありそうなのでだいぶ興味を惹かれました。<br/>
 一方でそんな大規模なサービスを日本企業初でやることって世界に比べたら相当少ないんだろうなと思いました。<br/>
 ま、機会を見つつ1つ1つ身につけていければ良いかなというところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOSアプリ内課金: 自動更新購読]]></title>
-    <link href="http://grandbig.github.io/blog/2016/09/25/ios-in-app-purchase/"/>
-    <updated>2016-09-25T17:45:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/09/25/ios-in-app-purchase</id>
-    <content type="html"><![CDATA[<h3>アプリ内課金とは</h3>
-
-<p>アプリ内課金とはiTunes Storeを通してアプリ内の様々なものを購入する機能です。<br/>
-例えば、</p>
-
-<ol>
-<li>電子書籍アプリの購読</li>
-<li>コミュニケーションアプリのスタンプ</li>
-<li>ゲームアプリの協力なアイテム</li>
-</ol>
-
-
-<p>などが該当します。<br/>
-2と3に関しては買い切りプランとして、1は一定の購読期間を持ったプランとしてAppleから提供されています。<br/>
-本記事では一定の購読期間を持ったプラン <strong>自動更新購読(Auto-Renewing subscription)</strong> について書きます。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>自動更新購読(Auto-Renewing subscripion)とは</h3>
-
-<p>アプリ内課金をアプリに実装する場合、もちろん事前にできる限りのテストをしなければいけません。Appleはテスト用にSandbox環境を用意しています。<br/>
-では、Sandbox環境と本番環境は何が違うのでしょう。<br/>
-また、アプリがどの状態のときにSandbox環境で試すことができ、どこから本番環境となるのでしょう。</p>
-
-<h4>購読期間の違い</h4>
-
-<p>まず、Sandbox環境では、テストをしやすくするために実際の購読期間よりも短い期間となっています。<br/>
-1年を1時間と考えれば、1〜12ヶ月まで空で時間を計算できますが、7日のみ3分が割り当てられていることに注意しましょう。<br/>
-(同じ割合で行くと、流石に短すぎるからだと思われます。)</p>
-
-<p>Sandbox環境</p>
-
-<ul>
-<li>7日 → 3分</li>
-<li>1ヶ月 → 5分</li>
-<li>2ヶ月 → 10分</li>
-<li>3ヶ月 → 15分</li>
-<li>6ヶ月 → 30分</li>
-<li>12ヶ月 → 60分</li>
-</ul>
-
-
-<h4>Sandbox環境では自動更新キャンセルができない</h4>
-
-<p>Sandbox環境では、iTunes Connectで作成するテスト用のApple IDアカウントを使用します。<br/>
-しかしながら、本物のアカウントでないため、設定アプリから購読の自動更新をキャンセルすることはできません。</p>
-
-<p><img src="http://grandbig.github.io/images/in-app-purchase-1.png" alt="設定アプリから管理画面には遷移できない" /></p>
-
-<p>自動更新をキャンセルすることができない代わりに、自動で5回だけ購読が更新されます。<br/>
-つまり、1回購読を始めれば、計6回分だけ購読が続きます。</p>
-
-<p>しかしながら、自動で購読が更新されると言っても、即時更新ではありません。<br/>
-(恐らく、Apple側のサーバでもバッチを回しているのではないでしょうか&hellip;)</p>
-
-<p>例えば、Sandbox環境で1ヶ月プランを購入したとしましょう。</p>
-
-<ul>
-<li>1回目の購入日: 2016/09/25 10:00:00.000</li>
-<li>1回目の期限日: 2016/09/25 10:05:00.000</li>
-<li>2回目の購入日: 2016/09/25 10:07:00.000</li>
-</ul>
-
-
-<p>このように「1回目の期限日」と「2回目の購入日」が完全一致するわけではないのです。<br/>
-こういった仕様を理解した上でテストを進めないと思わぬ誤った結果を出してしまうかもしれません。</p>
-
-<h4>請求の有無について</h4>
-
-<p>開発中に最も気になるのは請求の有無ではないでしょうか？<br/>
-心配しなくともSandbox環境では請求は発生しません。<br/>
-もちろん本番環境では請求が発生します。</p>
-
-<h4>アプリの状態別環境</h4>
-
-<p>iOSアプリは様々な状態が存在します。<br/>
-それは次の5つです。<br/>
-Develop / Adhoc / TestFlight / Promotion Code / Release</p>
-
-<p>各状態で本番環境とSandbox環境のどちらが使えるのかまとめると下記のようになります。</p>
-
-<ul>
-<li>Sandbox環境
-
-<ul>
-<li>Develop</li>
-<li>Adhoc</li>
-<li>TestFlight</li>
-</ul>
-</li>
-<li>本番環境
-
-<ul>
-<li>Promotion Code</li>
-<li>Release</li>
-</ul>
-</li>
-</ul>
-
-
-<p>Promotion Codeでアプリを配布するには、Appleの審査を通過する必要があります。</p>
-
-<h3>レシート検証</h3>
-
-<p>自動更新購読は買い切りと違って、継続した結果をサービス提供側のサーバで保持しておく必要があります。<br/>
-(サービス特性上、それがないのはサーバを使わずにアプリ内で完結する場合のみでしょう。)<br/>
-そこで避けては通れないのが <strong>レシート検証</strong> です。</p>
-
-<p>レシート検証には2種類の方法があります。</p>
-
-<ul>
-<li>ローカル検証
-
-<ul>
-<li>アプリ内で独自実装します。</li>
-<li>独自実装する理由は公開されたサードパーティ製ライブラリを使うと仕組みがバレてしまうからです。</li>
-</ul>
-</li>
-<li>App Store検証
-
-<ul>
-<li>信頼できるサーバを用意してサーバサイド処理として実装します。</li>
-<li>アプリから直接App Storeに検証しに行くことは脆弱性があるため推奨されていません。</li>
-</ul>
-</li>
-</ul>
-
-
-<h4>App Store検証</h4>
-
-<p>App Store検証できるように、Appleは <strong>レシート検証API</strong> を用意しています。<br/>
-ここでも本番環境とSandbox環境でアクセス先URLに違いがあります。</p>
-
-<ul>
-<li>Sandbox環境URL: <a href="https://sandbox.itunes.apple.com/verifyReceipt">https://sandbox.itunes.apple.com/verifyReceipt</a></li>
-<li>本番環境URL: <a href="https://buy.itunes.apple.com/verifyReceipt">https://buy.itunes.apple.com/verifyReceipt</a></li>
-</ul>
-
-
-<p>共にリクエストパラメータは2種類になります。</p>
-
-<ul>
-<li><code>receipt_data</code>
-
-<ul>
-<li>base64エンコードを施したレシートデータ</li>
-</ul>
-</li>
-<li><code>password</code>
-
-<ul>
-<li>iTunes Connectで発行した共有シークレットキー</li>
-</ul>
-</li>
-</ul>
-
-
-<p>また、レスポンスデータも同じになります。<br/>
-ここでは重要なものだけ書きます。</p>
-
-<ul>
-<li><code>status</code>
-
-<ul>
-<li>有効なレシートの場合は <strong>0</strong> 。それ以外は幾つかの理由で無効なレシートとなっています。</li>
-</ul>
-</li>
-<li><code>receipt</code>
-
-<ul>
-<li><code>bundle_id</code>: iOSアプリの<code>CFBundleIdentifier</code></li>
-<li><code>application_version</code>: iOSアプリの<code>CFBundleVersion</code></li>
-<li><code>in_app</code>: 購買履歴(自動更新購読の場合、更新された段階で追加されます。)</li>
-<li><code>original_application_version</code>: iOSアプリの<code>CFBundleVersion</code></li>
-<li><code>product_id</code>: 購入アイテムのプロダクトID</li>
-<li><code>transaction_id</code>: 購入アイテムのトランザクションID</li>
-</ul>
-</li>
-<li><code>latest_receipt</code>
-
-<ul>
-<li>base64エンコードを施した直近の更新に対応するトランザクションレシート</li>
-</ul>
-</li>
-<li><code>latest_receipt_info</code>
-
-<ul>
-<li>購読履歴(自動更新購読の場合、更新された段階で追加されます。)</li>
-</ul>
-</li>
-</ul>
-
-
-<p>上記のレスポンスデータ概要を見ると、<br/>
-<code>receipt.in_app</code>と<code>latest_receipt_info</code>は同じものに見えます。<br/>
-実際にはレシート検証APIを叩いたタイミングで取得できるデータは異なります。<br/>
-Appleは<code>in_app</code>を利用することを推奨しており、<code>latest_receipt</code>と<code>latest_receipt_info</code>は「 <strong>iOS 6型のトランザクションレシートの場合のみ。</strong> 」としています。<br/>
-しかしながら、iOS7以降でもこれらの値は返却されてきます。<br/>
-ここがネット上で調べてもはっきりしない部分ではあるのですが、筆者の試した感覚では<code>latest_receipt_info</code>は<code>in_app</code>よりもリアルタイムに情報が更新されている気がしています。<br/>
-<code>in_app</code>は自動で更新された後にレシート検証APIを叩いても1回目は必ず情報が更新されていません。<br/>
-1回目で返却された<code>latest_receipt</code>を<code>receipt_data</code>として利用すると正しく更新された<code>in_app</code>が返却されます。<br/>
-(Sandbox環境の場合であって、本番環境では検証できていません。)</p>
-
-<p>このことを考えると、<code>in_app</code>は非常に使いにくいものに思われますが、使い方に寄るのかもしれません&hellip;<br/>
-今後、<code>latest_receipt</code>と<code>latest_receipt_info</code>が廃止されてしまうかもしれませんし、そうなったときにAppleは事前に告知をするのか&hellip;などなど不安要素は実にたくさんあります。</p>
-
-<p>アプリ側では、起動時に課金周りの監視処理を必ず実行する必要があります。<br/>
-これを実行することで、自動更新購読の場合に更新を検知してサーバに送信するといったフローができるためでしょう。</p>
-
-<p>冒頭に上げた2種類のレシート検証APIの使い道は様々あるのかもしれませんが、<br/>
-筆者としては今のところ</p>
-
-<ul>
-<li>ローカル検証
-
-<ul>
-<li>必ずアプリ側の処理に組み込む</li>
-</ul>
-</li>
-<li>App Store検証
-
-<ul>
-<li>アプリ不具合やクラッシュなどで漏れたユーザへの対応</li>
-<li>アプリを起動しないユーザへの対応</li>
-</ul>
-</li>
-</ul>
-
-
-<p>と考えています。<br/>
-つまりはどちらも必要なんですね。</p>
-
-<h3>まとめ</h3>
-
-<p>さて、筆者的にはもう少しローカル検証やリストアに関しての理解が乏しいと感じています。<br/>
-これからまだまだ関わる気もするので、また理解が進んだら続きを書こうかなと思います。<br/>
-と言ったところで本日はここまで。</p>
-
-<p>参考</p>
-
-<ul>
-<li><a href="https://developer.apple.com/jp/documentation/ValidateAppStoreReceipt.pdf">レシート検証 プログラミングガイド</a></li>
-<li><a href="http://ameblo.jp/principia-ca/entry-12071724382.html">自動購買課金について</a></li>
-<li><a href="http://qiita.com/monoqlo/items/24d36e3a95bc813a7276">In-App Purchaseを実装する際に調べたことまとめ</a></li>
-<li><a href="http://qiita.com/koyopro/items/c6c387b136da1698f666">iOSアプリの課金検証環境</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

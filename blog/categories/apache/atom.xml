@@ -4,7 +4,7 @@
   <title><![CDATA[Category: apache | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/apache/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-02-19T21:43:27+09:00</updated>
+  <updated>2017-02-20T01:35:12+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,238 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Dockerコンテナ内でApache設定を試してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3/"/>
+    <updated>2017-02-19T23:45:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>前回の<a href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/">DockerにWebサーバーを立てよう！</a>に引き続きDocker内Apacheで遊んでみます。<br/>
+前回はUbuntuへのApacheインストールから起動まで見てきました。<br/>
+実際の現場でApacheを利用する際は様々な設定を施す必要があります。<br/>
+本記事ではその一端を少しでも学ぼうということで書いていきます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>DocumentRootの設定</h3>
+
+<p>Apacheでは設定ファイルで静的ファイルのルートパスを設定することができます。<br/>
+デフォルトでは<code>/var/www/html</code>になっています。<br/>
+これは、<code>/etc/apache2/sites-enabled/000-default.conf</code>で次のように定義されています。</p>
+
+<p>```javascript
+<VirtualHost *:80>
+  # The ServerName directive sets the request scheme, hostname and port that
+  # the server uses to identify itself. This is used when creating
+  # redirection URLs. In the context of virtual hosts, the ServerName
+  # specifies what hostname must appear in the request’s Host: header to
+  # match this virtual host. For the default virtual host (this file) this
+  # value is not decisive as it is used as a last resort host regardless.
+  # However, you must set it for any further virtual host explicitly.
+  #ServerName www.example.com</p>
+
+<p>  ServerAdmin webmaster@localhost
+  DocumentRoot /var/www/html</p>
+
+<p>  # Available loglevels: trace8, &hellip;, trace1, debug, info, notice, warn,
+  # error, crit, alert, emerg.
+  # It is also possible to configure the loglevel for particular
+  # modules, e.g.
+  #LogLevel info ssl:warn</p>
+
+<p>  ErrorLog ${APACHE_LOG_DIR}/error.log
+  CustomLog ${APACHE_LOG_DIR}/access.log combined</p>
+
+<p>  # For most configuration files from conf-available/, which are
+  # enabled or disabled at a global level, it is possible to
+  # include a line for only one particular virtual host. For example the
+  # following line enables the CGI configuration for this host only
+  # after it has been globally disabled with &ldquo;a2disconf&rdquo;.
+  #Include conf-available/serve-cgi-bin.conf
+</VirtualHost></p>
+
+<h1>vim: syntax=apache ts=4 sw=4 sts=4 sr noet</h1>
+
+<p>```</p>
+
+<p>必要があれば書き換えて使いましょう。</p>
+
+<h3>リバースプロキシ設定</h3>
+
+<p>リバースプロキシとは、</p>
+
+<ul>
+<li>クライアントからのアクセスをキャッチして、特定のサーバへ送るプロキシサーバ</li>
+<li>セキュリティや負荷分散などのために利用される</li>
+</ul>
+
+
+<p>ものです。<br/>
+詳しくは<a href="https://ja.wikipedia.org/wiki/%E3%83%AA%E3%83%90%E3%83%BC%E3%82%B9%E3%83%97%E3%83%AD%E3%82%AD%E3%82%B7">リバースプロキシ &ndash; wiki</a>を見てください。</p>
+
+<p>設定はいたって簡単です。<br/>
+まずは、モジュールの有効化をするために下記コマンドを打ちましょう。</p>
+
+<p>```javascript
+// プロキシモジュールの有効化
+$ a2enmod proxy proxy_http
+Enabling module proxy.
+Considering dependency proxy for proxy_<a href="http:">http:</a>
+Module proxy already enabled
+Enabling module proxy_http.
+To activate the new configuration, you need to run:
+  service apache2 restart</p>
+
+<p>// Apacheを再起動
+$ /etc/init.d/apache2 restart
+```</p>
+
+<p>続いて、設定ファイルを更新します。</p>
+
+<p>```javascript
+<IfModule mod_proxy.c></p>
+
+<p>  # If you want to use apache2 as a forward proxy, uncomment the
+  # &lsquo;ProxyRequests On&rsquo; line and the <Proxy *> block below.
+  # WARNING: Be careful to restrict access inside the <Proxy *> block.
+  # Open proxy servers are dangerous both to your network and to the
+  # Internet at large.
+  #
+  # If you only want to use apache2 as a reverse proxy/gateway in
+  # front of some web application server, you DON’T need
+  ProxyRequests Off</p>
+
+<p>  <Proxy *>
+  #   AddDefaultCharset off
+  #   Require all denied
+  #   #Require local</p>
+
+<pre><code>Require all granted
+</code></pre>
+
+<p>  </Proxy>
+  ProxyPass /hoge/ <a href="http://localhost:80/hoge.html">http://localhost:80/hoge.html</a>
+  ProxyPassReverse /hoge/ <a href="http://localhost:80/hoge.html">http://localhost:80/hoge.html</a></p>
+
+<p>  # Enable/disable the handling of HTTP/1.1 &ldquo;Via:&rdquo; headers.
+  # (&ldquo;Full&rdquo; adds the server version; &ldquo;Block&rdquo; removes all outgoing Via: headers)
+  # Set to one of: Off | On | Full | Block
+  #ProxyVia Off
+</IfModule></p>
+
+<h1>vim: syntax=apache ts=4 sw=4 sts=4 sr noet</h1>
+
+<p>```</p>
+
+<p>上記の設定について説明します。</p>
+
+<ul>
+<li><code>ProxyRequests Off</code>: フォワードプロキシをOFFにする設定です</li>
+<li><code>&lt;Proxy *&gt; 〜 &lt;/Proxy&gt;</code>: アクセスパスに対するアクセス権限範囲を設定します</li>
+<li><code>ProxyPass 元のアクセス要求パス 転送パス</code>: クライアントからのアクセス要求を転送します</li>
+<li><code>ProxyPassReverse 元のアクセス要求パス 転送パス</code>: Apache に HTTP リダイレクト応答の Location, Content-Location, URI ヘッダの調整を担います</li>
+</ul>
+
+
+<p>筆者自身、フォワードプロキシという単語を意識して使ったことがなかったのですが、ごくごく普通に使われているものなんですよね&hellip;<br/>
+Apache公式ページの下記記述を見るとよくわかります。</p>
+
+<blockquote><p>ファイアウォールによって 制限されている内部のクライアントにインターネットへのアクセスを 提供するもの</p></blockquote>
+
+<p>どうも<code>ProxyPassReverse</code>は理解するのが厄介だったようで多くの方が記事にしてくれていました。</p>
+
+<ul>
+<li><a href="http://dev.classmethod.jp/server-side/server/introduction_mod_proxy/">mod_proxy再入門 – ProxyPassとProxyPassReverse</a></li>
+<li><a href="http://d.hatena.ne.jp/a666666/20090211/1234348004">やっとわかった、リバースプロキシの設定の意味</a></li>
+</ul>
+
+
+<p>上記設定をしたので下記にアクセスしてみます。<br/>
+<code>http://localhost:15600/hoge/</code><br/>
+結果は下記の通りです。</p>
+
+<p><img src="/images/docker_reverse_proxy.png" alt="リバースプロキシした画面を表示" /></p>
+
+<p>このために用意した<code>hoge.html</code>が表示されました。</p>
+
+<h3>RewriteRuleの設定</h3>
+
+<p><code>Rewrite</code>モジュールはクライアントからのリクエストを内部変換してリダイレクトするような機能です。</p>
+
+<p>まずはモジュールを有効化させます。</p>
+
+<p>```javascript
+$ a2enmod rewrite
+Enabling module rewrite.
+To activate the new configuration, you need to run:
+  service apache2 restart</p>
+
+<p>// Apacheを再起動
+$ /etc/init.d/apache2 restart
+```</p>
+
+<p>続いて、静的ファイルパスへのアクセス制限を変更します。</p>
+
+<p><code>javascript
+// /etc/apache2/apache2.conf
+&lt;Directory /var/www/&gt;
+  Options Indexes FollowSymLinks
+  AllowOverride All
+  Require all granted
+&lt;/Directory&gt;
+</code></p>
+
+<p>デフォルトでは上記が<code>AllowOverride None</code>だったのを<code>AllowOverride All</code>に変更しています。<br/>
+さらに、<code>.htaccess</code>ファイルを作成して書き換えルールを記載します。</p>
+
+<p><code>javascript
+// /var/www/html/.htaccess
+&lt;IfModule mod_rewrite.c&gt;
+RewriteEngine On
+RewriteRule ^fuga/(.*)$ /bar/$1
+&lt;/IfModule&gt;
+</code></p>
+
+<p>サンプル用に、<code>/var/www/html</code>配下に<code>bar</code>フォルダを作成し、その配下に<code>index.html</code>を作成しました。<br/>
+上記設定をしたので下記にアクセスしてみます。<br/>
+<code>http://localhost:15600/fuga/</code><br/>
+結果は下記の通りです。</p>
+
+<p><img src="/images/docker_rewrite.png" alt="RewriteRule適用" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて今回はApacheの設定を少し見ることができました。<br/>
+WEBサーバとはどんなものなのか、わかったようでわかっていなかったことが見えてきた気がします。<br/>
+引き続き勉強を続けていきたいものです。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[DockerにWebサーバーを立てよう！]]></title>
