@@ -1,0 +1,629 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>DockerにWebサーバーを立てよう！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに さて、今回は前回(Docker for Macをインストールしよう！)構築したDocker内のUbuntuサーバの中で遊んでみます。
+まずは、基本となるWebサーバを立てるところから始めたいと思います。 今回は最も有名であろう(Nginxも人気ですが&hellip;) Apache &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">DockerにWebサーバーを立てよう！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-02-19T15:05:00+09:00" pubdate data-updated="true">Feb 19<span>th</span>, 2017</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>さて、今回は前回(<a href="http://grandbig.github.io/blog/2017/02/13/docker-for-mac-1/">Docker for Macをインストールしよう！</a>)構築したDocker内のUbuntuサーバの中で遊んでみます。<br/>
+まずは、基本となるWebサーバを立てるところから始めたいと思います。</p>
+
+<p>今回は最も有名であろう(Nginxも人気ですが&hellip;) <strong>Apache</strong> を利用したWebサーバの構築をしてみます。<br/>
+限りなく常識に近いと思うものの、一応概要だけ紹介すると、Apacheとは下記の通りです。</p>
+
+<ul>
+<li>正式名所は「 <strong>Apache HTTP Server</strong> 」</li>
+<li>Webサーバソフトウェア</li>
+<li>Apache Licenseで無償で提供</li>
+<li>2.2系と2.4系があるがモダンなのは <strong>2.4系</strong></li>
+</ul>
+
+
+<p>というところで早速見ていきましょう。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Host Macからアクセスするためのポートフォワード設定</h3>
+
+<p>これからApacheをインストールするわけですが、その前にDockerコンテナにポートフォワード設定をしてみましょう。<br/>
+Docker for Macなら簡単にできます。</p>
+
+<p>１．該当コンテナの設定を見ましょう</p>
+
+<p><img src="/images/docker_port_forward_1.png" alt="設定を見る" /></p>
+
+<p>２．Port設定を見ましょう</p>
+
+<p><img src="/images/docker_port_forward_2.png" alt="Port設定を見る" /></p>
+
+<p>３．ポートフォワードの設定を追加する</p>
+
+<p><img src="/images/docker_port_forward_3.png" alt="ポートフォワードの設定を追加" /></p>
+
+<p>上記では、<code>http://localhost:15600/</code>でMacからアクセスできるようにしています。<br/>
+<code>localhost</code>でなく、具体的にIPアドレスを指定しても良いようですが、今回は特に必要ないのでこれでいきます。</p>
+
+<h3>Apacheのインストール</h3>
+
+<p>まずは当然のことながらインストール作業から始めます。<br/>
+DockerのUbuntuコンテナを起動した後にログインして、下記コマンドを叩きましょう。</p>
+
+<p>ログインはDockerアプリに含まれている <strong>Kitematic</strong> からもできますし、コマンドでもできます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// docker コンテナにログイン</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">exec</span> <span class="o">-</span><span class="nx">it</span> <span class="o">&lt;&lt;</span><span class="err">コンテナ名</span><span class="o">&gt;&gt;</span> <span class="nx">bash</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// apt-getのアップデート</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">update</span>
+</span><span class='line'><span class="c1">// Apacheのインストール</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">apache2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>なぜ初めに<code>apt-get update</code>をやっているかと言うと、これをやらずに突き進もうとした際に下記エラーが発生したためです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">apache2</span>
+</span><span class='line'><span class="nx">Reading</span> <span class="kr">package</span> <span class="nx">lists</span><span class="p">...</span> <span class="nx">Done</span>
+</span><span class='line'><span class="nx">Building</span> <span class="nx">dependency</span> <span class="nx">tree</span>
+</span><span class='line'><span class="nx">Reading</span> <span class="nx">state</span> <span class="nx">information</span><span class="p">...</span> <span class="nx">Done</span>
+</span><span class='line'><span class="nx">E</span><span class="o">:</span> <span class="nx">Unable</span> <span class="nx">to</span> <span class="nx">locate</span> <span class="kr">package</span> <span class="nx">apache2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>きちんとApacheのインストールが完了したか確認するためにバージョンを見てみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// バージョン確認方法(1)</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apachectl</span> <span class="o">-</span><span class="nx">v</span>
+</span><span class='line'><span class="nx">Server</span> <span class="nx">version</span><span class="o">:</span> <span class="nx">Apache</span><span class="o">/</span><span class="mf">2.4</span><span class="p">.</span><span class="mi">18</span> <span class="p">(</span><span class="nx">Ubuntu</span><span class="p">)</span>
+</span><span class='line'><span class="nx">Server</span> <span class="nx">built</span><span class="o">:</span>   <span class="mi">2016</span><span class="o">-</span><span class="mi">07</span><span class="o">-</span><span class="mi">14</span><span class="nx">T12</span><span class="o">:</span><span class="mi">32</span><span class="o">:</span><span class="mi">26</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// バージョン確認方法(2)</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apache2</span> <span class="o">-</span><span class="nx">v</span>
+</span><span class='line'><span class="nx">Server</span> <span class="nx">version</span><span class="o">:</span> <span class="nx">Apache</span><span class="o">/</span><span class="mf">2.4</span><span class="p">.</span><span class="mi">18</span> <span class="p">(</span><span class="nx">Ubuntu</span><span class="p">)</span>
+</span><span class='line'><span class="nx">Server</span> <span class="nx">built</span><span class="o">:</span>   <span class="mi">2016</span><span class="o">-</span><span class="mi">07</span><span class="o">-</span><span class="mi">14</span><span class="nx">T12</span><span class="o">:</span><span class="mi">32</span><span class="o">:</span><span class="mi">26</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Apacheの起動確認</h3>
+
+<p>インストール後はデフォルトで起動していると思いますが、念のため確認しておきましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">status</span>
+</span><span class='line'> <span class="o">*</span> <span class="nx">apache2</span> <span class="nx">is</span> <span class="nx">running</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因みに、初期状態では<code>start</code>や<code>restart</code>コマンドを実行したときに下記警告が表示されます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">restart</span>
+</span><span class='line'> <span class="o">*</span> <span class="nx">Restarting</span> <span class="nx">Apache</span> <span class="nx">httpd</span> <span class="nx">web</span> <span class="nx">server</span> <span class="nx">apache2</span>                                                                                                                                                           <span class="nx">AH00558</span><span class="o">:</span> <span class="nx">apache2</span><span class="o">:</span> <span class="nx">Could</span> <span class="nx">not</span> <span class="nx">reliably</span> <span class="nx">determine</span> <span class="nx">the</span> <span class="nx">server</span><span class="err">’</span><span class="nx">s</span> <span class="nx">fully</span> <span class="nx">qualified</span> <span class="nx">domain</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">using</span> <span class="nx">XX</span><span class="p">.</span><span class="nx">XX</span><span class="p">.</span><span class="nx">XX</span><span class="p">.</span><span class="nx">XX</span><span class="p">.</span> <span class="nx">Set</span> <span class="nx">the</span> <span class="s1">&#39;ServerName&#39;</span> <span class="nx">directive</span> <span class="nx">globally</span> <span class="nx">to</span> <span class="nx">suppress</span> <span class="k">this</span> <span class="nx">message</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これを回避するためには設定ファイルに<code>ServerName</code>を定義する必要があります。<br/>
+(警告は出るものの、起動には何ら問題はありません。)</p>
+
+<p>下記のように設定ファイルを開きます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// 設定ファイルを開く</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">vi</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">apache2</span><span class="o">/</span><span class="nx">apache2</span><span class="p">.</span><span class="nx">conf</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、<code>ServerName</code>を適当な場所に定義してやりましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /etc/apache2/apache2.conf</span>
+</span><span class='line'><span class="c1">// 省略</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">Include</span> <span class="nx">list</span> <span class="nx">of</span> <span class="nx">ports</span> <span class="nx">to</span> <span class="nx">listen</span> <span class="nx">on</span>
+</span><span class='line'><span class="nx">Include</span> <span class="nx">ports</span><span class="p">.</span><span class="nx">conf</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">ServerName</span> <span class="nx">xxx</span><span class="p">.</span><span class="nx">com</span>
+</span><span class='line'><span class="c1">// 省略</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これにより、エラーなく起動や再起動できることを確認できるはずです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">restart</span>
+</span><span class='line'> <span class="o">*</span> <span class="nx">Restarting</span> <span class="nx">Apache</span> <span class="nx">httpd</span> <span class="nx">web</span> <span class="nx">server</span> <span class="nx">apache2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでApacheが起動していることが確認できたので、GETリクエストを投げてアクセスしてみましょう。<br/>
+Ubuntu用のApacheデフォルトページが返却されるはずです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">curl</span> <span class="nx">http</span><span class="o">:</span><span class="c1">//127.0.0.1/</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;!</span><span class="nx">DOCTYPE</span> <span class="nx">html</span> <span class="nx">PUBLIC</span> <span class="s2">&quot;-//W3C//DTD XHTML 1.0 Transitional//EN&quot;</span> <span class="s2">&quot;http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd&quot;</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">html</span> <span class="nx">xmlns</span><span class="o">=</span><span class="s2">&quot;http://www.w3.org/1999/xhtml&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/html&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Webページにアクセス</h3>
+
+<p>冒頭でポートフォワード設定をしたので、Apacheが起動しているのであれば、Macからページを見れるはずです！<br/>
+早速見てみましょう。<br/>
+設定した<code>http://localhost:15600/</code>でアクセスすると下記のようにページが表示されます。</p>
+
+<p><img src="/images/docker_apache_1.png" alt="DockerコンテナのWEBページ" /></p>
+
+<h3>便利コマンド利用するためにモジュールをインストール</h3>
+
+<p>Webサーバを構築する上で、あまりにもまっさらなUbuntuだったため幾つか必要なものをインストールする必要がありました。<br/>
+その紹介もおまけ程度に書いておきます。</p>
+
+<h4>lessのインストール</h4>
+
+<p>毎回<code>cat</code>コマンドで中身を見る必要性がないこともあると思います。<br/>
+流石に<code>less</code>くらいはインストールしておきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// lessのインストール</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">less</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// lessのバージョン確認</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">less</span> <span class="o">--</span><span class="nx">help</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>lessコマンドで色をつける</h4>
+
+<p>ついでに<code>less</code>コマンドで色を付けて見やすくする方法を書いておきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// source-highlightのインストール</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">source</span><span class="o">-</span><span class="nx">highlight</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Dockerコンテナ内の環境変数は<code>.dockerenv</code>ファイル内に書きます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// .dockerenvに下記を追加</span>
+</span><span class='line'><span class="err">#</span><span class="nx">Source</span><span class="o">-</span><span class="nx">hilight</span> <span class="kd">with</span> <span class="nx">less</span>
+</span><span class='line'><span class="kr">export</span> <span class="nx">LESSOPEN</span><span class="o">=</span><span class="s2">&quot;| /usr/share/source-highlight/src-hilite-lesspipe.sh %s&quot;</span>
+</span><span class='line'><span class="kr">export</span> <span class="nx">LESS</span><span class="o">=</span><span class="s1">&#39;-R&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>結果を反映させるために、下記コマンドを叩きましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">source</span> <span class="o">~</span><span class="err">/.dockerenv</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>vi/vimのインストール</h4>
+
+<p>ファイルを作成する際に必ず必要になります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// vimのインストール</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">vim</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// vimのバージョン確認</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">vim</span> <span class="o">-</span><span class="nx">v</span>
+</span><span class='line'><span class="c1">// viのバージョン確認</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">vi</span> <span class="o">-</span><span class="nx">v</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>curlのインストール</h4>
+
+<p><code>curl</code>は試しにHTTPリクエストを投げてみたいことがあると思ったのでインストールしてみました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// curlのインストール</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">curl</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// curlのバージョン確認</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">curl</span> <span class="o">-</span><span class="nx">V</span>
+</span><span class='line'><span class="nx">curl</span> <span class="mf">7.47</span><span class="p">.</span><span class="mi">0</span> <span class="p">(</span><span class="nx">x86_64</span><span class="o">-</span><span class="nx">pc</span><span class="o">-</span><span class="nx">linux</span><span class="o">-</span><span class="nx">gnu</span><span class="p">)</span> <span class="nx">libcurl</span><span class="o">/</span><span class="mf">7.47</span><span class="p">.</span><span class="mi">0</span> <span class="nx">GnuTLS</span><span class="o">/</span><span class="mf">3.4</span><span class="p">.</span><span class="mi">10</span> <span class="nx">zlib</span><span class="o">/</span><span class="mf">1.2</span><span class="p">.</span><span class="mi">8</span> <span class="nx">libidn</span><span class="o">/</span><span class="mf">1.32</span> <span class="nx">librtmp</span><span class="o">/</span><span class="mf">2.3</span>
+</span><span class='line'><span class="nx">Protocols</span><span class="o">:</span> <span class="nx">dict</span> <span class="nx">file</span> <span class="nx">ftp</span> <span class="nx">ftps</span> <span class="nx">gopher</span> <span class="nx">http</span> <span class="nx">https</span> <span class="nx">imap</span> <span class="nx">imaps</span> <span class="nx">ldap</span> <span class="nx">ldaps</span> <span class="nx">pop3</span> <span class="nx">pop3s</span> <span class="nx">rtmp</span> <span class="nx">rtsp</span> <span class="nx">smb</span> <span class="nx">smbs</span> <span class="nx">smtp</span> <span class="nx">smtps</span> <span class="nx">telnet</span> <span class="nx">tftp</span>
+</span><span class='line'><span class="nx">Features</span><span class="o">:</span> <span class="nx">AsynchDNS</span> <span class="nx">IDN</span> <span class="nx">IPv6</span> <span class="nx">Largefile</span> <span class="nx">GSS</span><span class="o">-</span><span class="nx">API</span> <span class="nx">Kerberos</span> <span class="nx">SPNEGO</span> <span class="nx">NTLM</span> <span class="nx">NTLM_WB</span> <span class="nx">SSL</span> <span class="nx">libz</span> <span class="nx">TLS</span><span class="o">-</span><span class="nx">SRP</span> <span class="nx">UnixSockets</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>まとめ</h3>
+
+<p>さて一先ず本記事の目的は達成できました。<br/>
+が、Apacheのあまりにも簡単な基礎部分しか見ていません。<br/>
+引き続き、最低限の設定を見ていきたいと思っています。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<h3>参考</h3>
+
+<p>以下、ページを参考にさせて頂きました。</p>
+
+<ul>
+<li><a href="http://www.nemotos.net/?p=1100">Ubuntuでlessを使って構文をカラー表示する方法</a></li>
+<li><a href="http://qiita.com/maemori/items/e7318b088b9e4bf22310">docker-machineコマンド</a></li>
+<li><a href="https://docs.docker.com/kitematic/userguide/">Kitematic user guide</a></li>
+</ul>
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-02-19T15:05:00+09:00" pubdate data-updated="true">Feb 19<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/apache/'>apache</a>, <a class='category' href='/blog/categories/docker/'>docker</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/" data-via="" data-counturl="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/02/13/docker-for-mac-1/" title="Previous Post: Docker for Macをインストールしよう！">&laquo; Docker for Macをインストールしよう！</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/02/19/docker-for-mac-2/">DockerにWebサーバーを立てよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/02/13/docker-for-mac-1/">Docker for Macをインストールしよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/02/12/notification-and-thread/">Notificationとメインスレッド/サブスレッド</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/02/04/react-animation-1/">iOSエンジニアが苦しんだReactアニメーション</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/02/redux-base-4/">iOSエンジニアが苦しんだReduxの基礎(4)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (137)</a></li><li><a href='/blog/categories/swift'>swift (40)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/java'>java (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/redux'>redux (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li><li><a href='/blog/categories/be'>BE (6)</a></li><li><a href='/blog/categories/node'>node (6)</a></li><li><a href='/blog/categories/location'>location (6)</a></li><li><a href='/blog/categories/oauth2'>oauth2 (5)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/';
+        var disqus_url = 'http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

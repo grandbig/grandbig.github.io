@@ -4,7 +4,7 @@
   <title><![CDATA[Category: docker | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/docker/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-02-13T01:02:16+09:00</updated>
+  <updated>2017-02-19T21:43:27+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,278 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[DockerにWebサーバーを立てよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/"/>
+    <updated>2017-02-19T15:05:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、今回は前回(<a href="http://grandbig.github.io/blog/2017/02/13/docker-for-mac-1/">Docker for Macをインストールしよう！</a>)構築したDocker内のUbuntuサーバの中で遊んでみます。<br/>
+まずは、基本となるWebサーバを立てるところから始めたいと思います。</p>
+
+<p>今回は最も有名であろう(Nginxも人気ですが&hellip;) <strong>Apache</strong> を利用したWebサーバの構築をしてみます。<br/>
+限りなく常識に近いと思うものの、一応概要だけ紹介すると、Apacheとは下記の通りです。</p>
+
+<ul>
+<li>正式名所は「 <strong>Apache HTTP Server</strong> 」</li>
+<li>Webサーバソフトウェア</li>
+<li>Apache Licenseで無償で提供</li>
+<li>2.2系と2.4系があるがモダンなのは <strong>2.4系</strong></li>
+</ul>
+
+
+<p>というところで早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Host Macからアクセスするためのポートフォワード設定</h3>
+
+<p>これからApacheをインストールするわけですが、その前にDockerコンテナにポートフォワード設定をしてみましょう。<br/>
+Docker for Macなら簡単にできます。</p>
+
+<p>１．該当コンテナの設定を見ましょう</p>
+
+<p><img src="/images/docker_port_forward_1.png" alt="設定を見る" /></p>
+
+<p>２．Port設定を見ましょう</p>
+
+<p><img src="/images/docker_port_forward_2.png" alt="Port設定を見る" /></p>
+
+<p>３．ポートフォワードの設定を追加する</p>
+
+<p><img src="/images/docker_port_forward_3.png" alt="ポートフォワードの設定を追加" /></p>
+
+<p>上記では、<code>http://localhost:15600/</code>でMacからアクセスできるようにしています。<br/>
+<code>localhost</code>でなく、具体的にIPアドレスを指定しても良いようですが、今回は特に必要ないのでこれでいきます。</p>
+
+<h3>Apacheのインストール</h3>
+
+<p>まずは当然のことながらインストール作業から始めます。<br/>
+DockerのUbuntuコンテナを起動した後にログインして、下記コマンドを叩きましょう。</p>
+
+<p>ログインはDockerアプリに含まれている <strong>Kitematic</strong> からもできますし、コマンドでもできます。</p>
+
+<p>```javascript
+// docker コンテナにログイン
+$ docker exec -it &lt;&lt;コンテナ名>> bash</p>
+
+<p>// apt-getのアップデート
+$ apt-get update
+// Apacheのインストール
+$ apt-get install apache2
+```</p>
+
+<p>なぜ初めに<code>apt-get update</code>をやっているかと言うと、これをやらずに突き進もうとした際に下記エラーが発生したためです。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install apache2</h1>
+
+<p>Reading package lists&hellip; Done
+Building dependency tree     <br/>
+Reading state information&hellip; Done
+E: Unable to locate package apache2
+```</p>
+
+<p>きちんとApacheのインストールが完了したか確認するためにバージョンを見てみましょう。</p>
+
+<p>```javascript
+// バージョン確認方法(1)
+$ apachectl -v
+Server version: Apache/2.4.18 (Ubuntu)
+Server built:   2016-07-14T12:32:26</p>
+
+<p>// バージョン確認方法(2)
+$ apache2 -v
+Server version: Apache/2.4.18 (Ubuntu)
+Server built:   2016-07-14T12:32:26
+```</p>
+
+<h3>Apacheの起動確認</h3>
+
+<p>インストール後はデフォルトで起動していると思いますが、念のため確認しておきましょう。</p>
+
+<p><code>javascript
+$ /etc/init.d/apache2 status
+ * apache2 is running
+</code></p>
+
+<p>因みに、初期状態では<code>start</code>や<code>restart</code>コマンドを実行したときに下記警告が表示されます。</p>
+
+<p><code>javascript
+$ /etc/init.d/apache2 restart
+ * Restarting Apache httpd web server apache2                                                                                                                                                           AH00558: apache2: Could not reliably determine the server’s fully qualified domain name, using XX.XX.XX.XX. Set the 'ServerName' directive globally to suppress this message
+</code></p>
+
+<p>これを回避するためには設定ファイルに<code>ServerName</code>を定義する必要があります。<br/>
+(警告は出るものの、起動には何ら問題はありません。)</p>
+
+<p>下記のように設定ファイルを開きます。</p>
+
+<p><code>javascript
+// 設定ファイルを開く
+$ vi /etc/apache2/apache2.conf
+</code></p>
+
+<p>続いて、<code>ServerName</code>を適当な場所に定義してやりましょう。</p>
+
+<p>```javascript
+// /etc/apache2/apache2.conf
+// 省略</p>
+
+<h1>Include list of ports to listen on</h1>
+
+<p>Include ports.conf</p>
+
+<p>ServerName xxx.com
+// 省略
+```</p>
+
+<p>これにより、エラーなく起動や再起動できることを確認できるはずです。</p>
+
+<p><code>javascript
+$ /etc/init.d/apache2 restart
+ * Restarting Apache httpd web server apache2  
+</code></p>
+
+<p>これでApacheが起動していることが確認できたので、GETリクエストを投げてアクセスしてみましょう。<br/>
+Ubuntu用のApacheデフォルトページが返却されるはずです。</p>
+
+<p>```javascript
+$ curl <a href="http://127.0.0.1/">http://127.0.0.1/</a></p>
+
+<p>&lt;!DOCTYPE html PUBLIC &ldquo;&ndash;//W3C//DTD XHTML 1.0 Transitional//EN&rdquo; &ldquo;<a href="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd</a>&rdquo;>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  &hellip;
+</html>
+```</p>
+
+<h3>Webページにアクセス</h3>
+
+<p>冒頭でポートフォワード設定をしたので、Apacheが起動しているのであれば、Macからページを見れるはずです！<br/>
+早速見てみましょう。<br/>
+設定した<code>http://localhost:15600/</code>でアクセスすると下記のようにページが表示されます。</p>
+
+<p><img src="/images/docker_apache_1.png" alt="DockerコンテナのWEBページ" /></p>
+
+<h3>便利コマンド利用するためにモジュールをインストール</h3>
+
+<p>Webサーバを構築する上で、あまりにもまっさらなUbuntuだったため幾つか必要なものをインストールする必要がありました。<br/>
+その紹介もおまけ程度に書いておきます。</p>
+
+<h4>lessのインストール</h4>
+
+<p>毎回<code>cat</code>コマンドで中身を見る必要性がないこともあると思います。<br/>
+流石に<code>less</code>くらいはインストールしておきます。</p>
+
+<p>```javascript
+// lessのインストール
+$ apt-get install less</p>
+
+<p>// lessのバージョン確認
+$ less &mdash;help
+```</p>
+
+<h4>lessコマンドで色をつける</h4>
+
+<p>ついでに<code>less</code>コマンドで色を付けて見やすくする方法を書いておきます。</p>
+
+<p><code>javascript
+// source-highlightのインストール
+$ apt-get install source-highlight
+</code></p>
+
+<p>Dockerコンテナ内の環境変数は<code>.dockerenv</code>ファイル内に書きます。</p>
+
+<p>```javascript
+// .dockerenvに下記を追加</p>
+
+<h1>Source-hilight with less</h1>
+
+<p>export LESSOPEN=&ldquo;| /usr/share/source-highlight/src-hilite-lesspipe.sh %s&rdquo;
+export LESS=&lsquo;-R&rsquo;
+```</p>
+
+<p>結果を反映させるために、下記コマンドを叩きましょう。</p>
+
+<p><code>javascript
+$ source ~/.dockerenv
+</code></p>
+
+<h4>vi/vimのインストール</h4>
+
+<p>ファイルを作成する際に必ず必要になります。</p>
+
+<p>```javascript
+// vimのインストール
+$ apt-get install vim</p>
+
+<p>// vimのバージョン確認
+$ vim -v
+// viのバージョン確認
+$ vi -v
+```</p>
+
+<h4>curlのインストール</h4>
+
+<p><code>curl</code>は試しにHTTPリクエストを投げてみたいことがあると思ったのでインストールしてみました。</p>
+
+<p>```javascript
+// curlのインストール
+$ apt-get install curl</p>
+
+<p>// curlのバージョン確認
+$ curl -V
+curl 7.47.0 (x86_64-pc-linux-gnu) libcurl/7.47.0 GnuTLS/3.4.10 zlib/1.2.8 libidn/1.32 librtmp/2.3
+Protocols: dict file ftp ftps gopher http https imap imaps ldap ldaps pop3 pop3s rtmp rtsp smb smbs smtp smtps telnet tftp
+Features: AsynchDNS IDN IPv6 Largefile GSS-API Kerberos SPNEGO NTLM NTLM_WB SSL libz TLS-SRP UnixSockets
+```</p>
+
+<h3>まとめ</h3>
+
+<p>さて一先ず本記事の目的は達成できました。<br/>
+が、Apacheのあまりにも簡単な基礎部分しか見ていません。<br/>
+引き続き、最低限の設定を見ていきたいと思っています。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<h3>参考</h3>
+
+<p>以下、ページを参考にさせて頂きました。</p>
+
+<ul>
+<li><a href="http://www.nemotos.net/?p=1100">Ubuntuでlessを使って構文をカラー表示する方法</a></li>
+<li><a href="http://qiita.com/maemori/items/e7318b088b9e4bf22310">docker-machineコマンド</a></li>
+<li><a href="https://docs.docker.com/kitematic/userguide/">Kitematic user guide</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Docker for Macをインストールしよう！]]></title>

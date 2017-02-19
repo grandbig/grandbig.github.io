@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-02-13T01:01:34+09:00</updated>
+  <updated>2017-02-19T21:43:27+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,341 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[DockerにWebサーバーを立てよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/"/>
+    <updated>2017-02-19T15:05:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、今回は前回(<a href="http://grandbig.github.io/blog/2017/02/13/docker-for-mac-1/">Docker for Macをインストールしよう！</a>)構築したDocker内のUbuntuサーバの中で遊んでみます。<br/>
+まずは、基本となるWebサーバを立てるところから始めたいと思います。</p>
+
+<p>今回は最も有名であろう(Nginxも人気ですが&hellip;) <strong>Apache</strong> を利用したWebサーバの構築をしてみます。<br/>
+限りなく常識に近いと思うものの、一応概要だけ紹介すると、Apacheとは下記の通りです。</p>
+
+<ul>
+<li>正式名所は「 <strong>Apache HTTP Server</strong> 」</li>
+<li>Webサーバソフトウェア</li>
+<li>Apache Licenseで無償で提供</li>
+<li>2.2系と2.4系があるがモダンなのは <strong>2.4系</strong></li>
+</ul>
+
+
+<p>というところで早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Host Macからアクセスするためのポートフォワード設定</h3>
+
+<p>これからApacheをインストールするわけですが、その前にDockerコンテナにポートフォワード設定をしてみましょう。<br/>
+Docker for Macなら簡単にできます。</p>
+
+<p>１．該当コンテナの設定を見ましょう</p>
+
+<p><img src="http://grandbig.github.io/images/docker_port_forward_1.png" alt="設定を見る" /></p>
+
+<p>２．Port設定を見ましょう</p>
+
+<p><img src="http://grandbig.github.io/images/docker_port_forward_2.png" alt="Port設定を見る" /></p>
+
+<p>３．ポートフォワードの設定を追加する</p>
+
+<p><img src="http://grandbig.github.io/images/docker_port_forward_3.png" alt="ポートフォワードの設定を追加" /></p>
+
+<p>上記では、<code>http://localhost:15600/</code>でMacからアクセスできるようにしています。<br/>
+<code>localhost</code>でなく、具体的にIPアドレスを指定しても良いようですが、今回は特に必要ないのでこれでいきます。</p>
+
+<h3>Apacheのインストール</h3>
+
+<p>まずは当然のことながらインストール作業から始めます。<br/>
+DockerのUbuntuコンテナを起動した後にログインして、下記コマンドを叩きましょう。</p>
+
+<p>ログインはDockerアプリに含まれている <strong>Kitematic</strong> からもできますし、コマンドでもできます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// docker コンテナにログイン</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">exec</span> <span class="o">-</span><span class="nx">it</span> <span class="o">&lt;&lt;</span><span class="err">コンテナ名</span><span class="o">&gt;&gt;</span> <span class="nx">bash</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// apt-getのアップデート</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">update</span>
+</span><span class='line'><span class="c1">// Apacheのインストール</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">apache2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>なぜ初めに<code>apt-get update</code>をやっているかと言うと、これをやらずに突き進もうとした際に下記エラーが発生したためです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">apache2</span>
+</span><span class='line'><span class="nx">Reading</span> <span class="kr">package</span> <span class="nx">lists</span><span class="p">...</span> <span class="nx">Done</span>
+</span><span class='line'><span class="nx">Building</span> <span class="nx">dependency</span> <span class="nx">tree</span>
+</span><span class='line'><span class="nx">Reading</span> <span class="nx">state</span> <span class="nx">information</span><span class="p">...</span> <span class="nx">Done</span>
+</span><span class='line'><span class="nx">E</span><span class="o">:</span> <span class="nx">Unable</span> <span class="nx">to</span> <span class="nx">locate</span> <span class="kr">package</span> <span class="nx">apache2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>きちんとApacheのインストールが完了したか確認するためにバージョンを見てみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// バージョン確認方法(1)</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apachectl</span> <span class="o">-</span><span class="nx">v</span>
+</span><span class='line'><span class="nx">Server</span> <span class="nx">version</span><span class="o">:</span> <span class="nx">Apache</span><span class="o">/</span><span class="mf">2.4</span><span class="p">.</span><span class="mi">18</span> <span class="p">(</span><span class="nx">Ubuntu</span><span class="p">)</span>
+</span><span class='line'><span class="nx">Server</span> <span class="nx">built</span><span class="o">:</span>   <span class="mi">2016</span><span class="o">-</span><span class="mi">07</span><span class="o">-</span><span class="mi">14</span><span class="nx">T12</span><span class="o">:</span><span class="mi">32</span><span class="o">:</span><span class="mi">26</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// バージョン確認方法(2)</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apache2</span> <span class="o">-</span><span class="nx">v</span>
+</span><span class='line'><span class="nx">Server</span> <span class="nx">version</span><span class="o">:</span> <span class="nx">Apache</span><span class="o">/</span><span class="mf">2.4</span><span class="p">.</span><span class="mi">18</span> <span class="p">(</span><span class="nx">Ubuntu</span><span class="p">)</span>
+</span><span class='line'><span class="nx">Server</span> <span class="nx">built</span><span class="o">:</span>   <span class="mi">2016</span><span class="o">-</span><span class="mi">07</span><span class="o">-</span><span class="mi">14</span><span class="nx">T12</span><span class="o">:</span><span class="mi">32</span><span class="o">:</span><span class="mi">26</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Apacheの起動確認</h3>
+
+<p>インストール後はデフォルトで起動していると思いますが、念のため確認しておきましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">status</span>
+</span><span class='line'> <span class="o">*</span> <span class="nx">apache2</span> <span class="nx">is</span> <span class="nx">running</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因みに、初期状態では<code>start</code>や<code>restart</code>コマンドを実行したときに下記警告が表示されます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">restart</span>
+</span><span class='line'> <span class="o">*</span> <span class="nx">Restarting</span> <span class="nx">Apache</span> <span class="nx">httpd</span> <span class="nx">web</span> <span class="nx">server</span> <span class="nx">apache2</span>                                                                                                                                                           <span class="nx">AH00558</span><span class="o">:</span> <span class="nx">apache2</span><span class="o">:</span> <span class="nx">Could</span> <span class="nx">not</span> <span class="nx">reliably</span> <span class="nx">determine</span> <span class="nx">the</span> <span class="nx">server</span><span class="err">’</span><span class="nx">s</span> <span class="nx">fully</span> <span class="nx">qualified</span> <span class="nx">domain</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">using</span> <span class="nx">XX</span><span class="p">.</span><span class="nx">XX</span><span class="p">.</span><span class="nx">XX</span><span class="p">.</span><span class="nx">XX</span><span class="p">.</span> <span class="nx">Set</span> <span class="nx">the</span> <span class="s1">&#39;ServerName&#39;</span> <span class="nx">directive</span> <span class="nx">globally</span> <span class="nx">to</span> <span class="nx">suppress</span> <span class="k">this</span> <span class="nx">message</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これを回避するためには設定ファイルに<code>ServerName</code>を定義する必要があります。<br/>
+(警告は出るものの、起動には何ら問題はありません。)</p>
+
+<p>下記のように設定ファイルを開きます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// 設定ファイルを開く</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">vi</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">apache2</span><span class="o">/</span><span class="nx">apache2</span><span class="p">.</span><span class="nx">conf</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、<code>ServerName</code>を適当な場所に定義してやりましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /etc/apache2/apache2.conf</span>
+</span><span class='line'><span class="c1">// 省略</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">Include</span> <span class="nx">list</span> <span class="nx">of</span> <span class="nx">ports</span> <span class="nx">to</span> <span class="nx">listen</span> <span class="nx">on</span>
+</span><span class='line'><span class="nx">Include</span> <span class="nx">ports</span><span class="p">.</span><span class="nx">conf</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">ServerName</span> <span class="nx">xxx</span><span class="p">.</span><span class="nx">com</span>
+</span><span class='line'><span class="c1">// 省略</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これにより、エラーなく起動や再起動できることを確認できるはずです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">restart</span>
+</span><span class='line'> <span class="o">*</span> <span class="nx">Restarting</span> <span class="nx">Apache</span> <span class="nx">httpd</span> <span class="nx">web</span> <span class="nx">server</span> <span class="nx">apache2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでApacheが起動していることが確認できたので、GETリクエストを投げてアクセスしてみましょう。<br/>
+Ubuntu用のApacheデフォルトページが返却されるはずです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">curl</span> <span class="nx">http</span><span class="o">:</span><span class="c1">//127.0.0.1/</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;!</span><span class="nx">DOCTYPE</span> <span class="nx">html</span> <span class="nx">PUBLIC</span> <span class="s2">&quot;-//W3C//DTD XHTML 1.0 Transitional//EN&quot;</span> <span class="s2">&quot;http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd&quot;</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">html</span> <span class="nx">xmlns</span><span class="o">=</span><span class="s2">&quot;http://www.w3.org/1999/xhtml&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/html&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Webページにアクセス</h3>
+
+<p>冒頭でポートフォワード設定をしたので、Apacheが起動しているのであれば、Macからページを見れるはずです！<br/>
+早速見てみましょう。<br/>
+設定した<code>http://localhost:15600/</code>でアクセスすると下記のようにページが表示されます。</p>
+
+<p><img src="http://grandbig.github.io/images/docker_apache_1.png" alt="DockerコンテナのWEBページ" /></p>
+
+<h3>便利コマンド利用するためにモジュールをインストール</h3>
+
+<p>Webサーバを構築する上で、あまりにもまっさらなUbuntuだったため幾つか必要なものをインストールする必要がありました。<br/>
+その紹介もおまけ程度に書いておきます。</p>
+
+<h4>lessのインストール</h4>
+
+<p>毎回<code>cat</code>コマンドで中身を見る必要性がないこともあると思います。<br/>
+流石に<code>less</code>くらいはインストールしておきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// lessのインストール</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">less</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// lessのバージョン確認</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">less</span> <span class="o">--</span><span class="nx">help</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>lessコマンドで色をつける</h4>
+
+<p>ついでに<code>less</code>コマンドで色を付けて見やすくする方法を書いておきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// source-highlightのインストール</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">source</span><span class="o">-</span><span class="nx">highlight</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Dockerコンテナ内の環境変数は<code>.dockerenv</code>ファイル内に書きます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// .dockerenvに下記を追加</span>
+</span><span class='line'><span class="err">#</span><span class="nx">Source</span><span class="o">-</span><span class="nx">hilight</span> <span class="kd">with</span> <span class="nx">less</span>
+</span><span class='line'><span class="kr">export</span> <span class="nx">LESSOPEN</span><span class="o">=</span><span class="s2">&quot;| /usr/share/source-highlight/src-hilite-lesspipe.sh %s&quot;</span>
+</span><span class='line'><span class="kr">export</span> <span class="nx">LESS</span><span class="o">=</span><span class="s1">&#39;-R&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>結果を反映させるために、下記コマンドを叩きましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">source</span> <span class="o">~</span><span class="err">/.dockerenv</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>vi/vimのインストール</h4>
+
+<p>ファイルを作成する際に必ず必要になります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// vimのインストール</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">vim</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// vimのバージョン確認</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">vim</span> <span class="o">-</span><span class="nx">v</span>
+</span><span class='line'><span class="c1">// viのバージョン確認</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">vi</span> <span class="o">-</span><span class="nx">v</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>curlのインストール</h4>
+
+<p><code>curl</code>は試しにHTTPリクエストを投げてみたいことがあると思ったのでインストールしてみました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// curlのインストール</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">curl</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// curlのバージョン確認</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">curl</span> <span class="o">-</span><span class="nx">V</span>
+</span><span class='line'><span class="nx">curl</span> <span class="mf">7.47</span><span class="p">.</span><span class="mi">0</span> <span class="p">(</span><span class="nx">x86_64</span><span class="o">-</span><span class="nx">pc</span><span class="o">-</span><span class="nx">linux</span><span class="o">-</span><span class="nx">gnu</span><span class="p">)</span> <span class="nx">libcurl</span><span class="o">/</span><span class="mf">7.47</span><span class="p">.</span><span class="mi">0</span> <span class="nx">GnuTLS</span><span class="o">/</span><span class="mf">3.4</span><span class="p">.</span><span class="mi">10</span> <span class="nx">zlib</span><span class="o">/</span><span class="mf">1.2</span><span class="p">.</span><span class="mi">8</span> <span class="nx">libidn</span><span class="o">/</span><span class="mf">1.32</span> <span class="nx">librtmp</span><span class="o">/</span><span class="mf">2.3</span>
+</span><span class='line'><span class="nx">Protocols</span><span class="o">:</span> <span class="nx">dict</span> <span class="nx">file</span> <span class="nx">ftp</span> <span class="nx">ftps</span> <span class="nx">gopher</span> <span class="nx">http</span> <span class="nx">https</span> <span class="nx">imap</span> <span class="nx">imaps</span> <span class="nx">ldap</span> <span class="nx">ldaps</span> <span class="nx">pop3</span> <span class="nx">pop3s</span> <span class="nx">rtmp</span> <span class="nx">rtsp</span> <span class="nx">smb</span> <span class="nx">smbs</span> <span class="nx">smtp</span> <span class="nx">smtps</span> <span class="nx">telnet</span> <span class="nx">tftp</span>
+</span><span class='line'><span class="nx">Features</span><span class="o">:</span> <span class="nx">AsynchDNS</span> <span class="nx">IDN</span> <span class="nx">IPv6</span> <span class="nx">Largefile</span> <span class="nx">GSS</span><span class="o">-</span><span class="nx">API</span> <span class="nx">Kerberos</span> <span class="nx">SPNEGO</span> <span class="nx">NTLM</span> <span class="nx">NTLM_WB</span> <span class="nx">SSL</span> <span class="nx">libz</span> <span class="nx">TLS</span><span class="o">-</span><span class="nx">SRP</span> <span class="nx">UnixSockets</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>まとめ</h3>
+
+<p>さて一先ず本記事の目的は達成できました。<br/>
+が、Apacheのあまりにも簡単な基礎部分しか見ていません。<br/>
+引き続き、最低限の設定を見ていきたいと思っています。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<h3>参考</h3>
+
+<p>以下、ページを参考にさせて頂きました。</p>
+
+<ul>
+<li><a href="http://www.nemotos.net/?p=1100">Ubuntuでlessを使って構文をカラー表示する方法</a></li>
+<li><a href="http://qiita.com/maemori/items/e7318b088b9e4bf22310">docker-machineコマンド</a></li>
+<li><a href="https://docs.docker.com/kitematic/userguide/">Kitematic user guide</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Docker for Macをインストールしよう！]]></title>
@@ -6975,153 +7310,6 @@ Appleは<code>in_app</code>を利用することを推奨しており、<code>la
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Xcode8を始めてみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/09/19/start-xcode8/"/>
-    <updated>2016-09-19T14:31:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/09/19/start-xcode8</id>
-    <content type="html"><![CDATA[<h3>Xcode8が登場！</h3>
-
-<p>先日、Xcode8がiOS10と共に一般公開されました。本ブログの初期の頃に<a href="http://grandbig.github.io/blog/2013/09/05/start-xcode/">Xcodeを始めてみよう！</a>という記事を書きましたが、この頃がXcode4.6.3であったことを考えると何だか感慨深いですね。<br/>
-なんて感傷に浸りたい気持ちとは裏腹にXcode8ではこれまでと大きく変わっている部分があるとのことで、少しではありますが見ていこうと思います。</p>
-
-<!-- more -->
-
-
-<h3>プロジェクトの新規作成</h3>
-
-<p>まずはプロジェクトの新規作成フローから見ていきます。</p>
-
-<p>１．Xcode8を起動する</p>
-
-<p><img src="http://grandbig.github.io/images/xcode8_1.png" alt="Xcode8起動時のウィンドウ" /></p>
-
-<p>２．作成するプロジェクトの形式を選択する</p>
-
-<p><img src="http://grandbig.github.io/images/xcode8_2.png" alt="プロジェクトの形式を作成" /></p>
-
-<p>３．プロジェクトの詳細を決める</p>
-
-<p><img src="http://grandbig.github.io/images/xcode8_3.png" alt="プロジェクトの詳細を入力" /></p>
-
-<p>４．プロジェクトを保存する</p>
-
-<p><img src="http://grandbig.github.io/images/xcode8_4.png" alt="プロジェクトを保存" /></p>
-
-<p>レイアウト構成やTeamの入力項目が増えただけで大きな違いはなさそうです。</p>
-
-<h3>Xcode8のGeneral</h3>
-
-<p>続いて、Xcode8で変わったと話題の <strong>General</strong> を見ていきましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/xcode8_5.png" alt="General" /></p>
-
-<p>上図を見ると、</p>
-
-<ul>
-<li>Display Nameの追加</li>
-<li>Automatically manage signing機能の新規追加</li>
-<li>Provisioning ProfileとCertificate状況の閲覧項目の追加</li>
-</ul>
-
-
-<p>が増えたことがわかります。</p>
-
-<h4>Automatically manage signing</h4>
-
-<p>これは一見、自動で最適なProvisioning ProfileとCertificateを選択してくれる機能に見えますが、下記機能を含んでいます。</p>
-
-<ul>
-<li>署名付き証明書の作成
-
-<ul>
-<li>複数Macで開発する際に必要な鍵付き証明書を作成してくれます</li>
-<li>作成可能な証明書数は1 Apple IDあたり10個とのこと</li>
-</ul>
-</li>
-<li>App IDの作成と更新
-
-<ul>
-<li>アプリ固有のIDであり、存在しないBundle identifierを指定していたとしても自動作成</li>
-</ul>
-</li>
-<li>Provisioning Profileの作成と更新
-
-<ul>
-<li>アプリのビルドに必要な証明書でApp IDに紐づく証明書がないときは自動作成</li>
-</ul>
-</li>
-</ul>
-
-
-<p>実際に、機能をONにした場合、下図のように自動で最適なものが選択されていることがわかります。</p>
-
-<p><img src="http://grandbig.github.io/images/xcode8_6.png" alt="Automatically manage signingをON" /></p>
-
-<p>因みにこれをOFFにした場合は下図のように全て自身で選択できる項目が表示されます。</p>
-
-<p><img src="http://grandbig.github.io/images/xcode8_7.png" alt="Automatically manage signingをOFF" /></p>
-
-<p>気をつけたいのは想定通りのTeamが選択されていないと意図したProvisioning Profileを選択できない場合があることです。<br/>
-しかし、GeneralからはTeamの選択ができません。<br/>
-筆者は結局、 <strong>Build Settings</strong> からTeamを選択しました。(他にも方法はあるかもしれません。)<br/>
-ま、ここまで来たら、いっそのことProvisioning Profileも選択しちゃいましたが&hellip;笑<br/>
-Apple的にはGeneralで全て完結させることを推奨しているようですが、課題がありそうな気がしています。</p>
-
-<p><img src="http://grandbig.github.io/images/xcode8_8.png" alt="Build SettingsからTeamを選択" /></p>
-
-<h3>Build Settings > Signing</h3>
-
-<p>先程、Build SettingsからTeamを選択する話をしましたが、よくよく見ると&hellip;</p>
-
-<ul>
-<li>Provisioning Profile</li>
-<li>Provisioning Profile (Deprecated)</li>
-</ul>
-
-
-<p>の2つがあることに気づいたのではないでしょうか？？<br/>
-これは、GeneralからProvisioning Profileを自動 or 手動で設定できるようになった弊害と考えられます。<br/>
-これまで、Provisioning Profileの名称とUUIDが紐付けられる形でXcodeプロジェクトに保存されていたため、Provisioning Profileを設定した状態でGitにアップすると、他の人がPullした際に、Provisioning ProfileにUUIDの値が表示されるということがありました。<br/>
-今後はTeamに開発メンバーとして含まれていれば、こういったことが解消されることでしょう。</p>
-
-<h3>Storyboard</h3>
-
-<p>続いて、筆者が目を惹かれたのはStoryboardです。<br/>
-これまでは特定のデバイスの形によらない正方形の形をデフォルトとしていました。<br/>
-これを右メニューからデバイスの形を選択することで変更していました。</p>
-
-<p>Xcode8からは下部に新しいメニューが表示され、そこから簡単に特定のデバイス型にStorybaordを変更することができます。</p>
-
-<p><img src="http://grandbig.github.io/images/xcode8_9.png" alt="新しいStoryboard" /></p>
-
-<h3>App Icons</h3>
-
-<p>さて、ここはそんなに大きな変更はありませんでした。<br/>
-強いて言えば、右メニューのUIがチェックボックス形式からセレクトボックス形式に変更になったくらいです。</p>
-
-<p><img src="http://grandbig.github.io/images/xcode8_10.png" alt="App IconsのUI" /></p>
-
-<p>因みに、Xcode8は正式にiOS7以前のサポートを排除しました。(Deployment Targetを見るとiOS8.0からの選択になっていることがわかります。)<br/>
-筆者が疑問なのは、上図のApp Iconsを見ると<code>iOS 5, 6</code>とか<code>iOS7 - 10</code>のように古いiOSのナンバリングが未だになぜ残っているのだとう&hellip;ということです。<br/>
-開発する上で特別気にする必要はないんでしょうが&hellip;</p>
-
-<h3>まとめ</h3>
-
-<p>さて、本日はXcode8の変更点を少しだけ見てみました。<br/>
-まだ筆者もXcode8で十分な数のサンプルアプリを開発できているわけではないため、見つけられていない新機能がたくさんあることでしょう。<br/>
-これから少しずつではありますが、役に立つ新情報を見つけていければと思います。<br/>
-と言ったところで本日はここまで。</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="https://possiblemobile.com/2016/06/code-signing-xcode-8/">Code Signing in Xcode 8</a></li>
-</ul>
 
 ]]></content>
   </entry>
