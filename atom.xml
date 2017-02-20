@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-02-20T01:34:28+09:00</updated>
+  <updated>2017-02-20T22:46:38+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -248,7 +248,9 @@ Apache公式ページの下記記述を見るとよくわかります。</p>
 
 <h3>RewriteRuleの設定</h3>
 
-<p><code>Rewrite</code>モジュールはクライアントからのリクエストを内部変換してリダイレクトするような機能です。</p>
+<p><code>Rewrite</code>はクライアントからのリクエストを内部変換してリダイレクトするような機能です。<br/>
+今回は些か簡単な例を扱ったためリバースプロキシとの違いがわかりにくかったかもしれません。<br/>
+あくまでも<code>Rewrite</code>はパスの読み替えであるため、物理的に別のサーバに接続を促すようなリバースプロキシならではの設定はできません。</p>
 
 <p>まずはモジュールを有効化させます。</p>
 
@@ -287,7 +289,25 @@ Apache公式ページの下記記述を見るとよくわかります。</p>
 
 
 <p>デフォルトでは上記が<code>AllowOverride None</code>だったのを<code>AllowOverride All</code>に変更しています。<br/>
-さらに、<code>.htaccess</code>ファイルを作成して書き換えルールを記載します。</p>
+さらに、<code>.htaccess</code>ファイルを作成して書き換えルールを記載します。<br/>
+<code>.htaccess</code>を利用する設定は<code>apache2.conf</code>にデフォルトで記載されています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /etc/apache2/apache2.conf</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">AccessFileName</span><span class="o">:</span> <span class="nx">The</span> <span class="nx">name</span> <span class="nx">of</span> <span class="nx">the</span> <span class="nx">file</span> <span class="nx">to</span> <span class="nx">look</span> <span class="k">for</span> <span class="k">in</span> <span class="nx">each</span> <span class="nx">directory</span>
+</span><span class='line'><span class="err">#</span> <span class="k">for</span> <span class="nx">additional</span> <span class="nx">configuration</span> <span class="nx">directives</span><span class="p">.</span>  <span class="nx">See</span> <span class="nx">also</span> <span class="nx">the</span> <span class="nx">AllowOverride</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">directive</span><span class="p">.</span>
+</span><span class='line'><span class="err">#</span>
+</span><span class='line'><span class="nx">AccessFileName</span> <span class="p">.</span><span class="nx">htaccess</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>そして実際の<code>RewriteRule</code>の記載です。</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -308,6 +328,39 @@ Apache公式ページの下記記述を見るとよくわかります。</p>
 結果は下記の通りです。</p>
 
 <p><img src="http://grandbig.github.io/images/docker_rewrite.png" alt="RewriteRule適用" /></p>
+
+<h3>ErrorDocumentの設定</h3>
+
+<p>エラー発生時にカスタムエラーページを表示したいときなどに利用します。<br/>
+具体的には、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /etc/apache2/site-enabled/000-default.conf</span>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">VirtualHost</span> <span class="o">*:</span><span class="mi">80</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="nx">ErrorLog</span> <span class="nx">$</span><span class="p">{</span><span class="nx">APACHE_LOG_DIR</span><span class="p">}</span><span class="o">/</span><span class="nx">error</span><span class="p">.</span><span class="nx">log</span>
+</span><span class='line'>  <span class="nx">CustomLog</span> <span class="nx">$</span><span class="p">{</span><span class="nx">APACHE_LOG_DIR</span><span class="p">}</span><span class="o">/</span><span class="nx">access</span><span class="p">.</span><span class="nx">log</span> <span class="nx">combined</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 以下、ErrorDocumentの設定</span>
+</span><span class='line'>  <span class="nx">ErrorDocument</span> <span class="mi">404</span> <span class="nx">error_404</span><span class="p">.</span><span class="nx">html</span>
+</span><span class='line'>  <span class="nx">ErrorDocument</span> <span class="mi">500</span> <span class="nx">error_500</span><span class="p">.</span><span class="nx">html</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/VirtualHost&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のように設定が可能です。<br/>
+Ubuntuの場合、<code>/etc/apache2/conf-enabled/localized-error-pages.conf</code>に<code>ErrorDocument</code>の構文が全てコメントアウトの状態で記載があるため、本格的にやるならきちんとファイルを分けた方が良さそうです。</p>
 
 <h3>まとめ</h3>
 
