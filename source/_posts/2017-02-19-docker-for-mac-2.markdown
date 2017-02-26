@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "DockerにWebサーバーを立てよう！"
+title: "Dockerコンテナ内のUbuntuにWebサーバーを立てよう！"
 date: 2017-02-19 15:05
 comments: true
 categories: docker apache

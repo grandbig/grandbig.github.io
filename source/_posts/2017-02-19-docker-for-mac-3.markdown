@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Dockerコンテナ内でApache設定を試してみよう！"
+title: "Dockerコンテナ内のUbuntuでApache設定を試してみよう！"
 date: 2017-02-19 23:45
 comments: true
 categories: docker apache
