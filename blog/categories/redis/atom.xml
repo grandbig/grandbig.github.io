@@ -1,0 +1,2040 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: redis | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/redis/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-02-26T19:08:35+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuでRedis設定を試してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/25/docker-for-mac-4/"/>
+    <updated>2017-02-25T22:36:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/25/docker-for-mac-4</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回はDockerコンテナ内のUbuntuに<a href="https://redis.io/">Redis</a>をインストールしてみたいと思います。<br/>
+基本的な操作だけでなく、デフォルトの設定とそれらの意味についても見ていきます。</p>
+
+<h3>UbuntuへのRedisのインストール</h3>
+
+<p>まずはインストールをしないと始まりません。<br/>
+その方法について見ていきます。<br/>
+今回扱う環境は以下の通りです。</p>
+
+<ul>
+<li>Ubuntu: 14.04.5 LTS</li>
+<li>Redis: 2.8.4</li>
+</ul>
+
+
+<p>バージョン的に最新ではない部分もあるのですが、Dockerコンテナ内のサーバを構築する上で利用したバージョンで進めます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>インストールは実に簡単です。<br/>
+<code>apt-get</code>を利用するのみです。</p>
+
+<p><code>javascript
+$ apt-get install redis-server
+Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+...
+Setting up redis-server (2:2.8.4-2) ...
+Starting redis-server: redis-server.
+Processing triggers for libc-bin (2.19-0ubuntu6.9) ...
+Processing triggers for ureadahead (0.100.0-16) ...
+</code></p>
+
+<p>上記のログで<code>Starting redis-server: redis-server.</code>として出力されている通り、インストールが完了すると、Redisを起動してくれます。<br/>
+念のため確認してみますが、</p>
+
+<p><code>javascript
+$ ps aux | grep redis
+redis     8833  0.0  0.1  37000  3348 ?        Ssl  13:25   0:00 /usr/bin/redis-server 127.0.0.1:6379       
+root      8843  0.0  0.0   8868   784 ?        S+   13:26   0:00 grep --color=auto redis
+</code></p>
+
+<p>ご覧の通り起動しています。</p>
+
+<h3>Redisの基本コマンド</h3>
+
+<p>Redisの基本コマンドは以下の通りです。</p>
+
+<ul>
+<li><code>keys *</code>: 現時点で保存されているkey全てを表示</li>
+<li><code>set key value</code>: keyとvalueの格納</li>
+<li><code>get key</code>: 指定したkeyのvalueを取得</li>
+<li><code>del key</code>: 指定したkeyのvalueを削除</li>
+<li><code>flushdb</code>: 現時点で保存されているkey全てを削除</li>
+</ul>
+
+
+<p>実際に使ってみましょう。</p>
+
+<p><code>javascript
+$ redis-cli
+127.0.0.1:6379&gt; keys *
+(empty list or set)
+127.0.0.1:6379&gt; set user takahiro
+OK
+127.0.0.1:6379&gt; set device iphone
+OK
+127.0.0.1:6379&gt; keys *
+1) "user"
+2) "device"
+127.0.0.1:6379&gt; get user
+"takahiro"
+127.0.0.1:6379&gt; get device
+"iphone"
+127.0.0.1:6379&gt; del device
+(integer) 1
+127.0.0.1:6379&gt; keys *
+1) "user"
+127.0.0.1:6379&gt; flushdb
+OK
+127.0.0.1:6379&gt; keys *
+(empty list or set)
+</code></p>
+
+<h3>Redisのデフォルト設定</h3>
+
+<p>続いて、Redisの設定を見ていきます。<br/>
+インストール後、<code>redis.conf</code>ファイルが<code>/etc/redis/</code>配下に作成されます。<br/>
+デフォルトでこのファイルの中身には多くのことが書かれています。<br/>
+1つずつ見ていきましょう。</p>
+
+<h4>単位指定について</h4>
+
+<p>まずはメモリ単位関連の説明です。</p>
+
+<p>```javascript</p>
+
+<h1>Redis configuration file example</h1>
+
+<h1>Note on units: when memory size is needed, it is possible to specify</h1>
+
+<h1>it in the usual form of 1k 5GB 4M and so forth:</h1>
+
+<p>#</p>
+
+<h1>1k => 1000 bytes</h1>
+
+<h1>1kb => 1024 bytes</h1>
+
+<h1>1m => 1000000 bytes</h1>
+
+<h1>1mb => 1024*1024 bytes</h1>
+
+<h1>1g => 1000000000 bytes</h1>
+
+<h1>1gb => 1024<em>1024</em>1024 bytes</h1>
+
+<p>#</p>
+
+<h1>units are case insensitive so 1GB 1Gb 1gB are all the same.</h1>
+
+<p>```</p>
+
+<p>もう上記のままですね。<br/>
+<code>1k</code>か<code>1kb</code>なのか微妙に書き方を気をつけないと想定外の容量指定になるので気をつけましょう。<br/>
+ただし、<code>1GB</code> / <code>1Gb</code> / <code>1gB</code>は微妙に書き方が異なりますが指定容量は同じです。</p>
+
+<h4>includeによる設定ファイルの分割について</h4>
+
+<p>Apacheなどでもよくある通り<code>include</code>を利用することもできます。</p>
+
+<p>```javascript</p>
+
+<h6>############################ INCLUDES</h6>
+
+<h1>Include one or more other config files here.  This is useful if you</h1>
+
+<h1>have a standard template that goes to all Redis server but also need</h1>
+
+<h1>to customize a few per-server settings.  Include files can include</h1>
+
+<h1>other files, so use this wisely.</h1>
+
+<p>#</p>
+
+<h1>Notice option &ldquo;include&rdquo; won‘t be rewritten by command &ldquo;CONFIG REWRITE&rdquo;</h1>
+
+<h1>from admin or Redis Sentinel. Since Redis always uses the last processed</h1>
+
+<h1>line as value of a configuration directive, you‘d better put includes</h1>
+
+<h1>at the beginning of this file to avoid overwriting config change at runtime.</h1>
+
+<p>#</p>
+
+<h1>If instead you are interested in using includes to override configuration</h1>
+
+<h1>options, it is better to use include as the last line.</h1>
+
+<p>#</p>
+
+<h1>include /path/to/local.conf</h1>
+
+<h1>include /path/to/other.conf</h1>
+
+<p>```</p>
+
+<p>サーバごとに設定を分けたいとか、第三者が見やすいように設定単位でファイルを分けたいとか様々な用途で便利に利用できるはずです。<br/>
+<code>include</code>したファイルに定義した内容で<code>redis.conf</code>の定義内容を書き換えるのであれば、<code>redis.conf</code>の一番最後に<code>include</code>を書いた方が良いでしょう。<br/>
+(逆に、書き換えたくないのであれば、<code>redis.conf</code>の初めに書きましょう。)</p>
+
+<h4>一般設定について</h4>
+
+<p>さて、最も基本となる設定です。<br/>
+少々、長いので細かめに分割してみていきましょう。</p>
+
+<h5>デーモン化の有無</h5>
+
+<p>デーモン化の有無は下記で設定します。</p>
+
+<p>```javascript</p>
+
+<h1>By default Redis does not run as a daemon. Use &lsquo;yes&rsquo; if you need it.</h1>
+
+<h1>Note that Redis will write a pid file in /var/run/redis.pid when daemonized.</h1>
+
+<p>daemonize yes
+```</p>
+
+<p>デフォルト設定ではデーモン起動はしないようになっています。<br/>
+* yes: デーモン起動する<br/>
+* no: デーモン起動しない</p>
+
+<p>PIDファイルはデフォルトで<code>/var/run/redis.pid</code>に出力します。</p>
+
+<h5>PIDファイルの指定</h5>
+
+<p>デフォルトとは異なる場所にPIDファイルを出力したい場合に指定します。</p>
+
+<p>```javascript</p>
+
+<h1>When running daemonized, Redis writes a pid file in /var/run/redis.pid by</h1>
+
+<h1>default. You can specify a custom pid file location here.</h1>
+
+<p>pidfile /var/run/redis/redis-server.pid
+```</p>
+
+<h5>ボート番号の指定</h5>
+
+<p>Redisを起動する際のポート番号を指定します。</p>
+
+<p>```javascript</p>
+
+<h1>Accept connections on the specified port, default is 6379.</h1>
+
+<h1>If port 0 is specified Redis will not listen on a TCP socket.</h1>
+
+<p>port 6379
+```</p>
+
+<ul>
+<li>デフォルトポート番号: 6379</li>
+<li>0指定: TCPソケット通信を受け付けない</li>
+</ul>
+
+
+<h5>IPアドレスの指定</h5>
+
+<p>Redisを起動する際の接続するIPアドレスを指定します。</p>
+
+<p>```javascript</p>
+
+<h1>By default Redis listens for connections from all the network interfaces</h1>
+
+<h1>available on the server. It is possible to listen to just one or multiple</h1>
+
+<h1>interfaces using the &ldquo;bind&rdquo; configuration directive, followed by one or</h1>
+
+<h1>more IP addresses.</h1>
+
+<p>#</p>
+
+<h1>Examples:</h1>
+
+<p>#</p>
+
+<h1>bind 192.168.1.100 10.0.0.1</h1>
+
+<p>bind 127.0.0.1
+```</p>
+
+<p>複数のIPアドレスを指定する場合は半角スペースを挟んで連続して書きましょう。</p>
+
+<h5>Unixドメインソケット通信の設定</h5>
+
+<p>TCP通信だけでなく、Unixドメインソケット通信を受け付ける場合に設定します。</p>
+
+<p>```javascript</p>
+
+<h1>Specify the path for the unix socket that will be used to listen for</h1>
+
+<h1>incoming connections. There is no default, so Redis will not listen</h1>
+
+<h1>on a unix socket when not specified.</h1>
+
+<p>#</p>
+
+<h1>unixsocket /var/run/redis/redis.sock</h1>
+
+<h1>unixsocketperm 755</h1>
+
+<p>```</p>
+
+<ul>
+<li>デフォルトではコメントアウトされている
+
+<ul>
+<li>同一サーバ内での受付はTCPより良いという話も&hellip;!?</li>
+</ul>
+</li>
+<li><code>unixsocket</code>: <code>socket</code>ファイルのパス指定</li>
+<li><code>unixsocketperm</code>: <code>socket</code>ファイルへのアクセス権</li>
+</ul>
+
+
+<h5>タイムアウトの設定</h5>
+
+<p>クライアントからの接続タイムアウト設定です。</p>
+
+<p>```javascript</p>
+
+<h1>Close the connection after a client is idle for N seconds (0 to disable)</h1>
+
+<p>timeout 0
+```</p>
+
+<p>0を設定すると、タイムアウトは無効になります。</p>
+
+<h5>TCP KeepAlive設定</h5>
+
+<p>TCP通信の生存確認に関する設定です。</p>
+
+<p>```javascript</p>
+
+<h1>TCP keepalive.</h1>
+
+<p>#</p>
+
+<h1>If non-zero, use SO_KEEPALIVE to send TCP ACKs to clients in absence</h1>
+
+<h1>of communication. This is useful for two reasons:</h1>
+
+<p>#</p>
+
+<h1>1) Detect dead peers.</h1>
+
+<h1>2) Take the connection alive from the point of view of network</h1>
+
+<h1>equipment in the middle.</h1>
+
+<p>#</p>
+
+<h1>On Linux, the specified value (in seconds) is the period used to send ACKs.</h1>
+
+<h1>Note that to close the connection the double of the time is needed.</h1>
+
+<h1>On other kernels the period depends on the kernel configuration.</h1>
+
+<p>#</p>
+
+<h1>A reasonable value for this option is 60 seconds.</h1>
+
+<p>tcp-keepalive 0
+```</p>
+
+<ul>
+<li>有効にすることで、通信断(Dead Peer)状態を防いだり、コネクションの接続生存を確認することができます</li>
+<li>適切な値として <code>60秒</code> が推奨されています</li>
+</ul>
+
+
+<h5>ログレベルの設定</h5>
+
+<p>ログの出力量を調整するために設定します。</p>
+
+<p>```javascript</p>
+
+<h1>Specify the server verbosity level.</h1>
+
+<h1>This can be one of:</h1>
+
+<h1>debug (a lot of information, useful for development/testing)</h1>
+
+<h1>verbose (many rarely useful info, but not a mess like the debug level)</h1>
+
+<h1>notice (moderately verbose, what you want in production probably)</h1>
+
+<h1>warning (only very important / critical messages are logged)</h1>
+
+<p>loglevel notice
+```</p>
+
+<ul>
+<li><code>debug</code>: 開発やテスト用に利用。大量のログを出力します</li>
+<li><code>verbose</code>: <code>debug</code>よりは少ないものの多くのログを出力します</li>
+<li><code>notice</code>: 商用に適した設定です</li>
+<li><code>warning</code>: 重要またはクリティカルなメッセージのみログに出します</li>
+</ul>
+
+
+<h5>ログファイルの出力先の指定</h5>
+
+<p>ログファイルの出力先のパスを指定します。</p>
+
+<p>```javascript</p>
+
+<h1>Specify the log file name. Also the empty string can be used to force</h1>
+
+<h1>Redis to log on the standard output. Note that if you use standard</h1>
+
+<h1>output for logging but daemonize, logs will be sent to /dev/null</h1>
+
+<p>logfile /var/log/redis/redis-server.log
+```</p>
+
+<h5>システムログの設定</h5>
+
+<p>システムログに関する設定です。</p>
+
+<p>```javascript</p>
+
+<h1>To enable logging to the system logger, just set &lsquo;syslog-enabled&rsquo; to yes,</h1>
+
+<h1>and optionally update the other syslog parameters to suit your needs.</h1>
+
+<h1>syslog-enabled no</h1>
+
+<h1>Specify the syslog identity.</h1>
+
+<h1>syslog-ident redis</h1>
+
+<h1>Specify the syslog facility. Must be USER or between LOCAL0-LOCAL7.</h1>
+
+<h1>syslog-facility local0</h1>
+
+<p>```</p>
+
+<ul>
+<li><code>syslog-enabled</code>: システムログのロギングの有無を設定します</li>
+<li><code>syslog-ident</code>: システムログの識別子の設定をします</li>
+<li><code>syslog-facility</code>: システムログの分類を設定します
+
+<ul>
+<li><code>user</code>: ユーザプロセスのメッセージを記録するために設定します</li>
+<li><code>local0 〜 7</code>: セキュリティやネットワークなど細かく設定できます</li>
+</ul>
+</li>
+</ul>
+
+
+<p><code>local0 〜 7</code>については<a href="https://www.furukawa.co.jp/fitelnet/f/man/100/command-config/global_config/syslog_facility.htm#facility">syslog facility</a>が参考になりそうです。</p>
+
+<h5>データベースの設定</h5>
+
+<p>使用するデータベース番号を指定します。<br/>
+デフォルトで<code>16</code>が指定されていることで利用可能なデータベース番号は<code>0 〜 15</code>となっています。<br/>
+特に何もしなければ<code>DB 0</code>を利用します。<br/>
+<code>SELECT</code>文を利用することでデータベースを指定して使うこともできます。</p>
+
+<p>```javascript</p>
+
+<h1>Set the number of databases. The default database is DB 0, you can select</h1>
+
+<h1>a different one on a per-connection basis using SELECT <dbid> where</h1>
+
+<h1>dbid is a number between 0 and &lsquo;databases&rsquo;-1</h1>
+
+<p>databases 16
+```</p>
+
+<h4>スナップショット(バックアップ)設定</h4>
+
+<p>こちらもかなり重要な設定となります。<br/>
+利用用途にもよりますが、サービス上、消えてしまってはまずいデータを扱うのであれば堅牢な仕組みになるように設定を考える必要があります。</p>
+
+<h5>ディスク保存の頻度設定</h5>
+
+<p><code>key</code>の変更数と保存までに時間を設定します。<br/>
+これにより、ある程度自由に堅牢性を設定することが可能です。</p>
+
+<p>```javascript
+#</p>
+
+<h1>Save the DB on disk:</h1>
+
+<p>#</p>
+
+<h1>save <seconds> <changes></h1>
+
+<p>#</p>
+
+<h1>Will save the DB if both the given number of seconds and the given</h1>
+
+<h1>number of write operations against the DB occurred.</h1>
+
+<p>#</p>
+
+<h1>In the example below the behaviour will be to save:</h1>
+
+<h1>after 900 sec (15 min) if at least 1 key changed</h1>
+
+<h1>after 300 sec (5 min) if at least 10 keys changed</h1>
+
+<h1>after 60 sec if at least 10000 keys changed</h1>
+
+<p>#</p>
+
+<h1>Note: you can disable saving at all commenting all the &ldquo;save&rdquo; lines.</h1>
+
+<p>#</p>
+
+<h1>It is also possible to remove all the previously configured save</h1>
+
+<h1>points by adding a save directive with a single empty string argument</h1>
+
+<h1>like in the following example:</h1>
+
+<p>#</p>
+
+<h1>save &ldquo;&rdquo;</h1>
+
+<p>save 900 1
+save 300 10
+save 60 10000
+```</p>
+
+<p>上記デフォルト設定の意味は下記です。<br/>
+* <code>save 900 1</code>: 1個の<code>key</code>が変更されたら、15分後にディスクにその状態を保存<br/>
+* <code>sabe 300 10</code>: 10個の<code>key</code>が変更されたら、5分後にディスクにその状態を保存<br/>
+* <code>save 60 10000</code>: 10000個の<code>key</code>が変更されたら、1分後にディスクにその状態を保存</p>
+
+<p>もしディスク保存したくなければ(インメモリでの利用のみであれば)<code>save ""</code>を指定しましょう。</p>
+
+<h5>エラー発生時の保存挙動の設定</h5>
+
+<p>これはエラーが発生したときにディスク保存をどうするかを決める設定です。</p>
+
+<p>```javascript</p>
+
+<h1>By default Redis will stop accepting writes if RDB snapshots are enabled</h1>
+
+<h1>(at least one save point) and the latest background save failed.</h1>
+
+<h1>This will make the user aware (in a hard way) that data is not persisting</h1>
+
+<h1>on disk properly, otherwise chances are that no one will notice and some</h1>
+
+<h1>disaster will happen.</h1>
+
+<p>#</p>
+
+<h1>If the background saving process will start working again Redis will</h1>
+
+<h1>automatically allow writes again.</h1>
+
+<p>#</p>
+
+<h1>However if you have setup your proper monitoring of the Redis server</h1>
+
+<h1>and persistence, you may want to disable this feature so that Redis will</h1>
+
+<h1>continue to work as usual even if there are problems with disk,</h1>
+
+<h1>permissions, and so forth.</h1>
+
+<p>stop-writes-on-bgsave-error yes
+```</p>
+
+<ul>
+<li>yes: 保存を止めます</li>
+<li>no: 書き込みを続けます</li>
+</ul>
+
+
+<h5>Dump時の圧縮設定</h5>
+
+<p>データをDumpする際に<code>LZF</code>圧縮をかけるか否かを設定できます。</p>
+
+<p>```javascript</p>
+
+<h1>Compress string objects using LZF when dump .rdb databases?</h1>
+
+<h1>For default that‘s set to &lsquo;yes&rsquo; as it‘s almost always a win.</h1>
+
+<h1>If you want to save some CPU in the saving child set it to &lsquo;no&rsquo; but</h1>
+
+<h1>the dataset will likely be bigger if you have compressible values or keys.</h1>
+
+<p>rdbcompression yes
+```</p>
+
+<ul>
+<li>yes: 圧縮します(CPU負荷が上がる一方で小容量)</li>
+<li>no: 圧縮しません(CPU負荷が下がる一方で大容量)</li>
+</ul>
+
+
+<h5>Checksum設定</h5>
+
+<p>これはデータの整合性を検証するための設定です。</p>
+
+<p>```javascript</p>
+
+<h1>Since version 5 of RDB a CRC64 checksum is placed at the end of the file.</h1>
+
+<h1>This makes the format more resistant to corruption but there is a performance</h1>
+
+<h1>hit to pay (around 10%) when saving and loading RDB files, so you can disable it</h1>
+
+<h1>for maximum performances.</h1>
+
+<p>#</p>
+
+<h1>RDB files created with checksum disabled have a checksum of zero that will</h1>
+
+<h1>tell the loading code to skip the check.</h1>
+
+<p>rdbchecksum yes
+```</p>
+
+<p>データ保存時にRDBファイルの読み込みを行うため、10%の性能劣化が発生するが、堅牢なデータを担保したいのであれば設定して損はないでしょう。</p>
+
+<h5>Dumpファイル名の設定</h5>
+
+<p>Dumpしたファイルの名称を指定します。</p>
+
+<p>```javascript</p>
+
+<h1>The filename where to dump the DB</h1>
+
+<p>dbfilename dump.rdb
+```</p>
+
+<h5>Dumpファイルの保存場所の設定</h5>
+
+<p>どこにDumpファイルを配置するかの設定です。</p>
+
+<p>```javascript</p>
+
+<h1>The working directory.</h1>
+
+<p>#</p>
+
+<h1>The DB will be written inside this directory, with the filename specified</h1>
+
+<h1>above using the &lsquo;dbfilename&rsquo; configuration directive.</h1>
+
+<p>#</p>
+
+<h1>The Append Only File will also be created inside this directory.</h1>
+
+<p>#</p>
+
+<h1>Note that you must specify a directory here, not a file name.</h1>
+
+<p>dir /var/lib/redis
+```</p>
+
+<h4>レプリケーション設定</h4>
+
+<p>障害発生時に利用するレプリケーションの設定についてもデフォルトで説明書きがなされています。</p>
+
+<h5>スレーブ設定</h5>
+
+<p>スレーブのコピー元となるマスターを指定します。</p>
+
+<p>```javascript</p>
+
+<h1>Master-Slave replication. Use slaveof to make a Redis instance a copy of</h1>
+
+<h1>another Redis server. Note that the configuration is local to the slave</h1>
+
+<h1>so for example it is possible to configure the slave to save the DB with a</h1>
+
+<h1>different interval, or to listen to another port, and so on.</h1>
+
+<p>#</p>
+
+<h1>slaveof <masterip> <masterport></h1>
+
+<p>```</p>
+
+<p>スレーブ側のRedisに設定を記載します。<br/>
+マスター側とDB保存間隔の設定や接続時のポート番号が異なっていたとしても何ら問題はありません。</p>
+
+<h5>マスターのパスワード設定</h5>
+
+<p>マスター側がパスワード認証を必要している場合、スレーブ側でマスターのパスワードを設定していないとリクエスト要求が通りません。</p>
+
+<p>```javascript</p>
+
+<h1>If the master is password protected (using the &ldquo;requirepass&rdquo; configuration</h1>
+
+<h1>directive below) it is possible to tell the slave to authenticate before</h1>
+
+<h1>starting the replication synchronization process, otherwise the master will</h1>
+
+<h1>refuse the slave request.</h1>
+
+<p>#</p>
+
+<h1>masterauth &lt;master-password></h1>
+
+<p>```</p>
+
+<h5>マスターとの同期が最新でない場合のスレーブ挙動の設定</h5>
+
+<p>スレーブがマスターと同期が取れなくなることは長く運用を続けていく上で必ず発生しうるものです。<br/>
+その際にスレーブがどのような振る舞いをすべきか設定しておきましょう。</p>
+
+<p>```javascript</p>
+
+<h1>When a slave loses its connection with the master, or when the replication</h1>
+
+<h1>is still in progress, the slave can act in two different ways:</h1>
+
+<p>#</p>
+
+<h1>1) if slave-serve-stale-data is set to &lsquo;yes&rsquo; (the default) the slave will</h1>
+
+<h1>still reply to client requests, possibly with out of date data, or the</h1>
+
+<h1>data set may just be empty if this is the first synchronization.</h1>
+
+<p>#</p>
+
+<h1>2) if slave-serve-stale-data is set to &lsquo;no&rsquo; the slave will reply with</h1>
+
+<h1>an error &ldquo;SYNC with master in progress&rdquo; to all the kind of commands</h1>
+
+<h1>but to INFO and SLAVEOF.</h1>
+
+<p>#
+slave-serve-stale-data yes
+```</p>
+
+<ul>
+<li><code>yes</code>: 最後に同期が取れた際の最新データを返却</li>
+<li><code>no</code>: 最新の同期が取れていないためエラーを返却</li>
+</ul>
+
+
+<h5>スレーブの書き込み権限の設定</h5>
+
+<p>特別な理由がない限り、<code>yes</code>で良さそうな設定です。<br/>
+スレーブは基本的にマスターに障害が発生した場合に利用する想定なので、直接書き込み権限をつける必要はないでしょう。</p>
+
+<p>```javascript</p>
+
+<h1>You can configure a slave instance to accept writes or not. Writing against</h1>
+
+<h1>a slave instance may be useful to store some ephemeral data (because data</h1>
+
+<h1>written on a slave will be easily deleted after resync with the master) but</h1>
+
+<h1>may also cause problems if clients are writing to it because of a</h1>
+
+<h1>misconfiguration.</h1>
+
+<p>#</p>
+
+<h1>Since Redis 2.6 by default slaves are read-only.</h1>
+
+<p>#</p>
+
+<h1>Note: read only slaves are not designed to be exposed to untrusted clients</h1>
+
+<h1>on the internet. It‘s just a protection layer against misuse of the instance.</h1>
+
+<h1>Still a read only slave exports by default all the administrative commands</h1>
+
+<h1>such as CONFIG, DEBUG, and so forth. To a limited extent you can improve</h1>
+
+<h1>security of read only slaves using &lsquo;rename-command&rsquo; to shadow all the</h1>
+
+<h1>administrative / dangerous commands.</h1>
+
+<p>slave-read-only yes
+```</p>
+
+<p>注意すべきこととしては、<code>slave-read-only</code>を<code>yes</code>に設定したとしても、<code>CONFIG</code>コマンドなどで設定値を変更することができてしまいます。<br/>
+もし、それを防止したいのであれば、<code>rename-command</code>を利用することで予めコマンド名を第三者からはわからないもに変えておきましょう。</p>
+
+<h5>マスターへのヘルスチェック設定</h5>
+
+<p>スレーブがマスターの生存を確認するために流し込む<code>ping</code>の時間の間隔設定です。</p>
+
+<p>```javascript</p>
+
+<h1>Slaves send PINGs to server in a predefined interval. It‘s possible to change</h1>
+
+<h1>this interval with the repl_ping_slave_period option. The default value is 10</h1>
+
+<h1>seconds.</h1>
+
+<p>#</p>
+
+<h1>repl-ping-slave-period 10</h1>
+
+<p>```</p>
+
+<h5>レプリケーションのタイムアウト設定</h5>
+
+<p>マスタースレーブ間で同期を取る際などにリクエスト/レスポンスが発生します。<br/>
+その際のタイムアウト設定となります。</p>
+
+<p>```javascript</p>
+
+<h1>The following option sets the replication timeout for:</h1>
+
+<p>#</p>
+
+<h1>1) Bulk transfer I/O during SYNC, from the point of view of slave.</h1>
+
+<h1>2) Master timeout from the point of view of slaves (data, pings).</h1>
+
+<h1>3) Slave timeout from the point of view of masters (REPLCONF ACK pings).</h1>
+
+<p>#</p>
+
+<h1>It is important to make sure that this value is greater than the value</h1>
+
+<h1>specified for repl-ping-slave-period otherwise a timeout will be detected</h1>
+
+<h1>every time there is low traffic between the master and the slave.</h1>
+
+<p>#</p>
+
+<h1>repl-timeout 60</h1>
+
+<p>```</p>
+
+<p>注意点としては、<code>repl-ping-slave-period</code>よりも大きな設定をしないと毎回<code>ping</code>でタイムアウトすることになります。</p>
+
+<h5>TCPの遅延に関する設定</h5>
+
+<p>TCP通信時の帯域幅の占有可否と遅延の許容可否の優先度を決めます。</p>
+
+<p>```javascript</p>
+
+<h1>Disable TCP_NODELAY on the slave socket after SYNC?</h1>
+
+<p>#</p>
+
+<h1>If you select &ldquo;yes&rdquo; Redis will use a smaller number of TCP packets and</h1>
+
+<h1>less bandwidth to send data to slaves. But this can add a delay for</h1>
+
+<h1>the data to appear on the slave side, up to 40 milliseconds with</h1>
+
+<h1>Linux kernels using a default configuration.</h1>
+
+<p>#</p>
+
+<h1>If you select &ldquo;no&rdquo; the delay for data to appear on the slave side will</h1>
+
+<h1>be reduced but more bandwidth will be used for replication.</h1>
+
+<p>#</p>
+
+<h1>By default we optimize for low latency, but in very high traffic conditions</h1>
+
+<h1>or when the master and slaves are many hops away, turning this to &ldquo;yes&rdquo; may</h1>
+
+<h1>be a good idea.</h1>
+
+<p>repl-disable-tcp-nodelay no
+```</p>
+
+<ul>
+<li><code>yes</code>: TCP通信時のパケット数を小さく抑えることで、帯域幅の占有率を下げることができます。一方で遅延は増加します。</li>
+<li><code>no</code>: TCP通信時に帯域幅を広く使うことで遅延を減少させます。</li>
+</ul>
+
+
+<h5>スレーブのバックアップログサイズの設定</h5>
+
+<p>マスターからスレーブへの接続が切断されてしまっている間に保存しておく差分の最大サイズです。</p>
+
+<p>```javascript</p>
+
+<h1>Set the replication backlog size. The backlog is a buffer that accumulates</h1>
+
+<h1>slave data when slaves are disconnected for some time, so that when a slave</h1>
+
+<h1>wants to reconnect again, often a full resync is not needed, but a partial</h1>
+
+<h1>resync is enough, just passing the portion of data the slave missed while</h1>
+
+<h1>disconnected.</h1>
+
+<p>#</p>
+
+<h1>The biggest the replication backlog, the longer the time the slave can be</h1>
+
+<h1>disconnected and later be able to perform a partial resynchronization.</h1>
+
+<p>#</p>
+
+<h1>The backlog is only allocated once there is at least a slave connected.</h1>
+
+<p>#</p>
+
+<h1>repl-backlog-size 1mb</h1>
+
+<p>```</p>
+
+<h5>バックログファイルの維持許容時間の設定</h5>
+
+<p>スレーブが切断されている間にバックアップのためのログ保存を行う一方で、そのバックログファイルを解放する設定も可能です。</p>
+
+<p>```javascript</p>
+
+<h1>After a master has no longer connected slaves for some time, the backlog</h1>
+
+<h1>will be freed. The following option configures the amount of seconds that</h1>
+
+<h1>need to elapse, starting from the time the last slave disconnected, for</h1>
+
+<h1>the backlog buffer to be freed.</h1>
+
+<p>#</p>
+
+<h1>A value of 0 means to never release the backlog.</h1>
+
+<p>#</p>
+
+<h1>repl-backlog-ttl 3600</h1>
+
+<p>```</p>
+
+<p>上記設定でコメントアウトを外せば、1時間はバックアップログファイルを維持します。<br/>
+<code>0</code>を設定した場合、ファイルの解放は実施しません。</p>
+
+<h5>スレーブの優先度設定</h5>
+
+<p>マスターが何らかの障害により動作できなくなった場合にスレーブがマスターに昇格することになります。<br/>
+もし、スレーブが複数台存在していたら、どれをマスターに昇格させるべきか選ぶ必要があります。<br/>
+その際に参考とする値となっています。(実際には <code>Redis Sentinel</code> が参考にする値)</p>
+
+<p>```javascript</p>
+
+<h1>The slave priority is an integer number published by Redis in the INFO output.</h1>
+
+<h1>It is used by Redis Sentinel in order to select a slave to promote into a</h1>
+
+<h1>master if the master is no longer working correctly.</h1>
+
+<p>#</p>
+
+<h1>A slave with a low priority number is considered better for promotion, so</h1>
+
+<h1>for instance if there are three slaves with priority 10, 100, 25 Sentinel will</h1>
+
+<h1>pick the one with priority 10, that is the lowest.</h1>
+
+<p>#</p>
+
+<h1>However a special priority of 0 marks the slave as not able to perform the</h1>
+
+<h1>role of master, so a slave with priority of 0 will never be selected by</h1>
+
+<h1>Redis Sentinel for promotion.</h1>
+
+<p>#</p>
+
+<h1>By default the priority is 100.</h1>
+
+<p>slave-priority 100
+```</p>
+
+<h5>マスターへの書き込み権限の設定</h5>
+
+<p>Redis2.8系から導入された設定です。<br/>
+『マスターに最低 N スレーブが接続している場合にかぎり、書き込み要求を受け付ける設定』です。</p>
+
+<p>```javascript</p>
+
+<h1>It is possible for a master to stop accepting writes if there are less than</h1>
+
+<h1>N slaves connected, having a lag less or equal than M seconds.</h1>
+
+<p>#</p>
+
+<h1>The N slaves need to be in &ldquo;online&rdquo; state.</h1>
+
+<p>#</p>
+
+<h1>The lag in seconds, that must be &lt;= the specified value, is calculated from</h1>
+
+<h1>the last ping received from the slave, that is usually sent every second.</h1>
+
+<p>#</p>
+
+<h1>This option does not GUARANTEES that N replicas will accept the write, but</h1>
+
+<h1>will limit the window of exposure for lost writes in case not enough slaves</h1>
+
+<h1>are available, to the specified number of seconds.</h1>
+
+<p>#</p>
+
+<h1>For example to require at least 3 slaves with a lag &lt;= 10 seconds use:</h1>
+
+<p>#</p>
+
+<h1>min-slaves-to-write 3</h1>
+
+<h1>min-slaves-max-lag 10</h1>
+
+<p>#</p>
+
+<h1>Setting one or the other to 0 disables the feature.</h1>
+
+<p>#</p>
+
+<h1>By default min-slaves-to-write is set to 0 (feature disabled) and</h1>
+
+<h1>min-slaves-max-lag is set to 10.</h1>
+
+<p>```</p>
+
+<ul>
+<li><code>min-slaves-to-write</code>: 書き込むために必要な最少接続スレーブ数の設定</li>
+<li><code>min-slaves-max-lag</code>: 書き込むために必要な最大タイムラグの設定</li>
+</ul>
+
+
+<h4>セキュリティ関連の設定</h4>
+
+<p>セキュリティ面で設定が必要な場合に活用します。</p>
+
+<h5>認証パスワードの設定</h5>
+
+<p>クライアントからコマンドを叩かれる前にパスワードを要求することでセキュリティを高めます。<br/>
+クライアントからRedisに対して直接コマンドを叩くケースがある場合は設定しておきましょう。</p>
+
+<p>```javascript</p>
+
+<h1>Require clients to issue AUTH <PASSWORD> before processing any other</h1>
+
+<h1>commands.  This might be useful in environments in which you do not trust</h1>
+
+<h1>others with access to the host running redis-server.</h1>
+
+<p>#</p>
+
+<h1>This should stay commented out for backward compatibility and because most</h1>
+
+<h1>people do not need auth (e.g. they run their own servers).</h1>
+
+<p>#</p>
+
+<h1>Warning: since Redis is pretty fast an outside user can try up to</h1>
+
+<h1>150k passwords per second against a good box. This means that you should</h1>
+
+<h1>use a very strong password otherwise it will be very easy to break.</h1>
+
+<p>#</p>
+
+<h1>requirepass foobared</h1>
+
+<p>```</p>
+
+<h5>コマンド名の変更</h5>
+
+<p><code>slave-read-only</code>で少し触れましたが、<code>CONFIG</code>コマンドを直接クライアントから叩かれたりすると困るかもしれません。<br/>
+そういったケースが想定される場合は設定しておきましょう。</p>
+
+<p>```javascript</p>
+
+<h1>Command renaming.</h1>
+
+<p>#</p>
+
+<h1>It is possible to change the name of dangerous commands in a shared</h1>
+
+<h1>environment. For instance the CONFIG command may be renamed into something</h1>
+
+<h1>hard to guess so that it will still be available for internal-use tools</h1>
+
+<h1>but not available for general clients.</h1>
+
+<p>#</p>
+
+<h1>Example:</h1>
+
+<p>#</p>
+
+<h1>rename-command CONFIG b840fc02d524045429941cc15f59e41cb7be6c52</h1>
+
+<p>#</p>
+
+<h1>It is also possible to completely kill a command by renaming it into</h1>
+
+<h1>an empty string:</h1>
+
+<p>#</p>
+
+<h1>rename-command CONFIG &ldquo;&rdquo;</h1>
+
+<p>#</p>
+
+<h1>Please note that changing the name of commands that are logged into the</h1>
+
+<h1>AOF file or transmitted to slaves may cause problems.</h1>
+
+<p>```</p>
+
+<h4>リソース制限に関する設定</h4>
+
+<p>サーバはリソースが限られているため、利用ケースに合わせてリソース制限を適切に設定することが必要です。</p>
+
+<h5>最大同時接続クライアント数の設定</h5>
+
+<p>デフォルト<code>10000</code>ですが、実際にはRedis Serverの予約数である<code>32</code>がそこから引かれます。<br/>
+もし、設定した同時接続数を超えた場合はエラーを返却します。</p>
+
+<p>```javascript</p>
+
+<h1>Set the max number of connected clients at the same time. By default</h1>
+
+<h1>this limit is set to 10000 clients, however if the Redis server is not</h1>
+
+<h1>able to configure the process file limit to allow for the specified limit</h1>
+
+<h1>the max number of allowed clients is set to the current file limit</h1>
+
+<h1>minus 32 (as Redis reserves a few file descriptors for internal uses).</h1>
+
+<p>#</p>
+
+<h1>Once the limit is reached Redis will close all the new connections sending</h1>
+
+<h1>an error &lsquo;max number of clients reached&rsquo;.</h1>
+
+<p>#</p>
+
+<h1>maxclients 10000</h1>
+
+<p>```</p>
+
+<h5>利用するメモリ上限の設定</h5>
+
+<p>指定した分までメモリを利用します。<br/>
+デフォルトはコメントアウトされているため、システム上限までメモリを利用できます。<br/>
+上限までメモリを利用した場合の挙動については<code>maxmemory-policy</code>で指定します。</p>
+
+<p>```javascript</p>
+
+<h1>Don‘t use more memory than the specified amount of bytes.</h1>
+
+<h1>When the memory limit is reached Redis will try to remove keys</h1>
+
+<h1>according to the eviction policy selected (see maxmemory-policy).</h1>
+
+<p>#</p>
+
+<h1>If Redis can‘t remove keys according to the policy, or if the policy is</h1>
+
+<h1>set to &lsquo;noeviction&rsquo;, Redis will start to reply with errors to commands</h1>
+
+<h1>that would use more memory, like SET, LPUSH, and so on, and will continue</h1>
+
+<h1>to reply to read-only commands like GET.</h1>
+
+<p>#</p>
+
+<h1>This option is usually useful when using Redis as an LRU cache, or to set</h1>
+
+<h1>a hard memory limit for an instance (using the &lsquo;noeviction&rsquo; policy).</h1>
+
+<p>#</p>
+
+<h1>WARNING: If you have slaves attached to an instance with maxmemory on,</h1>
+
+<h1>the size of the output buffers needed to feed the slaves are subtracted</h1>
+
+<h1>from the used memory count, so that network problems / resyncs will</h1>
+
+<h1>not trigger a loop where keys are evicted, and in turn the output</h1>
+
+<h1>buffer of slaves is full with DELs of keys evicted triggering the deletion</h1>
+
+<h1>of more keys, and so forth until the database is completely emptied.</h1>
+
+<p>#</p>
+
+<h1>In short&hellip; if you have slaves attached it is suggested that you set a lower</h1>
+
+<h1>limit for maxmemory so that there is some free RAM on the system for slave</h1>
+
+<h1>output buffers (but this is not needed if the policy is &lsquo;noeviction&rsquo;).</h1>
+
+<p>#</p>
+
+<h1>maxmemory <bytes></h1>
+
+<p>```</p>
+
+<h5>許容メモリ利用上限に達した場合の挙動の設定</h5>
+
+<p>幾つか用意されたポリシーの中から挙動を選択します。</p>
+
+<p>```javascript</p>
+
+<h1>MAXMEMORY POLICY: how Redis will select what to remove when maxmemory</h1>
+
+<h1>is reached. You can select among five behaviors:</h1>
+
+<p>#</p>
+
+<h1>volatile-lru &ndash;> remove the key with an expire set using an LRU algorithm</h1>
+
+<h1>allkeys-lru &ndash;> remove any key accordingly to the LRU algorithm</h1>
+
+<h1>volatile-random &ndash;> remove a random key with an expire set</h1>
+
+<h1>allkeys-random &ndash;> remove a random key, any key</h1>
+
+<h1>volatile-ttl &ndash;> remove the key with the nearest expire time (minor TTL)</h1>
+
+<h1>noeviction &ndash;> don‘t expire at all, just return an error on write operations</h1>
+
+<p>#</p>
+
+<h1>Note: with any of the above policies, Redis will return an error on write</h1>
+
+<h1>operations, when there are not suitable keys for eviction.</h1>
+
+<p>#</p>
+
+<h1>At the date of writing this commands are: set setnx setex append</h1>
+
+<h1>incr decr rpush lpush rpushx lpushx linsert lset rpoplpush sadd</h1>
+
+<h1>sinter sinterstore sunion sunionstore sdiff sdiffstore zadd zincrby</h1>
+
+<h1>zunionstore zinterstore hset hsetnx hmset hincrby incrby decrby</h1>
+
+<h1>getset mset msetnx exec sort</h1>
+
+<p>#</p>
+
+<h1>The default is:</h1>
+
+<p>#</p>
+
+<h1>maxmemory-policy volatile-lru</h1>
+
+<p>```</p>
+
+<ul>
+<li><code>volatile-lru</code>: LRUアルゴリズムに基づき、期限切れ<code>key</code>を削除</li>
+<li><code>allkeys-lru</code>: LRUアルゴリズムに基づき、期限に関係なく<code>key</code>を削除</li>
+<li><code>volatile-random</code>: 期限切れ<code>key</code>をランダム削除</li>
+<li><code>allkeys-random</code>: 全ての<code>key</code>を対象にランダム削除</li>
+<li><code>volatile-ttl</code>: 期限切れの中でも最も古い<code>key</code>から順に削除</li>
+<li><code>noeviction</code>: <code>key</code>に期限切れが存在しないため、上限以上の書き込みに対してはエラーを返却する</li>
+</ul>
+
+
+<p>LRUアルゴリズムについては<a href="https://ja.wikipedia.org/wiki/Least_Recently_Used">Least Recently Used &ndash; Wikipedia</a>を読みましょう。</p>
+
+<h5>近似LRUアルゴリズムの精緻設定</h5>
+
+<p>先程LRUアルゴリズムを利用する設定があることに触れましたが、Redisではメモリ消費を抑えるために正確なLRUアルゴリズムを採用してはいません。<br/>
+代替手段で近似的LRUアルゴリズムを実現しているのですが、その精緻をサンプラーの数を設定することで自由度高く決めることができます。</p>
+
+<p>```javascript</p>
+
+<h1>LRU and minimal TTL algorithms are not precise algorithms but approximated</h1>
+
+<h1>algorithms (in order to save memory), so you can select as well the sample</h1>
+
+<h1>size to check. For instance for default Redis will check three keys and</h1>
+
+<h1>pick the one that was used less recently, you can change the sample size</h1>
+
+<h1>using the following configuration directive.</h1>
+
+<p>#</p>
+
+<h1>maxmemory-samples 3</h1>
+
+<p>```</p>
+
+<h4>AOFに関する設定</h4>
+
+<p>AOFとは<code>Append Only File</code>の略語で追記専用ファイルを利用することによるデータ永続化を目指す設定です。</p>
+
+<h5>AOFの利用設定</h5>
+
+<p>AOFの利用可否を設定します。もちろん<code>yes</code>にすればAOFが利用できます。</p>
+
+<p>```javascript</p>
+
+<h1>By default Redis asynchronously dumps the dataset on disk. This mode is</h1>
+
+<h1>good enough in many applications, but an issue with the Redis process or</h1>
+
+<h1>a power outage may result into a few minutes of writes lost (depending on</h1>
+
+<h1>the configured save points).</h1>
+
+<p>#</p>
+
+<h1>The Append Only File is an alternative persistence mode that provides</h1>
+
+<h1>much better durability. For instance using the default data fsync policy</h1>
+
+<h1>(see later in the config file) Redis can lose just one second of writes in a</h1>
+
+<h1>dramatic event like a server power outage, or a single write if something</h1>
+
+<h1>wrong with the Redis process itself happens, but the operating system is</h1>
+
+<h1>still running correctly.</h1>
+
+<p>#</p>
+
+<h1>AOF and RDB persistence can be enabled at the same time without problems.</h1>
+
+<h1>If the AOF is enabled on startup Redis will load the AOF, that is the file</h1>
+
+<h1>with the better durability guarantees.</h1>
+
+<p>#</p>
+
+<h1>Please check <a href="http://redis.io/topics/persistence">http://redis.io/topics/persistence</a> for more information.</h1>
+
+<p>appendonly no
+```</p>
+
+<h5>AOFファイル名の設定</h5>
+
+<p>ファイル名を設定します。</p>
+
+<p>```javascript</p>
+
+<h1>The name of the append only file (default: &ldquo;appendonly.aof&rdquo;)</h1>
+
+<p>appendfilename &ldquo;appendonly.aof&rdquo;
+```</p>
+
+<h5>AOFへの同期タイミングの設定</h5>
+
+<p>Redisには3つのモードが存在します。</p>
+
+<ul>
+<li><code>no</code>: <code>fsync</code>を利用せずOSに全てを任せます。高速です。</li>
+<li><code>always</code>: 追記専用ログへの書き込み発生する際に必ず<code>fsync</code>を実行します。遅いですが安全です。</li>
+<li><code>everysec</code>: 毎秒ごとに<code>fsync</code>を実行します。</li>
+</ul>
+
+
+<p>```javascript</p>
+
+<h1>The fsync() call tells the Operating System to actually write data on disk</h1>
+
+<h1>instead to wait for more data in the output buffer. Some OS will really flush</h1>
+
+<h1>data on disk, some other OS will just try to do it ASAP.</h1>
+
+<p>#</p>
+
+<h1>Redis supports three different modes:</h1>
+
+<p>#</p>
+
+<h1>no: don‘t fsync, just let the OS flush the data when it wants. Faster.</h1>
+
+<h1>always: fsync after every write to the append only log . Slow, Safest.</h1>
+
+<h1>everysec: fsync only one time every second. Compromise.</h1>
+
+<p>#</p>
+
+<h1>The default is &ldquo;everysec&rdquo;, as that‘s usually the right compromise between</h1>
+
+<h1>speed and data safety. It‘s up to you to understand if you can relax this to</h1>
+
+<h1>&ldquo;no&rdquo; that will let the operating system flush the output buffer when</h1>
+
+<h1>it wants, for better performances (but if you can live with the idea of</h1>
+
+<h1>some data loss consider the default persistence mode that‘s snapshotting),</h1>
+
+<h1>or on the contrary, use &ldquo;always&rdquo; that‘s very slow but a bit safer than</h1>
+
+<h1>everysec.</h1>
+
+<p>#</p>
+
+<h1>More details please check the following article:</h1>
+
+<h1><a href="http://antirez.com/post/redis-persistence-demystified.html">http://antirez.com/post/redis-persistence-demystified.html</a></h1>
+
+<p>#</p>
+
+<h1>If unsure, use &ldquo;everysec&rdquo;.</h1>
+
+<h1>appendfsync always</h1>
+
+<p>appendfsync everysec</p>
+
+<h1>appendfsync no</h1>
+
+<p>```</p>
+
+<p>デフォルトは<code>everysec</code>が設定されています。</p>
+
+<h5>ディスクI/O遅延に対する設定</h5>
+
+<p><code>save</code>プロセスがディスクに対して大量のI/Oを発生させていた場合、<code>fsync</code>呼び出し時にRedisが長時間ブロックする可能性があります。<br/>
+バックグラウンドプロセスで<code>save</code>が動いている場合は<code>fsync</code>を止めるように設定することで、この問題を回避することができます。<br/>
+(<code>no-appendfsync-on-rewrite</code>は文字通りそういった意味ですね。)</p>
+
+<p>```javascript</p>
+
+<h1>When the AOF fsync policy is set to always or everysec, and a background</h1>
+
+<h1>saving process (a background save or AOF log background rewriting) is</h1>
+
+<h1>performing a lot of I/O against the disk, in some Linux configurations</h1>
+
+<h1>Redis may block too long on the fsync() call. Note that there is no fix for</h1>
+
+<h1>this currently, as even performing fsync in a different thread will block</h1>
+
+<h1>our synchronous write(2) call.</h1>
+
+<p>#</p>
+
+<h1>In order to mitigate this problem it‘s possible to use the following option</h1>
+
+<h1>that will prevent fsync() from being called in the main process while a</h1>
+
+<h1>BGSAVE or BGREWRITEAOF is in progress.</h1>
+
+<p>#</p>
+
+<h1>This means that while another child is saving, the durability of Redis is</h1>
+
+<h1>the same as &ldquo;appendfsync none&rdquo;. In practical terms, this means that it is</h1>
+
+<h1>possible to lose up to 30 seconds of log in the worst scenario (with the</h1>
+
+<h1>default Linux settings).</h1>
+
+<p>#</p>
+
+<h1>If you have latency problems turn this to &ldquo;yes&rdquo;. Otherwise leave it as</h1>
+
+<h1>&ldquo;no&rdquo; that is the safest pick from the point of view of durability.</h1>
+
+<p>no-appendfsync-on-rewrite no
+```</p>
+
+<ul>
+<li><code>yes</code>: バックグランドプロセスで<code>save</code>が動いていたら<code>fsync</code>しない</li>
+<li><code>no</code>: 上記縛りを設定しない</li>
+</ul>
+
+
+<h5>AOFのログファイル自動書き換え設定</h5>
+
+<p>AOFファイルサイズが肥大したときに対処するための基準を設定します。</p>
+
+<p>```javascript</p>
+
+<h1>Automatic rewrite of the append only file.</h1>
+
+<h1>Redis is able to automatically rewrite the log file implicitly calling</h1>
+
+<h1>BGREWRITEAOF when the AOF log size grows by the specified percentage.</h1>
+
+<p>#</p>
+
+<h1>This is how it works: Redis remembers the size of the AOF file after the</h1>
+
+<h1>latest rewrite (if no rewrite has happened since the restart, the size of</h1>
+
+<h1>the AOF at startup is used).</h1>
+
+<p>#</p>
+
+<h1>This base size is compared to the current size. If the current size is</h1>
+
+<h1>bigger than the specified percentage, the rewrite is triggered. Also</h1>
+
+<h1>you need to specify a minimal size for the AOF file to be rewritten, this</h1>
+
+<h1>is useful to avoid rewriting the AOF file even if the percentage increase</h1>
+
+<h1>is reached but it is still pretty small.</h1>
+
+<p>#</p>
+
+<h1>Specify a percentage of zero in order to disable the automatic AOF</h1>
+
+<h1>rewrite feature.</h1>
+
+<p>auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+```</p>
+
+<ul>
+<li><code>auto-aof-rewrite-percentage</code>: 書き換えを発生させるファイルサイズの基準</li>
+<li><code>auto-aof-rewrite-min-size</code>: ここで指定したファイルサイズ以内であれば書き換えを実行しません</li>
+</ul>
+
+
+<h4>LUAスクリプトに関する設定</h4>
+
+<p>LUAスクリプトを実行する場合に必要な設定です。<br/>
+と言っても最大実行時間しかありません。</p>
+
+<p>```javascript</p>
+
+<h1>Max execution time of a Lua script in milliseconds.</h1>
+
+<p>#</p>
+
+<h1>If the maximum execution time is reached Redis will log that a script is</h1>
+
+<h1>still in execution after the maximum allowed time and will start to</h1>
+
+<h1>reply to queries with an error.</h1>
+
+<p>#</p>
+
+<h1>When a long running script exceed the maximum execution time only the</h1>
+
+<h1>SCRIPT KILL and SHUTDOWN NOSAVE commands are available. The first can be</h1>
+
+<h1>used to stop a script that did not yet called write commands. The second</h1>
+
+<h1>is the only way to shut down the server in the case a write commands was</h1>
+
+<h1>already issue by the script but the user don‘t want to wait for the natural</h1>
+
+<h1>termination of the script.</h1>
+
+<p>#</p>
+
+<h1>Set it to 0 or a negative value for unlimited execution without warnings.</h1>
+
+<p>lua-time-limit 5000
+```</p>
+
+<h4>スローログの設定</h4>
+
+<p>サービスレベルに耐えられないスロークエリを事前に検出するための設定です。<br/>
+サービスレベル上、許容できないスロークエリの閾値を指定することで、その閾値を超えたクエリをログファイルに記録します。</p>
+
+<p>```javascript</p>
+
+<h1>The Redis Slow Log is a system to log queries that exceeded a specified</h1>
+
+<h1>execution time. The execution time does not include the I/O operations</h1>
+
+<h1>like talking with the client, sending the reply and so forth,</h1>
+
+<h1>but just the time needed to actually execute the command (this is the only</h1>
+
+<h1>stage of command execution where the thread is blocked and can not serve</h1>
+
+<h1>other requests in the meantime).</h1>
+
+<p>#</p>
+
+<h1>You can configure the slow log with two parameters: one tells Redis</h1>
+
+<h1>what is the execution time, in microseconds, to exceed in order for the</h1>
+
+<h1>command to get logged, and the other parameter is the length of the</h1>
+
+<h1>slow log. When a new command is logged the oldest one is removed from the</h1>
+
+<h1>queue of logged commands.</h1>
+
+<h1>The following time is expressed in microseconds, so 1000000 is equivalent</h1>
+
+<h1>to one second. Note that a negative number disables the slow log, while</h1>
+
+<h1>a value of zero forces the logging of every command.</h1>
+
+<p>slowlog-log-slower-than 10000</p>
+
+<h1>There is no limit to this length. Just be aware that it will consume memory.</h1>
+
+<h1>You can reclaim memory used by the slow log with SLOWLOG RESET.</h1>
+
+<p>slowlog-max-len 128
+```</p>
+
+<ul>
+<li><code>slowlog-log-slower-than</code>: スロークエリとみなす実行時間の閾値。マイクロ秒です。</li>
+<li><code>slowlog-max-len</code>: スロークエリログとして記録する容量の閾値。超えると古い順に削除します。</li>
+</ul>
+
+
+<h4>イベント通知設定</h4>
+
+<p>Pub/Sub利用時に設定するようです。<br/>
+Redisが通知するイベントは幾つかあるのですが、全て1文字で表現されており、<code>notify-keyspace-events</code>に指定することで通知イベントを決定します。</p>
+
+<p>```javascript</p>
+
+<h1>Redis can notify Pub/Sub clients about events happening in the key space.</h1>
+
+<h1>This feature is documented at <a href="http://redis.io/topics/keyspace-events">http://redis.io/topics/keyspace-events</a></h1>
+
+<p>#</p>
+
+<h1>For instance if keyspace events notification is enabled, and a client</h1>
+
+<h1>performs a DEL operation on key &ldquo;foo&rdquo; stored in the Database 0, two</h1>
+
+<h1>messages will be published via Pub/Sub:</h1>
+
+<p>#</p>
+
+<h1>PUBLISH <strong>keyspace@0</strong>:foo del</h1>
+
+<h1>PUBLISH <strong>keyevent@0</strong>:del foo</h1>
+
+<p>#</p>
+
+<h1>It is possible to select the events that Redis will notify among a set</h1>
+
+<h1>of classes. Every class is identified by a single character:</h1>
+
+<p>#</p>
+
+<h1>K     Keyspace events, published with <strong>keyspace@<db></strong> prefix.</h1>
+
+<h1>E     Keyevent events, published with <strong>keyevent@<db></strong> prefix.</h1>
+
+<h1>g     Generic commands (non-type specific) like DEL, EXPIRE, RENAME, &hellip;</h1>
+
+<h1>$     String commands</h1>
+
+<h1>l     List commands</h1>
+
+<h1>s     Set commands</h1>
+
+<h1>h     Hash commands</h1>
+
+<h1>z     Sorted set commands</h1>
+
+<h1>x     Expired events (events generated every time a key expires)</h1>
+
+<h1>e     Evicted events (events generated when a key is evicted for maxmemory)</h1>
+
+<h1>A     Alias for g$lshzxe, so that the &ldquo;AKE&rdquo; string means all the events.</h1>
+
+<p>#</p>
+
+<h1>The &ldquo;notify-keyspace-events&rdquo; takes as argument a string that is composed</h1>
+
+<h1>by zero or multiple characters. The empty string means that notifications</h1>
+
+<h1>are disabled at all.</h1>
+
+<p>#</p>
+
+<h1>Example: to enable list and generic events, from the point of view of the</h1>
+
+<h1>event name, use:</h1>
+
+<p>#</p>
+
+<h1>notify-keyspace-events Elg</h1>
+
+<p>#</p>
+
+<h1>Example 2: to get the stream of the expired keys subscribing to channel</h1>
+
+<h1>name <strong>keyevent@0</strong>:expired use:</h1>
+
+<p>#</p>
+
+<h1>notify-keyspace-events Ex</h1>
+
+<p>#</p>
+
+<h1>By default all notifications are disabled because most users don‘t need</h1>
+
+<h1>this feature and the feature has some overhead. Note that if you don‘t</h1>
+
+<h1>specify at least one of K or E, no events will be delivered.</h1>
+
+<p>notify-keyspace-events &ldquo;&rdquo;
+```</p>
+
+<ul>
+<li><code>AKE</code>: これを設定することで全ての通知タイプに対応します。</li>
+<li><code>空文字</code>: これを設定することで全ての通知を無効にします。</li>
+</ul>
+
+
+<h4>高度な設定</h4>
+
+<p>この辺りが意識して触れるようになったらRedis上級者と見なせるのではないでしょうか。</p>
+
+<h5>Hash型データのメモリ効率設定</h5>
+
+<p>CPUとメモリのトレードオフにはなるのですが、「要素数の上限」と「1要素あたりの上限サイズ」の2つの閾値以内に収まる場合に、非常にメモリ効率の良い方法でエンコードされます。<br/>
+これによりメモリが最大10分の1、平均でも5分の1に抑えられます。</p>
+
+<p>```javascript</p>
+
+<h1>Hashes are encoded using a memory efficient data structure when they have a</h1>
+
+<h1>small number of entries, and the biggest entry does not exceed a given</h1>
+
+<h1>threshold. These thresholds can be configured using the following directives.</h1>
+
+<p>hash-max-ziplist-entries 512
+hash-max-ziplist-value 64
+```</p>
+
+<ul>
+<li><code>hash-max-ziplist-entries</code>: 要素数の上限</li>
+<li><code>hash-max-ziplist-value</code>: 1要素あたりの上限サイズ</li>
+</ul>
+
+
+<h5>List型データのメモリ効率設定</h5>
+
+<p>List型データに対する設定です。(各々の意味はHash型と同じです。)</p>
+
+<p>```javascript</p>
+
+<h1>Similarly to hashes, small lists are also encoded in a special way in order</h1>
+
+<h1>to save a lot of space. The special representation is only used when</h1>
+
+<h1>you are under the following limits:</h1>
+
+<p>list-max-ziplist-entries 512
+list-max-ziplist-value 64
+```</p>
+
+<h5>Set型データのメモリ効率設定</h5>
+
+<p>Set型データに対する設定です。<br/>
+Set型のみ圧縮方式が<code>ziplist</code>ではなく<code>intset</code>であるためか設定項目数が異なります。</p>
+
+<p>```javascript</p>
+
+<h1>Sets have a special encoding in just one case: when a set is composed</h1>
+
+<h1>of just strings that happens to be integers in radix 10 in the range</h1>
+
+<h1>of 64 bit signed integers.</h1>
+
+<h1>The following configuration setting sets the limit in the size of the</h1>
+
+<h1>set in order to use this special memory saving encoding.</h1>
+
+<p>set-max-intset-entries 512
+```</p>
+
+<h5>ZSet型データのメモリ効率設定</h5>
+
+<p>ZSet型データに対する設定です。(各々の意味はHash型と同じです。)</p>
+
+<p>```javascript</p>
+
+<h1>Similarly to hashes and lists, sorted sets are also specially encoded in</h1>
+
+<h1>order to save a lot of space. This encoding is only used when the length and</h1>
+
+<h1>elements of a sorted set are below the following limits:</h1>
+
+<p>zset-max-ziplist-entries 128
+zset-max-ziplist-value 64
+```</p>
+
+<h5>再ハッシュ設定</h5>
+
+<p>これは、『100ミリ秒ごとに1ミリ秒のCPU時間を使用して、Redisのメインのハッシュテーブル(トップレベルのキーと値を保持している)の再ハッシュ化を行う』設定です。<br/>
+<code>yes</code>にすることでメモリが効率的に利用されるようになる一方で最大2ミリ秒間の遅延が発生する可能性があります。<br/>
+この2ミリ秒間の遅延を許容できない場合は<code>no</code>に設定を変更しましょう。</p>
+
+<p>```javascript</p>
+
+<h1>Active rehashing uses 1 millisecond every 100 milliseconds of CPU time in</h1>
+
+<h1>order to help rehashing the main Redis hash table (the one mapping top-level</h1>
+
+<h1>keys to values). The hash table implementation Redis uses (see dict.c)</h1>
+
+<h1>performs a lazy rehashing: the more operation you run into a hash table</h1>
+
+<h1>that is rehashing, the more rehashing &ldquo;steps&rdquo; are performed, so if the</h1>
+
+<h1>server is idle the rehashing is never complete and some more memory is used</h1>
+
+<h1>by the hash table.</h1>
+
+<p>#</p>
+
+<h1>The default is to use this millisecond 10 times every second in order to</h1>
+
+<h1>active rehashing the main dictionaries, freeing memory when possible.</h1>
+
+<p>#</p>
+
+<h1>If unsure:</h1>
+
+<h1>use &ldquo;activerehashing no&rdquo; if you have hard latency requirements and it is</h1>
+
+<h1>not a good thing in your environment that Redis can reply form time to time</h1>
+
+<h1>to queries with 2 milliseconds delay.</h1>
+
+<p>#</p>
+
+<h1>use &ldquo;activerehashing yes&rdquo; if you don‘t have such hard requirements but</h1>
+
+<h1>want to free memory asap when possible.</h1>
+
+<p>activerehashing yes
+```</p>
+
+<p>2ミリ秒の遅延も許せないサービスってあるんだろうか&hellip;と思いつつも。</p>
+
+<h5>クライアントの出力バッファ制限の設定</h5>
+
+<p>指定した値以上に出力バッファが到達するとクライアントとの接続を強制的に切断します。<br/>
+出力バッファが制限値に到達し続けるということは、想定した出力バッファサイズと処理速度を見誤っている可能性があるということです。</p>
+
+<p>```javascript</p>
+
+<h1>The client output buffer limits can be used to force disconnection of clients</h1>
+
+<h1>that are not reading data from the server fast enough for some reason (a</h1>
+
+<h1>common reason is that a Pub/Sub client can‘t consume messages as fast as the</h1>
+
+<h1>publisher can produce them).</h1>
+
+<p>#</p>
+
+<h1>The limit can be set differently for the three different classes of clients:</h1>
+
+<p>#</p>
+
+<h1>normal &ndash;> normal clients</h1>
+
+<h1>slave  &ndash;> slave clients and MONITOR clients</h1>
+
+<h1>pubsub &ndash;> clients subscribed to at least one pubsub channel or pattern</h1>
+
+<p>#</p>
+
+<h1>The syntax of every client-output-buffer-limit directive is the following:</h1>
+
+<p>#</p>
+
+<h1>client-output-buffer-limit <class> <hard limit> <soft limit> <soft seconds></h1>
+
+<p>#</p>
+
+<h1>A client is immediately disconnected once the hard limit is reached, or if</h1>
+
+<h1>the soft limit is reached and remains reached for the specified number of</h1>
+
+<h1>seconds (continuously).</h1>
+
+<h1>So for instance if the hard limit is 32 megabytes and the soft limit is</h1>
+
+<h1>16 megabytes / 10 seconds, the client will get disconnected immediately</h1>
+
+<h1>if the size of the output buffers reach 32 megabytes, but will also get</h1>
+
+<h1>disconnected if the client reaches 16 megabytes and continuously overcomes</h1>
+
+<h1>the limit for 10 seconds.</h1>
+
+<p>#</p>
+
+<h1>By default normal clients are not limited because they don‘t receive data</h1>
+
+<h1>without asking (in a push way), but just after a request, so only</h1>
+
+<h1>asynchronous clients may create a scenario where data is requested faster</h1>
+
+<h1>than it can read.</h1>
+
+<p>#</p>
+
+<h1>Instead there is a default limit for pubsub and slave clients, since</h1>
+
+<h1>subscribers and slaves receive data in a push fashion.</h1>
+
+<p>#</p>
+
+<h1>Both the hard or the soft limit can be disabled by setting them to zero.</h1>
+
+<p>client-output-buffer-limit normal 0 0 0
+client-output-buffer-limit slave 256mb 64mb 60
+client-output-buffer-limit pubsub 32mb 8mb 60
+```</p>
+
+<ul>
+<li><code>client-output-buffer-limit normal 0 0 0</code>
+
+<ul>
+<li>通常クライアントに対する設定</li>
+<li>hard limit / soft limit を0設定して無効化している</li>
+</ul>
+</li>
+<li><code>client-output-buffer-limit slave 256mb 64mb 60</code>
+
+<ul>
+<li>スレーブクライアントに対する設定</li>
+<li>hard limitが256mbなので、256MBに到達した時点で即時切断します</li>
+<li>soft limitが64mb, soft secondsが60なので、出力バッファが60秒間64MBに到達し続けた場合に切断します</li>
+<li>ここはレプリケーション設定にも関わってくるため設定値は考えてつける必要があります</li>
+</ul>
+</li>
+<li><code>client-output-buffer-limit pubsub 32mb 8mb 60</code>
+
+<ul>
+<li>Pub/Sub(購読)クライアントに対する設定</li>
+<li>hard limitが32mbなので、32MBに到達した時点で即時切断します</li>
+<li>soft limitが8mb, soft secondsが60なので、出力バッファが60秒間8MBに到達し続けた場合に切断します</li>
+</ul>
+</li>
+</ul>
+
+
+<h5>バックグラウンド処理の頻度に関する設定</h5>
+
+<p>Redisはバックグランドタスクとして、タイムアウトしたクライアントとのコネクションの切断 / 期限切れキーの削除などを実施しています。<br/>
+その頻度を<code>hz</code>の値によって決めています。<br/>
+基本的に推奨値は<code>10</code>なので変更することは少ないと思われます。<br/>
+低レイテンシを厳しく求められる環境でのみ<code>100</code>を設定しても良いでしょう。</p>
+
+<p>```javascript</p>
+
+<h1>Redis calls an internal function to perform many background tasks, like</h1>
+
+<h1>closing connections of clients in timeout, purging expired keys that are</h1>
+
+<h1>never requested, and so forth.</h1>
+
+<p>#</p>
+
+<h1>Not all tasks are performed with the same frequency, but Redis checks for</h1>
+
+<h1>tasks to perform accordingly to the specified &ldquo;hz&rdquo; value.</h1>
+
+<p>#</p>
+
+<h1>By default &ldquo;hz&rdquo; is set to 10. Raising the value will use more CPU when</h1>
+
+<h1>Redis is idle, but at the same time will make Redis more responsive when</h1>
+
+<h1>there are many keys expiring at the same time, and timeouts may be</h1>
+
+<h1>handled with more precision.</h1>
+
+<p>#</p>
+
+<h1>The range is between 1 and 500, however a value over 100 is usually not</h1>
+
+<h1>a good idea. Most users should use the default of 10 and raise this up to</h1>
+
+<h1>100 only in environments where very low latency is required.</h1>
+
+<p>hz 10
+```</p>
+
+<h5>AOF書き換え時のfsyncの設定</h5>
+
+<p><code>yes</code>を設定することで、32MBごとにfsyncを実行するようになります。<br/>
+これによりファイルをディスクに書き込む際に、大きな遅延スパイクが発生するのを避けることができます。</p>
+
+<p>```javascript</p>
+
+<h1>When a child rewrites the AOF file, if the following option is enabled</h1>
+
+<h1>the file will be fsync-ed every 32 MB of data generated. This is useful</h1>
+
+<h1>in order to commit the file to the disk more incrementally and avoid</h1>
+
+<h1>big latency spikes.</h1>
+
+<p>aof-rewrite-incremental-fsync yes
+```</p>
+
+<h3>まとめ</h3>
+
+<p>細かな設定の棚卸しをしてみたものの、かなりしんどかったです&hellip;<br/>
+運用してみないと想像がつかない設定も多く、この辺りは本当に実務でしか経験を養えないのだと痛感しました。<br/>
+しかし、各々の意味を理解しておくことは決して無駄ではないと思うので、勉強になったかなと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<h3>参考</h3>
+
+<ul>
+<li><a href="http://redis-documentasion-japanese.readthedocs.io/ja/latest/topics/replication.html">Redis Documentation レプリケーション</a></li>
+<li><a href="http://redis-documentasion-japanese.readthedocs.io/ja/latest/topics/lru-cache.html">Redis Documentation LRUキャッシュ</a></li>
+<li><a href="http://redis-documentasion-japanese.readthedocs.io/ja/latest/topics/notifications.html">Redis Documentation キー・スペース通知</a></li>
+<li><a href="http://redis-documentasion-japanese.readthedocs.io/ja/latest/topics/memory-optimization.html">Redis Documentation メモリ最適化</a></li>
+<li><a href="http://t-cyrill.hatenablog.jp/entry/2016/12/11/224604">真剣にRedisを使ってみようという気持ちになったのでRedisについて知っていることを書く</a></li>
+<li><a href="http://qiita.com/eccyan/items/e8cc56948a00d6aad0aa">Redis のメモリが足りなくなった時にどうやってチューニングしたか</a></li>
+<li><a href="http://mocobeta-backup.tumblr.com/post/84793291682/redis-set">Redisのメモリ使用量削減</a></li>
+<li><a href="http://tech.guitarrapc.com/entry/2013/08/02/210858">EC2など 高負荷クラウド環境における Redis のチューニングについて</a></li>
+<li><a href="http://redis.shibu.jp/admin/config.html">redis 2.0.3 documentation</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
