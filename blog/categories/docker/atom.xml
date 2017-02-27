@@ -4,7 +4,7 @@
   <title><![CDATA[Category: docker | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/docker/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-02-26T19:35:41+09:00</updated>
+  <updated>2017-02-28T00:40:52+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -14,7 +14,749 @@
 
   
   <entry>
-    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuでRedis設定を試してみよう！]]></title>
+    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuでMariaDBを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/26/docker-for-mac-5/"/>
+    <updated>2017-02-26T22:38:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/26/docker-for-mac-5</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、Redisに引き続き<a href="https://mariadb.org/">MariaDB</a>をDockerコンテナ内のUbuntuにインストールしてみたいと思います。<br/>
+今回扱う環境は以下です。</p>
+
+<ul>
+<li>Ubuntu: 16.04.2 LTS</li>
+<li>MariaDB: Ver 15.1 Distrib 10.0.29-MariaDB, for debian-linux-gnu (x86_64) using readline 5.2</li>
+</ul>
+
+
+<p>では早速インストール方法から見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>MariaDBのインストール</h3>
+
+<p>これまで通りで非常に簡単です。</p>
+
+<p>```javascript
+// 念のためapt-getをupdate &amp;&amp; upgrade
+$ apt-get update
+$ apt-get upgrade</p>
+
+<p>// MariaDBのインストール
+$ apt-get install mariadb-server</p>
+
+<p>// MariaDBがインストールされたことの確認
+// /etc配下にmysqlフォルダがある
+$ cd /etc
+$ cd ls
+```</p>
+
+<h3>MariaDBの初期設定</h3>
+
+<p>インストール後の初期設定手順を書きます。</p>
+
+<p>```javascript
+$ mysql_secure_installation
+NOTE: RUNNING ALL PARTS OF THIS SCRIPT IS RECOMMENDED FOR ALL MariaDB</p>
+
+<pre><code>  SERVERS IN PRODUCTION USE!  PLEASE READ EACH STEP CAREFULLY!
+</code></pre>
+
+<p>In order to log into MariaDB to secure it, we‘ll need the current
+password for the root user.  If you‘ve just installed MariaDB, and
+you haven‘t set the root password yet, the password will be blank,
+so you should just press enter here.</p>
+
+<p>// rootユーザのパスワードを設定しましょう！
+Enter current password for root (enter for none):
+OK, successfully used password, moving on&hellip;</p>
+
+<p>Setting the root password ensures that nobody can log into the MariaDB
+root user without the proper authorisation.</p>
+
+<p>You already have a root password set, so you can safely answer &lsquo;n&rsquo;.</p>
+
+<p>// rootユーザのパスワードを変更しますか？(既に設定したので &ldquo;n&rdquo; を入力)
+Change the root password? [Y/n] n
+ &hellip; skipping.</p>
+
+<p>By default, a MariaDB installation has an anonymous user, allowing anyone
+to log into MariaDB without having to have a user account created for
+them.  This is intended only for testing, and to make the installation
+go a bit smoother.  You should remove them before moving into a
+production environment.</p>
+
+<p>// 匿名ユーザを削除しますか？
+Remove anonymous users? [Y/n] y
+ &hellip; Success!</p>
+
+<p>Normally, root should only be allowed to connect from &lsquo;localhost&rsquo;.  This
+ensures that someone cannot guess at the root password from the network.</p>
+
+<p>// リモートでrootによるログインを許可しますか？
+Disallow root login remotely? [Y/n] y
+ &hellip; Success!</p>
+
+<p>By default, MariaDB comes with a database named &lsquo;test&rsquo; that anyone can
+access.  This is also intended only for testing, and should be removed
+before moving into a production environment.</p>
+
+<p>// test用のデータベースを削除しますか？
+Remove test database and access to it? [Y/n] y
+ &ndash; Dropping test database&hellip;
+ &hellip; Success!
+ &ndash; Removing privileges on test database&hellip;
+ &hellip; Success!</p>
+
+<p>Reloading the privilege tables will ensure that all changes made so far
+will take effect immediately.</p>
+
+<p>// テーブルへの特権情報をリロードしますか？(上記までの変更を即時反映させるため &ldquo;y&rdquo; を選択)
+Reload privilege tables now? [Y/n] y
+ &hellip; Success!</p>
+
+<p>Cleaning up&hellip;</p>
+
+<p>All done!  If you‘ve completed all of the above steps, your MariaDB
+installation should now be secure.</p>
+
+<p>Thanks for using MariaDB!
+```</p>
+
+<h3>MariaDBにユーザを追加</h3>
+
+<p>流石にrootユーザだけだと何なので、メインで利用するユーザを作成しましょう。</p>
+
+<p><code>javascript
+// MariaDBにログイン
+$ mysql -u root -p
+// ユーザを作成
+MariaDB [(none)]&gt; create user 'takahiro'@'localhost' identified by 'password';
+// ユーザの一覧を確認
+MariaDB [(none)]&gt; select Host, User, Password from mysql.user;
++-----------+----------+-------------------------------------------+
+| Host      | User     | Password                                  |
++-----------+----------+-------------------------------------------+
+| localhost | root     |                                           |
+| localhost | takahiro | ***************************************** |
++-----------+----------+-------------------------------------------+
+</code></p>
+
+<h3>MariaDBの設定ファイル</h3>
+
+<p>さてさて、続いてMariaDBのデフォルトの設定ファイルを見ていきます。</p>
+
+<p>設定ファイルがたくさんあることで混乱しそうになりますが、1つ1つはあまり何も書いていません。<br/>
+構造を見てみると&hellip;</p>
+
+<p><code>javascript
+mysql
+├── conf.d
+│    ├── mysql.cnf
+│    └── mysqldump.cnf
+├── debian-start
+├── debian.cnf
+├── mariadb.cnf
+├── mariadb.conf.d
+│    ├── 50-client.cnf
+│    ├── 50-mysql-clients.cnf
+│    ├── 50-mysqld_safe.cnf
+│    └── 50-server.cnf
+├── my.cnf
+└── my.cnf.fallback
+</code></p>
+
+<p>となっています。<br/>
+それぞれの大まかな意図は<code>mariadb.cnf</code>に書かれています。</p>
+
+<h5>mariadb.cnf</h5>
+
+<p>このファイルには下記のように書かれています。</p>
+
+<p>```javascript</p>
+
+<h1>The MariaDB configuration file</h1>
+
+<p>#</p>
+
+<h1>The MariaDB/MySQL tools read configuration files in the following order:</h1>
+
+<h1>1. &ldquo;/etc/mysql/mariadb.cnf&rdquo; (this file) to set global defaults,</h1>
+
+<h1>2. &ldquo;/etc/mysql/conf.d/*.cnf&rdquo; to set global options.</h1>
+
+<h1>3. &ldquo;/etc/mysql/mariadb.conf.d/*.cnf&rdquo; to set MariaDB-only options.</h1>
+
+<h1>4. &ldquo;~/.my.cnf&rdquo; to set user-specific options.</h1>
+
+<p>#</p>
+
+<h1>If the same option is defined multiple times, the last one will apply.</h1>
+
+<p>#</p>
+
+<h1>One can use all long options that the program supports.</h1>
+
+<h1>Run program with &mdash;help to get a list of available options and with</h1>
+
+<h1>&mdash;print-defaults to see which it would actually understand and use.</h1>
+
+<p>#</p>
+
+<h1>This group is read both both by the client and the server</h1>
+
+<h1>use it for options that affect everything</h1>
+
+<p>#
+[client-server]</p>
+
+<h1>Import all .cnf files from configuration directory</h1>
+
+<p>!includedir /etc/mysql/conf.d/
+!includedir /etc/mysql/mariadb.conf.d/
+```</p>
+
+<p>ここに書かれている通り、</p>
+
+<ol>
+<li><code>/etc/mysql/mariadb.cnf</code>: グローバル設定を書く</li>
+<li><code>/etc/mysql/conf.d/*.cnf</code>: グローバルオプション設定を書く</li>
+<li><code>/etc/mysql/mariadb.conf.d/*.cnf</code>: MariaDBにのみ有効なオプション設定を書く</li>
+<li><code>~/.my.cnf</code>: ユーザ固有のオプション設定を書く</li>
+</ol>
+
+
+<p>というフォルダ構成になっているようです。</p>
+
+<p>また、<code>[client-server]</code>を設定することでMariaDBクライアントとMariaDBサーバの両方から読み込まれる設定ファイルとして定義しています。<br/>
+筆者が少し引っかかったのは<code>!includedir</code>構文です。<br/>
+これは指定したファイルのインクルードを実行する構文です。<br/>
+(<code>!</code>がついているのでインクルードしないのかと思いきや、これでインクルートなんですね&hellip;)</p>
+
+<h5>conf.d/mysql.cnf</h5>
+
+<p>下記しか書かれていません&hellip;<br/>
+MySQLクライアントに有効な設定を書くことを想定している書き方に見えますね。</p>
+
+<p><code>javascript
+[mysql]
+</code></p>
+
+<h5>conf.d/mysqldump.cnf</h5>
+
+<p>名前からして<code>mysqldump</code>に関する設定ですね。</p>
+
+<p><code>javascript
+[mysqldump]
+quick
+quote-names
+max_allowed_packet      = 16M
+</code></p>
+
+<ul>
+<li><code>quick</code>: テーブルを1行ずつDumpする設定</li>
+<li><code>quote-names</code>: 識別子を逆引用符文字で囲む</li>
+<li><code>max_allowed_packet</code>: サーバーとの間で送受信するパケットの最大長</li>
+</ul>
+
+
+<h5>mariadb.conf.d/50-client.cnf</h5>
+
+<p>```javascript
+#</p>
+
+<h1>This group is read by the client library</h1>
+
+<h1>Use it for options that affect all clients, but not the server</h1>
+
+<p>#</p>
+
+<p>[client]</p>
+
+<h1>Default is Latin1, if you need UTF-8 set this (also in server section)</h1>
+
+<p>default-character-set = utf8mb4</p>
+
+<h1>This group is <em>never</em> read by mysql client library, though this</h1>
+
+<h1>/etc/mysql/mariadb.cnf.d/client.cnf file is not read by Oracle MySQL</h1>
+
+<h1>client anyway.</h1>
+
+<h1>If you use the same .cnf file for MySQL and MariaDB,</h1>
+
+<h1>use it for MariaDB-only client options</h1>
+
+<p>[client-mariadb]
+```</p>
+
+<p>MySQL / MariaDBクライアント側のデフォルトの文字コードが<code>utf8mb4</code>と設定されています。<br/>
+また、MariaDBクライアントのみ設定を追加したい場合は<code>[client-mariadb]</code>より下の行にオプション設定を書きましょう。</p>
+
+<h5>mariadb.conf.d/50-mysql-clients.cnf</h5>
+
+<p>```javascript
+#</p>
+
+<h1>These groups are read by MariaDB command-line tools</h1>
+
+<h1>Use it for options that affect only one utility</h1>
+
+<p>#</p>
+
+<p>[mysql]</p>
+
+<h1>Default is Latin1, if you need UTF-8 set this (also in server section)</h1>
+
+<p>default-character-set = utf8mb4</p>
+
+<p>[mysql_upgrade]</p>
+
+<p>[mysqladmin]</p>
+
+<p>[mysqlbinlog]</p>
+
+<p>[mysqlcheck]</p>
+
+<p>[mysqldump]</p>
+
+<p>[mysqlimport]</p>
+
+<p>[mysqlshow]</p>
+
+<p>[mysqlslap]
+```</p>
+
+<p>MySQLクライアント側のデフォルト文字コードは<code>utf8mb4</code>で設定されています。<br/>
+他にもMySQL関連の設定を追加できるようですが、デフォルトでは何も書かれていませんでした。<br/>
+一応、それぞれについて簡単に説明しておきます。</p>
+
+<ul>
+<li><code>mysqladmin</code>
+
+<ul>
+<li>MySQLサーバの管理を行うクライアント</li>
+<li>サーバーの構成や現在のステータスの確認、データベースの作成および削除、およびその他の用途に使用</li>
+</ul>
+</li>
+<li><code>mysqlbinlog</code>
+
+<ul>
+<li>MySQLのバイナリログの内容を確認</li>
+</ul>
+</li>
+<li><code>mysqlcheck</code>
+
+<ul>
+<li>テーブルの保守 (テーブルの検査、修復、最適化、分析) を実行</li>
+</ul>
+</li>
+<li><code>mysqldump</code>
+
+<ul>
+<li>MySQLデータのバックアップを実行</li>
+</ul>
+</li>
+<li><code>mysqlimport</code>
+
+<ul>
+<li>LOAD DATA INFILE SQL ステートメントにコマンド行インタフェースを提供</li>
+<li>ファイルをテーブルにインポート</li>
+</ul>
+</li>
+<li><code>mysqlshow</code>
+
+<ul>
+<li>データベース / テーブル / テーブルのカラム / インデックスの存在迅速に確認するために使用</li>
+</ul>
+</li>
+<li><code>mysqlslap</code>
+
+<ul>
+<li>MySQL サーバーのクライアント負荷をエミュレートし、各段階のタイミングをレポートする</li>
+</ul>
+</li>
+</ul>
+
+
+<h5>mariadb.conf.d/50-mysqld_safe.cnf</h5>
+
+<p>エラー発生時の再起動やランタイム情報のエラーログファイルへのロギングなど、いくつかの安全機能を追加するために設定します。</p>
+
+<p>```javascript
+[mysqld_safe]</p>
+
+<h1>This will be passed to all mysql clients</h1>
+
+<h1>It has been reported that passwords should be enclosed with ticks/quotes</h1>
+
+<h1>escpecially if they contain &ldquo;#&rdquo; chars&hellip;</h1>
+
+<h1>Remember to edit /etc/mysql/debian.cnf when changing the socket location.</h1>
+
+<p>socket          = /var/run/mysqld/mysqld.sock
+nice            = 0
+skip_log_error
+syslog
+```</p>
+
+<ul>
+<li><code>socket</code>: Unixドメインソケット接続を待機するソケットファイル</li>
+<li><code>nice</code>: サーバのスケジュール設定の優先順位を設定するために利用します</li>
+<li><code>skip_log_error</code>: エラーログの出力をスキップする設定</li>
+<li><code>syslog</code>: エラーメッセージをsyslogに書き込むための設定</li>
+</ul>
+
+
+<h5>mariadb.conf.d/50-server.cnf</h5>
+
+<p>文章の長さからしてMariaDB設定のベースとなります。<br/>
+分割して見ていきます。<br/>
+まずは基本設定です。</p>
+
+<p>```javascript
+#</p>
+
+<h1>These groups are read by MariaDB server.</h1>
+
+<h1>Use it for options that only the server (but not clients) should see</h1>
+
+<p>#</p>
+
+<h1>See the examples of server my.cnf files in /usr/share/mysql/</h1>
+
+<p>#</p>
+
+<h1>this is read by the standalone daemon and embedded servers</h1>
+
+<p>[server]</p>
+
+<h1>this is only for the mysqld standalone daemon</h1>
+
+<p>[mysqld]</p>
+
+<p>#</p>
+
+<h1>* Basic Settings</h1>
+
+<p>#
+user            = mysql
+pid-file        = /var/run/mysqld/mysqld.pid
+socket          = /var/run/mysqld/mysqld.sock
+port            = 3306
+basedir         = /usr
+datadir         = /var/lib/mysql
+tmpdir          = /tmp
+lc-messages-dir = /usr/share/mysql
+skip-external-locking</p>
+
+<h1>Instead of skip-networking the default is now to listen only on</h1>
+
+<h1>localhost which is more compatible and is not less secure.</h1>
+
+<p>bind-address            = 127.0.0.1
+```</p>
+
+<ul>
+<li><code>user</code>: MariaDBに関連する操作を実行するためのユーザを設定します</li>
+<li><code>pid-file</code>: PIDファイルの指定先です</li>
+<li><code>socket</code>: Unixドメインソケット接続を待機するソケットファイル</li>
+<li><code>port</code>: 接続するためのポート番号です</li>
+<li><code>basedir</code>: MariaDBのインストールディレクトリ</li>
+<li><code>datadir</code>: MariaDBのデータベースに関するファイルが格納されるディレクトリ</li>
+<li><code>tmpdir</code>: ファイルシステムのディレクトリ</li>
+<li><code>lc-messages-dir</code>: エラーメッセージの配置ディレクトリ</li>
+<li><code>skip-external-locking</code>: 外部ロックを無効にする設定</li>
+<li><code>bind-address</code>: MariaDBへの接続を許可するIPアドレスの設定</li>
+</ul>
+
+
+<p>続いて、チューニング周りです。</p>
+
+<p>```javascript
+#</p>
+
+<h1>* Fine Tuning</h1>
+
+<p>#
+key_buffer_size         = 16M
+max_allowed_packet      = 16M
+thread_stack            = 192K
+thread_cache_size       = 8</p>
+
+<h1>This replaces the startup script and checks MyISAM tables if needed</h1>
+
+<h1>the first time they are touched</h1>
+
+<p>myisam-recover         = BACKUP</p>
+
+<h1>max_connections        = 100</h1>
+
+<h1>table_cache            = 64</h1>
+
+<h1>thread_concurrency     = 10</h1>
+
+<p>```</p>
+
+<ul>
+<li><code>key_buffer_size</code>: インデックスをメモリ上で確保するために使う物理メモリの許容量</li>
+<li><code>max_allowed_packet</code>: クライアントからMySQLサーバに転送可能な最大パケット数</li>
+<li><code>thread_stack</code>: スレッドに割り当てるスタック領域のサイズ</li>
+<li><code>thread_cache_size</code>: キャッシュに保持するスレッドの最大数</li>
+<li><code>myisam-recover</code>:MyISAMテーブルがクラッシュしたときに自動でリカバリーする設定</li>
+<li><code>max_connections</code>: 許容同時接続数</li>
+<li><code>table_cache</code>: メモリ上にキャッシュとして保持しておくテーブルの最大数</li>
+<li><code>thread_concurrency</code>: 同時実行スレッド数</li>
+</ul>
+
+
+<p>クエリキャッシュの設定です。</p>
+
+<p>```javascript
+#</p>
+
+<h1>* Query Cache Configuration</h1>
+
+<p>#
+query_cache_limit       = 1M
+query_cache_size        = 16M
+```</p>
+
+<ul>
+<li><code>query_cache_limit</code>: キャッシュするクエリ結果の最大値</li>
+<li><code>query_cache_size</code>: クエリキャッシュのサイズ設定</li>
+</ul>
+
+
+<p>ロギングとレプリケーションに関する設定です。</p>
+
+<p>```javascript
+#</p>
+
+<h1>* Logging and Replication</h1>
+
+<p>#</p>
+
+<h1>Both location gets rotated by the cronjob.</h1>
+
+<h1>Be aware that this log type is a performance killer.</h1>
+
+<h1>As of 5.1 you can enable the log at runtime!</h1>
+
+<h1>general_log_file        = /var/log/mysql/mysql.log</h1>
+
+<h1>general_log             = 1</h1>
+
+<p>#</p>
+
+<h1>Error log &ndash; should be very few entries.</h1>
+
+<p>#
+log_error = /var/log/mysql/error.log
+#</p>
+
+<h1>Enable the slow query log to see queries with especially long duration</h1>
+
+<h1>slow_query_log_file    = /var/log/mysql/mariadb-slow.log</h1>
+
+<h1>long_query_time = 10</h1>
+
+<h1>log_slow_rate_limit    = 1000</h1>
+
+<h1>log_slow_verbosity     = query_plan</h1>
+
+<h1>log-queries-not-using-indexes</h1>
+
+<p>#</p>
+
+<h1>The following can be used as easy to replay backup logs or for replication.</h1>
+
+<h1>note: if you are setting up a replication slave, see README.Debian about</h1>
+
+<h1>other settings you may need to change.</h1>
+
+<h1>server-id              = 1</h1>
+
+<h1>log_bin                        = /var/log/mysql/mysql-bin.log</h1>
+
+<p>expire_logs_days        = 10
+max_binlog_size   = 100M</p>
+
+<h1>binlog_do_db           = include_database_name</h1>
+
+<h1>binlog_ignore_db       = include_database_name</h1>
+
+<p>```</p>
+
+<ul>
+<li><code>general_log_file</code>: 一般クエリーログの保存ファイルを指定</li>
+<li><code>general_log</code>: 1を指定で一般クエリーログの取得が有効になる</li>
+<li><code>log_error</code>: エラーログの保存ファイルを指定</li>
+<li><code>slow_query_log_file</code>: スロークエリーログの保存ファイルを指定</li>
+<li><code>long_query_time</code>: スロークエリーと判断するための時間(秒)</li>
+<li><code>log_slow_rate_limit</code>: スロークエリーを判断するタイミングを設定 (1なら毎クエリごとに調査)</li>
+<li><code>log_slow_verbosity</code>: どの程度の詳細レベルでログを出すか決める</li>
+<li><code>log-queries-not-using-indexes</code>: Indexを使わない, 使っても全件スキャンになっているクエリはスロークエリとして出力する</li>
+<li><code>server-id</code>: 一意なサーバを識別するために設定(レプリケーション組む時に使える)</li>
+<li><code>log_bin</code>: バイナリログファイルを保存するファイルの指定</li>
+<li><code>expire_logs_day</code>: バイナリログの保存期限日</li>
+<li><code>max_binlog_size</code>: バイナリログろログローテーションし始める基準の値</li>
+<li><code>binlog_do_db</code>: バイナリログに書き込むデータベースを指定</li>
+<li><code>binlog_ignore_db</code>: バイナリログに書き込まないデータベースを指定</li>
+</ul>
+
+
+<p>以下はInnoDB特有の設定のようです。</p>
+
+<p>```javascript
+#</p>
+
+<h1>* InnoDB</h1>
+
+<p>#</p>
+
+<h1>InnoDB is enabled by default with a 10MB datafile in /var/lib/mysql/.</h1>
+
+<h1>Read the manual for more InnoDB related options. There are many!</h1>
+
+<p>#</p>
+
+<h1>* Security Features</h1>
+
+<p>#</p>
+
+<h1>Read the manual, too, if you want chroot!</h1>
+
+<h1>chroot = /var/lib/mysql/</h1>
+
+<p>#</p>
+
+<h1>For generating SSL certificates I recommend the OpenSSL GUI &ldquo;tinyca&rdquo;.</h1>
+
+<p>#</p>
+
+<h1>ssl-ca=/etc/mysql/cacert.pem</h1>
+
+<h1>ssl-cert=/etc/mysql/server-cert.pem</h1>
+
+<h1>ssl-key=/etc/mysql/server-key.pem</h1>
+
+<p>```</p>
+
+<ul>
+<li><code>ssl-ca</code>: SSL接続のためのCA証明書の指定</li>
+<li><code>ssl-cert</code>: SSL接続のためのサーバ証明書の指定</li>
+<li><code>ssl-key</code>: SSL接続のための秘密鍵の指定</li>
+</ul>
+
+
+<p>エンコードの設定です。</p>
+
+<p>```javascript
+#</p>
+
+<h1>* Character sets</h1>
+
+<p>#</p>
+
+<h1>MySQL/MariaDB default is Latin1, but in Debian we rather default to the full</h1>
+
+<h1>utf8 4-byte character set. See also client.cnf</h1>
+
+<p>#
+character-set-server  = utf8mb4
+collation-server      = utf8mb4_general_ci
+```</p>
+
+<ul>
+<li><code>character-set-server</code>: MySQLサーバの文字コード設定</li>
+<li><code>collation-server</code>: MySQLサーバのソート順設定</li>
+</ul>
+
+
+<p>その他にオプションを設定する場合は下記に続けて書くように用意されています。</p>
+
+<p>```javascript
+#</p>
+
+<h1>* Unix socket authentication plugin is built-in since 10.0.22-6</h1>
+
+<p>#</p>
+
+<h1>Needed so the root database user can authenticate without a password but</h1>
+
+<h1>only when running as the unix root user.</h1>
+
+<p>#</p>
+
+<h1>Also available for other users if required.</h1>
+
+<h1>See <a href="https://mariadb.com/kb/en/unix_socket-authentication-plugin/">https://mariadb.com/kb/en/unix_socket-authentication-plugin/</a></h1>
+
+<h1>this is only for embedded server</h1>
+
+<p>[embedded]</p>
+
+<h1>This group is only read by MariaDB servers, not by MySQL.</h1>
+
+<h1>If you use the same .cnf file for MySQL and MariaDB,</h1>
+
+<h1>you can put MariaDB-only options here</h1>
+
+<p>[mariadb]</p>
+
+<h1>This group is only read by MariaDB-10.0 servers.</h1>
+
+<h1>If you use the same .cnf file for MariaDB of different versions,</h1>
+
+<h1>use this group for options that older servers don‘t understand</h1>
+
+<p>[mariadb-10.0]
+```</p>
+
+<h3>まとめ</h3>
+
+<p>今回はインストールと初期設定、デフォルトで生成される設定ファイルの意味について見ていきました。<br/>
+今後は理解を深めるためにMariaDBならではのアーキテクチャを組んで試していければと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<h3>参考</h3>
+
+<ul>
+<li><a href="https://dev.mysql.com/doc/refman/5.6/ja/mysqldump.html">4.5.4 mysqldump — データベースバックアッププログラム</a></li>
+<li><a href="https://dev.mysql.com/doc/refman/5.6/ja/option-files.html">4.2.6 オプションファイルの使用</a></li>
+<li><a href="https://mariadb.com/kb/en/mariadb/mysqld_safe/">mysqld_safe Options</a></li>
+<li><a href="https://mariadb.com/kb/en/mariadb/server-system-variables/#log_queries_not_using_indexes">MariaDB System Variable</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuでRedisを使ってみよう！]]></title>
     <link href="http://grandbig.github.io/blog/2017/02/25/docker-for-mac-4/"/>
     <updated>2017-02-25T22:36:00+09:00</updated>
     <id>http://grandbig.github.io/blog/2017/02/25/docker-for-mac-4</id>
