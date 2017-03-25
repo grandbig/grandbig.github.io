@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-03-12T21:25:59+09:00</updated>
+  <updated>2017-03-25T20:44:35+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,107 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Kitematicでエラーが発生してDockerコンテナが作成できない！！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/03/25/docker-for-mac-6/"/>
+    <updated>2017-03-25T20:01:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/03/25/docker-for-mac-6</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>前回からだいぶ期間が空いてしまいましたが、久々に書きます！<br/>
+と言っても今回はDocker For Macアプリに備え付けられている <strong>Kitematic</strong> に関してのメモです。</p>
+
+<h3>KitematicでDockerイメージをダウンロードできない場合の対応</h3>
+
+<p>KitematicはGUIで簡単にDockerコンテナを作成できたり、<strong>ポートフォワード</strong> や <strong>Privileged mode</strong> などの設定も実に簡単です。<br/>
+その利便性が頼りがちになってしまうものの、Docker For Macアプリも完璧ではないため、まだまだうまくいかないことが時たまあります。<br/>
+その1つが『Kitematicを通して、Dockerイメージがダウンロードできない』というものです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>もし、下図のことが発生したら、次の操作を試してみましょう。</p>
+
+<p><img src="http://grandbig.github.io/images/docker_pull_failed.png" alt="Dockerイメージのダウンロードに失敗" /></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">pull</span> <span class="o">&lt;</span><span class="nx">Docker</span><span class="err">イメージ名</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これで該当するDockerイメージをダウンロードすることができます。</p>
+
+<h4>Dockerコンテナでsystemctlコマンドが叩けない</h4>
+
+<p>上記対応を進める中でぶつかった話なので書いておきます。<br/>
+CentOS7.3のDockerイメージをダウンロードして、Dockerコンテナを起動して、Apacheをダウンロード&amp;起動しようとしたところ、表題の問題にぶつかりました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">systemctl</span> <span class="nx">status</span> <span class="nx">httpd</span><span class="p">.</span><span class="nx">service</span>
+</span><span class='line'><span class="nx">Failed</span> <span class="nx">to</span> <span class="nx">get</span> <span class="nx">D</span><span class="o">-</span><span class="nx">Bus</span> <span class="nx">connection</span><span class="o">:</span> <span class="nx">Operation</span> <span class="nx">not</span> <span class="nx">permitted</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これについて調べてみると、<code>Privileged mode</code>をONにした状態でDockerコンテナを初期化&amp;起動する必要があることがわかりました。<br/>
+つまり、コマンドで言うところの</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">run</span> <span class="o">--</span><span class="nx">privileged</span> <span class="o">-</span><span class="nx">d</span> <span class="o">--</span><span class="nx">name</span> <span class="nx">httpd</span> <span class="nx">centos</span><span class="o">:</span><span class="nx">latest</span> <span class="o">/</span><span class="nx">sbin</span><span class="o">/</span><span class="nx">init</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>という感じです。<br/>
+因みに上記コマンドは、<code>docker pull</code>の役割も同時に果たしています。<br/>
+これまた <code>Kitematic</code> の設定でチェックをつけて保存し直してもうまくいかず&hellip;</p>
+
+<h4>ポートフォワードつきDockerコンテナの初期化</h4>
+
+<p>さて、せっかくなのでポートフォワードの設定もコマンドベースで書いていきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">run</span> <span class="o">-</span><span class="nx">p</span> <span class="mi">8888</span><span class="o">:</span><span class="mi">80</span> <span class="o">--</span><span class="nx">name</span> <span class="nx">httpd</span> <span class="nx">centos</span><span class="o">:</span><span class="nx">latest</span> <span class="o">/</span><span class="nx">sbin</span><span class="o">/</span><span class="nx">init</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これで、 <code>http://localhost:8888</code>でアクセスしたときにDockerコンテナの<code>80</code>ポートにアクセスすることができるようになります。<br/>
+<code>Kitematic</code>でポートフォワードの設定はできるのですが、<code>Privileged mode</code>も必要なら下記コマンドのように初めに同時に設定してしまえば良いでしょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">run</span> <span class="o">--</span><span class="nx">privileged</span> <span class="o">-</span><span class="nx">d</span> <span class="o">-</span><span class="nx">p</span> <span class="mi">8888</span><span class="o">:</span><span class="mi">80</span> <span class="o">--</span><span class="nx">name</span> <span class="nx">httpd</span> <span class="nx">centos</span><span class="o">:</span><span class="nx">latest</span> <span class="o">/</span><span class="nx">sbin</span><span class="o">/</span><span class="nx">init</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>まとめ</h3>
+
+<p>今回は<code>Docker</code>コマンドについて少々触れました。<br/>
+<code>Kitematic</code>が便利だからと言っても、いざという時にコマンドが使えるようになっていると解決の幅が広がりますね。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Dockerコンテナ内のUbuntuでMariaDBを使ってみよう！]]></title>
@@ -9604,242 +9705,6 @@ Google Adwordsは検索結果にページへ誘導するための謳い文句が
 ここについては今年の課題として紳士に向き合いつつ、折り合いをつけていければと思います。<br/>
 ただ、この1年の振り返り記事は書くのが非常に楽しかったな〜<br/>
 といったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Server Side Swift: Perfect を使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/10/30/swift-perfect/"/>
-    <updated>2016-10-30T22:48:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/10/30/swift-perfect</id>
-    <content type="html"><![CDATA[<h3>Server Side SwiftライブラリのPerfect</h3>
-
-<p>本日は以前書いたサーバサイドSwiftの続きを書きます！<br/>
-と言いたかったところなのですが、Swift ExpressはSwift3.0やXcode8に対応しておらず、何もできなかったため、方向転換して最もSTAR数の多い<a href="https://github.com/PerfectlySoft/Perfect">PerfectlySoft/Perfect</a>を使うことにしました。</p>
-
-<p>よくよく見るとMySQLだけでなくMongoDB接続用にもモジュールが用意されており、なかなか良さそうではないですか！！<br/>
-とは言いつつも、そんなにすぐにMaster Of Perfectにはなれないので少しずつ見ていくことにします。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-<!-- more -->
-
-
-<h4>チュートリアルを触ってみる</h4>
-
-<p>まずは何はともあれGitHubの <em>Getting Started</em> からやらないと話になりません。<br/>
-手順は簡単です。</p>
-
-<p>１．テンプレートプロジェクトをクローンする<br/>
-<code>git clone https://github.com/PerfectlySoft/PerfectTemplate.git</code></p>
-
-<p>２．ビルドを実行する<br/>
-クローンした<code>PerfectTemplate</code>フォルダ内に入り、ビルドを実行しましょう。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ cd PerfectTemplate
-</span><span class='line'>$ swift build</span></code></pre></td></tr></table></div></figure>
-
-
-<p>３．サーバを起動します<br/>
-なんと後は下記コマンドでサーバを起動するだけです。</p>
-
-<p><code>.build/debug/PerfectTemplate</code></p>
-
-<p>正しく起動すれば、下記ログが出力されます。<br/>
-<code>Starting HTTP server on 0.0.0.0:8181 with document root ./webroot</code><br/>
-またログの指示通りChromeで<code>http://localhost:8181/</code>にアクセスすれば<code>Hello World</code>が拝めます。</p>
-
-<h4>ルーティングの書き方について学ぶ</h4>
-
-<p>では次に簡単なルーティングについて学んでいきましょう。<br/>
-チュートリアルでは、下記GETリクエストのみ受け付けていました。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="kd">var</span> <span class="nx">routes</span> <span class="o">=</span> <span class="nx">Routes</span><span class="p">()</span>
-</span><span class='line'><span class="nx">routes</span><span class="p">.</span><span class="nx">add</span><span class="p">(</span><span class="nx">method</span><span class="o">:</span> <span class="p">.</span><span class="nx">get</span><span class="p">,</span> <span class="nx">uri</span><span class="o">:</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="nx">handler</span><span class="o">:</span> <span class="p">{</span>
-</span><span class='line'>  <span class="nx">request</span><span class="p">,</span> <span class="nx">response</span> <span class="k">in</span>
-</span><span class='line'>  <span class="nx">response</span><span class="p">.</span><span class="nx">setHeader</span><span class="p">(.</span><span class="nx">contentType</span><span class="p">,</span> <span class="nx">value</span><span class="o">:</span> <span class="s2">&quot;text/html&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="nx">response</span><span class="p">.</span><span class="nx">appendBody</span><span class="p">(</span><span class="nx">string</span><span class="o">:</span> <span class="s2">&quot;&lt;html&gt;&lt;title&gt;Hello, world!&lt;/title&gt;&lt;body&gt;Hello, world!&lt;/body&gt;&lt;/html&gt;&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="nx">response</span><span class="p">.</span><span class="nx">completed</span><span class="p">()</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>最も単純なGETリクエストですね。<br/>
-では、<code>ID: 100</code>のユーザ情報を取得するGETリクエストはどう受け付けるのでしょうか。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="kd">var</span> <span class="nx">routes</span> <span class="o">=</span> <span class="nx">Routes</span><span class="p">()</span>
-</span><span class='line'><span class="nx">routes</span><span class="p">.</span><span class="nx">add</span><span class="p">(</span><span class="nx">method</span><span class="o">:</span> <span class="p">.</span><span class="nx">get</span><span class="p">,</span> <span class="nx">uri</span><span class="o">:</span> <span class="s2">&quot;/user/{id}&quot;</span><span class="p">,</span> <span class="nx">handler</span><span class="o">:</span> <span class="p">{</span>
-</span><span class='line'>  <span class="nx">request</span><span class="p">,</span> <span class="nx">response</span> <span class="k">in</span>
-</span><span class='line'>  <span class="nx">response</span><span class="p">.</span><span class="nx">setHeader</span><span class="p">(.</span><span class="nx">contentType</span><span class="p">,</span> <span class="nx">value</span><span class="o">:</span> <span class="s2">&quot;text/html&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="nx">response</span><span class="p">.</span><span class="nx">appendBody</span><span class="p">(</span><span class="nx">string</span><span class="o">:</span> <span class="s2">&quot;&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You GET UserInfo with \(request.urlVariables)&lt;/body&gt;&lt;/html&gt;&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="nx">response</span><span class="p">.</span><span class="nx">completed</span><span class="p">()</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>たったのこれだけです。<br/>
-では、POSTリクエストの受け付けはどうでしょうか。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="kd">var</span> <span class="nx">routes</span> <span class="o">=</span> <span class="nx">Routes</span><span class="p">()</span>
-</span><span class='line'><span class="nx">routes</span><span class="p">.</span><span class="nx">add</span><span class="p">(</span><span class="nx">method</span><span class="o">:</span> <span class="p">.</span><span class="nx">post</span><span class="p">,</span> <span class="nx">uri</span><span class="o">:</span> <span class="s2">&quot;/user&quot;</span><span class="p">,</span> <span class="nx">handler</span><span class="o">:</span> <span class="p">{</span>
-</span><span class='line'>  <span class="nx">request</span><span class="p">,</span> <span class="nx">response</span> <span class="k">in</span>
-</span><span class='line'>  <span class="nx">response</span><span class="p">.</span><span class="nx">appendBody</span><span class="p">(</span><span class="nx">string</span><span class="o">:</span> <span class="s2">&quot;&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You POSTed user data to catch your POST request.&lt;/body&gt;&lt;/html&gt;&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="nx">response</span><span class="p">.</span><span class="nx">completed</span><span class="p">()</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これも簡単ですね。<br/>
-書き方に若干の違いはあれど、最早Node.jsとそんなに変わらん&hellip;</p>
-
-<p>おまけで、POSTリクエストで届いたJSONStringをバラバラっと分解して返却してみました。<br/>
-そのためにまずはJSONStringをデコードする処理を実装します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// decode.swift</span>
-</span><span class='line'><span class="kr">import</span> <span class="nx">PerfectHTTPServer</span>
-</span><span class='line'><span class="kr">import</span> <span class="nx">PerfectLib</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">func</span> <span class="nx">decode</span><span class="p">(</span><span class="nx">postBody</span><span class="o">:</span> <span class="nb">String</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="nb">String</span><span class="o">:</span> <span class="nx">Any</span><span class="p">]</span><span class="o">?</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">do</span> <span class="p">{</span>
-</span><span class='line'>      <span class="nx">guard</span> <span class="kd">let</span> <span class="nx">decoded</span> <span class="o">=</span> <span class="k">try</span> <span class="nx">postBody</span><span class="o">?</span><span class="p">.</span><span class="nx">jsonDecode</span><span class="p">()</span> <span class="nx">as</span><span class="o">?</span> <span class="p">[</span><span class="nb">String</span><span class="o">:</span><span class="nx">Any</span><span class="p">]</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">return</span> <span class="p">[</span><span class="o">:</span><span class="p">]</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="nx">print</span><span class="p">(</span><span class="nx">decoded</span><span class="p">)</span>
-</span><span class='line'>      <span class="k">return</span> <span class="nx">decoded</span>
-</span><span class='line'>  <span class="p">}</span> <span class="k">catch</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="p">[</span><span class="o">:</span><span class="p">]</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これを下記のように利用します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="kd">var</span> <span class="nx">routes</span> <span class="o">=</span> <span class="nx">Routes</span><span class="p">()</span>
-</span><span class='line'><span class="nx">routes</span><span class="p">.</span><span class="nx">add</span><span class="p">(</span><span class="nx">method</span><span class="o">:</span> <span class="p">.</span><span class="nx">post</span><span class="p">,</span> <span class="nx">uri</span><span class="o">:</span> <span class="s2">&quot;/user&quot;</span><span class="p">,</span> <span class="nx">handler</span><span class="o">:</span> <span class="p">{</span>
-</span><span class='line'>  <span class="nx">request</span><span class="p">,</span> <span class="nx">response</span> <span class="k">in</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kd">var</span> <span class="nx">userInfo</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-</span><span class='line'>  <span class="kd">let</span> <span class="nx">decodedParam</span> <span class="o">=</span> <span class="nx">decode</span><span class="p">(</span><span class="nx">postBody</span><span class="o">:</span> <span class="nx">request</span><span class="p">.</span><span class="nx">postBodyString</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">value</span><span class="p">)</span> <span class="k">in</span> <span class="nx">decodedParam</span><span class="o">!</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">switch</span> <span class="nx">key</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">case</span> <span class="s2">&quot;name&quot;</span><span class="o">:</span>
-</span><span class='line'>              <span class="nx">userInfo</span> <span class="o">=</span> <span class="nx">userInfo</span> <span class="o">+</span> <span class="s2">&quot;name is \(value as! String).\n&quot;</span>
-</span><span class='line'>          <span class="k">case</span> <span class="s2">&quot;email&quot;</span><span class="o">:</span>
-</span><span class='line'>              <span class="nx">userInfo</span> <span class="o">=</span> <span class="nx">userInfo</span> <span class="o">+</span> <span class="s2">&quot;email is \(value as! String).&quot;</span>
-</span><span class='line'>          <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>              <span class="k">break</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="nx">response</span><span class="p">.</span><span class="nx">appendBody</span><span class="p">(</span><span class="nx">string</span><span class="o">:</span> <span class="s2">&quot;&lt;html&gt;&lt;body&gt;POST handler: \(userInfo)&lt;/body&gt;&lt;/html&gt;&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="nx">response</span><span class="p">.</span><span class="nx">completed</span><span class="p">()</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>さて、実装できたのでクライアントからリクエストを投げてみます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// クライアントからPOSTリクエストを投げます</span>
-</span><span class='line'><span class="nx">curl</span> <span class="nx">http</span><span class="o">:</span><span class="c1">//localhost:8181/user -X POST -H &quot;Content-Type: application/json&quot; -d &#39;{&quot;name&quot;:&quot;Ichiro&quot;, &quot;email&quot;: &quot;xxx@gmail.com&quot;}&#39;</span>
-</span><span class='line'><span class="c1">// 結果</span>
-</span><span class='line'><span class="o">&lt;</span><span class="nx">html</span><span class="o">&gt;&lt;</span><span class="nx">body</span><span class="o">&gt;</span><span class="nx">POST</span> <span class="nx">handler</span><span class="o">:</span> <span class="nx">name</span> <span class="nx">is</span> <span class="nx">Ichiro</span><span class="p">.</span>
-</span><span class='line'><span class="nx">email</span> <span class="nx">is</span> <span class="nx">xxx</span><span class="err">@</span><span class="nx">gmail</span><span class="p">.</span><span class="nx">com</span><span class="p">.</span><span class="o">&lt;</span><span class="err">/body&gt;&lt;/html&gt;xxxx:PerfectTemplate</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>まとめ</h3>
-
-<p>さて今回は<code>Perfect</code>を使ったサーバサイドSwiftを見てみました。<br/>
-まだまだ基本的なリクエストの受付しかみていませんが、既にいろいろなモジュールが用意されているようなので、継続的に見ていきたいと思います。<br/>
-やっぱりライブラリを作るなら、最新の状況についていかないと見捨てられるな〜と思ってしまいました。<br/>
-(今回で言うと、Swift3やXcode8とかですね。)</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
