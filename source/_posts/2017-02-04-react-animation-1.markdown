@@ -18,6 +18,8 @@ categories: FE, javascript, react, redux, web
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
 
+<!-- more -->
+
 ###Counterサンプルにアニメーションを追加しよう！
 まずはネタとして[前回](http://grandbig.github.io/blog/2017/01/02/redux-base-4/)まで基礎を学ぶのに利用した`Counter`サンプルを利用します。  
 元々の`Counter`サンプルとは以下のものになります。  

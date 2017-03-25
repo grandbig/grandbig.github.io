@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Dockerコンテナ内のUbuntuでRedis設定を試してみよう！"
+title: "Dockerコンテナ内のUbuntuでRedisを使ってみよう！"
 date: 2017-02-25 22:36
 comments: true
 categories: docker redis
