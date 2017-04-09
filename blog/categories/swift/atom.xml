@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-03-25T20:45:19+09:00</updated>
+  <updated>2017-04-10T01:11:47+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,271 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SwinjectでDIを意識してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/04/09/swift-di/"/>
+    <updated>2017-04-09T22:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/04/09/swift-di</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>筆者はここ１年間、主にバックエンド構築にSpring Bootを利用してきました。<br/>
+Spring Framework自体は2002年頃にリリースされたそうなのですが、Spring BootはSpringベースでのアプリ開発を楽にしてくれる新たな形で様々なSpringのFramework群を統合したものとのことです。<br/>
+(Spring Bootでググると2〜3年前辺りからの記事が多い印象です。)</p>
+
+<p>Springの特徴は何と言っても <strong>DI</strong> でしょう。<br/>
+今回はそのSpringの代名詞とも言える <strong>DI</strong> をSwiftで扱ってみたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>DIとは</h3>
+
+<p>DIとは『Dependency Injection』の略語で、日本語だと依存性の注入と翻訳されたりします。<br/>
+具体的に何者なのかと言うと、</p>
+
+<ul>
+<li>コンポーネント間の依存関係を排除するソフトウェアパターン (<a href="https://ja.wikipedia.org/wiki/%E4%BE%9D%E5%AD%98%E6%80%A7%E3%81%AE%E6%B3%A8%E5%85%A5">Wikipedia &ndash; 依存性の注入</a>)</li>
+<li>これにより疎結合性が高まるので単体テストが書きやすい</li>
+</ul>
+
+
+<p>というものです。</p>
+
+<p>Springベースのアプリでは基本パターンとして利用しています。<br/>
+詳しい説明は省きますが、<br/>
+Spring起動時に<code>Bean</code>化したオブジェクトを<code>@Autowired</code>アノテーションを利用することで、DIコンテナ経由で簡単に <strong>DI</strong> を利用することができます。</p>
+
+<p>注意しておきたいこととして、<br/>
+<code>Bean</code>定義したクラスは<code>@Autowired</code>アノテーションで呼び出される際、デフォルトでシングルトンパターンとして生成されたオブジェクトを呼び出しています。</p>
+
+<h3>SwiftでDIするには？</h3>
+
+<p>さて、そんなSpringの特徴的なDIですが、Swiftアプリで利用することはできるのでしょうか？<br/>
+筆者が調べたところ、最も人気のあるSwift版DIライブラリとして<a href="https://github.com/Swinject/Swinject">Swinject</a>というものがあるようです。<br/>
+本日時点でGitHub上のスター数が<code>1,432</code>となっており、なかなかの注目度かと思います。</p>
+
+<p>しかも、下記のようにSwift3にも対応しているのが嬉しいですね！</p>
+
+<p><code>objective-c
+iOS 8.0+ / Mac OS X 10.10+ / watchOS 2.0+ / tvOS 9.0+
+Swift 2.2 or 2.3
+Xcode 7.0+
+Swift 3
+Xcode 8.0+
+Carthage 0.18+ (if you use)
+CocoaPods 1.1.1+ (if you use)
+</code></p>
+
+<p>実際に<code>Swinject</code>を利用してSwiftでのDIを試してみたいと思います。</p>
+
+<h3>Swinjectの使い方</h3>
+
+<p>では早速使ってみましょう。</p>
+
+<h4>Swinjectのインストール</h4>
+
+<p>CocoaPodsでインストールするために下記のように<code>Podfile</code>を作成しましょう。</p>
+
+<p>```
+// Podfile
+source &lsquo;<a href="https://github.com/CocoaPods/Specs.git">https://github.com/CocoaPods/Specs.git</a>&rsquo;
+platform :ios, &lsquo;8.0&rsquo; # or platform :osx, &lsquo;10.10&rsquo; if your target is OS X.</p>
+
+<p>target &lsquo;SwinjectSample&rsquo; do
+  use_frameworks!</p>
+
+<p>  pod &lsquo;Swinject&rsquo;, &lsquo;~> 2.0.0&rsquo;
+  pod &lsquo;SwinjectStoryboard&rsquo;, &lsquo;1.0.0&rsquo;
+end
+```</p>
+
+<p>その後に<code>pod install</code>を実行しましょう。<br/>
+これで<code>Swinject</code>の用意は完了です。</p>
+
+<h4>DIしたいクラスの定義</h4>
+
+<p>サンプルとしてDIしたいクラスを定義します。<br/>
+具体的なクラスだけでなく <strong>プロトコル</strong> を定義しているのは、<br/>
+後々、同じような<code>JavaProgrammer</code>クラスを作成したくなった際に便利だからです。<br/>
+(ベースが同じで、拡張機能が必要になった際に、0から書き直す必要がなくなります。)</p>
+
+<p>```objective-c
+// Engineer.swift
+import Foundation</p>
+
+<p>protocol Engineer {</p>
+
+<pre><code>var name: String? { get set }
+func develop() -&gt; String
+</code></pre>
+
+<p>}</p>
+
+<p>class SwiftProgrammer: Engineer {</p>
+
+<pre><code>var name: String?
+
+init(name: String?) {
+    self.name = name
+}
+
+func develop() -&gt; String {
+    return "Let's start developing a swift application!"
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いて、先程作成した<code>Engineer</code>を参照する<code>CompanyOwner</code>クラスを作成します。</p>
+
+<p>```objective-c
+// Company.swift
+import Foundation</p>
+
+<p>protocol Person {</p>
+
+<pre><code>func hire() -&gt; String
+</code></pre>
+
+<p>}</p>
+
+<p>class CompanyOwner: Person {</p>
+
+<pre><code>let humanResource: Engineer
+
+init(humanResource: Engineer) {
+    self.humanResource = humanResource
+}
+
+func hire() -&gt; String {
+    let name = humanResource.name ?? "someone"
+    return "I'm hiring \(name). \(humanResource.develop())"
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここで<code>SwiftProgrammer</code>クラスでなく<code>Engineer</code>プロトコルを参照することで、<code>CompanyOwner</code>クラス自体が<code>SwiftProgrammer</code>クラスに依存することがなくなりました。<br/>
+つまり<code>JavaProgrammer</code>を雇いたい<code>CompanyOwner</code>クラスが必要になった場合、作成するのは<code>JavaProgrammer</code>クラスのみで良くなります。<br/>
+これはこれで<code>CompanyOwner</code>クラスに対して単体テストコードを書く時に<code>SwiftProgrammer</code>クラスに依存せずに書くことができます。</p>
+
+<h4>DIコンテナへのクラスの登録</h4>
+
+<p>さて、DIしたいクラスが定義できたので、そのクラスをDIコンテナに登録します。<br/>
+公式ページによると<code>SwinjectStoryboard</code>を利用する場合と利用しない場合の2種類の方法があるそうですが、今回は簡単に対応可能な<code>SwinjectStoryboard</code>利用する方法で書いてみます。</p>
+
+<p>サンプルとして、<code>ViewController.swift</code>でDIコンテナ経由で呼び出したクラスを利用したいとします。<br/>
+その場合、下記のように、<code>ViewController.swift</code>にコンテナ定義を書きます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import SwinjectStoryboard</p>
+
+<p>extension SwinjectStoryboard {</p>
+
+<pre><code>class func setup() {
+    // (1)
+    defaultContainer.register(Engineer.self) { _ in SwiftProgrammer(name: "Takahiro") }
+    // (2)
+    defaultContainer.register(Person.self) { r in
+        CompanyOwner(humanResource: r.resolve(Engineer.self)!)
+    }
+    // (3)
+    defaultContainer.storyboardInitCompleted(ViewController.self) { r, c in
+        c.person = r.resolve(Person.self)
+    }
+}
+</code></pre>
+
+<p>}
+&hellip;
+```</p>
+
+<p>順々に説明すると、</p>
+
+<ol>
+<li><code>defaultContainer</code>に<code>Engineer</code>指定で<code>SwiftProgrammer(name: "Takahiro")</code>が呼び出されるように登録</li>
+<li><code>defaultContainer</code>に<code>Person</code>指定で<code>CompanyOwner(humanResource: r.resolve(Engineer.self)!)</code>が呼び出されるように登録<br/>
+※ 1で<code>Engineer</code>指定で<code>SwiftProgrammer(name: "Takahiro")</code>呼び出しをセットしているので、それが2の<code>CompanyOwner</code>の引数にセットされます。</li>
+<li><code>defaultContainer</code>にDIコンテナ経由での呼び出し先と先ほどまで定義していた<code>Person</code>指定での呼び出し元を紐付け</li>
+</ol>
+
+
+<p>となっています。<br/>
+これにより、下記のように<code>ViewController.swift</code>内でDIコンテナ経由で<code>Person</code>指定で想定した処理を呼び出すことができます。</p>
+
+<p>```objective-c
+// ViewController.swift</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>var person: Person?
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+    // Do any additional setup after loading the view, typically from a nib.
+    print(person?.hire() ?? "I can't hire engineers.")
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+    // Dispose of any resources that can be recreated.
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記を見ると、<code>ViewController</code>クラスの中で<code>Person</code>をインスタンス化している箇所はないことがわかると思います。<br/>
+つまり、DIコンテナ経由で<code>Person</code>を呼び出せているわけですね。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、<code>Swinject</code>を利用してサンプルを書いてみた感想ですが&hellip;<br/>
+正直、Spring Bootと比較すると、Swiftでは手動で書くべきところが多いと感じました。<br/>
+また、様々な<code>UIViewController</code>にまたがって利用する場合は記載箇所に一工夫必要なのかなとも思いました。<br/>
+(毎回、全<code>UIViewController</code>系のファイルに<code>setUp()</code>を書くわけにもいかないと思いますし&hellip;)</p>
+
+<p>まだまだ未知数なところがあるので、継続して試してみたいところではあります。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考：</p>
+
+<ul>
+<li><a href="http://permanent-til.me/archives/613">Spring BeanはSingletonだから、状態持たせるとバグるよ。</a></li>
+<li><a href="http://qiita.com/chkkchy/items/5f59817beb3dff9c0c1e">SpringのDIとnewってなにがちがうんだっけ？</a></li>
+<li><a href="https://github.com/Swinject/Swinject">Swinject</a></li>
+<li><a href="http://dev.classmethod.jp/smartphone/swinject-dependency-injection/">Swinjectを使ったDependency Injection</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Notificationとメインスレッド/サブスレッド]]></title>
@@ -1993,321 +2258,6 @@ email is xxx@gmail.com.&lt;/body&gt;&lt;/html&gt;xxxx:PerfectTemplate
 まだまだ基本的なリクエストの受付しかみていませんが、既にいろいろなモジュールが用意されているようなので、継続的に見ていきたいと思います。<br/>
 やっぱりライブラリを作るなら、最新の状況についていかないと見捨てられるな〜と思ってしまいました。<br/>
 (今回で言うと、Swift3やXcode8とかですね。)</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[ReSwiftを勉強してみよう！(1)]]></title>
-    <link href="http://grandbig.github.io/blog/2016/09/03/reswift-1/"/>
-    <updated>2016-09-03T19:51:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/09/03/reswift-1</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>本日は最近JavaScript界では浸透してきている<code>Redux</code>についてSwiftを通して勉強していきたいと思います。<br/>
-<code>Redux</code>に関する日本語の記事はそれなりにあるもののSwift版ライブラリである<code>ReSwift</code>に関する日本語の記事は少ないため、筆者が少しでも記事を増やせたら良いなという思いがあります。<br/>
-と言いつつも、いきなり有効性の高い有良記事を書くことはハードルが高いため、簡単な勉強から始めて行く次第です。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>ReSwiftとは</h3>
-
-<p><code>ReSwift</code>とは<code>Redux</code>のSwift版ライブラリです。<br/>
-<a href="https://github.com/ReSwift/ReSwift">GitHub: ReSwift/ReSwift</a>が公式ページとなります。</p>
-
-<p>上記公式ページのイントロをざっくり訳すと&hellip;<br/>
-(意味が間違っていたらごめんなさい&hellip;)</p>
-
-<p>ReSwiftはSwiftで<a href="https://github.com/reactjs/redux">Redux</a>ライクな一方向のデータフローアーキテクチャを実装したものです。ReSwiftを使うことで、次の3つの関係性でアプリを構成することを手助けします。</p>
-
-<ul>
-<li><strong>State</strong> : 全てのアプリの状態を管理します。複雑な状態の管理やデバッグのし易さを手助けするなど、メリットは数多くあります。</li>
-<li><strong>Views</strong> : 状態変化したときにViewを更新します。状態に対してシンプルなビジュアルを実現します。</li>
-<li><strong>State Changes</strong> : <code>actions</code>を通した状態変化の実行のみを担当します。<code>actions</code>は状態変化を表現する小さなモジュールを指します。限られた状態変化を担うため、大人数で開発する際にアプリを簡単に理解することができるメリットがあります。</li>
-</ul>
-
-
-<p>また、ReSwiftは下記の3つの原則に従って構成されます。</p>
-
-<ul>
-<li><strong>The Store</strong> : アプリの状態(State)を保持するアプリ内で唯一の存在です。StoreにActionsが発送されることによってのみ状態(State)は変化します。状態(State)が変化したら必ず、Storeが全てのオブザーバに通知します。</li>
-<li><strong>Actions</strong> : アプリの状態(State)がどんな変化なのかを宣言します。Storeによって消費され、Reducerに渡されます。Reducerは各Actionで引き起こされる異なる状態変化を実装することによってActionを扱います。</li>
-<li><strong>Reducers</strong> : 現在のActionとStateに基いて、新しいStateを生成する純粋な関数を提供します。</li>
-</ul>
-
-
-<p>というように、何となく、この辺りを理解すれば良さそうですね。<br/>
-まずは、公式ページに載っている最も簡単な『Counterサンプルアプリ』から上記の内容を直にコードで理解していきたいと思います。</p>
-
-<h3>CounterサンプルアプリからReSwiftを理解しよう</h3>
-
-<p>公式ページのREADMEには<a href="https://github.com/ReSwift/CounterExample">CounterExample</a>が紹介されています。<br/>
-公開されているサンプルアプリの中で最も簡単なサンプルなはずなので、これを見ていきたいと思います。</p>
-
-<p>最終的なフォルダ構成は下記になります。<br/>
-(関係のないファイルは除いています。)</p>
-
-<p><code>objective-c
-ReSwiftSample
-┣━━ State
-┃   ┗━━ AppState.swift
-┣━━ Actions
-┃   ┗━━ CounterActions.swift
-┣━━ Reducers
-┃   ┗━━ CounterReducers.swift
-┣━━ ViewController.swift
-┣━━ AppDelegate.swift
-┗━━ Main.storyboard
-</code></p>
-
-<p>では早速、1つずつ見ていきましょう。</p>
-
-<h4>ReSwiftをCocoaPodsでインストール</h4>
-
-<p>例によってCocoaPodsでインストールします。</p>
-
-<p>```objective-c
-use_frameworks!</p>
-
-<p>target &lsquo;ReSwiftSample&rsquo; do</p>
-
-<pre><code>pod 'ReSwift'
-</code></pre>
-
-<p>end</p>
-
-<p>target &lsquo;ReSwiftSampleTests&rsquo; do</p>
-
-<pre><code>pod 'ReSwift'
-</code></pre>
-
-<p>end</p>
-
-<p>target &lsquo;ReSwiftSampleUITests&rsquo; do</p>
-
-<pre><code>pod 'ReSwift'
-</code></pre>
-
-<p>end
-```</p>
-
-<p>これで<code>pod install</code>すればOKです。</p>
-
-<h4>State</h4>
-
-<p>準備が整ったところでコードを具体的に見ていきましょう。
-まずは<code>AppState.swift</code>を見ていきます。</p>
-
-<p>```objective-c
-//AppState.swift
-import Foundation
-import ReSwift</p>
-
-<p>struct AppState: StateType {</p>
-
-<pre><code>var counter: Int
-</code></pre>
-
-<p>}
-```</p>
-
-<p>今回のアプリは単純なカウントアップアプリなので、上記では<code>AppState</code>の1つのプロパティとして <strong>カウントの状態(counter)</strong> を定義しています。</p>
-
-<h4>Action</h4>
-
-<p>続いて<code>CounterActions.swift</code>を見ていきます。</p>
-
-<p>```objective-c
-// CounterActions.swift
-import Foundation
-import ReSwift</p>
-
-<p>struct CounterActionIncrease: Action {}
-struct CounterActionDecrease: Action {}
-```</p>
-
-<p>カウントアップの動作には <strong>『増加(Increase)』</strong> と <strong>『減少(Decrease)』</strong> の2つがあるため、それぞれのActionを定義します。<br/>
-ここで注意したいのはActionは関数(<code>func</code>)ではなく構造体(<code>struct</code>)であるということです。<br/>
-先に述べたようにActionは状態の宣言であり、Reducerに渡されて、処理を判別するために利用されるからです。</p>
-
-<h4>Reducer</h4>
-
-<p>そして、<code>CounterReducers.swift</code>を見ていきます。</p>
-
-<p>```objective-c
-// CounterReducers.swift
-struct CounterReducer: Reducer {</p>
-
-<pre><code>func handleAction(action: Action, state: AppState?) -&gt; AppState {
-    var state = state ?? AppState()
-
-    switch action {
-        case _ as CounterActionIncrease:
-            state.counter += 1
-        case _ as CounterActionDecrease:
-            state.counter -= 1
-        default:
-            break
-    }
-
-    return state
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>先に述べましたが、Reducerは引数として渡されたStateとActionの2つから新規のStateを返却します。<br/>
-重要なのは、 <strong>新規のStateを返却する</strong> ということです。<br/>
-これは<code>var state = state ?? AppState()</code>を見るとわかるかと思います。<br/>
-既に<code>state</code>オブジェクトがある場合は値渡しで新規<code>AppState</code>型に内容を格納しています。<br/>
-もし、<code>state</code>オブジェクトがなければ、初期化して作成しています。</p>
-
-<p>そして<code>switch</code>文で各Actionごとに最適な処理を実行しています。<br/>
-(今回の場合は『Increase』と『Decrease』)</p>
-
-<h4>Store</h4>
-
-<p>モジュールの作成が完了したので、実装していきます。<br/>
-先に述べたように<code>Store</code>はアプリの状態(State)を保持するアプリ内で <strong>唯一の存在</strong> です。<br/>
-よって、<code>AppDelegate.swift</code>で次のように定義します。</p>
-
-<p>```objective-c
-// AppDelegate.swift
-import UIKit
-import ReSwift</p>
-
-<p>let mainStore = Store<AppState>(</p>
-
-<pre><code>reducer: CounterReducer(),
-state: nil
-</code></pre>
-
-<p>)</p>
-
-<p>@UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {</p>
-
-<pre><code>...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>上記では<code>Store</code>型の<code>mainStore</code>を定義しています。<br/>
-Reducerとして<code>CounterReducer</code>を定義しています。<br/>
-Stateは初期値<code>nil</code>として定義しています。</p>
-
-<h4>View層への実装</h4>
-
-<p>最後にユーザの操作が走った際の処理の実装について見ていきます。<br/>
-状態変化の監視開始/終了を下記で実施します。</p>
-
-<p>```objective-c
-// ViewController.swift
-import UIKit
-import ReSwift</p>
-
-<p>class ViewController: UIViewController, StoreSubscriber {</p>
-
-<pre><code>override func viewWillAppear(animated: Bool) {
-    super.viewWillAppear(animated)
-    mainStore.subscribe(self)   // 状態変化の監視開始
-}
-
-override func viewWillDisappear(animated: Bool) {
-    super.viewWillDisappear(animated)
-    mainStore.unsubscribe(self) // 状態変化の監視終了
-}
-
-...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>続いて、ユーザ操作からのReducerへのAction発送部分です。</p>
-
-<p>```objective-c
-// ViewController.swift
-@IBAction func increaseButtonTapped(sender: AnyObject) {</p>
-
-<pre><code>mainStore.dispatch(
-    CounterActionIncrease()
-)
-</code></pre>
-
-<p>}</p>
-
-<p>@IBAction func decreaseButtonTapped(sender: AnyObject) {</p>
-
-<pre><code>mainStore.dispatch(
-    CounterActionDecrease()
-)
-</code></pre>
-
-<p>}
-```</p>
-
-<ul>
-<li>『増加』ボタンタップ時にStoreが『CounterActionIncreaseというAction』をReducerへdispatch(発送)します。</li>
-<li>『減少』ボタンタップ時にStoreが『CounterActionDecreaseというAction』をReducerへdispatch(発送)します。</li>
-</ul>
-
-
-<p>そして、新しいStateが返却された際に実行すべき処理を書くために<code>StoreSubscriber</code>プロトコルに<code>newState</code>メソッドが定義されています。<br/>
-よって、</p>
-
-<p>```objective-c
-// ViewController.swift
-class ViewController: UIViewController, StoreSubscriber {</p>
-
-<pre><code>@IBOutlet weak var counterLabel: UILabel!
-
-...
-
-func newState(state: AppState) {
-    counterLabel.text = "\(state.counter)"
-}
-...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>のように実装することで<code>newState</code>メソッド内で任意の処理を書くことができます。</p>
-
-<h3>まとめ</h3>
-
-<p>さて、如何でしたでしょうか？<br/>
-今回は公式の最も簡単なサンプルについて見ていきましたが、少々ReSwiftの扱い方が見えてきた気がします。<br/>
-また、ReSwiftが有能であるが故にReduxであればもっと自分で書かなければいけなさそうなところもカバーしてくれているように見えました。<br/>
-実践での活用なRxSwift同様にいろいろなリスク管理的な意味で難しいのかもしれませんが、もっとReSwiftを理解することで想定を上回るメリットを示し、実践で利用できるかもしれません。</p>
-
-<p>そんなことを夢見ながら今後は、別の公式サンプルを見つつ理解を深めていきたい思います。<br/>
-と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

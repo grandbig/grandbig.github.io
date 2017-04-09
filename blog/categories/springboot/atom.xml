@@ -4,7 +4,7 @@
   <title><![CDATA[Category: springboot | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/springboot/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-03-25T20:45:19+09:00</updated>
+  <updated>2017-04-10T01:11:47+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,271 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SwinjectでDIを意識してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/04/09/swift-di/"/>
+    <updated>2017-04-09T22:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/04/09/swift-di</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>筆者はここ１年間、主にバックエンド構築にSpring Bootを利用してきました。<br/>
+Spring Framework自体は2002年頃にリリースされたそうなのですが、Spring BootはSpringベースでのアプリ開発を楽にしてくれる新たな形で様々なSpringのFramework群を統合したものとのことです。<br/>
+(Spring Bootでググると2〜3年前辺りからの記事が多い印象です。)</p>
+
+<p>Springの特徴は何と言っても <strong>DI</strong> でしょう。<br/>
+今回はそのSpringの代名詞とも言える <strong>DI</strong> をSwiftで扱ってみたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>DIとは</h3>
+
+<p>DIとは『Dependency Injection』の略語で、日本語だと依存性の注入と翻訳されたりします。<br/>
+具体的に何者なのかと言うと、</p>
+
+<ul>
+<li>コンポーネント間の依存関係を排除するソフトウェアパターン (<a href="https://ja.wikipedia.org/wiki/%E4%BE%9D%E5%AD%98%E6%80%A7%E3%81%AE%E6%B3%A8%E5%85%A5">Wikipedia &ndash; 依存性の注入</a>)</li>
+<li>これにより疎結合性が高まるので単体テストが書きやすい</li>
+</ul>
+
+
+<p>というものです。</p>
+
+<p>Springベースのアプリでは基本パターンとして利用しています。<br/>
+詳しい説明は省きますが、<br/>
+Spring起動時に<code>Bean</code>化したオブジェクトを<code>@Autowired</code>アノテーションを利用することで、DIコンテナ経由で簡単に <strong>DI</strong> を利用することができます。</p>
+
+<p>注意しておきたいこととして、<br/>
+<code>Bean</code>定義したクラスは<code>@Autowired</code>アノテーションで呼び出される際、デフォルトでシングルトンパターンとして生成されたオブジェクトを呼び出しています。</p>
+
+<h3>SwiftでDIするには？</h3>
+
+<p>さて、そんなSpringの特徴的なDIですが、Swiftアプリで利用することはできるのでしょうか？<br/>
+筆者が調べたところ、最も人気のあるSwift版DIライブラリとして<a href="https://github.com/Swinject/Swinject">Swinject</a>というものがあるようです。<br/>
+本日時点でGitHub上のスター数が<code>1,432</code>となっており、なかなかの注目度かと思います。</p>
+
+<p>しかも、下記のようにSwift3にも対応しているのが嬉しいですね！</p>
+
+<p><code>objective-c
+iOS 8.0+ / Mac OS X 10.10+ / watchOS 2.0+ / tvOS 9.0+
+Swift 2.2 or 2.3
+Xcode 7.0+
+Swift 3
+Xcode 8.0+
+Carthage 0.18+ (if you use)
+CocoaPods 1.1.1+ (if you use)
+</code></p>
+
+<p>実際に<code>Swinject</code>を利用してSwiftでのDIを試してみたいと思います。</p>
+
+<h3>Swinjectの使い方</h3>
+
+<p>では早速使ってみましょう。</p>
+
+<h4>Swinjectのインストール</h4>
+
+<p>CocoaPodsでインストールするために下記のように<code>Podfile</code>を作成しましょう。</p>
+
+<p>```
+// Podfile
+source &lsquo;<a href="https://github.com/CocoaPods/Specs.git">https://github.com/CocoaPods/Specs.git</a>&rsquo;
+platform :ios, &lsquo;8.0&rsquo; # or platform :osx, &lsquo;10.10&rsquo; if your target is OS X.</p>
+
+<p>target &lsquo;SwinjectSample&rsquo; do
+  use_frameworks!</p>
+
+<p>  pod &lsquo;Swinject&rsquo;, &lsquo;~> 2.0.0&rsquo;
+  pod &lsquo;SwinjectStoryboard&rsquo;, &lsquo;1.0.0&rsquo;
+end
+```</p>
+
+<p>その後に<code>pod install</code>を実行しましょう。<br/>
+これで<code>Swinject</code>の用意は完了です。</p>
+
+<h4>DIしたいクラスの定義</h4>
+
+<p>サンプルとしてDIしたいクラスを定義します。<br/>
+具体的なクラスだけでなく <strong>プロトコル</strong> を定義しているのは、<br/>
+後々、同じような<code>JavaProgrammer</code>クラスを作成したくなった際に便利だからです。<br/>
+(ベースが同じで、拡張機能が必要になった際に、0から書き直す必要がなくなります。)</p>
+
+<p>```objective-c
+// Engineer.swift
+import Foundation</p>
+
+<p>protocol Engineer {</p>
+
+<pre><code>var name: String? { get set }
+func develop() -&gt; String
+</code></pre>
+
+<p>}</p>
+
+<p>class SwiftProgrammer: Engineer {</p>
+
+<pre><code>var name: String?
+
+init(name: String?) {
+    self.name = name
+}
+
+func develop() -&gt; String {
+    return "Let's start developing a swift application!"
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いて、先程作成した<code>Engineer</code>を参照する<code>CompanyOwner</code>クラスを作成します。</p>
+
+<p>```objective-c
+// Company.swift
+import Foundation</p>
+
+<p>protocol Person {</p>
+
+<pre><code>func hire() -&gt; String
+</code></pre>
+
+<p>}</p>
+
+<p>class CompanyOwner: Person {</p>
+
+<pre><code>let humanResource: Engineer
+
+init(humanResource: Engineer) {
+    self.humanResource = humanResource
+}
+
+func hire() -&gt; String {
+    let name = humanResource.name ?? "someone"
+    return "I'm hiring \(name). \(humanResource.develop())"
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここで<code>SwiftProgrammer</code>クラスでなく<code>Engineer</code>プロトコルを参照することで、<code>CompanyOwner</code>クラス自体が<code>SwiftProgrammer</code>クラスに依存することがなくなりました。<br/>
+つまり<code>JavaProgrammer</code>を雇いたい<code>CompanyOwner</code>クラスが必要になった場合、作成するのは<code>JavaProgrammer</code>クラスのみで良くなります。<br/>
+これはこれで<code>CompanyOwner</code>クラスに対して単体テストコードを書く時に<code>SwiftProgrammer</code>クラスに依存せずに書くことができます。</p>
+
+<h4>DIコンテナへのクラスの登録</h4>
+
+<p>さて、DIしたいクラスが定義できたので、そのクラスをDIコンテナに登録します。<br/>
+公式ページによると<code>SwinjectStoryboard</code>を利用する場合と利用しない場合の2種類の方法があるそうですが、今回は簡単に対応可能な<code>SwinjectStoryboard</code>利用する方法で書いてみます。</p>
+
+<p>サンプルとして、<code>ViewController.swift</code>でDIコンテナ経由で呼び出したクラスを利用したいとします。<br/>
+その場合、下記のように、<code>ViewController.swift</code>にコンテナ定義を書きます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import SwinjectStoryboard</p>
+
+<p>extension SwinjectStoryboard {</p>
+
+<pre><code>class func setup() {
+    // (1)
+    defaultContainer.register(Engineer.self) { _ in SwiftProgrammer(name: "Takahiro") }
+    // (2)
+    defaultContainer.register(Person.self) { r in
+        CompanyOwner(humanResource: r.resolve(Engineer.self)!)
+    }
+    // (3)
+    defaultContainer.storyboardInitCompleted(ViewController.self) { r, c in
+        c.person = r.resolve(Person.self)
+    }
+}
+</code></pre>
+
+<p>}
+&hellip;
+```</p>
+
+<p>順々に説明すると、</p>
+
+<ol>
+<li><code>defaultContainer</code>に<code>Engineer</code>指定で<code>SwiftProgrammer(name: "Takahiro")</code>が呼び出されるように登録</li>
+<li><code>defaultContainer</code>に<code>Person</code>指定で<code>CompanyOwner(humanResource: r.resolve(Engineer.self)!)</code>が呼び出されるように登録<br/>
+※ 1で<code>Engineer</code>指定で<code>SwiftProgrammer(name: "Takahiro")</code>呼び出しをセットしているので、それが2の<code>CompanyOwner</code>の引数にセットされます。</li>
+<li><code>defaultContainer</code>にDIコンテナ経由での呼び出し先と先ほどまで定義していた<code>Person</code>指定での呼び出し元を紐付け</li>
+</ol>
+
+
+<p>となっています。<br/>
+これにより、下記のように<code>ViewController.swift</code>内でDIコンテナ経由で<code>Person</code>指定で想定した処理を呼び出すことができます。</p>
+
+<p>```objective-c
+// ViewController.swift</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>var person: Person?
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+    // Do any additional setup after loading the view, typically from a nib.
+    print(person?.hire() ?? "I can't hire engineers.")
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+    // Dispose of any resources that can be recreated.
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記を見ると、<code>ViewController</code>クラスの中で<code>Person</code>をインスタンス化している箇所はないことがわかると思います。<br/>
+つまり、DIコンテナ経由で<code>Person</code>を呼び出せているわけですね。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、<code>Swinject</code>を利用してサンプルを書いてみた感想ですが&hellip;<br/>
+正直、Spring Bootと比較すると、Swiftでは手動で書くべきところが多いと感じました。<br/>
+また、様々な<code>UIViewController</code>にまたがって利用する場合は記載箇所に一工夫必要なのかなとも思いました。<br/>
+(毎回、全<code>UIViewController</code>系のファイルに<code>setUp()</code>を書くわけにもいかないと思いますし&hellip;)</p>
+
+<p>まだまだ未知数なところがあるので、継続して試してみたいところではあります。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考：</p>
+
+<ul>
+<li><a href="http://permanent-til.me/archives/613">Spring BeanはSingletonだから、状態持たせるとバグるよ。</a></li>
+<li><a href="http://qiita.com/chkkchy/items/5f59817beb3dff9c0c1e">SpringのDIとnewってなにがちがうんだっけ？</a></li>
+<li><a href="https://github.com/Swinject/Swinject">Swinject</a></li>
+<li><a href="http://dev.classmethod.jp/smartphone/swinject-dependency-injection/">Swinjectを使ったDependency Injection</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Spring Bootでリダイレクト先にパラメータを渡す方法]]></title>
@@ -543,187 +808,6 @@ server.port=9000
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Spring Bootを使い始めよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/04/16/start-spring-boot/"/>
-    <updated>2016-04-16T14:43:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/04/16/start-spring-boot</id>
-    <content type="html"><![CDATA[<h4>Spring Bootとは</h4>
-
-<p>本日はこれまでと全く趣向を変えて、 <strong>Spring Boot</strong> について書きたいと思います。<br/>
-<a href="http://projects.spring.io/spring-boot/">Spring Boot</a>とはSpringプロジェクトが提供している多くのFrameworkを統合した、<br/>
-簡単にWebアプリケーションを作成できるように設計されたFrameworkです。</p>
-
-<p>開発者はSpringプロジェクト内で用意された様々なFrameworkを意識する必要がありません。<br/>
-Spring Bootとは長年ブラッシュアップされ、肥大化してきたSpringプロジェクトへの参入ハードルを劇的に下げるものと言えるでしょう。</p>
-
-<p>なんて言いつつも、<br/>
-筆者はJavaによるWebアプリケーション開発はほとんどやったことがありません。</p>
-
-<p>何はともあれ、まずは触れてみたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>Spring BootによるWeb Application Projectを作成しよう！</h4>
-
-<p>最も簡単な方法について説明します。</p>
-
-<p>1．<a href="https://start.spring.io/">Spring Initializr</a>にアクセス<br/>
-Projectの自動生成ツールサイトがあるので、アクセスして各種項目を設定しましょう。</p>
-
-<ul>
-<li>Project: GradleおよびMavenから選択できます</li>
-<li>Spring Boot: バージョンを選択できます</li>
-<li>Group: パッケージ名を指定できます</li>
-<li>Artifact: メインファイル名を指定できます</li>
-<li>Dependencies: 初期状態で追加されるdependenciesを指定できます</li>
-</ul>
-
-
-<p>筆者は下記のように指定しました。</p>
-
-<p><img src="/images/start-spring-boot1.png" alt="Spring Initializr" /></p>
-
-<p>2．Generate Projectボタンをクリック<br/>
-下記のようなProjectが生成されます。<br/>
-(下記は筆者が指定した設定項目で生成されたProjectです。)</p>
-
-<p>```java
-firstApp
-  ┣━━ build.gradle
-  ┣━━ gradlew
-  ┣━━ gradlew.bat
-  ┣━━ gradle
-  ┃    ┗━━ wrapper
-  ┃          ┣━━ gradle-wrapper.jar
-  ┃          ┗━━ gradle-wrapper.properties
-  ┗━━ src</p>
-
-<pre><code>   ┣━━ main
-   ┃    ┣━━ java
-   ┃    ┃    ┗━━ com
-   ┃    ┃         ┗━━ example
-   ┃    ┃               ┗━━ FirstAppApplication.java
-   ┃    ┗━━ resources
-   ┃         ┗━━ application.properties
-   ┗━━ test
-        ┗━━ java
-             ┗━━ com
-                  ┗━━ example
-                        ┗━━ FirstAppApplicationTests.java
-</code></pre>
-
-<p>```</p>
-
-<p>3．<code>gradle bootRun</code>コマンドを実行<br/>
-firstApp直下で<code>gradle bootRun</code>コマンドを実行します。<br/>
-下記のような実行結果が出るはずです。</p>
-
-<p><img src="/images/start-spring-boot2.png" alt="実行結果" /></p>
-
-<p>これは生成されたメインファイルでのソースが下記のようになっているためです。<br/>
-<code>main</code>メソッド内で実行している処理はたったの1行で、<br/>
-これはSpring Bootによるアプリケーションを起動する処理となっています。</p>
-
-<p>ここで設定している<code>@SpringBootApplication</code>アノテーションは<br/>
-<code>@Configuration</code>, <code>@EnableAutoConfiguration</code>, <code>@ComponentScan</code>の3つの設定と同義になります。</p>
-
-<ul>
-<li><code>@Configuration</code>: Beanを含むJavaConfig用のクラスに付与する</li>
-<li><code>@EnableAutoConfiguration</code>: 様々な設定を自動で有効にする</li>
-<li><code>@ComponentScan</code>: クラスの自動スキャンを可能にする</li>
-</ul>
-
-
-<p>```java
-package com.example;</p>
-
-<p>import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;</p>
-
-<p>@SpringBootApplication
-public class FirstAppApplication {</p>
-
-<pre><code>public static void main(String[] args) {
-    SpringApplication.run(FirstAppApplication.class, args);
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>因みに、初期状態で<code>sourceCompatibility</code>および<code>targetCompatibility</code>が <strong>1.8</strong> となっています。<br/>
-よって、実行するためにはJDKバージョン <strong>1.8</strong> が必要になります。<br/>
-(インストールは<a href="http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html">こちら</a>から)</p>
-
-<p>まずは最も簡単な導入が完了したようです。</p>
-
-<h4>IntelliJ IDEAにimportしてみよう</h4>
-
-<p>ターミナルからプロジェクトの開発を続けても良いのですが、<br/>
-ターミナルに慣れていない方は統合開発環境ツールで開きたいかもしれませんね。<br/>
-複雑なプロジェクトになればなるほど、ターミナルでの開発は辛くなるかもしれません。</p>
-
-<p>ということでIntelliJ IDEAに先ほどのプロジェクトをimportしてみましょう。</p>
-
-<p>1．IntelliJ IDEAを起動して、importを選択<br/>
-<img src="/images/start-spring-boot3.png" alt="import" /></p>
-
-<p>2．importしたいDirectoryを選択<br/>
-<img src="/images/start-spring-boot4.png" alt="Directoryの選択" /></p>
-
-<p>3．Createの方を選択<br/>
-<img src="/images/start-spring-boot5.png" alt="Createの方を選択" /></p>
-
-<p>4．Project名と保存場所を確認<br/>
-<img src="/images/start-spring-boot6.png" alt="Project名と保存場所を確認" /></p>
-
-<p>5．流れに任せてNextを続ける<br/>
-<img src="/images/start-spring-boot7.png" alt="ソースファイル一覧" /></p>
-
-<p><img src="/images/start-spring-boot8.png" alt="ライブラリの確認" /></p>
-
-<p><img src="/images/start-spring-boot9.png" alt="ライブラリの確認" /></p>
-
-<p><img src="/images/start-spring-boot10.png" alt="JDKを選択" /></p>
-
-<p>6．一通り作業が終わったらFinishを選択<br/>
-<img src="/images/start-spring-boot11.png" alt="Finishを選択" /></p>
-
-<p>7．Intellij IDEAのターミナルで<code>gradle bootRun</code>を実行<br/>
-<img src="/images/start-spring-boot12.png" alt="コマンドを実行" /></p>
-
-<p>続いて、最も簡単なIntelliJ IDEA上での実行が完了しました。</p>
-
-<p>引き続きSpring Bootを見ていきますが、本記事は一旦ここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
 
 ]]></content>
   </entry>
