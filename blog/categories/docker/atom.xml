@@ -4,7 +4,7 @@
   <title><![CDATA[Category: docker | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/docker/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-04-10T01:11:47+09:00</updated>
+  <updated>2017-04-11T23:27:50+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,346 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuにSwiftサーバを立てよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/04/11/docker-for-mac-7/"/>
+    <updated>2017-04-11T19:13:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/04/11/docker-for-mac-7</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて本日はDockerつながりで『UbuntuにSwiftサーバを立ててみたい』と思います。<br/>
+今後、ますます加熱する <strong>Server Side Swift</strong> を誰でも簡単に使えるように、きっとDockerを使う場面も増えてくることでしょう。<br/>
+ということで早速見ていきたいと思います。</p>
+
+<h3>Swiftのインストール方法</h3>
+
+<p>次の手順に従って<code>swift</code>コマンドが叩けるところまで進めてみましょう。</p>
+
+<p>１．KitematicでUbuntuを検索してDLする</p>
+
+<p>まずはDockerコンテナを作ります。</p>
+
+<p><img src="/images/docker_swift_1.png" alt="KitematicでUbuntuをダウンロード" /></p>
+
+<p>※Ubuntuのバージョンは<code>Ubuntu 16.04.2 LTS</code>です。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>２．<code>Privileged mode</code>をONにする</p>
+
+<p>Dockerコンテナのあるある話ですが、<code>Privileged mode</code>をONにしないとコマンド利用制限かかったりするので、忘れずにしておきましょう。</p>
+
+<p><img src="/images/docker_swift_2.png" alt="Privileged modeをONにする" /></p>
+
+<p>３．<code>PortFoward</code>を設定する</p>
+
+<p>後々、Swiftサーバを立てた時にアクセスしたいので、Dockerにポートフォワード設定をしておきましょう。<br/>
+後ほどSwiftサーバを起動したときに<code>8080</code>にアクセスすることになるので、</p>
+
+<p><code>javascript
+0.0.0.0:15700-&gt;8080/tcp
+</code></p>
+
+<p>という形でポートフォワードを設定します。<br/>
+もちろんKitematicから設定可能です。</p>
+
+<p>４．<code>apt-get</code>を最新化する</p>
+
+<p>毎度のことですが、最新化しておきます。<br/>
+まずは、Dockerコンテナにアクセスする。</p>
+
+<p><code>javascript
+$ docker exec -it ubuntu /bin/bash
+</code></p>
+
+<p>```javascript</p>
+
+<h1>apt-get update</h1>
+
+<h1>apt-get upgrade</h1>
+
+<p>```</p>
+
+<p>５．<code>wget</code>と<code>vim</code>をインストールする</p>
+
+<p>後ほど利用するので<code>wget</code>と<code>vim</code>をインストールしておきます。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install wget</h1>
+
+<h1>apt-get install vim</h1>
+
+<p>```</p>
+
+<p>６．Swiftサーバの依存モジュールをインストールする</p>
+
+<p><a href="https://swift.org/download/#using-downloads">Swiftの公式サイト</a>にも書かれていますが、依存モジュールがあるのでインストールしましょう。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install clang libicu-dev</h1>
+
+<p>```</p>
+
+<p>７．Swiftパッケージをインストールする</p>
+
+<p>Swiftサーバを立てるのに必要なものは2つあります。<br/>
+それぞれ<code>wget</code>でインストールしましょう。<br/>
+今回インストールするSwiftのバージョンは <strong>3.1</strong> です。</p>
+
+<p>```javascript
+// バイナリアーカイブの取得</p>
+
+<h1>wget <a href="https://swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz">https://swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz</a></h1>
+
+<p>// 署名ファイルの取得</p>
+
+<h1>wget <a href="https://swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz.sig">https://swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz.sig</a></h1>
+
+<p>```</p>
+
+<p>８．PGP鍵をインポートする</p>
+
+<p>次の手順で実施しますが、PGP(Pretty Good Privacy)の公開鍵を利用してSwiftパッケージが安全なものであると署名されたかどうかを検証します。<br/>
+その前準備としてPGP鍵をインポートします。</p>
+
+<p>```javascript</p>
+
+<h1>gpg &mdash;keyserver hkp://pool.sks-keyservers.net \</h1>
+
+<pre><code>  --recv-keys \
+  '7463 A81A 4B2E EA1B 551F  FBCF D441 C977 412B 37AD' \
+  '1BE1 E29A 084C B305 F397  D62A 9F59 7F4D 21A5 6D5F' \
+  'A3BA FD35 56A5 9079 C068  94BD 63BC 1CFE 91D3 06C6'
+</code></pre>
+
+<p>gpg: requesting key 412B37AD from hkp server pool.sks-keyservers.net
+gpg: requesting key 21A56D5F from hkp server pool.sks-keyservers.net
+gpg: requesting key 91D306C6 from hkp server pool.sks-keyservers.net
+gpg: /root/.gnupg/trustdb.gpg: trustdb created
+gpg: key 412B37AD: public key &ldquo;Swift Automatic Signing Key #1 <a href="&#x6d;&#97;&#105;&#108;&#x74;&#111;&#58;&#115;&#x77;&#x69;&#102;&#x74;&#x2d;&#x69;&#110;&#x66;&#x72;&#x61;&#x73;&#x74;&#x72;&#117;&#x63;&#116;&#117;&#114;&#x65;&#64;&#x73;&#x77;&#x69;&#x66;&#x74;&#46;&#x6f;&#114;&#103;">&#x73;&#119;&#x69;&#x66;&#116;&#45;&#105;&#110;&#102;&#x72;&#x61;&#115;&#x74;&#114;&#x75;&#x63;&#x74;&#x75;&#114;&#101;&#x40;&#115;&#x77;&#105;&#102;&#116;&#x2e;&#111;&#114;&#x67;</a>&rdquo; imported
+gpg: key 21A56D5F: public key &ldquo;Swift 2.2 Release Signing Key <a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#x73;&#119;&#x69;&#102;&#x74;&#x2d;&#x69;&#110;&#x66;&#x72;&#x61;&#115;&#x74;&#x72;&#x75;&#x63;&#x74;&#x75;&#x72;&#x65;&#64;&#x73;&#x77;&#105;&#x66;&#x74;&#46;&#111;&#x72;&#103;">&#x73;&#119;&#x69;&#x66;&#x74;&#45;&#105;&#110;&#102;&#x72;&#x61;&#115;&#116;&#114;&#x75;&#x63;&#116;&#117;&#x72;&#x65;&#64;&#x73;&#x77;&#x69;&#x66;&#116;&#46;&#x6f;&#x72;&#103;</a>&rdquo; imported
+gpg: key 91D306C6: public key &ldquo;Swift 3.x Release Signing Key <a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#115;&#119;&#105;&#x66;&#x74;&#45;&#x69;&#110;&#x66;&#x72;&#97;&#115;&#116;&#x72;&#117;&#x63;&#116;&#x75;&#x72;&#x65;&#64;&#115;&#119;&#105;&#102;&#116;&#46;&#x6f;&#114;&#103;">&#x73;&#119;&#105;&#x66;&#x74;&#x2d;&#x69;&#x6e;&#x66;&#114;&#97;&#x73;&#116;&#114;&#x75;&#99;&#x74;&#x75;&#114;&#101;&#64;&#115;&#x77;&#105;&#102;&#x74;&#x2e;&#111;&#x72;&#x67;</a>&rdquo; imported
+gpg: no ultimately trusted keys found
+gpg: Total number processed: 3
+gpg:               imported: 3  (RSA: 3)
+```</p>
+
+<p>９．PGP鍵で署名を検証する</p>
+
+<p>公式で説明されている通り、<code>key</code>のリフレッシュをします。</p>
+
+<p>```javascript</p>
+
+<h1>gpg &mdash;keyserver hkp://pool.sks-keyservers.net &mdash;refresh-keys Swift</h1>
+
+<p>```</p>
+
+<p>続いて、署名を検証します。</p>
+
+<p>```javascript</p>
+
+<h1>gpg &mdash;verify swift-3.1-RELEASE-ubuntu16.04.tar.gz.sig</h1>
+
+<p>gpg: assuming signed data in `swift-3.1-RELEASE-ubuntu16.04.tar.gz'
+gpg: Signature made Tue Mar 28 07:36:36 2017 UTC using RSA key ID 91D306C6
+gpg: Good signature from &ldquo;Swift 3.x Release Signing Key <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#58;&#115;&#x77;&#x69;&#102;&#x74;&#x2d;&#x69;&#x6e;&#102;&#x72;&#x61;&#x73;&#x74;&#x72;&#117;&#x63;&#116;&#117;&#x72;&#101;&#x40;&#115;&#x77;&#105;&#102;&#x74;&#x2e;&#x6f;&#114;&#103;">&#x73;&#119;&#x69;&#102;&#116;&#x2d;&#x69;&#x6e;&#102;&#x72;&#x61;&#x73;&#x74;&#114;&#x75;&#x63;&#116;&#x75;&#x72;&#x65;&#x40;&#x73;&#x77;&#105;&#x66;&#116;&#x2e;&#x6f;&#x72;&#x67;</a>&rdquo;
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: A3BA FD35 56A5 9079 C068  94BD 63BC 1CFE 91D3 06C6
+```</p>
+
+<p>正しいSwiftパッケージであることがわかります。</p>
+
+<p>１０．パッケージを展開する</p>
+
+<p>パッケージは圧縮されているので展開しましょう。</p>
+
+<p>```javascript</p>
+
+<h1>tar xzf swift-3.1-RELEASE-ubuntu16.04.tar.gz</h1>
+
+<p>```</p>
+
+<p>１１．パスを通す</p>
+
+<p>さて、DLしたパッケージに対して検索パスを設定する必要があります。<br/>
+Dockerコンテナには環境設定ファイルとして<code>.dockerenv</code>があるのでこちらにパスを記載します。</p>
+
+<p>```javascript
+// 解凍フォルダの名前が長いので名称を変更する</p>
+
+<h1>mv swift-3.1-RELEASE-ubuntu16.04 swift</h1>
+
+<p>// ファイルを開く</p>
+
+<h1>vi .dockerenv</h1>
+
+<p>// 下記のようにパスを書く
+export PATH=/swift/usr/bin:&ldquo;${PATH}&rdquo;</p>
+
+<p>// 環境設定を更新する</p>
+
+<h1>source .dockerenv</h1>
+
+<p>// 検索パスが通ったことを確認する</p>
+
+<h1>which swift</h1>
+
+<p>/swift/usr/bin/swift</p>
+
+<h1>swift &mdash;version</h1>
+
+<p>Swift version 3.1 (swift-3.1-RELEASE)
+Target: x86_64-unknown-linux-gnu
+```</p>
+
+<p>１２．必要なモジュールをインストールする</p>
+
+<p>このままで<code>swift</code>コマンドを叩いても下記のようにエラーが表示されます。</p>
+
+<p><code>javascript
+/swift/usr/bin/lldb: error while loading shared libraries: libedit.so.2: cannot open shared object file: No such file or directory
+</code></p>
+
+<p>どうやら必要なモジュールが足りないようですね&hellip;<br/>
+ということで下記をインストールしましょう。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install libedit-dev</h1>
+
+<h1>apt-get install libpython-dev</h1>
+
+<h1>apt-get install libxml2-dev</h1>
+
+<p>```</p>
+
+<p>これで<code>swift</code>コマンドを実行できるようになります。<br/>
+ついでに<code>Hello World</code>まで出力してみます。</p>
+
+<p>```javascript</p>
+
+<h1>swift</h1>
+
+<p>Welcome to Swift version 3.1 (swift-3.1-RELEASE). Type :help for assistance.
+  1> print(&ldquo;Hello, world!&rdquo;)
+Hello, world!
+```</p>
+
+<h3>PerfectでSwiftサーバを立てよう！</h3>
+
+<p>今回もSwiftサーバを立てるために<a href="https://github.com/PerfectlySoft/Perfect">Perfect</a>を利用します。<br/>
+下記手順に従って進めましょう。</p>
+
+<p>１．<code>git</code>をインストールする<br/>
+まずは<code>Perfect</code>を<code>git</code>経由でダウンロードする必要があるので<code>git</code>をインストールしましょう。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install git</h1>
+
+<p>```</p>
+
+<p>２．<code>PerfectTemplate</code>をダウンロードする<br/>
+簡潔にSwiftサーバを立てたいので<code>PerfectTemplate</code>をダウンロードします。</p>
+
+<p>```javascript</p>
+
+<h1>git clone <a href="https://github.com/PerfectlySoft/PerfectTemplate.git">https://github.com/PerfectlySoft/PerfectTemplate.git</a></h1>
+
+<p>```</p>
+
+<p>３．必要モジュールをインストールする<br/>
+PerfectのGet Startedに書かれている通り、次の必要なモジュールをインストールします。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install openssl libssl-dev uuid-dev</h1>
+
+<p>```</p>
+
+<p>４．不足モジュールをインストールする<br/>
+このままだと<code>swift build</code>実行しても下記エラーが出てしまいました。</p>
+
+<p><code>javascript
+error while loading shared libraries: libcurl.so.4: cannot open shared object file: No such file or directory
+</code></p>
+
+<p>上記解決のためにモジュールをインストールしましょう。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install libcurl4-openssl-dev</h1>
+
+<p>```</p>
+
+<p>５．<code>swift build</code>を実行する<br/>
+さて、ビルドしましょう。</p>
+
+<p>```javascript</p>
+
+<h1>cd PerfectTemplate</h1>
+
+<h1>swift build</h1>
+
+<p>```</p>
+
+<p>６．Swiftサーバを起動する<br/>
+後は下記コマンドでSwiftサーバを起動しましょう。</p>
+
+<p>```javascript</p>
+
+<h1>.build/debug/PerfectTemplate</h1>
+
+<p>[INFO] Starting HTTP server localhost on 0.0.0.0:8080
+[INFO] Starting HTTP server localhost on 0.0.0.0:8181
+```</p>
+
+<p><img src="/images/docker_swift_3.png" alt="Swiftサーバにアクセス" /></p>
+
+<h3>まとめ</h3>
+
+<p>さていかがでしたでしょうか？<br/>
+筆者個人としては、途中で何回かハマったものの、DockerコンテナのUbuntuにSwiftサーバを立てられたことに満足できました。<br/>
+今回はサーバを立てるという基本的なものでしたが、今度はWeb APIを作成して、iOSアプリからアクセスしてみたりなど遊んでみたいと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="https://www.twilio.com/blog/2015/12/getting-started-with-swift-on-linux.html">Getting Started with Swift on Linux</a></li>
+<li><a href="http://qiita.com/yonell/items/79bf4ee3cd65f69903ec">Ubuntu上でSwiftサーバーサイドフレームワークのPerfectを動かしてみた</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Kitematicでエラーが発生してDockerコンテナが作成できない！！]]></title>
@@ -3145,278 +3485,6 @@ Ubuntuの場合、<code>/etc/apache2/conf-enabled/localized-error-pages.conf</co
 WEBサーバとはどんなものなのか、わかったようでわかっていなかったことが見えてきた気がします。<br/>
 引き続き勉強を続けていきたいものです。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuにWebサーバーを立てよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/"/>
-    <updated>2017-02-19T15:05:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>さて、今回は前回(<a href="http://grandbig.github.io/blog/2017/02/13/docker-for-mac-1/">Docker for Macをインストールしよう！</a>)構築したDocker内のUbuntuサーバの中で遊んでみます。<br/>
-まずは、基本となるWebサーバを立てるところから始めたいと思います。</p>
-
-<p>今回は最も有名であろう(Nginxも人気ですが&hellip;) <strong>Apache</strong> を利用したWebサーバの構築をしてみます。<br/>
-限りなく常識に近いと思うものの、一応概要だけ紹介すると、Apacheとは下記の通りです。</p>
-
-<ul>
-<li>正式名所は「 <strong>Apache HTTP Server</strong> 」</li>
-<li>Webサーバソフトウェア</li>
-<li>Apache Licenseで無償で提供</li>
-<li>2.2系と2.4系があるがモダンなのは <strong>2.4系</strong></li>
-</ul>
-
-
-<p>というところで早速見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>Host Macからアクセスするためのポートフォワード設定</h3>
-
-<p>これからApacheをインストールするわけですが、その前にDockerコンテナにポートフォワード設定をしてみましょう。<br/>
-Docker for Macなら簡単にできます。</p>
-
-<p>１．該当コンテナの設定を見ましょう</p>
-
-<p><img src="/images/docker_port_forward_1.png" alt="設定を見る" /></p>
-
-<p>２．Port設定を見ましょう</p>
-
-<p><img src="/images/docker_port_forward_2.png" alt="Port設定を見る" /></p>
-
-<p>３．ポートフォワードの設定を追加する</p>
-
-<p><img src="/images/docker_port_forward_3.png" alt="ポートフォワードの設定を追加" /></p>
-
-<p>上記では、<code>http://localhost:15600/</code>でMacからアクセスできるようにしています。<br/>
-<code>localhost</code>でなく、具体的にIPアドレスを指定しても良いようですが、今回は特に必要ないのでこれでいきます。</p>
-
-<h3>Apacheのインストール</h3>
-
-<p>まずは当然のことながらインストール作業から始めます。<br/>
-DockerのUbuntuコンテナを起動した後にログインして、下記コマンドを叩きましょう。</p>
-
-<p>ログインはDockerアプリに含まれている <strong>Kitematic</strong> からもできますし、コマンドでもできます。</p>
-
-<p>```javascript
-// docker コンテナにログイン
-$ docker exec -it &lt;&lt;コンテナ名>> bash</p>
-
-<p>// apt-getのアップデート
-$ apt-get update
-// Apacheのインストール
-$ apt-get install apache2
-```</p>
-
-<p>なぜ初めに<code>apt-get update</code>をやっているかと言うと、これをやらずに突き進もうとした際に下記エラーが発生したためです。</p>
-
-<p>```javascript</p>
-
-<h1>apt-get install apache2</h1>
-
-<p>Reading package lists&hellip; Done
-Building dependency tree     <br/>
-Reading state information&hellip; Done
-E: Unable to locate package apache2
-```</p>
-
-<p>きちんとApacheのインストールが完了したか確認するためにバージョンを見てみましょう。</p>
-
-<p>```javascript
-// バージョン確認方法(1)
-$ apachectl -v
-Server version: Apache/2.4.18 (Ubuntu)
-Server built:   2016-07-14T12:32:26</p>
-
-<p>// バージョン確認方法(2)
-$ apache2 -v
-Server version: Apache/2.4.18 (Ubuntu)
-Server built:   2016-07-14T12:32:26
-```</p>
-
-<h3>Apacheの起動確認</h3>
-
-<p>インストール後はデフォルトで起動していると思いますが、念のため確認しておきましょう。</p>
-
-<p><code>javascript
-$ /etc/init.d/apache2 status
- * apache2 is running
-</code></p>
-
-<p>因みに、初期状態では<code>start</code>や<code>restart</code>コマンドを実行したときに下記警告が表示されます。</p>
-
-<p><code>javascript
-$ /etc/init.d/apache2 restart
- * Restarting Apache httpd web server apache2                                                                                                                                                           AH00558: apache2: Could not reliably determine the server’s fully qualified domain name, using XX.XX.XX.XX. Set the 'ServerName' directive globally to suppress this message
-</code></p>
-
-<p>これを回避するためには設定ファイルに<code>ServerName</code>を定義する必要があります。<br/>
-(警告は出るものの、起動には何ら問題はありません。)</p>
-
-<p>下記のように設定ファイルを開きます。</p>
-
-<p><code>javascript
-// 設定ファイルを開く
-$ vi /etc/apache2/apache2.conf
-</code></p>
-
-<p>続いて、<code>ServerName</code>を適当な場所に定義してやりましょう。</p>
-
-<p>```javascript
-// /etc/apache2/apache2.conf
-// 省略</p>
-
-<h1>Include list of ports to listen on</h1>
-
-<p>Include ports.conf</p>
-
-<p>ServerName xxx.com
-// 省略
-```</p>
-
-<p>これにより、エラーなく起動や再起動できることを確認できるはずです。</p>
-
-<p><code>javascript
-$ /etc/init.d/apache2 restart
- * Restarting Apache httpd web server apache2  
-</code></p>
-
-<p>これでApacheが起動していることが確認できたので、GETリクエストを投げてアクセスしてみましょう。<br/>
-Ubuntu用のApacheデフォルトページが返却されるはずです。</p>
-
-<p>```javascript
-$ curl <a href="http://127.0.0.1/">http://127.0.0.1/</a></p>
-
-<p>&lt;!DOCTYPE html PUBLIC &ldquo;&ndash;//W3C//DTD XHTML 1.0 Transitional//EN&rdquo; &ldquo;<a href="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd</a>&rdquo;>
-<html xmlns="http://www.w3.org/1999/xhtml">
-  &hellip;
-</html>
-```</p>
-
-<h3>Webページにアクセス</h3>
-
-<p>冒頭でポートフォワード設定をしたので、Apacheが起動しているのであれば、Macからページを見れるはずです！<br/>
-早速見てみましょう。<br/>
-設定した<code>http://localhost:15600/</code>でアクセスすると下記のようにページが表示されます。</p>
-
-<p><img src="/images/docker_apache_1.png" alt="DockerコンテナのWEBページ" /></p>
-
-<h3>便利コマンド利用するためにモジュールをインストール</h3>
-
-<p>Webサーバを構築する上で、あまりにもまっさらなUbuntuだったため幾つか必要なものをインストールする必要がありました。<br/>
-その紹介もおまけ程度に書いておきます。</p>
-
-<h4>lessのインストール</h4>
-
-<p>毎回<code>cat</code>コマンドで中身を見る必要性がないこともあると思います。<br/>
-流石に<code>less</code>くらいはインストールしておきます。</p>
-
-<p>```javascript
-// lessのインストール
-$ apt-get install less</p>
-
-<p>// lessのバージョン確認
-$ less &mdash;help
-```</p>
-
-<h4>lessコマンドで色をつける</h4>
-
-<p>ついでに<code>less</code>コマンドで色を付けて見やすくする方法を書いておきます。</p>
-
-<p><code>javascript
-// source-highlightのインストール
-$ apt-get install source-highlight
-</code></p>
-
-<p>Dockerコンテナ内の環境変数は<code>.dockerenv</code>ファイル内に書きます。</p>
-
-<p>```javascript
-// .dockerenvに下記を追加</p>
-
-<h1>Source-hilight with less</h1>
-
-<p>export LESSOPEN=&ldquo;| /usr/share/source-highlight/src-hilite-lesspipe.sh %s&rdquo;
-export LESS=&lsquo;-R&rsquo;
-```</p>
-
-<p>結果を反映させるために、下記コマンドを叩きましょう。</p>
-
-<p><code>javascript
-$ source ~/.dockerenv
-</code></p>
-
-<h4>vi/vimのインストール</h4>
-
-<p>ファイルを作成する際に必ず必要になります。</p>
-
-<p>```javascript
-// vimのインストール
-$ apt-get install vim</p>
-
-<p>// vimのバージョン確認
-$ vim -v
-// viのバージョン確認
-$ vi -v
-```</p>
-
-<h4>curlのインストール</h4>
-
-<p><code>curl</code>は試しにHTTPリクエストを投げてみたいことがあると思ったのでインストールしてみました。</p>
-
-<p>```javascript
-// curlのインストール
-$ apt-get install curl</p>
-
-<p>// curlのバージョン確認
-$ curl -V
-curl 7.47.0 (x86_64-pc-linux-gnu) libcurl/7.47.0 GnuTLS/3.4.10 zlib/1.2.8 libidn/1.32 librtmp/2.3
-Protocols: dict file ftp ftps gopher http https imap imaps ldap ldaps pop3 pop3s rtmp rtsp smb smbs smtp smtps telnet tftp
-Features: AsynchDNS IDN IPv6 Largefile GSS-API Kerberos SPNEGO NTLM NTLM_WB SSL libz TLS-SRP UnixSockets
-```</p>
-
-<h3>まとめ</h3>
-
-<p>さて一先ず本記事の目的は達成できました。<br/>
-が、Apacheのあまりにも簡単な基礎部分しか見ていません。<br/>
-引き続き、最低限の設定を見ていきたいと思っています。</p>
-
-<p>と言ったところで本日はここまで。</p>
-
-<h3>参考</h3>
-
-<p>以下、ページを参考にさせて頂きました。</p>
-
-<ul>
-<li><a href="http://www.nemotos.net/?p=1100">Ubuntuでlessを使って構文をカラー表示する方法</a></li>
-<li><a href="http://qiita.com/maemori/items/e7318b088b9e4bf22310">docker-machineコマンド</a></li>
-<li><a href="https://docs.docker.com/kitematic/userguide/">Kitematic user guide</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

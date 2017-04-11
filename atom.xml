@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-04-10T01:11:02+09:00</updated>
+  <updated>2017-04-11T23:27:00+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,371 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuにSwiftサーバを立てよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/04/11/docker-for-mac-7/"/>
+    <updated>2017-04-11T19:13:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/04/11/docker-for-mac-7</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて本日はDockerつながりで『UbuntuにSwiftサーバを立ててみたい』と思います。<br/>
+今後、ますます加熱する <strong>Server Side Swift</strong> を誰でも簡単に使えるように、きっとDockerを使う場面も増えてくることでしょう。<br/>
+ということで早速見ていきたいと思います。</p>
+
+<h3>Swiftのインストール方法</h3>
+
+<p>次の手順に従って<code>swift</code>コマンドが叩けるところまで進めてみましょう。</p>
+
+<p>１．KitematicでUbuntuを検索してDLする</p>
+
+<p>まずはDockerコンテナを作ります。</p>
+
+<p><img src="http://grandbig.github.io/images/docker_swift_1.png" alt="KitematicでUbuntuをダウンロード" /></p>
+
+<p>※Ubuntuのバージョンは<code>Ubuntu 16.04.2 LTS</code>です。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>２．<code>Privileged mode</code>をONにする</p>
+
+<p>Dockerコンテナのあるある話ですが、<code>Privileged mode</code>をONにしないとコマンド利用制限かかったりするので、忘れずにしておきましょう。</p>
+
+<p><img src="http://grandbig.github.io/images/docker_swift_2.png" alt="Privileged modeをONにする" /></p>
+
+<p>３．<code>PortFoward</code>を設定する</p>
+
+<p>後々、Swiftサーバを立てた時にアクセスしたいので、Dockerにポートフォワード設定をしておきましょう。<br/>
+後ほどSwiftサーバを起動したときに<code>8080</code>にアクセスすることになるので、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="mf">0.0</span><span class="p">.</span><span class="mf">0.0</span><span class="o">:</span><span class="mi">15700</span><span class="o">-&gt;</span><span class="mi">8080</span><span class="o">/</span><span class="nx">tcp</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>という形でポートフォワードを設定します。<br/>
+もちろんKitematicから設定可能です。</p>
+
+<p>４．<code>apt-get</code>を最新化する</p>
+
+<p>毎度のことですが、最新化しておきます。<br/>
+まずは、Dockerコンテナにアクセスする。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">exec</span> <span class="o">-</span><span class="nx">it</span> <span class="nx">ubuntu</span> <span class="o">/</span><span class="nx">bin</span><span class="o">/</span><span class="nx">bash</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">update</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">upgrade</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>５．<code>wget</code>と<code>vim</code>をインストールする</p>
+
+<p>後ほど利用するので<code>wget</code>と<code>vim</code>をインストールしておきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">wget</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">vim</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>６．Swiftサーバの依存モジュールをインストールする</p>
+
+<p><a href="https://swift.org/download/#using-downloads">Swiftの公式サイト</a>にも書かれていますが、依存モジュールがあるのでインストールしましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">clang</span> <span class="nx">libicu</span><span class="o">-</span><span class="nx">dev</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>７．Swiftパッケージをインストールする</p>
+
+<p>Swiftサーバを立てるのに必要なものは2つあります。<br/>
+それぞれ<code>wget</code>でインストールしましょう。<br/>
+今回インストールするSwiftのバージョンは <strong>3.1</strong> です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// バイナリアーカイブの取得</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">wget</span> <span class="nx">https</span><span class="o">:</span><span class="c1">//swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz</span>
+</span><span class='line'><span class="c1">// 署名ファイルの取得</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">wget</span> <span class="nx">https</span><span class="o">:</span><span class="c1">//swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz.sig</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>８．PGP鍵をインポートする</p>
+
+<p>次の手順で実施しますが、PGP(Pretty Good Privacy)の公開鍵を利用してSwiftパッケージが安全なものであると署名されたかどうかを検証します。<br/>
+その前準備としてPGP鍵をインポートします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">gpg</span> <span class="o">--</span><span class="nx">keyserver</span> <span class="nx">hkp</span><span class="o">:</span><span class="c1">//pool.sks-keyservers.net \</span>
+</span><span class='line'>      <span class="o">--</span><span class="nx">recv</span><span class="o">-</span><span class="nx">keys</span> <span class="o">\</span>
+</span><span class='line'>      <span class="s1">&#39;7463 A81A 4B2E EA1B 551F  FBCF D441 C977 412B 37AD&#39;</span> <span class="o">\</span>
+</span><span class='line'>      <span class="s1">&#39;1BE1 E29A 084C B305 F397  D62A 9F59 7F4D 21A5 6D5F&#39;</span> <span class="o">\</span>
+</span><span class='line'>      <span class="s1">&#39;A3BA FD35 56A5 9079 C068  94BD 63BC 1CFE 91D3 06C6&#39;</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">requesting</span> <span class="nx">key</span> <span class="mi">412</span><span class="nx">B37AD</span> <span class="nx">from</span> <span class="nx">hkp</span> <span class="nx">server</span> <span class="nx">pool</span><span class="p">.</span><span class="nx">sks</span><span class="o">-</span><span class="nx">keyservers</span><span class="p">.</span><span class="nx">net</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">requesting</span> <span class="nx">key</span> <span class="mi">21</span><span class="nx">A56D5F</span> <span class="nx">from</span> <span class="nx">hkp</span> <span class="nx">server</span> <span class="nx">pool</span><span class="p">.</span><span class="nx">sks</span><span class="o">-</span><span class="nx">keyservers</span><span class="p">.</span><span class="nx">net</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">requesting</span> <span class="nx">key</span> <span class="mi">91</span><span class="nx">D306C6</span> <span class="nx">from</span> <span class="nx">hkp</span> <span class="nx">server</span> <span class="nx">pool</span><span class="p">.</span><span class="nx">sks</span><span class="o">-</span><span class="nx">keyservers</span><span class="p">.</span><span class="nx">net</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="sr">/root/</span><span class="p">.</span><span class="nx">gnupg</span><span class="o">/</span><span class="nx">trustdb</span><span class="p">.</span><span class="nx">gpg</span><span class="o">:</span> <span class="nx">trustdb</span> <span class="nx">created</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">key</span> <span class="mi">412</span><span class="nx">B37AD</span><span class="o">:</span> <span class="kr">public</span> <span class="nx">key</span> <span class="s2">&quot;Swift Automatic Signing Key #1 &lt;swift-infrastructure@swift.org&gt;&quot;</span> <span class="nx">imported</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">key</span> <span class="mi">21</span><span class="nx">A56D5F</span><span class="o">:</span> <span class="kr">public</span> <span class="nx">key</span> <span class="s2">&quot;Swift 2.2 Release Signing Key &lt;swift-infrastructure@swift.org&gt;&quot;</span> <span class="nx">imported</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">key</span> <span class="mi">91</span><span class="nx">D306C6</span><span class="o">:</span> <span class="kr">public</span> <span class="nx">key</span> <span class="s2">&quot;Swift 3.x Release Signing Key &lt;swift-infrastructure@swift.org&gt;&quot;</span> <span class="nx">imported</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">no</span> <span class="nx">ultimately</span> <span class="nx">trusted</span> <span class="nx">keys</span> <span class="nx">found</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">Total</span> <span class="nx">number</span> <span class="nx">processed</span><span class="o">:</span> <span class="mi">3</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span>               <span class="nx">imported</span><span class="o">:</span> <span class="mi">3</span>  <span class="p">(</span><span class="nx">RSA</span><span class="o">:</span> <span class="mi">3</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>９．PGP鍵で署名を検証する</p>
+
+<p>公式で説明されている通り、<code>key</code>のリフレッシュをします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">gpg</span> <span class="o">--</span><span class="nx">keyserver</span> <span class="nx">hkp</span><span class="o">:</span><span class="c1">//pool.sks-keyservers.net --refresh-keys Swift</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、署名を検証します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">gpg</span> <span class="o">--</span><span class="nx">verify</span> <span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="o">-</span><span class="nx">ubuntu16</span><span class="p">.</span><span class="mi">04</span><span class="p">.</span><span class="nx">tar</span><span class="p">.</span><span class="nx">gz</span><span class="p">.</span><span class="nx">sig</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">assuming</span> <span class="nx">signed</span> <span class="nx">data</span> <span class="k">in</span> <span class="err">`</span><span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="o">-</span><span class="nx">ubuntu16</span><span class="p">.</span><span class="mi">04</span><span class="p">.</span><span class="nx">tar</span><span class="p">.</span><span class="nx">gz</span><span class="err">&#39;</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">Signature</span> <span class="nx">made</span> <span class="nx">Tue</span> <span class="nx">Mar</span> <span class="mi">28</span> <span class="mi">07</span><span class="o">:</span><span class="mi">36</span><span class="o">:</span><span class="mi">36</span> <span class="mi">2017</span> <span class="nx">UTC</span> <span class="nx">using</span> <span class="nx">RSA</span> <span class="nx">key</span> <span class="nx">ID</span> <span class="mi">91</span><span class="nx">D306C6</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">Good</span> <span class="nx">signature</span> <span class="nx">from</span> <span class="s2">&quot;Swift 3.x Release Signing Key &lt;swift-infrastructure@swift.org&gt;&quot;</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">WARNING</span><span class="o">:</span> <span class="nx">This</span> <span class="nx">key</span> <span class="nx">is</span> <span class="nx">not</span> <span class="nx">certified</span> <span class="kd">with</span> <span class="nx">a</span> <span class="nx">trusted</span> <span class="nx">signature</span><span class="o">!</span>
+</span><span class='line'><span class="nx">gpg</span><span class="o">:</span>          <span class="nx">There</span> <span class="nx">is</span> <span class="nx">no</span> <span class="nx">indication</span> <span class="nx">that</span> <span class="nx">the</span> <span class="nx">signature</span> <span class="nx">belongs</span> <span class="nx">to</span> <span class="nx">the</span> <span class="nx">owner</span><span class="p">.</span>
+</span><span class='line'><span class="nx">Primary</span> <span class="nx">key</span> <span class="nx">fingerprint</span><span class="o">:</span> <span class="nx">A3BA</span> <span class="nx">FD35</span> <span class="mi">56</span><span class="nx">A5</span> <span class="mi">9079</span> <span class="nx">C068</span>  <span class="mi">94</span><span class="nx">BD</span> <span class="mi">63</span><span class="nx">BC</span> <span class="mi">1</span><span class="nx">CFE</span> <span class="mi">91</span><span class="nx">D3</span> <span class="mi">06</span><span class="nx">C6</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>正しいSwiftパッケージであることがわかります。</p>
+
+<p>１０．パッケージを展開する</p>
+
+<p>パッケージは圧縮されているので展開しましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">tar</span> <span class="nx">xzf</span> <span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="o">-</span><span class="nx">ubuntu16</span><span class="p">.</span><span class="mi">04</span><span class="p">.</span><span class="nx">tar</span><span class="p">.</span><span class="nx">gz</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>１１．パスを通す</p>
+
+<p>さて、DLしたパッケージに対して検索パスを設定する必要があります。<br/>
+Dockerコンテナには環境設定ファイルとして<code>.dockerenv</code>があるのでこちらにパスを記載します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// 解凍フォルダの名前が長いので名称を変更する</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">mv</span> <span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="o">-</span><span class="nx">ubuntu16</span><span class="p">.</span><span class="mi">04</span> <span class="nx">swift</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ファイルを開く</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">vi</span> <span class="p">.</span><span class="nx">dockerenv</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 下記のようにパスを書く</span>
+</span><span class='line'><span class="kr">export</span> <span class="nx">PATH</span><span class="o">=</span><span class="err">/swift/usr/bin:&quot;${PATH}&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 環境設定を更新する</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">source</span> <span class="p">.</span><span class="nx">dockerenv</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 検索パスが通ったことを確認する</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">which</span> <span class="nx">swift</span>
+</span><span class='line'><span class="o">/</span><span class="nx">swift</span><span class="o">/</span><span class="nx">usr</span><span class="o">/</span><span class="nx">bin</span><span class="o">/</span><span class="nx">swift</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">swift</span> <span class="o">--</span><span class="nx">version</span>
+</span><span class='line'><span class="nx">Swift</span> <span class="nx">version</span> <span class="mf">3.1</span> <span class="p">(</span><span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="p">)</span>
+</span><span class='line'><span class="nx">Target</span><span class="o">:</span> <span class="nx">x86_64</span><span class="o">-</span><span class="nx">unknown</span><span class="o">-</span><span class="nx">linux</span><span class="o">-</span><span class="nx">gnu</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>１２．必要なモジュールをインストールする</p>
+
+<p>このままで<code>swift</code>コマンドを叩いても下記のようにエラーが表示されます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">/swift/usr/bin/lldb: error while loading shared libraries: libedit.so.2: cannot open shared object file: No such file or directory</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>どうやら必要なモジュールが足りないようですね&hellip;<br/>
+ということで下記をインストールしましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">libedit</span><span class="o">-</span><span class="nx">dev</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">libpython</span><span class="o">-</span><span class="nx">dev</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">libxml2</span><span class="o">-</span><span class="nx">dev</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これで<code>swift</code>コマンドを実行できるようになります。<br/>
+ついでに<code>Hello World</code>まで出力してみます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">swift</span>
+</span><span class='line'><span class="nx">Welcome</span> <span class="nx">to</span> <span class="nx">Swift</span> <span class="nx">version</span> <span class="mf">3.1</span> <span class="p">(</span><span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="p">).</span> <span class="nx">Type</span> <span class="o">:</span><span class="nx">help</span> <span class="k">for</span> <span class="nx">assistance</span><span class="p">.</span>
+</span><span class='line'>  <span class="mi">1</span><span class="o">&gt;</span> <span class="nx">print</span><span class="p">(</span><span class="s2">&quot;Hello, world!&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nx">Hello</span><span class="p">,</span> <span class="nx">world</span><span class="o">!</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>PerfectでSwiftサーバを立てよう！</h3>
+
+<p>今回もSwiftサーバを立てるために<a href="https://github.com/PerfectlySoft/Perfect">Perfect</a>を利用します。<br/>
+下記手順に従って進めましょう。</p>
+
+<p>１．<code>git</code>をインストールする<br/>
+まずは<code>Perfect</code>を<code>git</code>経由でダウンロードする必要があるので<code>git</code>をインストールしましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">git</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>２．<code>PerfectTemplate</code>をダウンロードする<br/>
+簡潔にSwiftサーバを立てたいので<code>PerfectTemplate</code>をダウンロードします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">git</span> <span class="nx">clone</span> <span class="nx">https</span><span class="o">:</span><span class="c1">//github.com/PerfectlySoft/PerfectTemplate.git</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>３．必要モジュールをインストールする<br/>
+PerfectのGet Startedに書かれている通り、次の必要なモジュールをインストールします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">openssl</span> <span class="nx">libssl</span><span class="o">-</span><span class="nx">dev</span> <span class="nx">uuid</span><span class="o">-</span><span class="nx">dev</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>４．不足モジュールをインストールする<br/>
+このままだと<code>swift build</code>実行しても下記エラーが出てしまいました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">error</span> <span class="k">while</span> <span class="nx">loading</span> <span class="nx">shared</span> <span class="nx">libraries</span><span class="o">:</span> <span class="nx">libcurl</span><span class="p">.</span><span class="nx">so</span><span class="p">.</span><span class="mi">4</span><span class="o">:</span> <span class="nx">cannot</span> <span class="nx">open</span> <span class="nx">shared</span> <span class="nx">object</span> <span class="nx">file</span><span class="o">:</span> <span class="nx">No</span> <span class="nx">such</span> <span class="nx">file</span> <span class="nx">or</span> <span class="nx">directory</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記解決のためにモジュールをインストールしましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">libcurl4</span><span class="o">-</span><span class="nx">openssl</span><span class="o">-</span><span class="nx">dev</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>５．<code>swift build</code>を実行する<br/>
+さて、ビルドしましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">cd</span> <span class="nx">PerfectTemplate</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">swift</span> <span class="nx">build</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>６．Swiftサーバを起動する<br/>
+後は下記コマンドでSwiftサーバを起動しましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="p">.</span><span class="nx">build</span><span class="o">/</span><span class="nx">debug</span><span class="o">/</span><span class="nx">PerfectTemplate</span>
+</span><span class='line'><span class="p">[</span><span class="nx">INFO</span><span class="p">]</span> <span class="nx">Starting</span> <span class="nx">HTTP</span> <span class="nx">server</span> <span class="nx">localhost</span> <span class="nx">on</span> <span class="mf">0.0</span><span class="p">.</span><span class="mf">0.0</span><span class="o">:</span><span class="mi">8080</span>
+</span><span class='line'><span class="p">[</span><span class="nx">INFO</span><span class="p">]</span> <span class="nx">Starting</span> <span class="nx">HTTP</span> <span class="nx">server</span> <span class="nx">localhost</span> <span class="nx">on</span> <span class="mf">0.0</span><span class="p">.</span><span class="mf">0.0</span><span class="o">:</span><span class="mi">8181</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img src="http://grandbig.github.io/images/docker_swift_3.png" alt="Swiftサーバにアクセス" /></p>
+
+<h3>まとめ</h3>
+
+<p>さていかがでしたでしょうか？<br/>
+筆者個人としては、途中で何回かハマったものの、DockerコンテナのUbuntuにSwiftサーバを立てられたことに満足できました。<br/>
+今回はサーバを立てるという基本的なものでしたが、今度はWeb APIを作成して、iOSアプリからアクセスしてみたりなど遊んでみたいと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="https://www.twilio.com/blog/2015/12/getting-started-with-swift-on-linux.html">Getting Started with Swift on Linux</a></li>
+<li><a href="http://qiita.com/yonell/items/79bf4ee3cd65f69903ec">Ubuntu上でSwiftサーバーサイドフレームワークのPerfectを動かしてみた</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SwinjectでDIを意識してみよう！]]></title>
@@ -9757,112 +10122,6 @@ GitでFetchしようとして下記エラーが出ました。</p>
 <li><a href="http://momota.github.io/blog/2016/01/29/octopress/">複数の環境で Octopress を使ってブログを書く</a></li>
 </ul>
 
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[HomebrewでMongoDBをインストール]]></title>
-    <link href="http://grandbig.github.io/blog/2016/11/20/brew-install-db/"/>
-    <updated>2016-11-20T00:10:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/11/20/brew-install-db</id>
-    <content type="html"><![CDATA[<h3>PC移行したことで発生したHomebrew対応し直し</h3>
-
-<p>さて、本日はMacbook Proを購入したことでブログ作成環境を移行する必要があったので、その際に気づいたことをメモしておきます。</p>
-
-<p>これまではMongoDBやMySQLなどのDB系はインストールした後に、次回、PCログイン時に自動起動させるために手動でデーモン起動設定をする必要がありました。<br/>
-しかし、今回、筆者が <strong>Homebrew</strong> で上記をインストールしてみたところ、新たな記述が出力されるようになっていました。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!--more-->
-
-
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>// MongoDBの例
-</span><span class='line'>$ brew install mongodb
-</span><span class='line'>==&gt; Downloading https://homebrew.bintray.com/bottles/mongodb-3.2.11.sierra.bottle.tar.gz
-</span><span class='line'>######################################################################## 100.0%
-</span><span class='line'>==&gt; Pouring mongodb-3.2.11.sierra.bottle.tar.gz
-</span><span class='line'>==&gt; Caveats
-</span><span class='line'>To have launchd start mongodb now and restart at login:
-</span><span class='line'>  brew services start mongodb
-</span><span class='line'>Or, if you don't want/need a background service you can just run:
-</span><span class='line'>  mongod --config /usr/local/etc/mongod.conf
-</span><span class='line'>==&gt; Summary
-</span><span class='line'>🍺  /usr/local/Cellar/mongodb/3.2.11: 18 files, 245.4M</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記が実際に出力された記述になります。<br/>
-筆者が注目したのは、 <strong>brew services start mongodb</strong> の部分です。<br/>
-これを叩けば、デーモン起動設定がされるのでは！？と思った次第です。</p>
-
-<p>では実際にコマンドを叩いてみましょう。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ brew services start mongodb
-</span><span class='line'>==&gt; Tapping homebrew/services
-</span><span class='line'>Cloning into '/usr/local/Homebrew/Library/Taps/homebrew/homebrew-services'...
-</span><span class='line'>remote: Counting objects: 10, done.
-</span><span class='line'>remote: Compressing objects: 100% (7/7), done.
-</span><span class='line'>remote: Total 10 (delta 0), reused 6 (delta 0), pack-reused 0
-</span><span class='line'>Unpacking objects: 100% (10/10), done.
-</span><span class='line'>Tapped 0 formulae (37 files, 46.8K)
-</span><span class='line'>==&gt; Successfully started `mongodb` (label: homebrew.mxcl.mongodb)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>起動しているか下記コマンドで確認してみます。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ ps aux | grep mongo
-</span><span class='line'>takahiro      5468   0.2  0.2  2584528  25672   ??  S    11:24PM   0:00.22 /usr/local/opt/mongodb/bin/mongod --config /usr/local/etc/mongod.conf
-</span><span class='line'>takahiro      5472   0.0  0.0  2432804   1924 s000  S+   11:24PM   0:00.00 grep mongo</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これで既に起動していることを確認できました。<br/>
-すごく便利になりましたね！</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

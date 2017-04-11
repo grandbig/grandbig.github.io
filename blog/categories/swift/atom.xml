@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-04-10T01:11:47+09:00</updated>
+  <updated>2017-04-11T23:27:50+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,346 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuにSwiftサーバを立てよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/04/11/docker-for-mac-7/"/>
+    <updated>2017-04-11T19:13:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/04/11/docker-for-mac-7</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて本日はDockerつながりで『UbuntuにSwiftサーバを立ててみたい』と思います。<br/>
+今後、ますます加熱する <strong>Server Side Swift</strong> を誰でも簡単に使えるように、きっとDockerを使う場面も増えてくることでしょう。<br/>
+ということで早速見ていきたいと思います。</p>
+
+<h3>Swiftのインストール方法</h3>
+
+<p>次の手順に従って<code>swift</code>コマンドが叩けるところまで進めてみましょう。</p>
+
+<p>１．KitematicでUbuntuを検索してDLする</p>
+
+<p>まずはDockerコンテナを作ります。</p>
+
+<p><img src="/images/docker_swift_1.png" alt="KitematicでUbuntuをダウンロード" /></p>
+
+<p>※Ubuntuのバージョンは<code>Ubuntu 16.04.2 LTS</code>です。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>２．<code>Privileged mode</code>をONにする</p>
+
+<p>Dockerコンテナのあるある話ですが、<code>Privileged mode</code>をONにしないとコマンド利用制限かかったりするので、忘れずにしておきましょう。</p>
+
+<p><img src="/images/docker_swift_2.png" alt="Privileged modeをONにする" /></p>
+
+<p>３．<code>PortFoward</code>を設定する</p>
+
+<p>後々、Swiftサーバを立てた時にアクセスしたいので、Dockerにポートフォワード設定をしておきましょう。<br/>
+後ほどSwiftサーバを起動したときに<code>8080</code>にアクセスすることになるので、</p>
+
+<p><code>javascript
+0.0.0.0:15700-&gt;8080/tcp
+</code></p>
+
+<p>という形でポートフォワードを設定します。<br/>
+もちろんKitematicから設定可能です。</p>
+
+<p>４．<code>apt-get</code>を最新化する</p>
+
+<p>毎度のことですが、最新化しておきます。<br/>
+まずは、Dockerコンテナにアクセスする。</p>
+
+<p><code>javascript
+$ docker exec -it ubuntu /bin/bash
+</code></p>
+
+<p>```javascript</p>
+
+<h1>apt-get update</h1>
+
+<h1>apt-get upgrade</h1>
+
+<p>```</p>
+
+<p>５．<code>wget</code>と<code>vim</code>をインストールする</p>
+
+<p>後ほど利用するので<code>wget</code>と<code>vim</code>をインストールしておきます。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install wget</h1>
+
+<h1>apt-get install vim</h1>
+
+<p>```</p>
+
+<p>６．Swiftサーバの依存モジュールをインストールする</p>
+
+<p><a href="https://swift.org/download/#using-downloads">Swiftの公式サイト</a>にも書かれていますが、依存モジュールがあるのでインストールしましょう。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install clang libicu-dev</h1>
+
+<p>```</p>
+
+<p>７．Swiftパッケージをインストールする</p>
+
+<p>Swiftサーバを立てるのに必要なものは2つあります。<br/>
+それぞれ<code>wget</code>でインストールしましょう。<br/>
+今回インストールするSwiftのバージョンは <strong>3.1</strong> です。</p>
+
+<p>```javascript
+// バイナリアーカイブの取得</p>
+
+<h1>wget <a href="https://swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz">https://swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz</a></h1>
+
+<p>// 署名ファイルの取得</p>
+
+<h1>wget <a href="https://swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz.sig">https://swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz.sig</a></h1>
+
+<p>```</p>
+
+<p>８．PGP鍵をインポートする</p>
+
+<p>次の手順で実施しますが、PGP(Pretty Good Privacy)の公開鍵を利用してSwiftパッケージが安全なものであると署名されたかどうかを検証します。<br/>
+その前準備としてPGP鍵をインポートします。</p>
+
+<p>```javascript</p>
+
+<h1>gpg &mdash;keyserver hkp://pool.sks-keyservers.net \</h1>
+
+<pre><code>  --recv-keys \
+  '7463 A81A 4B2E EA1B 551F  FBCF D441 C977 412B 37AD' \
+  '1BE1 E29A 084C B305 F397  D62A 9F59 7F4D 21A5 6D5F' \
+  'A3BA FD35 56A5 9079 C068  94BD 63BC 1CFE 91D3 06C6'
+</code></pre>
+
+<p>gpg: requesting key 412B37AD from hkp server pool.sks-keyservers.net
+gpg: requesting key 21A56D5F from hkp server pool.sks-keyservers.net
+gpg: requesting key 91D306C6 from hkp server pool.sks-keyservers.net
+gpg: /root/.gnupg/trustdb.gpg: trustdb created
+gpg: key 412B37AD: public key &ldquo;Swift Automatic Signing Key #1 <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#x73;&#119;&#105;&#x66;&#x74;&#x2d;&#105;&#x6e;&#102;&#114;&#x61;&#x73;&#x74;&#x72;&#x75;&#99;&#x74;&#117;&#114;&#101;&#64;&#115;&#x77;&#105;&#x66;&#x74;&#x2e;&#111;&#x72;&#103;">&#x73;&#x77;&#x69;&#x66;&#116;&#45;&#x69;&#x6e;&#x66;&#x72;&#x61;&#x73;&#116;&#114;&#117;&#x63;&#116;&#x75;&#x72;&#101;&#64;&#115;&#x77;&#x69;&#102;&#116;&#46;&#x6f;&#x72;&#x67;</a>&rdquo; imported
+gpg: key 21A56D5F: public key &ldquo;Swift 2.2 Release Signing Key <a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x73;&#119;&#x69;&#102;&#x74;&#45;&#105;&#x6e;&#102;&#x72;&#97;&#x73;&#116;&#114;&#x75;&#99;&#x74;&#117;&#114;&#101;&#64;&#115;&#x77;&#105;&#102;&#x74;&#46;&#x6f;&#x72;&#x67;">&#115;&#119;&#x69;&#x66;&#116;&#45;&#x69;&#110;&#102;&#x72;&#x61;&#115;&#x74;&#114;&#117;&#99;&#116;&#117;&#x72;&#x65;&#64;&#x73;&#x77;&#x69;&#x66;&#x74;&#46;&#111;&#114;&#103;</a>&rdquo; imported
+gpg: key 91D306C6: public key &ldquo;Swift 3.x Release Signing Key <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x73;&#x77;&#x69;&#x66;&#x74;&#x2d;&#105;&#x6e;&#102;&#114;&#x61;&#115;&#x74;&#114;&#117;&#x63;&#x74;&#x75;&#114;&#101;&#x40;&#115;&#119;&#x69;&#102;&#x74;&#46;&#x6f;&#x72;&#x67;">&#115;&#119;&#105;&#102;&#x74;&#x2d;&#x69;&#x6e;&#102;&#x72;&#97;&#115;&#x74;&#x72;&#117;&#x63;&#116;&#117;&#114;&#x65;&#64;&#115;&#x77;&#x69;&#x66;&#x74;&#46;&#x6f;&#114;&#x67;</a>&rdquo; imported
+gpg: no ultimately trusted keys found
+gpg: Total number processed: 3
+gpg:               imported: 3  (RSA: 3)
+```</p>
+
+<p>９．PGP鍵で署名を検証する</p>
+
+<p>公式で説明されている通り、<code>key</code>のリフレッシュをします。</p>
+
+<p>```javascript</p>
+
+<h1>gpg &mdash;keyserver hkp://pool.sks-keyservers.net &mdash;refresh-keys Swift</h1>
+
+<p>```</p>
+
+<p>続いて、署名を検証します。</p>
+
+<p>```javascript</p>
+
+<h1>gpg &mdash;verify swift-3.1-RELEASE-ubuntu16.04.tar.gz.sig</h1>
+
+<p>gpg: assuming signed data in `swift-3.1-RELEASE-ubuntu16.04.tar.gz'
+gpg: Signature made Tue Mar 28 07:36:36 2017 UTC using RSA key ID 91D306C6
+gpg: Good signature from &ldquo;Swift 3.x Release Signing Key <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#58;&#115;&#119;&#x69;&#102;&#116;&#x2d;&#x69;&#110;&#x66;&#x72;&#97;&#x73;&#x74;&#x72;&#117;&#x63;&#x74;&#x75;&#x72;&#101;&#x40;&#115;&#x77;&#105;&#x66;&#116;&#x2e;&#111;&#x72;&#103;">&#115;&#x77;&#x69;&#x66;&#x74;&#x2d;&#105;&#x6e;&#x66;&#114;&#97;&#115;&#x74;&#x72;&#x75;&#x63;&#x74;&#117;&#114;&#101;&#x40;&#x73;&#119;&#105;&#x66;&#x74;&#46;&#x6f;&#x72;&#x67;</a>&rdquo;
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: A3BA FD35 56A5 9079 C068  94BD 63BC 1CFE 91D3 06C6
+```</p>
+
+<p>正しいSwiftパッケージであることがわかります。</p>
+
+<p>１０．パッケージを展開する</p>
+
+<p>パッケージは圧縮されているので展開しましょう。</p>
+
+<p>```javascript</p>
+
+<h1>tar xzf swift-3.1-RELEASE-ubuntu16.04.tar.gz</h1>
+
+<p>```</p>
+
+<p>１１．パスを通す</p>
+
+<p>さて、DLしたパッケージに対して検索パスを設定する必要があります。<br/>
+Dockerコンテナには環境設定ファイルとして<code>.dockerenv</code>があるのでこちらにパスを記載します。</p>
+
+<p>```javascript
+// 解凍フォルダの名前が長いので名称を変更する</p>
+
+<h1>mv swift-3.1-RELEASE-ubuntu16.04 swift</h1>
+
+<p>// ファイルを開く</p>
+
+<h1>vi .dockerenv</h1>
+
+<p>// 下記のようにパスを書く
+export PATH=/swift/usr/bin:&ldquo;${PATH}&rdquo;</p>
+
+<p>// 環境設定を更新する</p>
+
+<h1>source .dockerenv</h1>
+
+<p>// 検索パスが通ったことを確認する</p>
+
+<h1>which swift</h1>
+
+<p>/swift/usr/bin/swift</p>
+
+<h1>swift &mdash;version</h1>
+
+<p>Swift version 3.1 (swift-3.1-RELEASE)
+Target: x86_64-unknown-linux-gnu
+```</p>
+
+<p>１２．必要なモジュールをインストールする</p>
+
+<p>このままで<code>swift</code>コマンドを叩いても下記のようにエラーが表示されます。</p>
+
+<p><code>javascript
+/swift/usr/bin/lldb: error while loading shared libraries: libedit.so.2: cannot open shared object file: No such file or directory
+</code></p>
+
+<p>どうやら必要なモジュールが足りないようですね&hellip;<br/>
+ということで下記をインストールしましょう。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install libedit-dev</h1>
+
+<h1>apt-get install libpython-dev</h1>
+
+<h1>apt-get install libxml2-dev</h1>
+
+<p>```</p>
+
+<p>これで<code>swift</code>コマンドを実行できるようになります。<br/>
+ついでに<code>Hello World</code>まで出力してみます。</p>
+
+<p>```javascript</p>
+
+<h1>swift</h1>
+
+<p>Welcome to Swift version 3.1 (swift-3.1-RELEASE). Type :help for assistance.
+  1> print(&ldquo;Hello, world!&rdquo;)
+Hello, world!
+```</p>
+
+<h3>PerfectでSwiftサーバを立てよう！</h3>
+
+<p>今回もSwiftサーバを立てるために<a href="https://github.com/PerfectlySoft/Perfect">Perfect</a>を利用します。<br/>
+下記手順に従って進めましょう。</p>
+
+<p>１．<code>git</code>をインストールする<br/>
+まずは<code>Perfect</code>を<code>git</code>経由でダウンロードする必要があるので<code>git</code>をインストールしましょう。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install git</h1>
+
+<p>```</p>
+
+<p>２．<code>PerfectTemplate</code>をダウンロードする<br/>
+簡潔にSwiftサーバを立てたいので<code>PerfectTemplate</code>をダウンロードします。</p>
+
+<p>```javascript</p>
+
+<h1>git clone <a href="https://github.com/PerfectlySoft/PerfectTemplate.git">https://github.com/PerfectlySoft/PerfectTemplate.git</a></h1>
+
+<p>```</p>
+
+<p>３．必要モジュールをインストールする<br/>
+PerfectのGet Startedに書かれている通り、次の必要なモジュールをインストールします。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install openssl libssl-dev uuid-dev</h1>
+
+<p>```</p>
+
+<p>４．不足モジュールをインストールする<br/>
+このままだと<code>swift build</code>実行しても下記エラーが出てしまいました。</p>
+
+<p><code>javascript
+error while loading shared libraries: libcurl.so.4: cannot open shared object file: No such file or directory
+</code></p>
+
+<p>上記解決のためにモジュールをインストールしましょう。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install libcurl4-openssl-dev</h1>
+
+<p>```</p>
+
+<p>５．<code>swift build</code>を実行する<br/>
+さて、ビルドしましょう。</p>
+
+<p>```javascript</p>
+
+<h1>cd PerfectTemplate</h1>
+
+<h1>swift build</h1>
+
+<p>```</p>
+
+<p>６．Swiftサーバを起動する<br/>
+後は下記コマンドでSwiftサーバを起動しましょう。</p>
+
+<p>```javascript</p>
+
+<h1>.build/debug/PerfectTemplate</h1>
+
+<p>[INFO] Starting HTTP server localhost on 0.0.0.0:8080
+[INFO] Starting HTTP server localhost on 0.0.0.0:8181
+```</p>
+
+<p><img src="/images/docker_swift_3.png" alt="Swiftサーバにアクセス" /></p>
+
+<h3>まとめ</h3>
+
+<p>さていかがでしたでしょうか？<br/>
+筆者個人としては、途中で何回かハマったものの、DockerコンテナのUbuntuにSwiftサーバを立てられたことに満足できました。<br/>
+今回はサーバを立てるという基本的なものでしたが、今度はWeb APIを作成して、iOSアプリからアクセスしてみたりなど遊んでみたいと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="https://www.twilio.com/blog/2015/12/getting-started-with-swift-on-linux.html">Getting Started with Swift on Linux</a></li>
+<li><a href="http://qiita.com/yonell/items/79bf4ee3cd65f69903ec">Ubuntu上でSwiftサーバーサイドフレームワークのPerfectを動かしてみた</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SwinjectでDIを意識してみよう！]]></title>
@@ -2071,193 +2411,6 @@ var mongoFlag: mongoc_remove_flags_t {
 <li><a href="http://mongoc.org/libmongoc/1.3.2/mongoc_remove_flags_t.html">MongoDB C Driver API Reference: Remove Flag</a></li>
 </ul>
 
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Server Side Swift: Perfect を使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/10/30/swift-perfect/"/>
-    <updated>2016-10-30T22:48:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/10/30/swift-perfect</id>
-    <content type="html"><![CDATA[<h3>Server Side SwiftライブラリのPerfect</h3>
-
-<p>本日は以前書いたサーバサイドSwiftの続きを書きます！<br/>
-と言いたかったところなのですが、Swift ExpressはSwift3.0やXcode8に対応しておらず、何もできなかったため、方向転換して最もSTAR数の多い<a href="https://github.com/PerfectlySoft/Perfect">PerfectlySoft/Perfect</a>を使うことにしました。</p>
-
-<p>よくよく見るとMySQLだけでなくMongoDB接続用にもモジュールが用意されており、なかなか良さそうではないですか！！<br/>
-とは言いつつも、そんなにすぐにMaster Of Perfectにはなれないので少しずつ見ていくことにします。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-<!-- more -->
-
-
-<h4>チュートリアルを触ってみる</h4>
-
-<p>まずは何はともあれGitHubの <em>Getting Started</em> からやらないと話になりません。<br/>
-手順は簡単です。</p>
-
-<p>１．テンプレートプロジェクトをクローンする<br/>
-<code>git clone https://github.com/PerfectlySoft/PerfectTemplate.git</code></p>
-
-<p>２．ビルドを実行する<br/>
-クローンした<code>PerfectTemplate</code>フォルダ内に入り、ビルドを実行しましょう。</p>
-
-<p><code>
-$ cd PerfectTemplate
-$ swift build
-</code></p>
-
-<p>３．サーバを起動します<br/>
-なんと後は下記コマンドでサーバを起動するだけです。</p>
-
-<p><code>.build/debug/PerfectTemplate</code></p>
-
-<p>正しく起動すれば、下記ログが出力されます。<br/>
-<code>Starting HTTP server on 0.0.0.0:8181 with document root ./webroot</code><br/>
-またログの指示通りChromeで<code>http://localhost:8181/</code>にアクセスすれば<code>Hello World</code>が拝めます。</p>
-
-<h4>ルーティングの書き方について学ぶ</h4>
-
-<p>では次に簡単なルーティングについて学んでいきましょう。<br/>
-チュートリアルでは、下記GETリクエストのみ受け付けていました。</p>
-
-<p>```javascript
-// main.swift
-var routes = Routes()
-routes.add(method: .get, uri: &ldquo;/&rdquo;, handler: {</p>
-
-<pre><code>request, response in
-response.setHeader(.contentType, value: "text/html")
-response.appendBody(string: "&lt;html&gt;&lt;title&gt;Hello, world!&lt;/title&gt;&lt;body&gt;Hello, world!&lt;/body&gt;&lt;/html&gt;")
-response.completed()
-</code></pre>
-
-<p>})
-```</p>
-
-<p>最も単純なGETリクエストですね。<br/>
-では、<code>ID: 100</code>のユーザ情報を取得するGETリクエストはどう受け付けるのでしょうか。</p>
-
-<p>```javascript
-// main.swift
-var routes = Routes()
-routes.add(method: .get, uri: &ldquo;/user/{id}&rdquo;, handler: {</p>
-
-<pre><code>request, response in
-response.setHeader(.contentType, value: "text/html")
-response.appendBody(string: "&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You GET UserInfo with \(request.urlVariables)&lt;/body&gt;&lt;/html&gt;")
-response.completed()
-</code></pre>
-
-<p>})
-```</p>
-
-<p>たったのこれだけです。<br/>
-では、POSTリクエストの受け付けはどうでしょうか。</p>
-
-<p>```javascript
-// main.swift
-var routes = Routes()
-routes.add(method: .post, uri: &ldquo;/user&rdquo;, handler: {</p>
-
-<pre><code>request, response in
-response.appendBody(string: "&lt;html&gt;&lt;title&gt;Sample&lt;/title&gt;&lt;body&gt;You POSTed user data to catch your POST request.&lt;/body&gt;&lt;/html&gt;")
-response.completed()
-</code></pre>
-
-<p>})
-```</p>
-
-<p>これも簡単ですね。<br/>
-書き方に若干の違いはあれど、最早Node.jsとそんなに変わらん&hellip;</p>
-
-<p>おまけで、POSTリクエストで届いたJSONStringをバラバラっと分解して返却してみました。<br/>
-そのためにまずはJSONStringをデコードする処理を実装します。</p>
-
-<p>```javascript
-// decode.swift
-import PerfectHTTPServer
-import PerfectLib</p>
-
-<p>func decode(postBody: String?) &ndash;> [String: Any]? {</p>
-
-<pre><code>do {
-    guard let decoded = try postBody?.jsonDecode() as? [String:Any] else {
-        return [:]
-    }
-    print(decoded)
-    return decoded
-} catch {
-    return [:]
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>これを下記のように利用します。</p>
-
-<p>```javascript
-// main.swift
-var routes = Routes()
-routes.add(method: .post, uri: &ldquo;/user&rdquo;, handler: {</p>
-
-<pre><code>request, response in
-
-var userInfo = ""
-let decodedParam = decode(postBody: request.postBodyString)
-for (key, value) in decodedParam! {
-    switch key {
-        case "name":
-            userInfo = userInfo + "name is \(value as! String).\n"
-        case "email":
-            userInfo = userInfo + "email is \(value as! String)."
-        default:
-            break
-    }
-}
-response.appendBody(string: "&lt;html&gt;&lt;body&gt;POST handler: \(userInfo)&lt;/body&gt;&lt;/html&gt;")
-response.completed()
-</code></pre>
-
-<p>})
-```</p>
-
-<p>さて、実装できたのでクライアントからリクエストを投げてみます。</p>
-
-<p><code>
-// クライアントからPOSTリクエストを投げます
-curl http://localhost:8181/user -X POST -H "Content-Type: application/json" -d '{"name":"Ichiro", "email": "xxx@gmail.com"}'
-// 結果
-&lt;html&gt;&lt;body&gt;POST handler: name is Ichiro.
-email is xxx@gmail.com.&lt;/body&gt;&lt;/html&gt;xxxx:PerfectTemplate
-</code></p>
-
-<h3>まとめ</h3>
-
-<p>さて今回は<code>Perfect</code>を使ったサーバサイドSwiftを見てみました。<br/>
-まだまだ基本的なリクエストの受付しかみていませんが、既にいろいろなモジュールが用意されているようなので、継続的に見ていきたいと思います。<br/>
-やっぱりライブラリを作るなら、最新の状況についていかないと見捨てられるな〜と思ってしまいました。<br/>
-(今回で言うと、Swift3やXcode8とかですね。)</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
