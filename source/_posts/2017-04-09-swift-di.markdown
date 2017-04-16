@@ -1,0 +1,220 @@
+---
+layout: post
+title: "SwinjectでDIを意識してみよう！"
+date: 2017-04-09 22:51
+comments: true
+categories: swift springboot
+---
+
+### はじめに
+筆者はここ１年間、主にバックエンド構築にSpring Bootを利用してきました。  
+Spring Framework自体は2002年頃にリリースされたそうなのですが、Spring BootはSpringベースでのアプリ開発を楽にしてくれる新たな形で様々なSpringのFramework群を統合したものとのことです。  
+(Spring Bootでググると2〜3年前辺りからの記事が多い印象です。)  
+
+Springの特徴は何と言っても **DI** でしょう。  
+今回はそのSpringの代名詞とも言える **DI** をSwiftで扱ってみたいと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### DIとは
+DIとは『Dependency Injection』の略語で、日本語だと依存性の注入と翻訳されたりします。  
+具体的に何者なのかと言うと、  
+
+* コンポーネント間の依存関係を排除するソフトウェアパターン ([Wikipedia - 依存性の注入](https://ja.wikipedia.org/wiki/%E4%BE%9D%E5%AD%98%E6%80%A7%E3%81%AE%E6%B3%A8%E5%85%A5))  
+* これにより疎結合性が高まるので単体テストが書きやすい  
+
+というものです。  
+
+Springベースのアプリでは基本パターンとして利用しています。  
+詳しい説明は省きますが、  
+Spring起動時に`Bean`化したオブジェクトを`@Autowired`アノテーションを利用することで、DIコンテナ経由で簡単に **DI** を利用することができます。  
+
+注意しておきたいこととして、  
+`Bean`定義したクラスは`@Autowired`アノテーションで呼び出される際、デフォルトでシングルトンパターンとして生成されたオブジェクトを呼び出しています。  
+
+### SwiftでDIするには？
+さて、そんなSpringの特徴的なDIですが、Swiftアプリで利用することはできるのでしょうか？  
+筆者が調べたところ、最も人気のあるSwift版DIライブラリとして[Swinject](https://github.com/Swinject/Swinject)というものがあるようです。  
+本日時点でGitHub上のスター数が`1,432`となっており、なかなかの注目度かと思います。  
+
+しかも、下記のようにSwift3にも対応しているのが嬉しいですね！  
+
+```objective-c
+iOS 8.0+ / Mac OS X 10.10+ / watchOS 2.0+ / tvOS 9.0+
+Swift 2.2 or 2.3
+Xcode 7.0+
+Swift 3
+Xcode 8.0+
+Carthage 0.18+ (if you use)
+CocoaPods 1.1.1+ (if you use)
+```
+
+実際に`Swinject`を利用してSwiftでのDIを試してみたいと思います。  
+
+### Swinjectの使い方
+では早速使ってみましょう。  
+
+#### Swinjectのインストール
+CocoaPodsでインストールするために下記のように`Podfile`を作成しましょう。  
+
+```
+// Podfile
+source 'https://github.com/CocoaPods/Specs.git'
+platform :ios, '8.0' # or platform :osx, '10.10' if your target is OS X.
+
+target 'SwinjectSample' do
+  use_frameworks!
+
+  pod 'Swinject', '~> 2.0.0'
+  pod 'SwinjectStoryboard', '1.0.0'
+end
+```
+
+その後に`pod install`を実行しましょう。  
+これで`Swinject`の用意は完了です。  
+
+#### DIしたいクラスの定義
+サンプルとしてDIしたいクラスを定義します。  
+具体的なクラスだけでなく **プロトコル** を定義しているのは、  
+後々、同じような`JavaProgrammer`クラスを作成したくなった際に便利だからです。  
+(ベースが同じで、拡張機能が必要になった際に、0から書き直す必要がなくなります。)  
+
+```objective-c
+// Engineer.swift
+import Foundation
+
+protocol Engineer {
+    var name: String? { get set }
+    func develop() -> String
+}
+
+class SwiftProgrammer: Engineer {
+    var name: String?
+
+    init(name: String?) {
+        self.name = name
+    }
+
+    func develop() -> String {
+        return "Let's start developing a swift application!"
+    }
+}
+```
+
+続いて、先程作成した`Engineer`を参照する`CompanyOwner`クラスを作成します。  
+
+```objective-c
+// Company.swift
+import Foundation
+
+protocol Person {
+    func hire() -> String
+}
+
+class CompanyOwner: Person {
+    let humanResource: Engineer
+
+    init(humanResource: Engineer) {
+        self.humanResource = humanResource
+    }
+
+    func hire() -> String {
+        let name = humanResource.name ?? "someone"
+        return "I'm hiring \(name). \(humanResource.develop())"
+    }
+}
+```
+
+ここで`SwiftProgrammer`クラスでなく`Engineer`プロトコルを参照することで、`CompanyOwner`クラス自体が`SwiftProgrammer`クラスに依存することがなくなりました。  
+つまり`JavaProgrammer`を雇いたい`CompanyOwner`クラスが必要になった場合、作成するのは`JavaProgrammer`クラスのみで良くなります。  
+これはこれで`CompanyOwner`クラスに対して単体テストコードを書く時に`SwiftProgrammer`クラスに依存せずに書くことができます。  
+
+#### DIコンテナへのクラスの登録
+さて、DIしたいクラスが定義できたので、そのクラスをDIコンテナに登録します。  
+公式ページによると`SwinjectStoryboard`を利用する場合と利用しない場合の2種類の方法があるそうですが、今回は簡単に対応可能な`SwinjectStoryboard`利用する方法で書いてみます。  
+
+サンプルとして、`ViewController.swift`でDIコンテナ経由で呼び出したクラスを利用したいとします。  
+その場合、下記のように、`ViewController.swift`にコンテナ定義を書きます。  
+
+```objective-c
+// ViewController.swift
+import UIKit
+import SwinjectStoryboard
+
+extension SwinjectStoryboard {
+    class func setup() {
+        // (1)
+        defaultContainer.register(Engineer.self) { _ in SwiftProgrammer(name: "Takahiro") }
+        // (2)
+        defaultContainer.register(Person.self) { r in
+            CompanyOwner(humanResource: r.resolve(Engineer.self)!)
+        }
+        // (3)
+        defaultContainer.storyboardInitCompleted(ViewController.self) { r, c in
+            c.person = r.resolve(Person.self)
+        }
+    }
+}
+...
+```
+
+順々に説明すると、  
+
+1. `defaultContainer`に`Engineer`指定で`SwiftProgrammer(name: "Takahiro")`が呼び出されるように登録  
+2. `defaultContainer`に`Person`指定で`CompanyOwner(humanResource: r.resolve(Engineer.self)!)`が呼び出されるように登録  
+※ 1で`Engineer`指定で`SwiftProgrammer(name: "Takahiro")`呼び出しをセットしているので、それが2の`CompanyOwner`の引数にセットされます。  
+3. `defaultContainer`にDIコンテナ経由での呼び出し先と先ほどまで定義していた`Person`指定での呼び出し元を紐付け  
+
+となっています。  
+これにより、下記のように`ViewController.swift`内でDIコンテナ経由で`Person`指定で想定した処理を呼び出すことができます。  
+
+```objective-c
+// ViewController.swift
+
+class ViewController: UIViewController {
+    var person: Person?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Do any additional setup after loading the view, typically from a nib.
+        print(person?.hire() ?? "I can't hire engineers.")
+    }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        // Dispose of any resources that can be recreated.
+    }
+
+}
+```
+
+上記を見ると、`ViewController`クラスの中で`Person`をインスタンス化している箇所はないことがわかると思います。  
+つまり、DIコンテナ経由で`Person`を呼び出せているわけですね。  
+
+### まとめ
+さて、`Swinject`を利用してサンプルを書いてみた感想ですが...  
+正直、Spring Bootと比較すると、Swiftでは手動で書くべきところが多いと感じました。  
+また、様々な`UIViewController`にまたがって利用する場合は記載箇所に一工夫必要なのかなとも思いました。  
+(毎回、全`UIViewController`系のファイルに`setUp()`を書くわけにもいかないと思いますし...)  
+
+まだまだ未知数なところがあるので、継続して試してみたいところではあります。  
+と言ったところで本日はここまで。  
+
+参考：  
+
+* [Spring BeanはSingletonだから、状態持たせるとバグるよ。](http://permanent-til.me/archives/613)  
+* [SpringのDIとnewってなにがちがうんだっけ？](http://qiita.com/chkkchy/items/5f59817beb3dff9c0c1e)  
+* [Swinject](https://github.com/Swinject/Swinject)  
+* [Swinjectを使ったDependency Injection](http://dev.classmethod.jp/smartphone/swinject-dependency-injection/)  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
