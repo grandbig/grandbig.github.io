@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-04-11T23:27:00+09:00</updated>
+  <updated>2017-04-16T16:05:52+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,484 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Spring Bootで簡単Facebook接続]]></title>
+    <link href="http://grandbig.github.io/blog/2017/04/16/spring-boot-facebook-login/"/>
+    <updated>2017-04-16T14:52:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/04/16/spring-boot-facebook-login</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、久しぶりに<code>Spring Boot</code>で遊んでみました。<br/>
+と言ってもほとんどコードを書く必要のないFacebook認証についてです。<br/>
+(本当は<code>Spring Social</code>を利用したFacebookログインまで書こうかと思ったのですが、一旦簡単なところまで&hellip;)</p>
+
+<h3>Facebookアプリを新規作成</h3>
+
+<p>まずはFacebook認証などをするために、Facebook Developersサイトでアプリを登録しましょう。</p>
+
+<p>１．<a href="https://developers.facebook.com/">facebook developers</a>に遷移<br/>
+トップページから新規アプリを追加しましょう。<br/>
+<img src="http://grandbig.github.io/images/web_facebook_login_1.png" alt="facebook developersトップページ" /></p>
+
+<!-- more -->
+
+
+<p>２．必要項目を入力</p>
+
+<p><img src="http://grandbig.github.io/images/web_facebook_login_2.png" alt="ポップアップに必要事項を入力します" /></p>
+
+<p>３．セキュリティチェックをパス</p>
+
+<p><img src="http://grandbig.github.io/images/web_facebook_login_3.png" alt="セキュリティモーダルの解決" /></p>
+
+<p>４．利用機能の選択</p>
+
+<p><img src="http://grandbig.github.io/images/web_facebook_login_4.png" alt="Facebookの利用機能を選択します" /></p>
+
+<p>５．アプリの設定からプラットフォームを追加</p>
+
+<p>左メニューから設定を選択して、下図の画面を出します。<br/>
+<img src="http://grandbig.github.io/images/web_facebook_login_5.png" alt="プラットフォームを追加します" /></p>
+
+<p>プラットフォームとして『ウェブサイト』を追加します。<br/>
+<img src="http://grandbig.github.io/images/web_facebook_login_6.png" alt="ウェブサイトをプラットフォームとして追加します" /></p>
+
+<p>サイトURLやドメインなど必要事項を入力します。<br/>
+<img src="http://grandbig.github.io/images/web_facebook_login_7.png" alt="必要事項を入力します" /></p>
+
+<p>６．Facebookログインの設定</p>
+
+<p>Facebook認証後に返されるリダイレクトURIを設定します。<br/>
+<img src="http://grandbig.github.io/images/web_facebook_login_8.png" alt="リダイレクトURIを設定します" /></p>
+
+<h3>Spring Bootプロジェクトの新規作成</h3>
+
+<p>さて事前準備は完了したので、Spring BootプロジェクトをIntelliJで新規作成しましょう。</p>
+
+<p>１．IntelliJを起動して、Spring Boot用にベースとなる形式を選択</p>
+
+<p><img src="http://grandbig.github.io/images/web_facebook_login_9.png" alt="Spring Initializerを選択します" /></p>
+
+<p>２．ビルドツールとして<code>Gradle</code>を選択</p>
+
+<p><img src="http://grandbig.github.io/images/web_facebook_login_10.png" alt="Gradleをビルドツールとして選択します" /></p>
+
+<p>３．必要なモジュールを選択</p>
+
+<p>今回は <code>Security</code>, <code>Web</code>, <code>Thymeleaf</code>を利用します。<br/>
+<img src="http://grandbig.github.io/images/web_facebook_login_11.png" alt="必要なモジュールを選択します" /></p>
+
+<h3>Facebook認証処理を実装</h3>
+
+<p>では、実装していきましょう。</p>
+
+<h4>Spring Security周りの修正</h4>
+
+<p>まず、<code>Spring Security</code>はデフォルトBasic認証が有効となっているため、一旦、認証不要箇所などを設定します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// SecurityConfig.java</span>
+</span><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">config</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.context.annotation.Configuration</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.security.config.annotation.web.builders.HttpSecurity</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.security.config.annotation.web.configuration.EnableWebSecurity</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@Configuration</span>
+</span><span class='line'><span class="nd">@EnableWebSecurity</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SecurityConfig</span> <span class="kd">extends</span> <span class="n">WebSecurityConfigurerAdapter</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Override</span>
+</span><span class='line'>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">configure</span><span class="o">(</span><span class="n">HttpSecurity</span> <span class="n">http</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">http</span>
+</span><span class='line'>                <span class="o">.</span><span class="na">authorizeRequests</span><span class="o">()</span>
+</span><span class='line'>                <span class="o">.</span><span class="na">antMatchers</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="s">&quot;/complete&quot;</span><span class="o">,</span> <span class="s">&quot;/api/**&quot;</span><span class="o">).</span><span class="na">permitAll</span><span class="o">()</span>
+</span><span class='line'>                <span class="o">.</span><span class="na">anyRequest</span><span class="o">().</span><span class="na">authenticated</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">http</span><span class="o">.</span><span class="na">formLogin</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記ソースでは<code>/</code>と<code>/complete</code>と<code>/api/**</code>のアクセスを許可しています。<br/>
+それぞれ、</p>
+
+<ul>
+<li><code>/</code>: トップぺージ</li>
+<li><code>/complete</code>: Facebook認証後に表示する画面<br/>
+ここで許可すると認証しなくても表示されてしまいますが、簡単のため</li>
+<li><code>/api/**</code>: Facebook認証を実行するためのAPI用</li>
+</ul>
+
+
+<p>という意図です。</p>
+
+<h4>HTMLページの表示</h4>
+
+<p>続いて、単体HTMLページ表示用の処理です。</p>
+
+<h5>Controllerの処理</h5>
+
+<p><code>Controller</code>は下記の通り。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// TopController.java</span>
+</span><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">controller</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.web.bind.annotation.RequestMapping</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.web.bind.annotation.RestController</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.web.servlet.ModelAndView</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@RestController</span>
+</span><span class='line'><span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TopController</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// ログイン画面</span>
+</span><span class='line'>    <span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">&quot;&quot;</span><span class="o">)</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="n">ModelAndView</span> <span class="nf">index</span><span class="o">(</span><span class="n">ModelAndView</span> <span class="n">mav</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">mav</span><span class="o">.</span><span class="na">setViewName</span><span class="o">(</span><span class="s">&quot;index&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">mav</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 認証完了後に表示する</span>
+</span><span class='line'>    <span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">&quot;/complete&quot;</span><span class="o">)</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="n">ModelAndView</span> <span class="nf">complete</span><span class="o">(</span><span class="n">ModelAndView</span> <span class="n">mav</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">mav</span><span class="o">.</span><span class="na">setViewName</span><span class="o">(</span><span class="s">&quot;complete&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">mav</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>HTMLの処理</h5>
+
+<p>そして、HTMLファイルは下記の通り。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!-- index.html --&gt;</span>
+</span><span class='line'><span class="cp">&lt;!DOCTYPE html&gt;</span>
+</span><span class='line'><span class="nt">&lt;html</span> <span class="na">lang=</span><span class="s">&quot;en&quot;</span> <span class="na">xmlns=</span><span class="s">&quot;http://www.thymeleaf.org&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'><span class="nt">&lt;head&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;meta</span>
+</span><span class='line'>    <span class="na">http-equiv=</span><span class="s">&quot;Content-Type&quot;</span>
+</span><span class='line'>    <span class="na">content=</span><span class="s">&quot;text/html&quot;</span>
+</span><span class='line'>    <span class="na">charset=</span><span class="s">&quot;UTF-8&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;title&gt;</span>Facebook Login Sample<span class="nt">&lt;/title&gt;</span>
+</span><span class='line'><span class="nt">&lt;/head&gt;</span>
+</span><span class='line'><span class="nt">&lt;body&gt;</span>
+</span><span class='line'><span class="nt">&lt;div&gt;</span>これはFacebookログインのためのサンプルトップ画面です。<span class="nt">&lt;/div&gt;</span>
+</span><span class='line'><span class="nt">&lt;form</span> <span class="na">action=</span><span class="s">&quot;/api/login&quot;</span> <span class="na">method=</span><span class="s">&quot;get&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;input</span> <span class="na">type=</span><span class="s">&quot;submit&quot;</span> <span class="na">value=</span><span class="s">&quot;Facebookでログイン&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/form&gt;</span>
+</span><span class='line'><span class="nt">&lt;/body&gt;</span>
+</span><span class='line'><span class="nt">&lt;/html&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!-- complete.html --&gt;</span>
+</span><span class='line'><span class="cp">&lt;!DOCTYPE html&gt;</span>
+</span><span class='line'><span class="nt">&lt;html</span> <span class="na">lang=</span><span class="s">&quot;en&quot;</span> <span class="na">xmlns=</span><span class="s">&quot;http://www.thymeleaf.org&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'><span class="nt">&lt;head&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;meta</span>
+</span><span class='line'>    <span class="na">http-equiv=</span><span class="s">&quot;Content-Type&quot;</span>
+</span><span class='line'>    <span class="na">content=</span><span class="s">&quot;text/html&quot;</span>
+</span><span class='line'>    <span class="na">charset=</span><span class="s">&quot;UTF-8&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;title&gt;</span>ログイン完了画面<span class="nt">&lt;/title&gt;</span>
+</span><span class='line'><span class="nt">&lt;/head&gt;</span>
+</span><span class='line'><span class="nt">&lt;body&gt;</span>
+</span><span class='line'><span class="nt">&lt;div&gt;</span>ログイン完了しました！！<span class="nt">&lt;/div&gt;</span>
+</span><span class='line'><span class="nt">&lt;/body&gt;</span>
+</span><span class='line'><span class="nt">&lt;/html&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>環境変数の設定</h4>
+
+<p>FacebookのアプリIDや認証リクエストを送るURLなどの環境変数を書き出します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// application.properties</span>
+</span><span class='line'><span class="n">server</span><span class="o">.</span><span class="na">port</span><span class="o">=</span><span class="mi">9000</span>
+</span><span class='line'><span class="n">spring</span><span class="o">.</span><span class="na">social</span><span class="o">.</span><span class="na">facebook</span><span class="o">.</span><span class="na">appId</span><span class="o">=</span><span class="n">xxxxxxxxx</span>
+</span><span class='line'><span class="n">sampleApp</span><span class="o">.</span><span class="na">urls</span><span class="o">.</span><span class="na">facebookLogin</span><span class="o">=</span><span class="nl">https:</span><span class="c1">//www.facebook.com/v2.8/dialog/oauth?client_id=xxxxxxxxx&amp;scope=public_profile,email</span>
+</span><span class='line'><span class="n">sampleApp</span><span class="o">.</span><span class="na">urls</span><span class="o">.</span><span class="na">oAuthCallback</span><span class="o">=</span><span class="nl">http:</span><span class="c1">//localhost:9000/api/callback</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ここで書いた環境変数を他のJavaファイルで利用したいので、<br/>
+新たに<code>MyBean.java</code>と<code>MyProperties.java</code>を新規作成します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// MyBean.java</span>
+</span><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">config</span><span class="o">.</span><span class="na">bean</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyBean</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="n">String</span> <span class="n">facebookLogin</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="n">String</span> <span class="n">oAuthCallback</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setFacebookLogin</span><span class="o">(</span><span class="n">String</span> <span class="n">facebookLogin</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">this</span><span class="o">.</span><span class="na">facebookLogin</span> <span class="o">=</span> <span class="n">facebookLogin</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setoAuthCallback</span><span class="o">(</span><span class="n">String</span> <span class="n">oAuthCallback</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">this</span><span class="o">.</span><span class="na">oAuthCallback</span> <span class="o">=</span> <span class="n">oAuthCallback</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// MyProperties</span>
+</span><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">config</span><span class="o">.</span><span class="na">properties</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">com.example.config.bean.MyBean</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.beans.factory.annotation.Autowired</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.context.annotation.Bean</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.context.annotation.Configuration</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.context.annotation.PropertySource</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.core.env.Environment</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@Configuration</span>
+</span><span class='line'><span class="nd">@PropertySource</span><span class="o">(</span><span class="n">value</span> <span class="o">=</span> <span class="o">{</span><span class="s">&quot;classpath:application.properties&quot;</span><span class="o">})</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyProperties</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Autowired</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="n">Environment</span> <span class="n">env</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@Bean</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="n">MyBean</span> <span class="nf">myBean</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">MyBean</span> <span class="n">myBean</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MyBean</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">myBean</span><span class="o">.</span><span class="na">setFacebookLogin</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">&quot;sampleApp.urls.facebookLogin&quot;</span><span class="o">));</span>
+</span><span class='line'>        <span class="n">myBean</span><span class="o">.</span><span class="na">setoAuthCallback</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">&quot;sampleApp.urls.oAuthCallback&quot;</span><span class="o">));</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">myBean</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Facebook認証周りの処理</h4>
+
+<p>後はFacebook認証先にURLを送るだけです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kr">package</span> <span class="nx">com</span><span class="p">.</span><span class="nx">example</span><span class="p">.</span><span class="nx">controller</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kr">import</span> <span class="nx">com</span><span class="p">.</span><span class="nx">example</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">bean</span><span class="p">.</span><span class="nx">MyBean</span><span class="p">;</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">org</span><span class="p">.</span><span class="nx">springframework</span><span class="p">.</span><span class="nx">beans</span><span class="p">.</span><span class="nx">factory</span><span class="p">.</span><span class="nx">annotation</span><span class="p">.</span><span class="nx">Autowired</span><span class="p">;</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">org</span><span class="p">.</span><span class="nx">springframework</span><span class="p">.</span><span class="nx">stereotype</span><span class="p">.</span><span class="nx">Controller</span><span class="p">;</span>
+</span><span class='line'><span class="kr">import</span> <span class="nx">org</span><span class="p">.</span><span class="nx">springframework</span><span class="p">.</span><span class="nx">web</span><span class="p">.</span><span class="nx">bind</span><span class="p">.</span><span class="nx">annotation</span><span class="p">.</span><span class="nx">RequestMapping</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">@</span><span class="nx">Controller</span>
+</span><span class='line'><span class="err">@</span><span class="nx">RequestMapping</span><span class="p">(</span><span class="s2">&quot;/api&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="kr">public</span> <span class="kr">class</span> <span class="nx">FacebookLoginController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kr">private</span> <span class="kr">static</span> <span class="kr">final</span> <span class="nb">String</span> <span class="nx">REDIRECT_URI_PARAMETER</span> <span class="o">=</span> <span class="s2">&quot;redirect_uri&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="err">@</span><span class="nx">Autowired</span>
+</span><span class='line'>    <span class="kr">private</span> <span class="nx">MyBean</span> <span class="nx">myBean</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="err">@</span><span class="nx">RequestMapping</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="kr">public</span> <span class="nb">String</span> <span class="nx">facebookLogin</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="nx">StringBuilder</span> <span class="nx">sb</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">StringBuilder</span><span class="p">();</span>
+</span><span class='line'>        <span class="nx">sb</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="nx">myBean</span><span class="p">.</span><span class="nx">facebookLogin</span><span class="p">);</span>
+</span><span class='line'>        <span class="nx">sb</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot;&amp;&quot;</span><span class="p">).</span><span class="nx">append</span><span class="p">(</span><span class="nx">REDIRECT_URI_PARAMETER</span><span class="p">).</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">);</span>
+</span><span class='line'>        <span class="nx">sb</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="nx">myBean</span><span class="p">.</span><span class="nx">oAuthCallback</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="s2">&quot;redirect:&quot;</span> <span class="o">+</span> <span class="nx">sb</span><span class="p">.</span><span class="nx">toString</span><span class="p">();</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="err">@</span><span class="nx">RequestMapping</span><span class="p">(</span><span class="s2">&quot;/callback&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="kr">public</span> <span class="nb">String</span> <span class="nx">callback</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="s2">&quot;redirect:/complete&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>動作確認</h3>
+
+<p>ここまで実装ができたので動作確認をしてみましょう。</p>
+
+<p><img src="http://grandbig.github.io/images/web_facebook_login_12.png" alt="ログイン画面" /></p>
+
+<p><img src="http://grandbig.github.io/images/web_facebook_login_13.png" alt="Facebookログイン画面" /></p>
+
+<p><img src="http://grandbig.github.io/images/web_facebook_login_14.png" alt="アプリ許可画面" /></p>
+
+<p><img src="http://grandbig.github.io/images/web_facebook_login_15.png" alt="ログイン完了後" /></p>
+
+<h3>まとめ</h3>
+
+<p>今回は本当に簡易的な部分しか書けませんでした<br/>
+本当は<code>Spring Social</code>を使いこなして、もっといろいろと書こうかと思ったのですが、また次の機会ということで&hellip;</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Dockerコンテナ内のUbuntuにSwiftサーバを立てよう！]]></title>
@@ -9982,155 +10460,6 @@ GitでFetchしようとして下記エラーが出ました。</p>
 </script>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Octopress Blogを別PCに移行しようとして苦労した話]]></title>
-    <link href="http://grandbig.github.io/blog/2016/11/20/move-octopress/"/>
-    <updated>2016-11-20T23:55:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/11/20/move-octopress</id>
-    <content type="html"><![CDATA[<h3>新しいPCを購入したので、Octopress Blogを移行してみました</h3>
-
-<p>さて、本日は新しく購入したMacbook Proに本ブログの投稿環境を移行した話を書きます。<br/>
-何気に今まで目を背けていたことが仇となって結構苦労しました(汗)</p>
-
-<p>今後、PCを買い換えることがまたあると思うのでメモ代わりに残しておこうと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>１．ローカルとリモートのソースを合わせる<br/>
-当然ではあるのですが、Gitで管理しているローカルとリモートのソースを合わせます。<br/>
-筆者は実は2年間くらい放置していたので、結構、デグレっててたいへんで、しかもこれが尾を引くことに&hellip;</p>
-
-<p>２．<code>source</code> ブランチをクローンする<br/>
-最新にした<code>source</code>ブランチを新しいMacbook Pro側でクローンします。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ git clone -b source https://github.com/XXX/XXX.github.io.git</span></code></pre></td></tr></table></div></figure>
-
-
-<p>３．<code>master</code>ブランチを<code>_deploy</code>ディレクトリとしてクローンする<br/>
-ブランチを<code>master</code>に変更することを忘れずに！</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ cd XXX.github.io
-</span><span class='line'>$ git clone https://github.com/XXX/XXX.github.io.git _deploy</span></code></pre></td></tr></table></div></figure>
-
-
-<p>４．<code>bundler</code>をインストールする</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ gem install bundler</span></code></pre></td></tr></table></div></figure>
-
-
-<p>５．GitHub Pagesを設定する</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ bundle install
-</span><span class='line'>$ rake setup_github_pages
-</span><span class='line'>Enter the read/write url for your repository
-</span><span class='line'>(For example, 'git@github.com:your_username/your_username.github.com):</span></code></pre></td></tr></table></div></figure>
-
-
-<p>自分のGitHub Pagesを入力しましょう。</p>
-
-<p>６．GitHub > Settings > SSH Keys に公開鍵を登録する<br/>
-まずは下記コマンドで秘密鍵、公開鍵を作成します。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ ssh-keygen</span></code></pre></td></tr></table></div></figure>
-
-
-<p><code>~/.ssh</code>配下に<code>id_rsa.pub</code>と<code>id_rsa</code>が作成されているので、<code>id_rsa.pub</code>を開いて中身をコピーします。<br/>
-それを GitHub > Settings > SSH Keys で New SSH Key を選択して、登録します。</p>
-
-<p>これで、</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ ssh -T git@github.com
-</span><span class='line'>Hi username! You've successfully authenticated...</span></code></pre></td></tr></table></div></figure>
-
-
-<p>という結果が得られます。</p>
-
-<p>７．強制プッシュを設定する<br/>
-<code>rake deploy</code>すると下記エラーが出てしまうようになり、かなり悩みました&hellip;</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>## Pushing generated _deploy website
-</span><span class='line'>To https://github.com/XXX/XXX.github.io
-</span><span class='line'> ! [rejected]        master -&gt; master (non-fast-forward)
-</span><span class='line'>error: failed to push some refs to 'https://github.com/XXX/XXX.github.io'
-</span><span class='line'>hint: Updates were rejected because the tip of your current branch is behind
-</span><span class='line'>hint: its remote counterpart. Integrate the remote changes (e.g.
-</span><span class='line'>hint: 'git pull ...') before pushing again.
-</span><span class='line'>hint: See the 'Note about fast-forwards' in 'git push --help' for details.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Conflictが起こっているわけではないのに&hellip;<br/>
-悩んだ挙句、その場しのぎで強制プッシュを設定するようにしました。<br/>
-設定は<code>Rakefile</code>を変更することで可能です。<br/>
-これまで下記の設定がなされていたので、</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>system "git push origin #{deploy_branch}"</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これを下記に変えます。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>system "git push origin +#{deploy_branch}"</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これでプッシュができるようになり、<code>rake deploy</code>が成功したので、ブログも無事に更新できました。<br/>
-このままで良いとは思えないものの、他に解決方法わからず&hellip;一旦これで良いかな笑</p>
-
-<p>といったところで本日はここまで。</p>
-
-<p>参考ページ</p>
-
-<ul>
-<li><a href="https://help.github.com/articles/error-permission-denied-publickey/">GitHub Help: Error: Permission denied (publickey)</a></li>
-<li><a href="http://stackoverflow.com/questions/17609453/rake-gen-deploy-rejected-in-octopress">rake gen_deploy rejected in Octopress</a></li>
-<li><a href="http://momota.github.io/blog/2016/01/29/octopress/">複数の環境で Octopress を使ってブログを書く</a></li>
-</ul>
-
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
 
 ]]></content>
   </entry>

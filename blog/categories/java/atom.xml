@@ -4,7 +4,7 @@
   <title><![CDATA[Category: java | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/java/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-04-11T23:27:50+09:00</updated>
+  <updated>2017-04-16T16:05:52+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,353 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Spring Bootで簡単Facebook接続]]></title>
+    <link href="http://grandbig.github.io/blog/2017/04/16/spring-boot-facebook-login/"/>
+    <updated>2017-04-16T14:52:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/04/16/spring-boot-facebook-login</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、久しぶりに<code>Spring Boot</code>で遊んでみました。<br/>
+と言ってもほとんどコードを書く必要のないFacebook認証についてです。<br/>
+(本当は<code>Spring Social</code>を利用したFacebookログインまで書こうかと思ったのですが、一旦簡単なところまで&hellip;)</p>
+
+<h3>Facebookアプリを新規作成</h3>
+
+<p>まずはFacebook認証などをするために、Facebook Developersサイトでアプリを登録しましょう。</p>
+
+<p>１．<a href="https://developers.facebook.com/">facebook developers</a>に遷移<br/>
+トップページから新規アプリを追加しましょう。<br/>
+<img src="/images/web_facebook_login_1.png" alt="facebook developersトップページ" /></p>
+
+<!-- more -->
+
+
+<p>２．必要項目を入力</p>
+
+<p><img src="/images/web_facebook_login_2.png" alt="ポップアップに必要事項を入力します" /></p>
+
+<p>３．セキュリティチェックをパス</p>
+
+<p><img src="/images/web_facebook_login_3.png" alt="セキュリティモーダルの解決" /></p>
+
+<p>４．利用機能の選択</p>
+
+<p><img src="/images/web_facebook_login_4.png" alt="Facebookの利用機能を選択します" /></p>
+
+<p>５．アプリの設定からプラットフォームを追加</p>
+
+<p>左メニューから設定を選択して、下図の画面を出します。<br/>
+<img src="/images/web_facebook_login_5.png" alt="プラットフォームを追加します" /></p>
+
+<p>プラットフォームとして『ウェブサイト』を追加します。<br/>
+<img src="/images/web_facebook_login_6.png" alt="ウェブサイトをプラットフォームとして追加します" /></p>
+
+<p>サイトURLやドメインなど必要事項を入力します。<br/>
+<img src="/images/web_facebook_login_7.png" alt="必要事項を入力します" /></p>
+
+<p>６．Facebookログインの設定</p>
+
+<p>Facebook認証後に返されるリダイレクトURIを設定します。<br/>
+<img src="/images/web_facebook_login_8.png" alt="リダイレクトURIを設定します" /></p>
+
+<h3>Spring Bootプロジェクトの新規作成</h3>
+
+<p>さて事前準備は完了したので、Spring BootプロジェクトをIntelliJで新規作成しましょう。</p>
+
+<p>１．IntelliJを起動して、Spring Boot用にベースとなる形式を選択</p>
+
+<p><img src="/images/web_facebook_login_9.png" alt="Spring Initializerを選択します" /></p>
+
+<p>２．ビルドツールとして<code>Gradle</code>を選択</p>
+
+<p><img src="/images/web_facebook_login_10.png" alt="Gradleをビルドツールとして選択します" /></p>
+
+<p>３．必要なモジュールを選択</p>
+
+<p>今回は <code>Security</code>, <code>Web</code>, <code>Thymeleaf</code>を利用します。<br/>
+<img src="/images/web_facebook_login_11.png" alt="必要なモジュールを選択します" /></p>
+
+<h3>Facebook認証処理を実装</h3>
+
+<p>では、実装していきましょう。</p>
+
+<h4>Spring Security周りの修正</h4>
+
+<p>まず、<code>Spring Security</code>はデフォルトBasic認証が有効となっているため、一旦、認証不要箇所などを設定します。</p>
+
+<p>```java
+// SecurityConfig.java
+package com.example.config;</p>
+
+<p>import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;</p>
+
+<p>@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {</p>
+
+<pre><code>@Override
+protected void configure(HttpSecurity http) throws Exception {
+    http
+            .authorizeRequests()
+            .antMatchers("/", "/complete", "/api/**").permitAll()
+            .anyRequest().authenticated();
+    http.formLogin();
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記ソースでは<code>/</code>と<code>/complete</code>と<code>/api/**</code>のアクセスを許可しています。<br/>
+それぞれ、</p>
+
+<ul>
+<li><code>/</code>: トップぺージ</li>
+<li><code>/complete</code>: Facebook認証後に表示する画面<br/>
+ここで許可すると認証しなくても表示されてしまいますが、簡単のため</li>
+<li><code>/api/**</code>: Facebook認証を実行するためのAPI用</li>
+</ul>
+
+
+<p>という意図です。</p>
+
+<h4>HTMLページの表示</h4>
+
+<p>続いて、単体HTMLページ表示用の処理です。</p>
+
+<h5>Controllerの処理</h5>
+
+<p><code>Controller</code>は下記の通り。</p>
+
+<p>```java
+// TopController.java
+package com.example.controller;</p>
+
+<p>import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.ModelAndView;</p>
+
+<p>@RestController
+@RequestMapping(&ldquo;/&rdquo;)
+public class TopController {</p>
+
+<pre><code>// ログイン画面
+@RequestMapping("")
+public ModelAndView index(ModelAndView mav) {
+    mav.setViewName("index");
+    return mav;
+}
+
+// 認証完了後に表示する
+@RequestMapping("/complete")
+public ModelAndView complete(ModelAndView mav) {
+    mav.setViewName("complete");
+    return mav;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>HTMLの処理</h5>
+
+<p>そして、HTMLファイルは下記の通り。</p>
+
+<p>```html</p>
+
+<!-- index.html -->
+
+
+<p>&lt;!DOCTYPE html>
+<html lang="en" xmlns="http://www.thymeleaf.org">
+<head>
+  &lt;meta</p>
+
+<pre><code>http-equiv="Content-Type"
+content="text/html"
+charset="UTF-8"/&gt;
+</code></pre>
+
+<p>  <title>Facebook Login Sample</title>
+</head>
+<body></p>
+
+<div>これはFacebookログインのためのサンプルトップ画面です。</div>
+
+
+<p><form action="/api/login" method="get">
+  <input type="submit" value="Facebookでログイン"/>
+</form>
+</body>
+</html>
+```</p>
+
+<p>```html</p>
+
+<!-- complete.html -->
+
+
+<p>&lt;!DOCTYPE html>
+<html lang="en" xmlns="http://www.thymeleaf.org">
+<head>
+  &lt;meta</p>
+
+<pre><code>http-equiv="Content-Type"
+content="text/html"
+charset="UTF-8"/&gt;
+</code></pre>
+
+<p>  <title>ログイン完了画面</title>
+</head>
+<body></p>
+
+<div>ログイン完了しました！！</div>
+
+
+<p></body>
+</html>
+```</p>
+
+<h4>環境変数の設定</h4>
+
+<p>FacebookのアプリIDや認証リクエストを送るURLなどの環境変数を書き出します。</p>
+
+<p><code>java
+// application.properties
+server.port=9000
+spring.social.facebook.appId=xxxxxxxxx
+sampleApp.urls.facebookLogin=https://www.facebook.com/v2.8/dialog/oauth?client_id=xxxxxxxxx&amp;scope=public_profile,email
+sampleApp.urls.oAuthCallback=http://localhost:9000/api/callback
+</code></p>
+
+<p>ここで書いた環境変数を他のJavaファイルで利用したいので、<br/>
+新たに<code>MyBean.java</code>と<code>MyProperties.java</code>を新規作成します。</p>
+
+<p>```java
+// MyBean.java
+package com.example.config.bean;</p>
+
+<p>public class MyBean {</p>
+
+<pre><code>public String facebookLogin;
+
+public String oAuthCallback;
+
+public void setFacebookLogin(String facebookLogin) {
+    this.facebookLogin = facebookLogin;
+}
+
+public void setoAuthCallback(String oAuthCallback) {
+    this.oAuthCallback = oAuthCallback;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>```java
+// MyProperties
+package com.example.config.properties;</p>
+
+<p>import com.example.config.bean.MyBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.core.env.Environment;</p>
+
+<p>@Configuration
+@PropertySource(value = {&ldquo;classpath:application.properties&rdquo;})
+public class MyProperties {</p>
+
+<pre><code>@Autowired
+private Environment env;
+
+@Bean
+public MyBean myBean() {
+    MyBean myBean = new MyBean();
+    myBean.setFacebookLogin(env.getProperty("sampleApp.urls.facebookLogin"));
+    myBean.setoAuthCallback(env.getProperty("sampleApp.urls.oAuthCallback"));
+    return myBean;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Facebook認証周りの処理</h4>
+
+<p>後はFacebook認証先にURLを送るだけです。</p>
+
+<p>```javascript
+package com.example.controller;</p>
+
+<p>import com.example.config.bean.MyBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;</p>
+
+<p>@Controller
+@RequestMapping(&ldquo;/api&rdquo;)
+public class FacebookLoginController {</p>
+
+<pre><code>private static final String REDIRECT_URI_PARAMETER = "redirect_uri";
+
+@Autowired
+private MyBean myBean;
+
+@RequestMapping("/login")
+public String facebookLogin() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(myBean.facebookLogin);
+    sb.append("&amp;").append(REDIRECT_URI_PARAMETER).append("=");
+    sb.append(myBean.oAuthCallback);
+
+    return "redirect:" + sb.toString();
+}
+
+@RequestMapping("/callback")
+public String callback() {
+    return "redirect:/complete";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>動作確認</h3>
+
+<p>ここまで実装ができたので動作確認をしてみましょう。</p>
+
+<p><img src="/images/web_facebook_login_12.png" alt="ログイン画面" /></p>
+
+<p><img src="/images/web_facebook_login_13.png" alt="Facebookログイン画面" /></p>
+
+<p><img src="/images/web_facebook_login_14.png" alt="アプリ許可画面" /></p>
+
+<p><img src="/images/web_facebook_login_15.png" alt="ログイン完了後" /></p>
+
+<h3>まとめ</h3>
+
+<p>今回は本当に簡易的な部分しか書けませんでした<br/>
+本当は<code>Spring Social</code>を使いこなして、もっといろいろと書こうかと思ったのですが、また次の機会ということで&hellip;</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SwiftとJava8でOptional型を比較してみよう！]]></title>
@@ -772,72 +1119,6 @@ PHP, Ruby等々を無双したい方向けなので、筆者には今のとこ�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Spring BootでSystem.inにハマったメモ]]></title>
-    <link href="http://grandbig.github.io/blog/2016/04/17/gradle-spring-boot/"/>
-    <updated>2016-04-17T23:13:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/04/17/gradle-spring-boot</id>
-    <content type="html"><![CDATA[<h4>Spring BootをGradleでビルドしてハマったメモ</h4>
-
-<p>今日は超絶ハマって苦しんだ超初歩についてメモ書きです。<br/>
-Spring Bootに関する情報はあまり多くはないのですが、<br/>
-さらに困ったことにほとんどの書籍やネット情報ではMavenでビルドしているのでGradleに関する情報が乏しくてハマりました&hellip;。</p>
-
-<p>Javaでキーボード入力のために、<br/>
-<code>Scanner scanner = new Scanner(System.in);</code>を記述することがあります。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>これをメインファイルに記述した状態で<code>gradle bootRun</code>コマンドを実行しても、<br/>
-しれっと処理が流れてしまいました&hellip;。<br/>
-「なぜだ〜〜〜」と格闘すること数時間!?</p>
-
-<p>解決方法がわかりました。下記を<code>build.gradle</code>に追加します。</p>
-
-<p>```java
-// build.gradle
-bootRun {</p>
-
-<pre><code>standardInput = System.in
-</code></pre>
-
-<p>}
-```</p>
-
-<p>これは<code>bootRun</code>タスクを実行したときに、<br/>
-<code>System.in</code>をInput処理として判別するように定義しています。<br/>
-もう一度<code>gradle bootRun</code>を実行してみると処理が途中でStopしてユーザ入力を受け付けるようになりました。</p>
-
-<p>いや〜ハマった&hellip;。<br/>
-本日は完全なるメモ書きでした。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
 
 ]]></content>
   </entry>
