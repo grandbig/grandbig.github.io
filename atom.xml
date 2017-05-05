@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-05-06T00:25:22+09:00</updated>
+  <updated>2017-05-06T02:52:33+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,297 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Swift3でRealmSwiftを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/05/06/swift3-realm/"/>
+    <updated>2017-05-06T02:06:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/05/06/swift3-realm</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>約2年前に画期的なモバイルデータベースとして<a href="https://realm.io/jp/">Realm</a>について紹介させて頂きました。<br/>
+当時はSwift専用のものがなかったため、Objective-C用のものをブリッジヘッダーファイルを作成することで利用していました。<br/>
+現在はかなり多くのアプリでも利用され、広く浸透していると共に、<code>SwiftRealm</code>が作られ、Swift専用化しています。</p>
+
+<p>今回は、以前、筆者が書いた<a href="http://grandbig.github.io/blog/2015/06/07/swift-realm/">SwiftでRealmを使ってみよう！</a>を<code>SwiftRealm</code>で書き直す形でSwift3での<code>Realm</code>の使い方を見ていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>RealmSwiftの導入方法</h3>
+
+<p><code>CocoaPods</code>を利用して導入してみます。<br/>
+(<code>Carthage</code>での利用方法も公式サイトにて紹介されています。)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp"># Podfile</span>
+</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="s">&quot;RealmSwiftSample&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="err">#</span> <span class="n">Normal</span> <span class="n">libraries</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RealmSwift</span><span class="err">&#39;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">abstract_target</span> <span class="err">&#39;</span><span class="n">Tests</span><span class="err">&#39;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">inherit</span><span class="o">!</span> <span class="o">:</span><span class="n">search_paths</span>
+</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;RealmSwiftSampleTests&quot;</span>
+</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;RealmSwiftSampleUITests&quot;</span>
+</span><span class='line'>  <span class="n">end</span>
+</span><span class='line'><span class="n">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">post_install</span> <span class="k">do</span> <span class="o">|</span><span class="n">installer</span><span class="o">|</span>
+</span><span class='line'>  <span class="n">installer</span><span class="p">.</span><span class="n">pods_project</span><span class="p">.</span><span class="n">targets</span><span class="p">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">target</span><span class="o">|</span>
+</span><span class='line'>    <span class="n">target</span><span class="p">.</span><span class="n">build_configurations</span><span class="p">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">config</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">config</span><span class="p">.</span><span class="n">build_settings</span><span class="p">[</span><span class="err">&#39;</span><span class="n">SWIFT_VERSION</span><span class="err">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="err">&#39;</span><span class="mf">3.0</span><span class="err">&#39;</span>
+</span><span class='line'>    <span class="n">end</span>
+</span><span class='line'>  <span class="n">end</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因みに、<code>abstract_target</code>は複数targetにまたがって利用したいライブラリがある場合に利用します。<br/>
+(上記の例はテストでのみ利用するライブラリがある場合に利用する書式です。)<br/>
+また、<code>post_install do |installer|</code>〜<code>end</code>までの書式はSwiftのバージョンを指定するために追加します。</p>
+
+<p><code>Podfile</code>ができたら<code>pod install</code>を実行して<code>xcworkspace</code>ファイルを開きましょう。</p>
+
+<h3>保存オブジェクトの生成</h3>
+
+<p>Objective-C用のときは<code>RLMObject</code>型のクラスを作成していましたが、<code>RealmSwift</code>では単に<code>Object</code>型のクラスを作成します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Engineer.swift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Skillクラス</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">Skill:</span> <span class="n">Object</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Engineerクラス</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">Engineer:</span> <span class="n">Object</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">dynamic</span> <span class="n">var</span> <span class="kt">id</span><span class="o">:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>    <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">level:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">skills</span> <span class="o">=</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Skill</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">created:</span> <span class="n">Double</span> <span class="o">=</span> <span class="n">Date</span><span class="p">().</span><span class="n">timeIntervalSince1970</span>
+</span><span class='line'>    <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">updated:</span> <span class="n">Double</span> <span class="o">=</span> <span class="n">Date</span><span class="p">().</span><span class="n">timeIntervalSince1970</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// プライマリーキーの設定</span>
+</span><span class='line'>    <span class="n">override</span> <span class="k">static</span> <span class="n">func</span> <span class="n">primaryKey</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">String</span><span class="o">?</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="s">&quot;id&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// インデックスの設定</span>
+</span><span class='line'>    <span class="n">override</span> <span class="k">static</span> <span class="n">func</span> <span class="n">indexedProperties</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="p">[</span><span class="s">&quot;level&quot;</span><span class="p">]</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Objective-C用の<code>Realm</code>では<code>RLMArray</code>型として<code>skills</code>を作成していましたが、<code>RealmSwift</code>では<code>List&lt;Skill&gt;</code>型として作成できます。<br/>
+こちらの方が直感的でわかりやすいですね。<br/>
+因みに、<code>dynamic var skills = List&lt;Skill&gt;()</code>と書くとエラーが発生するので<code>List</code>を利用する場合は<code>let</code>にしましょう。</p>
+
+<h3>オブジェクトのインサート/アップデート</h3>
+
+<p>先程作成したオブジェクトを保存する方法について紹介しましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>        <span class="c1">// 新規オブジェクトをインサート</span>
+</span><span class='line'>        <span class="n">createEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;test1&quot;</span><span class="p">,</span> <span class="nl">level:</span> <span class="mi">1</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="s">&quot;swift&quot;</span><span class="p">,</span> <span class="s">&quot;objective-c&quot;</span><span class="p">])</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">createEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="n">String</span><span class="p">,</span> <span class="nl">level:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="n">String</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// Skill型オブジェクトに変換してList&lt;Skill&gt;に格納</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">skillList</span> <span class="o">=</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Skill</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">skill</span> <span class="k">in</span> <span class="n">skills</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">newSkill</span> <span class="o">=</span> <span class="n">Skill</span><span class="p">()</span>
+</span><span class='line'>            <span class="n">newSkill</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">skill</span>
+</span><span class='line'>            <span class="n">skillList</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">newSkill</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Engineer型オブジェクトの作成</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">Engineer</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">level</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">skills</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">objectsIn:</span> <span class="n">skillList</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Realmへのオブジェクトの書き込み</span>
+</span><span class='line'>        <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">realm</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="n">engineer</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Objective-Cの際は<code>realm.beginWriteTransaction()</code>や<code>realm.commitWriteTransaction()</code>などわざわざ書いていたものの、<code>RealmSwift</code>では非常にコンパクトに書けますね。<br/>
+因みに、アップデートであれば、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">try</span><span class="o">!</span> <span class="n">realm</span> <span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">engineer</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;takahiro&quot;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のようにすれば良さそうです。</p>
+
+<h3>データの確認</h3>
+
+<p>今は、Mac App Storeから<code>Realm Browser</code>アプリをインストールすることで簡単にデータ確認が可能になっています。</p>
+
+<p>手順は以下の通りです。<br/>
+１．<code>Realm Browser</code>を起動する<br/>
+２．<code>Realm</code>ファイルを選択して開く</p>
+
+<p>そうすることで、下記のようにデータを確認することができます。</p>
+
+<p><img src="http://grandbig.github.io/images/swift3-realm1.png" alt="Realm BrowserでEngineerオブジェクトを確認" /><br/>
+<img src="http://grandbig.github.io/images/swift3-realm2.png" alt="Realm BrowserでSkillオブジェクトを確認" /></p>
+
+<p>注意すべきこととしては、シミュレータだと<code>realm</code>ファイルを探すのに骨が折れるかもくらいでしょうか&hellip;<br/>
+<code>/Users/&lt;username&gt;/Library/Developer/CoreSimulator/Devices/&lt;simulator-uuid&gt;/data/Containers/Data/Application/&lt;application-uuid&gt;/Documents/default.realm</code>にありますので該当するファイルを検索するなどして探しましょう。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか。<br/>
+筆者は久しぶりに<code>Realm</code>を触ったため、以前利用していたときよりも『だいぶ変わったな』と正直思いました。<br/>
+ですが、<code>RealmSwift</code>になったことで、より<code>Swift</code>らしい書き方ができると思いますし、単純に記述量も少なく書けるような気がしています。<br/>
+今後も多くのアプリで利用されることでしょうし、知っておいて損は絶対になさそうですね。<br/>
+ということで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://qiita.com/shu223/items/e9d0145a2087da0d6d46">CocoaPods でビルド設定を追加する</a></li>
+<li><a href="https://guides.cocoapods.org/using/the-podfile.html">CocoaPods公式サイトでの説明</a></li>
+<li><a href="http://stackoverflow.com/questions/28465706/how-to-find-my-realm-file/28465803#28465803">stackoverflow &ndash; How to find my realm file?</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Swiftで使いたいんだけど思うように使えないsubscript]]></title>
@@ -9024,1471 +9315,6 @@ Webと違ってそこまで浸透しているとは言えないため、より�
 そろそろ個人でのアプリ開発も復活させたい気持ちもありますし、その際には積極的に導入してみようかな&hellip;</p>
 
 <p>と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Server Side SwiftでMongoDBと遊んでみる]]></title>
-    <link href="http://grandbig.github.io/blog/2016/12/05/swift-perfect-mongo/"/>
-    <updated>2016-12-05T00:00:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/12/05/swift-perfect-mongo</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>こちらは<a href="http://qiita.com/advent-calendar/2016/swift2">Swift その2 Advent Calendar 2016</a> 5日目の記事です。<br/>
-今年は筆者が興味を持っている <strong>Server Side Swift</strong> について書きたいと思います。
-Swiftサーバを立てるために、<a href="http://grandbig.github.io/blog/2016/10/30/swift-perfect/">以前の記事</a>でも利用した<a href="https://github.com/PerfectlySoft/Perfect">Perfect</a>を使います。</p>
-
-<p>ただ単にSwiftサーバを立てても面白くないので、提供されているMongoDB接続モジュールを利用して遊んでみようと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>SwiftによるAP・DBサーバの構築</h3>
-
-<p>早速、Perfectを用いてSwiftによるAP・DBサーバを構築しようと思います。<br/>
-基本的には<a href="https://github.com/PerfectlySoft/Perfect-MongoDB">ReadMe</a>に従えば良いのですが、丁寧に１つずつ見ていきます。</p>
-
-<h4>必要モジュールのインストール</h4>
-
-<p>流石に <strong>Homebrew</strong> はインストールされている方が多いと思いますが、入れていない方は下記コマンドで入れましょう。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"</span></code></pre></td></tr></table></div></figure>
-
-
-<p>また今回は <strong>MongoDB</strong> を利用するため、 <strong>mongodb</strong> および <strong>mongo-c</strong> をインストールする必要があります。<br/>
-mongodbに関しては、</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>brew install mongodb</span></code></pre></td></tr></table></div></figure>
-
-
-<p>でOKです。(自動起動などに関しては<a href="http://grandbig.github.io/blog/2016/11/20/brew-install-db/">こちら</a>を参照ください。)<br/>
-続いて、mongo-cは</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>brew install mongo-c</span></code></pre></td></tr></table></div></figure>
-
-
-<p>でインストール完了できるはずです。</p>
-
-<h4>xcodeprojを作成</h4>
-
-<h5>テンプレートのダウンロード</h5>
-
-<p>0からPerfectを用いてサーバを構築しても良いのですが、Perfectではテンプレートを用意してくれています。<br/>
-せっかくなので <code>git clone</code> してテンプレートをダウンロードして使いましょう。</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>git clone https://github.com/PerfectlySoft/PerfectTemplate.git
-</span><span class='line'>cd PerfectTemplate</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>MongoDBモジュールを利用するように編集</h5>
-
-<p><strong>Perfect-MongoDB</strong> を利用するので、<code>Package.swift</code>を編集しましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">PackageDescription</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">let</span> <span class="n">package</span> <span class="o">=</span> <span class="n">Package</span><span class="p">(</span>
-</span><span class='line'>  <span class="nl">name:</span> <span class="s">&quot;PerfectTemplate&quot;</span><span class="p">,</span>
-</span><span class='line'>  <span class="nl">targets:</span> <span class="p">[],</span>
-</span><span class='line'>  <span class="nl">dependencies:</span> <span class="p">[</span>
-</span><span class='line'>      <span class="p">.</span><span class="n">Package</span><span class="p">(</span><span class="nl">url:</span> <span class="s">&quot;https://github.com/PerfectlySoft/Perfect-HTTPServer.git&quot;</span><span class="p">,</span> <span class="nl">majorVersion:</span> <span class="mi">2</span><span class="p">,</span> <span class="nl">minor:</span> <span class="mi">0</span><span class="p">),</span>
-</span><span class='line'>      <span class="p">.</span><span class="n">Package</span><span class="p">(</span><span class="nl">url:</span><span class="s">&quot;https://github.com/PerfectlySoft/PerfectLib.git&quot;</span><span class="p">,</span> <span class="nl">majorVersion:</span> <span class="mi">2</span><span class="p">,</span> <span class="nl">minor:</span> <span class="mi">0</span><span class="p">),</span>
-</span><span class='line'>      <span class="p">.</span><span class="n">Package</span><span class="p">(</span><span class="nl">url:</span><span class="s">&quot;https://github.com/PerfectlySoft/Perfect-MongoDB.git&quot;</span><span class="p">,</span> <span class="nl">majorVersion:</span> <span class="mi">2</span><span class="p">,</span> <span class="nl">minor:</span> <span class="mi">0</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">]</span>
-</span><span class='line'><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ReadMeでは <strong>Perfect-HTTPServer</strong> は書かれていないのですが、これを使った方が便利なので、テンプレートに残したまま進めます。</p>
-
-<h5>Packageからxcodeprojを作成</h5>
-
-<p><code>Package.swift</code>の編集が終わったら、下記コマンドを実行して<code>xcodeproj</code>ファイルを作成しましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">swift</span> <span class="n">package</span> <span class="n">generate</span><span class="o">-</span><span class="n">xcodeproj</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>そうすれば下図のような結果が得られるはずです。</p>
-
-<p><img src="http://grandbig.github.io/images/perfect-mongo_1.png" alt="フォルダ構成" /></p>
-
-<h4>MongoDBにデータを作成</h4>
-
-<p>サンプルを作成するためにもデータがなきゃ話になりませんよね？<br/>
-ということでデータを入れましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// MongoDBにアクセス</span>
-</span><span class='line'><span class="n">$</span> <span class="n">mongo</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// DBとCollectionの作成</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">use</span> <span class="n">test</span><span class="p">;</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">db</span><span class="p">.</span><span class="n">createCollection</span><span class="p">(</span><span class="err">&#39;</span><span class="n">testCollection</span><span class="err">&#39;</span><span class="p">);</span>
-</span><span class='line'><span class="p">{</span> <span class="s">&quot;ok&quot;</span> <span class="o">:</span> <span class="mi">1</span> <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// DBの確認</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">show</span> <span class="n">dbs</span><span class="p">;</span>
-</span><span class='line'><span class="n">local</span>  <span class="mf">0.000</span><span class="n">GB</span>
-</span><span class='line'><span class="n">test</span>   <span class="mf">0.000</span><span class="n">GB</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Collectionの確認</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">show</span> <span class="n">collections</span>
-</span><span class='line'><span class="n">testCollection</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// データのインサート</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">db</span><span class="p">.</span><span class="n">testCollection</span><span class="p">.</span><span class="n">insert</span><span class="p">({</span><span class="nl">name:</span> <span class="err">&#39;</span><span class="n">takahiro</span><span class="err">&#39;</span><span class="p">,</span> <span class="nl">age:</span> <span class="mi">30</span><span class="p">,</span> <span class="nl">hobby:</span> <span class="err">&#39;</span><span class="n">blog</span><span class="err">&#39;</span><span class="p">});</span>
-</span><span class='line'><span class="n">WriteResult</span><span class="p">({</span> <span class="s">&quot;nInserted&quot;</span> <span class="o">:</span> <span class="mi">1</span> <span class="p">})</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">db</span><span class="p">.</span><span class="n">testCollection</span><span class="p">.</span><span class="n">insert</span><span class="p">({</span><span class="nl">name:</span> <span class="err">&#39;</span><span class="n">ichiro</span><span class="err">&#39;</span><span class="p">,</span> <span class="nl">age:</span> <span class="mi">43</span><span class="p">,</span> <span class="nl">hobby:</span> <span class="err">&#39;</span><span class="n">baseball</span><span class="err">&#39;</span><span class="p">});</span>
-</span><span class='line'><span class="n">WriteResult</span><span class="p">({</span> <span class="s">&quot;nInserted&quot;</span> <span class="o">:</span> <span class="mi">1</span> <span class="p">})</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// データの確認</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">db</span><span class="p">.</span><span class="n">testCollection</span><span class="p">.</span><span class="n">find</span><span class="p">()</span>
-</span><span class='line'><span class="p">{</span> <span class="s">&quot;_id&quot;</span> <span class="o">:</span> <span class="n">ObjectId</span><span class="p">(</span><span class="s">&quot;58391469a8589d99c931303c&quot;</span><span class="p">),</span> <span class="s">&quot;name&quot;</span> <span class="o">:</span> <span class="s">&quot;takahiro&quot;</span><span class="p">,</span> <span class="s">&quot;age&quot;</span> <span class="o">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s">&quot;hobby&quot;</span> <span class="o">:</span> <span class="s">&quot;blog&quot;</span> <span class="p">}</span>
-</span><span class='line'><span class="p">{</span> <span class="s">&quot;_id&quot;</span> <span class="o">:</span> <span class="n">ObjectId</span><span class="p">(</span><span class="s">&quot;58392222a8589d99c931303d&quot;</span><span class="p">),</span> <span class="s">&quot;name&quot;</span> <span class="o">:</span> <span class="s">&quot;ichiro&quot;</span><span class="p">,</span> <span class="s">&quot;age&quot;</span> <span class="o">:</span> <span class="mi">43</span><span class="p">,</span> <span class="s">&quot;hobby&quot;</span> <span class="o">:</span> <span class="s">&quot;baseball&quot;</span> <span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>MongoDBにアクセスして全データを取得</h4>
-
-<p>データの作成も完了したので、実際にGETリクエストでMongoDBからデータを取得する処理を書いてみましょう。<br/>
-(ReadMeではPerfect-HTTPServerを利用しない方法で書かれていたため本記事とは若干異なります。)</p>
-
-<h5>テンプレートファイルの確認</h5>
-
-<p>まずは、初めから作成されている処理内容を確認します。<br/>
-説明は下記ソースコードにコメントを書いたので参照ください。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectLib</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectHTTP</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectHTTPServer</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// HTTPサーバの生成</span>
-</span><span class='line'><span class="n">let</span> <span class="n">server</span> <span class="o">=</span> <span class="n">HTTPServer</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// リクエストに対するルーティングを設定</span>
-</span><span class='line'><span class="n">var</span> <span class="n">routes</span> <span class="o">=</span> <span class="n">Routes</span><span class="p">()</span>
-</span><span class='line'><span class="n">routes</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">uri:</span> <span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="nl">handler:</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">request</span><span class="p">,</span> <span class="n">response</span> <span class="k">in</span>
-</span><span class='line'>    <span class="c1">// レスポンスヘッダーの設定</span>
-</span><span class='line'>    <span class="n">response</span><span class="p">.</span><span class="n">setHeader</span><span class="p">(.</span><span class="n">contentType</span><span class="p">,</span> <span class="nl">value:</span> <span class="s">&quot;text/html&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="c1">// レスポンスボディの設定</span>
-</span><span class='line'>    <span class="n">response</span><span class="p">.</span><span class="n">appendBody</span><span class="p">(</span><span class="nl">string:</span> <span class="s">&quot;&lt;html&gt;&lt;title&gt;Hello, world!&lt;/title&gt;&lt;body&gt;Hello, world!&lt;/body&gt;&lt;/html&gt;&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="c1">// レスポンス完了処理</span>
-</span><span class='line'>    <span class="n">response</span><span class="p">.</span><span class="n">completed</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// サーバにルーティング設定を適用</span>
-</span><span class='line'><span class="n">server</span><span class="p">.</span><span class="n">addRoutes</span><span class="p">(</span><span class="n">routes</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// ポートを設定</span>
-</span><span class='line'><span class="n">server</span><span class="p">.</span><span class="n">serverPort</span> <span class="o">=</span> <span class="mi">8181</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// ドキュメントルートのパスを設定</span>
-</span><span class='line'><span class="n">server</span><span class="p">.</span><span class="n">documentRoot</span> <span class="o">=</span> <span class="s">&quot;./webroot&quot;</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// arguments.swiftで定義されているメソッド</span>
-</span><span class='line'><span class="c1">// 更なるサーバ定義が必要な場合はここを見ましょう(SSLなど)</span>
-</span><span class='line'><span class="n">configureServer</span><span class="p">(</span><span class="n">server</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">do</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">// HTTPサーバの起動</span>
-</span><span class='line'>    <span class="n">try</span> <span class="n">server</span><span class="p">.</span><span class="n">start</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span> <span class="n">catch</span> <span class="n">PerfectError</span><span class="p">.</span><span class="n">networkError</span><span class="p">(</span><span class="n">let</span> <span class="n">err</span><span class="p">,</span> <span class="n">let</span> <span class="n">msg</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="s">&quot;Network error thrown: \(err) \(msg)&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記をXcodeをからRunさせた状態で <code>http://localhost:8181</code> にアクセスしてみましょう。<br/>
-Hello Worldの結果が得られるはずです。</p>
-
-<p><img src="http://grandbig.github.io/images/perfect-mongo_2.png" alt="Hello World" /></p>
-
-<h5>MongoDB関連処理ファイルの作成</h5>
-
-<p>続いて、MongoDBへの接続・切断やデータ取得などの処理を作成していきます。<br/>
-これは別クラスの中に書いていきましょう。</p>
-
-<p>今回はMongoDB関連の処理をハンドリングするということで<code>mongoHandler.swift</code>というファイルを作成します。<br/>
-因みにただ作成しただけでは、XcodeがCompile対象として正しく認識してくれないので、自身で設定を変えましょう。<br/>
-下図のようにTARGETSから実行ファイルを選択して、Compile Sourcesとして<code>mongoHandler.swift</code>を追加してください。</p>
-
-<p><img src="http://grandbig.github.io/images/perfect-mongo_3.png" alt="Compile Sourcesに追加" /></p>
-
-<p>では実際のソースを見ていきましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// mongoHandler.swift</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectLib</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectHTTP</span>
-</span><span class='line'><span class="n">import</span> <span class="n">MongoDB</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="n">MongoHandler</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">client:</span> <span class="n">MongoClient</span><span class="o">?</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">database:</span> <span class="n">MongoDatabase</span><span class="o">?</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">collection:</span> <span class="n">MongoCollection</span><span class="o">?</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// MongoDBへの接続処理</span>
-</span><span class='line'>  <span class="n">fileprivate</span> <span class="n">func</span> <span class="n">connect</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// コネクション確立</span>
-</span><span class='line'>    <span class="n">client</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">MongoClient</span><span class="p">(</span><span class="nl">uri:</span> <span class="s">&quot;mongodb://localhost&quot;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// testデータベースへの接続</span>
-</span><span class='line'>    <span class="n">database</span> <span class="o">=</span> <span class="n">client</span><span class="o">?</span><span class="p">.</span><span class="n">getDatabase</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;test&quot;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// testCollectionコレクションへの接続</span>
-</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">collection</span> <span class="o">=</span> <span class="n">database</span><span class="o">?</span><span class="p">.</span><span class="n">getCollection</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;testCollection&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// MongoDBからの切断処理</span>
-</span><span class='line'>  <span class="n">fileprivate</span> <span class="n">func</span> <span class="n">close</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">collection</span><span class="o">?</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">database</span><span class="o">?</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">client</span><span class="o">?</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">func</span> <span class="n">searchAll</span><span class="p">(</span><span class="nl">request:</span> <span class="n">HTTPRequest</span><span class="p">,</span> <span class="n">_</span> <span class="nl">response:</span> <span class="n">HTTPResponse</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">// MongoDBへの接続</span>
-</span><span class='line'>    <span class="n">connect</span><span class="p">()</span>
-</span><span class='line'>    <span class="c1">// 指定コレクションが見つからない場合は処理終了</span>
-</span><span class='line'>    <span class="n">guard</span> <span class="n">let</span> <span class="n">collection</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">collection</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">return</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// データ全件取得のためBSONオブジェクトを初期化してクエリとして設定</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">fnd</span> <span class="o">=</span> <span class="n">collection</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="nl">query:</span> <span class="n">BSON</span><span class="p">())</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// データ格納用に配列を定義</span>
-</span><span class='line'>    <span class="n">var</span> <span class="n">arr</span> <span class="o">=</span> <span class="p">[</span><span class="n">String</span><span class="p">]()</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 取得したデータを配列に格納する</span>
-</span><span class='line'>    <span class="c1">// fndはMongoCursor型であり、for文での繰り返し処理が可能</span>
-</span><span class='line'>    <span class="k">for</span> <span class="n">x</span> <span class="k">in</span> <span class="n">fnd</span><span class="o">!</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">arr</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="n">asString</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// JSONStringに変換</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;{</span><span class="se">\&quot;</span><span class="s">data</span><span class="se">\&quot;</span><span class="s">:[\(arr.joined(separator: &quot;</span><span class="p">,</span><span class="s">&quot;))]}&quot;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// レスポンスデータとして設定</span>
-</span><span class='line'>    <span class="n">response</span><span class="p">.</span><span class="n">appendBody</span><span class="p">(</span><span class="nl">string:</span> <span class="n">returning</span><span class="p">)</span>
-</span><span class='line'>    <span class="c1">// レスポンス処理完了</span>
-</span><span class='line'>    <span class="n">response</span><span class="p">.</span><span class="n">completed</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MongoDBから切断</span>
-</span><span class='line'>    <span class="n">close</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>MongoDBへの接続・切断処理は共通処理となることは容易に想像できるため、切り出しました。</p>
-
-<h5>main.swiftからmongoHandler.swiftを呼び出す</h5>
-
-<p>さて、<code>main.swift</code>から<code>mongoHandler.swift</code>を呼び出してみましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="c1">// MongoHandlerの初期化</span>
-</span><span class='line'><span class="n">let</span> <span class="n">mongoHandler</span> <span class="o">=</span> <span class="n">MongoHandler</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// GETリクエストでMongoDBのデータ全取得</span>
-</span><span class='line'><span class="n">routes</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">uri:</span> <span class="s">&quot;/mongo&quot;</span><span class="p">,</span> <span class="nl">handler:</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">request</span><span class="p">,</span> <span class="n">response</span> <span class="k">in</span>
-</span><span class='line'>    <span class="n">mongoHandler</span><span class="p">.</span><span class="n">searchAll</span><span class="p">(</span><span class="nl">request:</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これで<code>http://localhost:8181</code>にアクセスすれば下図のような結果が得られるはずです。</p>
-
-<p><img src="http://grandbig.github.io/images/perfect-mongo_4.png" alt="データ全件取得結果" /></p>
-
-<h4>MongoDBにアクセスして指定のクエリでデータを取得</h4>
-
-<p>全件取得の方法はわかったので、続いてクエリありの検索を実行してみましょう。<br/>
-先程述べた通り、下記のようなデータが格納されています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// データの確認</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">db</span><span class="p">.</span><span class="n">testCollection</span><span class="p">.</span><span class="n">find</span><span class="p">()</span>
-</span><span class='line'><span class="p">{</span> <span class="s">&quot;_id&quot;</span> <span class="o">:</span> <span class="n">ObjectId</span><span class="p">(</span><span class="s">&quot;58391469a8589d99c931303c&quot;</span><span class="p">),</span> <span class="s">&quot;name&quot;</span> <span class="o">:</span> <span class="s">&quot;takahiro&quot;</span><span class="p">,</span> <span class="s">&quot;age&quot;</span> <span class="o">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s">&quot;hobby&quot;</span> <span class="o">:</span> <span class="s">&quot;blog&quot;</span> <span class="p">}</span>
-</span><span class='line'><span class="p">{</span> <span class="s">&quot;_id&quot;</span> <span class="o">:</span> <span class="n">ObjectId</span><span class="p">(</span><span class="s">&quot;58392222a8589d99c931303d&quot;</span><span class="p">),</span> <span class="s">&quot;name&quot;</span> <span class="o">:</span> <span class="s">&quot;ichiro&quot;</span><span class="p">,</span> <span class="s">&quot;age&quot;</span> <span class="o">:</span> <span class="mi">43</span><span class="p">,</span> <span class="s">&quot;hobby&quot;</span> <span class="o">:</span> <span class="s">&quot;baseball&quot;</span> <span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><code>name</code>、<code>age</code>、<code>hobby</code>を指定して検索するのはそんなに難しくないと思います。</p>
-
-<h5>nameを指定してデータを取得</h5>
-
-<p>わかりやすいところからと言うことで<code>name</code>を指定してデータを取得してみます。<br/>
-まずは<code>mongoHandler.swift</code>にクエリ指定のメソッドを追加しましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// mongoHandler.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectLib</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectHTTP</span>
-</span><span class='line'><span class="n">import</span> <span class="n">MongoDB</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="n">MongoHandler</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">client:</span> <span class="n">MongoClient</span><span class="o">?</span>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">database:</span> <span class="n">MongoDatabase</span><span class="o">?</span>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">collection:</span> <span class="n">MongoCollection</span><span class="o">?</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">fileprivate</span> <span class="n">func</span> <span class="n">connect</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// open a connection</span>
-</span><span class='line'>        <span class="n">client</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">MongoClient</span><span class="p">(</span><span class="nl">uri:</span> <span class="s">&quot;mongodb://localhost&quot;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// set database, assuming &quot;test&quot; exists</span>
-</span><span class='line'>        <span class="n">database</span> <span class="o">=</span> <span class="n">client</span><span class="o">?</span><span class="p">.</span><span class="n">getDatabase</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;test&quot;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// define collection</span>
-</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">collection</span> <span class="o">=</span> <span class="n">database</span><span class="o">?</span><span class="p">.</span><span class="n">getCollection</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;testCollection&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">fileprivate</span> <span class="n">func</span> <span class="n">close</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">collection</span><span class="o">?</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">database</span><span class="o">?</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">client</span><span class="o">?</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// searchAllメソッドは省略</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// =====ここから追加========================================================</span>
-</span><span class='line'>      <span class="n">func</span> <span class="n">search</span><span class="p">(</span><span class="nl">query:</span> <span class="n">BSON</span><span class="p">,</span> <span class="nl">request:</span> <span class="n">HTTPRequest</span><span class="p">,</span> <span class="n">_</span> <span class="nl">response:</span> <span class="n">HTTPResponse</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>          <span class="c1">// MongoDBへの接続</span>
-</span><span class='line'>          <span class="n">connect</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>          <span class="c1">// 指定コレクションが見つからない場合は処理終了</span>
-</span><span class='line'>      <span class="n">guard</span> <span class="n">let</span> <span class="n">collection</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">collection</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">return</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// クエリを指定して検索</span>
-</span><span class='line'>      <span class="n">let</span> <span class="n">fnd</span> <span class="o">=</span> <span class="n">collection</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="nl">query:</span> <span class="n">query</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// データ格納用に配列を定義</span>
-</span><span class='line'>      <span class="n">var</span> <span class="n">arr</span> <span class="o">=</span> <span class="p">[</span><span class="n">String</span><span class="p">]()</span>
-</span><span class='line'>
-</span><span class='line'>          <span class="c1">// 取得したデータを配列に格納する</span>
-</span><span class='line'>      <span class="c1">// fndはMongoCursor型であり、for文での繰り返し処理が可能</span>
-</span><span class='line'>      <span class="k">for</span> <span class="n">x</span> <span class="k">in</span> <span class="n">fnd</span><span class="o">!</span> <span class="p">{</span>
-</span><span class='line'>          <span class="n">arr</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="n">asString</span><span class="p">)</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// JSONStringに変換</span>
-</span><span class='line'>      <span class="n">let</span> <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;{</span><span class="se">\&quot;</span><span class="s">data</span><span class="se">\&quot;</span><span class="s">:[\(arr.joined(separator: &quot;</span><span class="p">,</span><span class="s">&quot;))]}&quot;</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// レスポンスデータとして設定</span>
-</span><span class='line'>      <span class="n">response</span><span class="p">.</span><span class="n">appendBody</span><span class="p">(</span><span class="nl">string:</span> <span class="n">returning</span><span class="p">)</span>
-</span><span class='line'>          <span class="c1">// レスポンス処理完了</span>
-</span><span class='line'>      <span class="n">response</span><span class="p">.</span><span class="n">completed</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>          <span class="c1">// MongoDBから切断</span>
-</span><span class='line'>      <span class="n">close</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><code>searchAll</code>との違いは引数に<code>BSON</code>型の<code>query</code>を追加しているところです。</p>
-
-<p>続いて、<code>main.swift</code>にGETリクエストで<code>name</code>パラメータをキャッチできるように処理を追加していきましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectLib</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectHTTP</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectHTTPServer</span>
-</span><span class='line'><span class="n">import</span> <span class="n">MongoDB</span>                  <span class="c1">// ここを追加</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// 省略</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// nameパラメータを指定したGETリクエストのハンドリング</span>
-</span><span class='line'><span class="n">routes</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">uri:</span> <span class="s">&quot;/mongo/name/{name}&quot;</span><span class="p">,</span> <span class="nl">handler:</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">request</span><span class="p">,</span> <span class="n">response</span> <span class="k">in</span>
-</span><span class='line'>  <span class="c1">// BSON型オブジェクトの初期化(クエリとして渡す)</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">bson</span> <span class="o">=</span> <span class="n">BSON</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">defer</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// 処理完了時にBSONオブジェクトを削除</span>
-</span><span class='line'>    <span class="n">bson</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="c1">// クエリとして渡すパラメータをセット</span>
-</span><span class='line'>  <span class="n">bson</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">key:</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="nl">string:</span> <span class="n">request</span><span class="p">.</span><span class="n">urlVariables</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">)</span>
-</span><span class='line'>  <span class="c1">// クエリを指定して検索</span>
-</span><span class='line'>  <span class="n">mongoHandler</span><span class="p">.</span><span class="n">search</span><span class="p">(</span><span class="nl">query:</span> <span class="n">bson</span><span class="p">,</span> <span class="nl">request:</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これだけで準備万端です。<br/>
-<code>http://localhost:8181/name/takahiro</code>にアクセスすると下記結果が得られます。</p>
-
-<p><img src="http://grandbig.github.io/images/perfect-mongo_5.png" alt="nameパラメータを指定したGETリクエスト結果" />_</p>
-
-<h5>ObjectIdを指定してデータを取得</h5>
-
-<p>続いて、少しクエリの書き方に迷うかもしれない<code>ObjectId</code>を指定したデータ検索をしてみましょう。<br/>
-<code>mongoHandler.swift</code>には特に変更がありません。<br/>
-<code>main.swift</code>のみ変更していきます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectLib</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectHTTP</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectHTTPServer</span>
-</span><span class='line'><span class="n">import</span> <span class="n">MongoDB</span>
-</span><span class='line'><span class="n">import</span> <span class="n">libmongoc</span>                <span class="c1">// ここを追加</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// 省略</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// ObjectIdパラメータを指定したGETリクエストのハンドリング</span>
-</span><span class='line'><span class="n">routes</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">uri:</span> <span class="s">&quot;/mongo/oid/{oid}&quot;</span><span class="p">,</span> <span class="nl">handler:</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">request</span><span class="p">,</span> <span class="n">response</span> <span class="k">in</span>
-</span><span class='line'>  <span class="c1">// BSON型オブジェクトの初期化(クエリとして渡す)</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">bson</span> <span class="o">=</span> <span class="n">BSON</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">defer</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// 処理完了時にBSONオブジェクトを削除</span>
-</span><span class='line'>    <span class="n">bson</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="c1">// bson_oid_t型のオブジェクトの初期化</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">oid:</span> <span class="n">bson_oid_t</span> <span class="o">=</span> <span class="n">bson_oid_t</span><span class="p">()</span>
-</span><span class='line'>  <span class="c1">// String型からbson_oid_t型に変換</span>
-</span><span class='line'>  <span class="n">bson_oid_init_from_string</span><span class="p">(</span><span class="o">&amp;</span><span class="n">oid</span><span class="p">,</span> <span class="n">request</span><span class="p">.</span><span class="n">urlVariables</span><span class="p">[</span><span class="s">&quot;oid&quot;</span><span class="p">])</span>
-</span><span class='line'>  <span class="c1">// クエリとして渡すパラメータをセット</span>
-</span><span class='line'>  <span class="n">bson</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">key:</span> <span class="s">&quot;_id&quot;</span><span class="p">,</span> <span class="nl">oid:</span> <span class="n">oid</span><span class="p">)</span>
-</span><span class='line'>  <span class="c1">// クエリを指定して検索</span>
-</span><span class='line'>  <span class="n">mongoHandler</span><span class="p">.</span><span class="n">search</span><span class="p">(</span><span class="nl">query:</span> <span class="n">bson</span><span class="p">,</span> <span class="nl">request:</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>肝なのが、<code>import libmongoc</code>をしているということです。<br/>
-このライブラリの各種メソッドを利用することでServer Side Swiftから<code>ObjectId</code>を指定したデータ検索が可能になります。</p>
-
-<p>少し詳しく説明すると、<br/>
-クエリとして<code>ObjectId</code>を渡すためには<code>public func append(key k: String, oid: bson_oid_t) -&gt; Bool</code>を利用する必要があります。<br/>
-しかし、このメソッドの第二引数をよく見ると、<code>bson_oid_t</code>型となっています。</p>
-
-<p>GETリクエストの時点で<code>bson_oid_t</code>型でパラメータを渡すわけにもいかないので、  サーバサイド側で変換する必要があります。<br/>
-そのために利用するメソッドが<code>void bson_oid_init_from_string (bson_oid_t *oid, const char *str);</code>です。<br/>
-筆者もSwiftで初めて利用したのですが、このメソッドは戻り値が<code>void</code>型のため何も返ってきません。<br/>
-が、第一引数に参照渡しとして<code>bson_oid_t</code>型オブジェクトを設定することで、メソッドの処理結果が<code>oid</code>に格納されます。<br/>
-これでめでたくクエリとして<code>ObjectId</code>が設定できるわけです。</p>
-
-<p>では、<code>http://localhost:8181/oid/58392222a8589d99c931303d</code>にアクセスしてみましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/perfect-mongo_6.png" alt="ObjectIdパラメータを指定したGETリクエスト結果" /></p>
-
-<h4>MongoDBにデータを保存</h4>
-
-<p>検索に関してはざっと見てきたので、MongoDBへの保存処理も見ていきましょう。</p>
-
-<h5>insertメソッドでデータを保存</h5>
-
-<p>保存には<code>MongoClient</code>の<code>insert</code>メソッドを利用します。<br/>
-(他にも<code>save</code>メソッドもあります。)</p>
-
-<p>まずは <code>mongoHandler.swift</code> へのメソッド追加からです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// mongoHandler.swift</span>
-</span><span class='line'><span class="n">func</span> <span class="nf">save</span><span class="p">(</span><span class="nl">query:</span> <span class="n">BSON</span><span class="p">,</span> <span class="nl">request:</span> <span class="n">HTTPRequest</span><span class="p">,</span> <span class="nl">response:</span> <span class="n">HTTPResponse</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">// MongoDBへの接続</span>
-</span><span class='line'>  <span class="n">connect</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// 指定コレクションが見つからない場合は処理終了</span>
-</span><span class='line'>  <span class="n">guard</span> <span class="n">let</span> <span class="n">collection</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">collection</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// データの保存処理</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">insert</span> <span class="o">=</span> <span class="n">collection</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="nl">document:</span> <span class="n">query</span><span class="p">)</span> <span class="n">as</span> <span class="n">MongoResult</span>
-</span><span class='line'>  <span class="c1">// データ保存結果によって返却値を変更</span>
-</span><span class='line'>  <span class="n">var</span> <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;Failed&quot;</span>
-</span><span class='line'>  <span class="k">switch</span> <span class="n">insert</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">case</span> <span class="p">.</span><span class="nl">success:</span>
-</span><span class='line'>    <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;Succeeded&quot;</span>
-</span><span class='line'>  <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>    <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;Failed&quot;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// レスポンスデータとして設定</span>
-</span><span class='line'>  <span class="n">response</span><span class="p">.</span><span class="n">appendBody</span><span class="p">(</span><span class="nl">string:</span> <span class="n">returning</span><span class="p">)</span>
-</span><span class='line'>  <span class="c1">// レスポンス処理完了</span>
-</span><span class='line'>  <span class="n">response</span><span class="p">.</span><span class="n">completed</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// MongoDBから切断</span>
-</span><span class='line'>  <span class="n">close</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>次にPOSTで届いたリクエストパラメータがJSONStringなのでDictionary型に変換します。<br/>
-その処理を <code>decode.swift</code> ファイルを新規作成して追加します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// decode.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectHTTPServer</span>
-</span><span class='line'><span class="n">import</span> <span class="n">PerfectLib</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">func</span> <span class="n">decode</span><span class="p">(</span><span class="nl">postBody:</span> <span class="n">String</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span><span class="o">?</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">do</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">guard</span> <span class="n">let</span> <span class="n">decoded</span> <span class="o">=</span> <span class="n">try</span> <span class="n">postBody</span><span class="o">?</span><span class="p">.</span><span class="n">jsonDecode</span><span class="p">()</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span><span class="n">Any</span><span class="p">]</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">return</span> <span class="p">[</span><span class="o">:</span><span class="p">]</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="n">decoded</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">decoded</span>
-</span><span class='line'>  <span class="p">}</span> <span class="n">catch</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="p">[</span><span class="o">:</span><span class="p">]</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>そして <code>main.swift</code> にPOSTリクエストのハンドリング処理を書きます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="n">routes</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="nl">method:</span> <span class="p">.</span><span class="n">post</span><span class="p">,</span> <span class="nl">uri:</span> <span class="s">&quot;/mongo/&quot;</span><span class="p">,</span> <span class="nl">handler:</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">request</span><span class="p">,</span> <span class="n">response</span> <span class="k">in</span>
-</span><span class='line'>  <span class="c1">// BSON型オブジェクトの初期化(クエリとして渡す)</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">bson</span> <span class="o">=</span> <span class="n">BSON</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">defer</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// 処理完了時にBSONオブジェクトを削除</span>
-</span><span class='line'>    <span class="n">bson</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// JSONString型をDictionary型に変換</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">decodedParam</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="nl">postBody:</span> <span class="n">request</span><span class="p">.</span><span class="n">postBodyString</span><span class="p">)</span>
-</span><span class='line'>  <span class="c1">// 各パラメータ単位でBSONオブジェクトに格納</span>
-</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="k">in</span> <span class="n">decodedParam</span><span class="o">!</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">switch</span> <span class="n">key</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">case</span> <span class="s">&quot;name&quot;</span><span class="o">:</span>
-</span><span class='line'>          <span class="n">bson</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">key:</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="nl">string:</span> <span class="n">value</span> <span class="n">as</span><span class="o">!</span> <span class="n">String</span><span class="p">)</span>
-</span><span class='line'>      <span class="k">case</span> <span class="s">&quot;age&quot;</span><span class="o">:</span>
-</span><span class='line'>          <span class="n">bson</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">key:</span> <span class="s">&quot;age&quot;</span><span class="p">,</span> <span class="nl">int32:</span> <span class="n">Int32</span><span class="p">(</span><span class="n">value</span> <span class="n">as</span><span class="o">!</span> <span class="n">Int</span><span class="p">))</span>
-</span><span class='line'>      <span class="k">case</span> <span class="s">&quot;hobby&quot;</span><span class="o">:</span>
-</span><span class='line'>          <span class="n">bson</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">key:</span> <span class="s">&quot;hobby&quot;</span><span class="p">,</span> <span class="nl">string:</span> <span class="n">value</span> <span class="n">as</span><span class="o">!</span> <span class="n">String</span><span class="p">)</span>
-</span><span class='line'>      <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>          <span class="k">break</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="c1">// データ保存</span>
-</span><span class='line'>  <span class="n">mongoHandler</span><span class="p">.</span><span class="n">save</span><span class="p">(</span><span class="nl">query:</span> <span class="n">bson</span><span class="p">,</span> <span class="nl">request:</span> <span class="n">request</span><span class="p">,</span> <span class="nl">response:</span> <span class="n">response</span><span class="p">)</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これで処理は完成です。<br/>
-ではPOSTリクエストを投げてみましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">$</span> <span class="n">curl</span> <span class="nl">http:</span><span class="c1">//localhost:8181/mongo -X POST -H &quot;Content-Type: application/json&quot; -d &#39;{&quot;name&quot;:&quot;Hanako&quot;, &quot;age&quot;: 24, &quot;hobby&quot;: &quot;game&quot;}&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>再度、MongoDBを検索してみると下記のような結果が得られるはずです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// データの確認</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">db</span><span class="p">.</span><span class="n">testCollection</span><span class="p">.</span><span class="n">find</span><span class="p">()</span>
-</span><span class='line'><span class="p">{</span> <span class="s">&quot;_id&quot;</span> <span class="o">:</span> <span class="n">ObjectId</span><span class="p">(</span><span class="s">&quot;58391469a8589d99c931303c&quot;</span><span class="p">),</span> <span class="s">&quot;name&quot;</span> <span class="o">:</span> <span class="s">&quot;takahiro&quot;</span><span class="p">,</span> <span class="s">&quot;age&quot;</span> <span class="o">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s">&quot;hobby&quot;</span> <span class="o">:</span> <span class="s">&quot;blog&quot;</span> <span class="p">}</span>
-</span><span class='line'><span class="p">{</span> <span class="s">&quot;_id&quot;</span> <span class="o">:</span> <span class="n">ObjectId</span><span class="p">(</span><span class="s">&quot;58392222a8589d99c931303d&quot;</span><span class="p">),</span> <span class="s">&quot;name&quot;</span> <span class="o">:</span> <span class="s">&quot;ichiro&quot;</span><span class="p">,</span> <span class="s">&quot;age&quot;</span> <span class="o">:</span> <span class="mi">43</span><span class="p">,</span> <span class="s">&quot;hobby&quot;</span> <span class="o">:</span> <span class="s">&quot;baseball&quot;</span> <span class="p">}</span>
-</span><span class='line'><span class="p">{</span> <span class="s">&quot;_id&quot;</span> <span class="o">:</span> <span class="n">ObjectId</span><span class="p">(</span><span class="s">&quot;583afcaedcab265c1821fb51&quot;</span><span class="p">),</span> <span class="s">&quot;name&quot;</span> <span class="o">:</span> <span class="s">&quot;Hanako&quot;</span><span class="p">,</span> <span class="s">&quot;age&quot;</span> <span class="o">:</span> <span class="mi">24</span><span class="p">,</span> <span class="s">&quot;hobby&quot;</span> <span class="o">:</span> <span class="s">&quot;game&quot;</span> <span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>因みに、<code>main.swift</code>でリクエストパラメータとして取得した<code>age</code>を <strong>Int32</strong> 型に変換しているのには理由があります。<br/>
-これを仮に <code>bson.append(key: "age", int: value as! Int)</code> とした場合、MongoDBには <code>NumberLong</code>として保存されてしまいます。 <br/>
-これは32bitか64bitかの違いですね。</p>
-
-<h5>insertメソッドのMongoInsertFlagについて</h5>
-
-<p>先程、<code>insert</code>メソッドを利用しましたが、実は第一引数のみ持っている <code>insert</code> メソッドを利用していました。<br/>
-実は他にも <code>public func insert(document: BSON, flag: MongoInsertFlag = .none) -&gt; Result</code> といった第二引数を持つ <code>insert</code> メソッドが存在します。</p>
-
-<p>少し気になったのでこの <code>MongoInsertFlag</code>について調べてみました。<br/>
-<code>MongoInsertFlag</code>は<code>MongoCollection.swift</code>内に <strong>enum</strong> として定義されています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="k">enum</span> <span class="nl">MongoInsertFlag:</span> <span class="n">Int</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">none</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">continueOnError</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">noValidate</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">mongoFlag:</span> <span class="n">mongoc_insert_flags_t</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">case</span> <span class="p">.</span><span class="nl">none:</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">MONGOC_INSERT_NONE</span>
-</span><span class='line'>      <span class="k">case</span> <span class="p">.</span><span class="nl">continueOnError:</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">MONGOC_INSERT_CONTINUE_ON_ERROR</span>
-</span><span class='line'>      <span class="k">case</span> <span class="p">.</span><span class="nl">noValidate:</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">mongoc_insert_flags_t</span><span class="p">(</span><span class="nl">rawValue:</span> <span class="n">MONGOC_INSERT_NO_VALIDATE</span><span class="p">)</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ここで<code>MONGOC_INSERT_NONE</code>, <code>MONGOC_INSERT_CONTINUE_ON_ERROR</code>, <code>MONGOC_INSERT_NO_VALIDATE</code>の3つがフラグとして用意されていることがわかります。<br/>
-これらはそれぞれ次のような意味とのことです。</p>
-
-<ul>
-<li><code>MONGOC_INSERT_NONE</code>
-
-<ul>
-<li>特別何もしません。</li>
-</ul>
-</li>
-<li><code>MONGOC_INSERT_CONTINUE_ON_ERROR</code>
-
-<ul>
-<li>途中でエラーが発生したとしても後続の<code>insert</code>処理がある場合は続ける</li>
-</ul>
-</li>
-<li><code>MONGOC_INSERT_NO_VALIDATE</code>
-
-<ul>
-<li>インサート前に値のバリデーションチェックをしない
-
-<ul>
-<li>MongoDBへの保存処理前にAPサーバ時点などでバリデーションチェックはした方が良い</li>
-</ul>
-</li>
-<li>これをすることで処理時間を短縮することができる</li>
-</ul>
-</li>
-</ul>
-
-
-<h4>MongoDBのデータを更新</h4>
-
-<p>MongoDBへの更新処理も見ていきましょう。</p>
-
-<h5>updateメソッドでデータを保存</h5>
-
-<p>保存には<code>MongoClient</code>の<code>update</code>メソッドを利用します。</p>
-
-<p><code>mongoHandler.swift</code>にメソッドを追加します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// mongoHandler.swift</span>
-</span><span class='line'><span class="n">func</span> <span class="nf">update</span><span class="p">(</span><span class="nl">update:</span> <span class="n">BSON</span><span class="p">,</span> <span class="nl">selector:</span> <span class="n">BSON</span><span class="p">,</span> <span class="nl">request:</span> <span class="n">HTTPRequest</span><span class="p">,</span> <span class="nl">response:</span> <span class="n">HTTPResponse</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">// MongoDBへの接続</span>
-</span><span class='line'>  <span class="n">connect</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// 指定コレクションが見つからない場合は処理終了</span>
-</span><span class='line'>  <span class="n">guard</span> <span class="n">let</span> <span class="n">collection</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">collection</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// データの更新</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">updated</span> <span class="o">=</span> <span class="n">collection</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="nl">update:</span> <span class="n">update</span><span class="p">,</span> <span class="nl">selector:</span> <span class="n">query</span><span class="p">)</span>
-</span><span class='line'>  <span class="c1">// データ更新結果によって返却値を変更</span>
-</span><span class='line'>  <span class="n">var</span> <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;Failed&quot;</span>
-</span><span class='line'>  <span class="k">switch</span> <span class="n">updated</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">case</span> <span class="p">.</span><span class="nl">success:</span>
-</span><span class='line'>    <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;Succeeded&quot;</span>
-</span><span class='line'>  <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>    <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;Failed&quot;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// レスポンスデータとして設定</span>
-</span><span class='line'>  <span class="n">response</span><span class="p">.</span><span class="n">appendBody</span><span class="p">(</span><span class="nl">string:</span> <span class="n">returning</span><span class="p">)</span>
-</span><span class='line'>  <span class="c1">// レスポンス処理完了</span>
-</span><span class='line'>  <span class="n">response</span><span class="p">.</span><span class="n">completed</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// MongoDBから切断</span>
-</span><span class='line'>  <span class="n">close</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>そして <code>main.swift</code> にPUTリクエストのハンドリング処理を書きます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="n">routes</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="nl">method:</span> <span class="p">.</span><span class="n">post</span><span class="p">,</span> <span class="nl">uri:</span> <span class="s">&quot;/mongo/&quot;</span><span class="p">,</span> <span class="nl">handler:</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">request</span><span class="p">,</span> <span class="n">response</span> <span class="k">in</span>
-</span><span class='line'>  <span class="c1">// BSON型オブジェクトの初期化(更新内容として渡す)</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">updateBson</span> <span class="o">=</span> <span class="n">BSON</span><span class="p">()</span>
-</span><span class='line'>  <span class="c1">// BSON型オブジェクトの初期化(クエリとして渡す)</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">selectorBson</span> <span class="o">=</span> <span class="n">BSON</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">defer</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// 処理完了時にBSONオブジェクトを削除</span>
-</span><span class='line'>    <span class="n">updateBson</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>      <span class="n">selectorBson</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// JSONString型をDictionary型に変換</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">decodedParam</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="nl">postBody:</span> <span class="n">request</span><span class="p">.</span><span class="n">postBodyString</span><span class="p">)</span>
-</span><span class='line'>  <span class="c1">// 各パラメータ単位でBSONオブジェクトに格納</span>
-</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="k">in</span> <span class="n">decodedParam</span><span class="o">!</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">switch</span> <span class="n">key</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">case</span> <span class="s">&quot;name&quot;</span><span class="o">:</span>
-</span><span class='line'>          <span class="n">updateBson</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">key:</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="nl">string:</span> <span class="n">value</span> <span class="n">as</span><span class="o">!</span> <span class="n">String</span><span class="p">)</span>
-</span><span class='line'>      <span class="k">case</span> <span class="s">&quot;age&quot;</span><span class="o">:</span>
-</span><span class='line'>          <span class="n">updateBson</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">key:</span> <span class="s">&quot;age&quot;</span><span class="p">,</span> <span class="nl">int32:</span> <span class="n">Int32</span><span class="p">(</span><span class="n">value</span> <span class="n">as</span><span class="o">!</span> <span class="n">Int</span><span class="p">))</span>
-</span><span class='line'>      <span class="k">case</span> <span class="s">&quot;hobby&quot;</span><span class="o">:</span>
-</span><span class='line'>          <span class="n">updateBson</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">key:</span> <span class="s">&quot;hobby&quot;</span><span class="p">,</span> <span class="nl">string:</span> <span class="n">value</span> <span class="n">as</span><span class="o">!</span> <span class="n">String</span><span class="p">)</span>
-</span><span class='line'>      <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>          <span class="k">break</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="c1">// データ更新</span>
-</span><span class='line'>  <span class="n">mongoHandler</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="nl">update:</span> <span class="n">updateBson</span><span class="p">,</span> <span class="nl">query:</span> <span class="n">selectorBson</span><span class="p">,</span> <span class="nl">request:</span> <span class="n">request</span><span class="p">,</span> <span class="nl">response:</span> <span class="n">response</span><span class="p">)</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>基本的にはPOSTと同じ感じで処理を書くことができます。<br/>
-しかしながら気をつけなくてはいけないのが、<strong>$setが利用できない</strong> ということです。<br/>
-通常、MongoDBでは、 <strong>$setを使わないと</strong> &hellip;</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// データの確認</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">db</span><span class="p">.</span><span class="n">testCollection</span><span class="p">.</span><span class="n">find</span><span class="p">();</span>
-</span><span class='line'><span class="p">{</span> <span class="s">&quot;_id&quot;</span> <span class="o">:</span> <span class="n">ObjectId</span><span class="p">(</span><span class="s">&quot;583afcaedcab265c1821fb51&quot;</span><span class="p">),</span> <span class="s">&quot;name&quot;</span> <span class="o">:</span> <span class="s">&quot;Hanako&quot;</span><span class="p">,</span> <span class="s">&quot;age&quot;</span> <span class="o">:</span> <span class="mi">24</span><span class="p">,</span> <span class="s">&quot;hobby&quot;</span> <span class="o">:</span> <span class="s">&quot;game&quot;</span> <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// データの更新</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">db</span><span class="p">.</span><span class="n">testCollection</span><span class="p">.</span><span class="n">update</span><span class="p">({</span><span class="nl">_id:</span> <span class="n">ObjectId</span><span class="p">(</span><span class="s">&quot;583afcaedcab265c1821fb51&quot;</span><span class="p">)},</span> <span class="p">{</span><span class="s">&quot;hobby&quot;</span><span class="o">:</span> <span class="s">&quot;go shopping&quot;</span><span class="p">});</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// データの確認</span>
-</span><span class='line'><span class="o">&gt;</span> <span class="n">db</span><span class="p">.</span><span class="n">testCollection</span><span class="p">.</span><span class="n">find</span><span class="p">();</span>
-</span><span class='line'><span class="p">{</span> <span class="s">&quot;_id&quot;</span> <span class="o">:</span> <span class="n">ObjectId</span><span class="p">(</span><span class="s">&quot;583afcaedcab265c1821fb51&quot;</span><span class="p">),</span> <span class="s">&quot;hobby&quot;</span> <span class="o">:</span> <span class="s">&quot;go shopping&quot;</span> <span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>となってしまいます。<br/>
-現状、<code>Perfect-MongoDB</code>に実装されているメソッドを見ると<code>$set</code>はないようです。<br/>
-そのため、今回はあえてPOST同様に全てのパラメータをクライアント側から下記のように投げることにしました。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">$</span> <span class="n">curl</span> <span class="nl">http:</span><span class="c1">//localhost:8181/mongo/583afcaedcab265c1821fb51 -X PUT -H &quot;Content-Type: application/json&quot; -d &#39;{&quot;name&quot; : &quot;Hanako&quot;, &quot;age&quot; : 24, &quot;hobby&quot;: &quot;game&quot;}&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>updateメソッドのMongoUpdateFlagについて</h5>
-
-<p><code>update</code>メソッドにも実は<code>MongoUpdateFlag</code>というオプションを設定できるメソッドが存在します。<br/>
-<code>MongoUpdateFlag</code>は<code>MongoInsertFlag</code>と同じく <strong>enum</strong> として定義されています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="k">enum</span> <span class="nl">MongoUpdateFlag:</span> <span class="n">Int</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">none</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">upsert</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">multiUpdate</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">noValidate</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">mongoFlag:</span> <span class="n">mongoc_update_flags_t</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">case</span> <span class="p">.</span><span class="nl">none:</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">MONGOC_UPDATE_NONE</span>
-</span><span class='line'>      <span class="k">case</span> <span class="p">.</span><span class="nl">upsert:</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">MONGOC_UPDATE_UPSERT</span>
-</span><span class='line'>      <span class="k">case</span> <span class="p">.</span><span class="nl">multiUpdate:</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">MONGOC_UPDATE_MULTI_UPDATE</span>
-</span><span class='line'>      <span class="k">case</span> <span class="p">.</span><span class="nl">noValidate:</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">mongoc_update_flags_t</span><span class="p">(</span><span class="nl">rawValue:</span> <span class="n">MONGOC_UPDATE_NO_VALIDATE</span><span class="p">)</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>それぞれのフラグの意味は下記の通りです。</p>
-
-<ul>
-<li><code>MONGO_UPDATE_NONE</code>
-
-<ul>
-<li>特別何もしません</li>
-</ul>
-</li>
-<li><code>MONGOC_UPDATE_UPSERT</code>
-
-<ul>
-<li>検索に引っかからない場合は<code>insert</code>します</li>
-</ul>
-</li>
-<li><code>MONGOC_UPDATE_MULTI_UPDATE</code>
-
-<ul>
-<li>検索にヒットする件数が複数の場合は全て更新します</li>
-</ul>
-</li>
-<li><code>MONGOC_UPDATE_NO_VALIDATE</code>
-
-<ul>
-<li>アップデート前に値のバリデーションチェックをしません</li>
-</ul>
-</li>
-</ul>
-
-
-<h4>MongoDBのデータを削除</h4>
-
-<p>MongoDBからのデータ削除処理も見ていきましょう。</p>
-
-<h5>removeメソッドでデータを保存</h5>
-
-<p>保存には<code>MongoClient</code>の<code>remove</code>メソッドを利用します。</p>
-
-<p><code>mongoHandler.swift</code>にメソッドを追加します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// mongoHandler.swift</span>
-</span><span class='line'><span class="n">func</span> <span class="nf">delete</span><span class="p">(</span><span class="nl">query:</span> <span class="n">BSON</span><span class="p">,</span> <span class="nl">request:</span> <span class="n">HTTPRequest</span><span class="p">,</span> <span class="nl">response:</span> <span class="n">HTTPResponse</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">// MongoDBへの接続</span>
-</span><span class='line'>  <span class="n">connect</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// 指定コレクションが見つからない場合は処理終了</span>
-</span><span class='line'>  <span class="n">guard</span> <span class="n">let</span> <span class="n">collection</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">collection</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// データ削除処理</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">removed</span> <span class="o">=</span> <span class="n">collection</span><span class="p">.</span><span class="n">remove</span><span class="p">(</span><span class="nl">selector:</span> <span class="n">query</span><span class="p">,</span> <span class="nl">flag:</span> <span class="p">.</span><span class="n">none</span><span class="p">)</span>
-</span><span class='line'>  <span class="c1">// データ削除結果によって返却値を変更</span>
-</span><span class='line'>  <span class="n">var</span> <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;Failed&quot;</span>
-</span><span class='line'>  <span class="k">switch</span> <span class="n">removed</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">case</span> <span class="p">.</span><span class="nl">success:</span>
-</span><span class='line'>    <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;Succeeded&quot;</span>
-</span><span class='line'>  <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>    <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;Failed&quot;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// レスポンスデータとして設定</span>
-</span><span class='line'>  <span class="n">response</span><span class="p">.</span><span class="n">appendBody</span><span class="p">(</span><span class="nl">string:</span> <span class="n">returning</span><span class="p">)</span>
-</span><span class='line'>  <span class="c1">// レスポンス処理完了</span>
-</span><span class='line'>  <span class="n">response</span><span class="p">.</span><span class="n">completed</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// MongoDBから切断</span>
-</span><span class='line'>  <span class="n">close</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>そして <code>main.swift</code> にDELETEリクエストのハンドリング処理を書きます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// main.swift</span>
-</span><span class='line'><span class="n">routes</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="nl">method:</span> <span class="p">.</span><span class="n">delete</span><span class="p">,</span> <span class="nl">uri:</span> <span class="s">&quot;/mongo/{oid}&quot;</span><span class="p">,</span> <span class="nl">handler:</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">request</span><span class="p">,</span> <span class="n">response</span> <span class="k">in</span>
-</span><span class='line'>  <span class="c1">// BSON型オブジェクトの初期化(クエリとして渡す)</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">bson</span> <span class="o">=</span> <span class="n">BSON</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">defer</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">// 処理完了時にBSONオブジェクトを削除</span>
-</span><span class='line'>    <span class="n">bson</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">oid:</span> <span class="n">bson_oid_t</span> <span class="o">=</span> <span class="n">bson_oid_t</span><span class="p">()</span>
-</span><span class='line'>  <span class="n">bson_oid_init_from_string</span><span class="p">(</span><span class="o">&amp;</span><span class="n">oid</span><span class="p">,</span> <span class="n">request</span><span class="p">.</span><span class="n">urlVariables</span><span class="p">[</span><span class="s">&quot;oid&quot;</span><span class="p">])</span>
-</span><span class='line'>  <span class="n">bson</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">key:</span> <span class="s">&quot;_id&quot;</span><span class="p">,</span> <span class="nl">oid:</span> <span class="n">oid</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// データ削除</span>
-</span><span class='line'>  <span class="n">mongoHandler</span><span class="p">.</span><span class="n">delete</span><span class="p">(</span><span class="nl">query:</span> <span class="n">bson</span><span class="p">,</span> <span class="nl">request:</span> <span class="n">request</span><span class="p">,</span> <span class="nl">response:</span> <span class="n">response</span><span class="p">)</span>
-</span><span class='line'><span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>下記のようなDELETEリクエストを投げてみればデータが削除されていることが確認できるはずです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">$</span> <span class="n">curl</span> <span class="nl">http:</span><span class="c1">//localhost:8181/mongo/583afcaedcab265c1821fb51 -X DELETE -H &quot;Content-Type: application/json&quot;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>removeメソッドのMongoRemoveFlagについて</h5>
-
-<p><code>remove</code>メソッドにも実は<code>MongoRemoveFlag</code>というオプションを設定できるメソッドが存在します。<br/>
-<code>MongoRemoveFlag</code>は<code>MongoUpdateFlag</code>と同じく <strong>enum</strong> として定義されています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="k">enum</span> <span class="nl">MongoRemoveFlag:</span> <span class="n">Int</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">none</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">singleRemove</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">mongoFlag:</span> <span class="n">mongoc_remove_flags_t</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">case</span> <span class="p">.</span><span class="nl">none:</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">MONGOC_REMOVE_NONE</span>
-</span><span class='line'>      <span class="k">case</span> <span class="p">.</span><span class="nl">singleRemove:</span>
-</span><span class='line'>          <span class="k">return</span> <span class="n">MONGOC_REMOVE_SINGLE_REMOVE</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>フラグの意味は下記の通りです。</p>
-
-<ul>
-<li><code>MONGOC_REMOVE_NONE</code>
-
-<ul>
-<li>特に何のオプションもつけません。</li>
-<li>検索にヒットしたデータは全て削除します。</li>
-</ul>
-</li>
-<li><code>MONGOC_REMOVE_SINGLE_REMOVE</code>
-
-<ul>
-<li>初めに該当したデータ1件のみを削除します。</li>
-</ul>
-</li>
-</ul>
-
-
-<h3>まとめ</h3>
-
-<p>以上で基本的なCRUDに対応したAPサーバとDBサーバをSwiftとMongoDBで構築することができました。<br/>
-これから何かサービスでも&hellip;と思っていたら時間切れ&hellip;<br/>
-今回は一旦ここまでとしたいと思いますが、今後の展望としてはSwift製iOSアプリと連携させてiOSアプリを作成するか、もしくはReact / Reduxを使ったWebサービスと連携させたいと企んでいます。<br/>
-処理速度とかリソースの消費具合とかは全然比較もしていないのでわからないですが、Swiftによるサーバサイド構築によるメリットも今後Appleさんが？明らかにしてくれるかもしれません。</p>
-
-<p>何と言っても新しい技術や取り組みは楽しいですね！！<br/>
-と言ったところで本日はここまで。</p>
-
-<h3>参考URL</h3>
-
-<ul>
-<li><a href="http://perfect.org/docs/MongoDB.html">Perfect MongoDB Documentation</a></li>
-<li><a href="http://mongoc.org/libbson/1.3.5/bson_oid_init_from_string.html">Libbson API Reference: Bson Oid Init</a></li>
-<li><a href="http://mongoc.org/libmongoc/1.4.0/updating-document.html">Libbson API Reference: Update Document</a></li>
-<li><a href="http://mongoc.org/libmongoc/1.0.0/mongoc_insert_flags_t.html">MongoDB C Driver API Reference: Insert Flag</a></li>
-<li><a href="http://mongoc.org/libmongoc/1.2.3/mongoc_update_flags_t.html">MongoDB C Driver API Reference: Update Flag</a></li>
-<li><a href="http://mongoc.org/libmongoc/1.3.2/mongoc_remove_flags_t.html">MongoDB C Driver API Reference: Remove Flag</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

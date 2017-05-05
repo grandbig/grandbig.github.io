@@ -1,0 +1,457 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: realm | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/realm/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-05-06T02:52:33+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Swift3でRealmSwiftを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/05/06/swift3-realm/"/>
+    <updated>2017-05-06T02:06:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/05/06/swift3-realm</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>約2年前に画期的なモバイルデータベースとして<a href="https://realm.io/jp/">Realm</a>について紹介させて頂きました。<br/>
+当時はSwift専用のものがなかったため、Objective-C用のものをブリッジヘッダーファイルを作成することで利用していました。<br/>
+現在はかなり多くのアプリでも利用され、広く浸透していると共に、<code>SwiftRealm</code>が作られ、Swift専用化しています。</p>
+
+<p>今回は、以前、筆者が書いた<a href="http://grandbig.github.io/blog/2015/06/07/swift-realm/">SwiftでRealmを使ってみよう！</a>を<code>SwiftRealm</code>で書き直す形でSwift3での<code>Realm</code>の使い方を見ていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>RealmSwiftの導入方法</h3>
+
+<p><code>CocoaPods</code>を利用して導入してみます。<br/>
+(<code>Carthage</code>での利用方法も公式サイトにて紹介されています。)</p>
+
+<p>```objective-c</p>
+
+<h1>Podfile</h1>
+
+<p>use_frameworks!</p>
+
+<p>target &ldquo;RealmSwiftSample&rdquo; do
+  # Normal libraries
+  pod &lsquo;RealmSwift&rsquo;</p>
+
+<p>  abstract_target &lsquo;Tests&rsquo; do</p>
+
+<pre><code>inherit! :search_paths
+target "RealmSwiftSampleTests"
+target "RealmSwiftSampleUITests"
+</code></pre>
+
+<p>  end
+end</p>
+
+<p>post_install do |installer|
+  installer.pods_project.targets.each do |target|</p>
+
+<pre><code>target.build_configurations.each do |config|
+  config.build_settings['SWIFT_VERSION'] = '3.0'
+end
+</code></pre>
+
+<p>  end
+end
+```</p>
+
+<p>因みに、<code>abstract_target</code>は複数targetにまたがって利用したいライブラリがある場合に利用します。<br/>
+(上記の例はテストでのみ利用するライブラリがある場合に利用する書式です。)<br/>
+また、<code>post_install do |installer|</code>〜<code>end</code>までの書式はSwiftのバージョンを指定するために追加します。</p>
+
+<p><code>Podfile</code>ができたら<code>pod install</code>を実行して<code>xcworkspace</code>ファイルを開きましょう。</p>
+
+<h3>保存オブジェクトの生成</h3>
+
+<p>Objective-C用のときは<code>RLMObject</code>型のクラスを作成していましたが、<code>RealmSwift</code>では単に<code>Object</code>型のクラスを作成します。</p>
+
+<p>```objective-c
+// Engineer.swift</p>
+
+<p>import Foundation
+import RealmSwift</p>
+
+<p>// Skillクラス
+class Skill: Object {</p>
+
+<pre><code>dynamic var name: String = ""
+</code></pre>
+
+<p>}</p>
+
+<p>// Engineerクラス
+class Engineer: Object {</p>
+
+<pre><code>dynamic var id: Int = 0
+dynamic var name: String = ""
+dynamic var level: Int = 0
+let skills = List&lt;Skill&gt;()
+dynamic var created: Double = Date().timeIntervalSince1970
+dynamic var updated: Double = Date().timeIntervalSince1970
+
+// プライマリーキーの設定
+override static func primaryKey() -&gt; String? {
+    return "id"
+}
+
+// インデックスの設定
+override static func indexedProperties() -&gt; [String] {
+    return ["level"]
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Objective-C用の<code>Realm</code>では<code>RLMArray</code>型として<code>skills</code>を作成していましたが、<code>RealmSwift</code>では<code>List&lt;Skill&gt;</code>型として作成できます。<br/>
+こちらの方が直感的でわかりやすいですね。<br/>
+因みに、<code>dynamic var skills = List&lt;Skill&gt;()</code>と書くとエラーが発生するので<code>List</code>を利用する場合は<code>let</code>にしましょう。</p>
+
+<h3>オブジェクトのインサート/アップデート</h3>
+
+<p>先程作成したオブジェクトを保存する方法について紹介しましょう。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import RealmSwift</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()
+    // 新規オブジェクトをインサート
+    createEngineer(name: "test1", level: 1, skills: ["swift", "objective-c"])
+}
+
+&lt;省略&gt;
+
+func createEngineer(name: String, level: Int, skills: [String]) {
+    // Skill型オブジェクトに変換してList&lt;Skill&gt;に格納
+    let skillList = List&lt;Skill&gt;()
+    for skill in skills {
+        let newSkill = Skill()
+        newSkill.name = skill
+        skillList.append(newSkill)
+    }
+
+    // Engineer型オブジェクトの作成
+    let engineer = Engineer()
+    engineer.name = name
+    engineer.level = level
+    engineer.skills.append(objectsIn: skillList)
+    let realm = try! Realm()
+
+    // Realmへのオブジェクトの書き込み
+    try! realm.write {
+        realm.add(engineer)
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Objective-Cの際は<code>realm.beginWriteTransaction()</code>や<code>realm.commitWriteTransaction()</code>などわざわざ書いていたものの、<code>RealmSwift</code>では非常にコンパクトに書けますね。<br/>
+因みに、アップデートであれば、</p>
+
+<p><code>objective-c
+try! realm write {
+  engineer.name = "takahiro"
+}
+</code></p>
+
+<p>のようにすれば良さそうです。</p>
+
+<h3>データの確認</h3>
+
+<p>今は、Mac App Storeから<code>Realm Browser</code>アプリをインストールすることで簡単にデータ確認が可能になっています。</p>
+
+<p>手順は以下の通りです。<br/>
+１．<code>Realm Browser</code>を起動する<br/>
+２．<code>Realm</code>ファイルを選択して開く</p>
+
+<p>そうすることで、下記のようにデータを確認することができます。</p>
+
+<p><img src="/images/swift3-realm1.png" alt="Realm BrowserでEngineerオブジェクトを確認" /><br/>
+<img src="/images/swift3-realm2.png" alt="Realm BrowserでSkillオブジェクトを確認" /></p>
+
+<p>注意すべきこととしては、シミュレータだと<code>realm</code>ファイルを探すのに骨が折れるかもくらいでしょうか&hellip;<br/>
+<code>/Users/&lt;username&gt;/Library/Developer/CoreSimulator/Devices/&lt;simulator-uuid&gt;/data/Containers/Data/Application/&lt;application-uuid&gt;/Documents/default.realm</code>にありますので該当するファイルを検索するなどして探しましょう。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか。<br/>
+筆者は久しぶりに<code>Realm</code>を触ったため、以前利用していたときよりも『だいぶ変わったな』と正直思いました。<br/>
+ですが、<code>RealmSwift</code>になったことで、より<code>Swift</code>らしい書き方ができると思いますし、単純に記述量も少なく書けるような気がしています。<br/>
+今後も多くのアプリで利用されることでしょうし、知っておいて損は絶対になさそうですね。<br/>
+ということで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://qiita.com/shu223/items/e9d0145a2087da0d6d46">CocoaPods でビルド設定を追加する</a></li>
+<li><a href="https://guides.cocoapods.org/using/the-podfile.html">CocoaPods公式サイトでの説明</a></li>
+<li><a href="http://stackoverflow.com/questions/28465706/how-to-find-my-realm-file/28465803#28465803">stackoverflow &ndash; How to find my realm file?</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftでRealmを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2015/06/07/swift-realm/"/>
+    <updated>2015-06-07T16:35:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2015/06/07/swift-realm</id>
+    <content type="html"><![CDATA[<h4>Realmをプロジェクトに追加しよう</h4>
+
+<p>本日は最近、流行っているRealmについて遊んでみたいと思います。<br/>
+まずは導入の仕方から見て行きましょう！</p>
+
+<h5>Realmの導入方法</h5>
+
+<p>下記のPodfileを作成しましょう。<br/>
+本記事のSwiftプロジェクトとして、<code>SwiftRealm.xcodeproj</code>を作成します。</p>
+
+<p>```objective-c
+// Podfile
+platform :ios, &lsquo;8.0&rsquo;
+source &lsquo;<a href="https://github.com/CocoaPods/Specs.git">https://github.com/CocoaPods/Specs.git</a>&rsquo;</p>
+
+<p>target &lsquo;SwiftRealm&rsquo;, exclusive: true do</p>
+
+<pre><code>pod 'Realm'
+</code></pre>
+
+<p>end</p>
+
+<p>target &lsquo;SwiftRealmTests&rsquo;, exclusive: true do</p>
+
+<pre><code>pod 'Realm/Headers'
+</code></pre>
+
+<p>end
+```</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>あとは<code>pod install</code>しましょう。<br/>
+すると、<code>SwiftRealm.xcworkspace</code>が作成されるので、Xcodeで起動しましょう。</p>
+
+<p><img src="/images/swift-realm.png" alt="Realmを追加した結果" /></p>
+
+<p>なんと、Objective-C++で書かれていますね！
+Swiftで利用するためにはBridging-Headerファイルの設定を行う必要があります。</p>
+
+<p>SwiftRealm-Bridging-Header.hを作成します。<br/>
+<img src="/images/swift-realm2.png" alt="ヘッダーファイルの作成" /></p>
+
+<p>TARGETS > SwiftRealm > Build Settings > Swift Compiler &ndash; Code Generation > Objective-C Bridging Header にパスを設定します。<br/>
+<img src="/images/swift-realm3.png" alt="パスの設定" /></p>
+
+<p>SwiftRealm-Bridging-Header.hの中身を書きます。</p>
+
+<p>```objective-c</p>
+
+<h1>ifndef SwiftRealm_SwiftRealm_Bridging_Header_h</h1>
+
+<h1>define SwiftRealm_SwiftRealm_Bridging_Header_h</h1>
+
+<h1>import &lt;Realm/Realm.h></h1>
+
+<h1>endif</h1>
+
+<p>```</p>
+
+<p>これでRealmを利用する準備が整いました。<br/>
+実際にコードを書いていきましょう。</p>
+
+<h5>保存オブジェクトの生成</h5>
+
+<p>Realmでは保存する対象を<code>RLMObject</code>として作成します。<br/>
+SQLiteでいうところのテーブルを生成しているイメージでしょうか。</p>
+
+<p>今回は練習として<code>Engineer.swift</code>内で<code>Engineer</code>クラスを作ってみました。</p>
+
+<p>```objective-c
+// Engineer.swift</p>
+
+<p>// Engineerクラス
+class Engineer:RLMObject {</p>
+
+<pre><code>// プロパティと初期値の設定
+dynamic var id:Int = 0
+dynamic var level:Int = 0
+dynamic var businessTitle:String = ""
+dynamic var skills = RLMArray(objectClassName: "Skills")
+dynamic var created:Double = 0
+dynamic var updated:Double = 0
+
+// プライマリーキーの設定
+override class func primaryKey() -&gt; String? {
+    return "id"
+}
+
+// インデックスの設定
+override class func indexedProperties() -&gt; [AnyObject]? {
+    return ["level"]
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// Skillsクラス
+class Skills: RLMObject {</p>
+
+<pre><code>    dynamic var skill:String = ""
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントとしては、<code>skills</code>のように配列の形で1つの要素に複数の値を割り当てたい場合は、それ単体で別に<code>RLMObject</code>の拡張クラスを作成する必要があります。<br/>
+<code>RLMArray</code>を初期化することは許可されていないためです。</p>
+
+<h5>オブジェクトのインサート/アップデート</h5>
+
+<p>続いて、先ほど生成したオブジェクトをインサート/アップデートしてみましょう。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()
+
+    // id=0のオブジェクトを検索
+    if let engineer = Engineer(forPrimaryKey: 0) {
+        // 検索結果がある場合
+        println("既にエンジニアが１人います。\(engineer)")
+
+        // アップデート
+        let realm = RLMRealm.defaultRealm()
+        // 書込みの開始
+        realm.beginWriteTransaction()
+        // Skillsクラスをインスタンス化
+        let skills = Skills()
+        // 要素を設定
+        skills.skill = "Objective-C"
+        // 既存のデータに要素を追加
+        engineer.skills.addObject(skills)
+        engineer.updated = NSDate().timeIntervalSince1970
+        // データのアップデート処理
+        realm.addOrUpdateObject(engineer)
+        // 書込みの終了
+        realm.commitWriteTransaction()
+    } else {
+        // 検索結果がない場合
+        // Engineerクラスをインスタンス化
+        let newEngineer = Engineer()
+        newEngineer.id = 0
+        newEngineer.level = 0
+        newEngineer.businessTitle = "新米エンジニア"
+        // Skillsクラスをインスタンス化
+        let skills = Skills()
+        skills.skill = "Swift"
+        newEngineer.skills.addObject(skills)
+        newEngineer.created = NSDate().timeIntervalSince1970
+
+        // データの新規作成
+        let realm = RLMRealm.defaultRealm()
+        // 書込みの開始
+        realm.beginWriteTransaction()
+        // データのインサート処理
+        realm.addObject(newEngineer)
+        // 書込みの終了
+        realm.commitWriteTransaction()
+    }
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここでは、<code>id=0</code>のデータを検索して、見つからない場合は新規データをインサートし、見つかった場合はデータのアップデートをしています。<br/>
+書込みにはトランザクションブロックを使った方法もあるようですが、今回は<code>beginWriteTransaction</code>と<code>commitWriteTransaction</code>を利用しました。</p>
+
+<h5>データの確認</h5>
+
+<p>では、データを作成した後に、そのデータを確認したい場合はどうすれば良いのでしょうか？<br/>
+実はMac専用のアプリが提供されています。</p>
+
+<p><a href="https://realm.io/jp/docs/java/latest/">こちらのサイト</a>の <strong>Realm Browser</strong> の項目からインストールしましょう。</p>
+
+<p>Realm Browserを使えば、下記のようにデータを見ることができます。</p>
+
+<p><img src="/images/swift-realm4.png" alt="Realm Browserで確認１" /><br/>
+<img src="/images/swift-realm5.png" alt="Realm Browserで確認２" /></p>
+
+<p>これからSQLiteよりもRealmの方がスタンダートな保存方法となることでしょう。<br/>
+どんどん使い方を勉強していかなくては！！<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-05-06T00:25:22+09:00</updated>
+  <updated>2017-05-06T02:52:33+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,224 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Swift3でRealmSwiftを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/05/06/swift3-realm/"/>
+    <updated>2017-05-06T02:06:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/05/06/swift3-realm</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>約2年前に画期的なモバイルデータベースとして<a href="https://realm.io/jp/">Realm</a>について紹介させて頂きました。<br/>
+当時はSwift専用のものがなかったため、Objective-C用のものをブリッジヘッダーファイルを作成することで利用していました。<br/>
+現在はかなり多くのアプリでも利用され、広く浸透していると共に、<code>SwiftRealm</code>が作られ、Swift専用化しています。</p>
+
+<p>今回は、以前、筆者が書いた<a href="http://grandbig.github.io/blog/2015/06/07/swift-realm/">SwiftでRealmを使ってみよう！</a>を<code>SwiftRealm</code>で書き直す形でSwift3での<code>Realm</code>の使い方を見ていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>RealmSwiftの導入方法</h3>
+
+<p><code>CocoaPods</code>を利用して導入してみます。<br/>
+(<code>Carthage</code>での利用方法も公式サイトにて紹介されています。)</p>
+
+<p>```objective-c</p>
+
+<h1>Podfile</h1>
+
+<p>use_frameworks!</p>
+
+<p>target &ldquo;RealmSwiftSample&rdquo; do
+  # Normal libraries
+  pod &lsquo;RealmSwift&rsquo;</p>
+
+<p>  abstract_target &lsquo;Tests&rsquo; do</p>
+
+<pre><code>inherit! :search_paths
+target "RealmSwiftSampleTests"
+target "RealmSwiftSampleUITests"
+</code></pre>
+
+<p>  end
+end</p>
+
+<p>post_install do |installer|
+  installer.pods_project.targets.each do |target|</p>
+
+<pre><code>target.build_configurations.each do |config|
+  config.build_settings['SWIFT_VERSION'] = '3.0'
+end
+</code></pre>
+
+<p>  end
+end
+```</p>
+
+<p>因みに、<code>abstract_target</code>は複数targetにまたがって利用したいライブラリがある場合に利用します。<br/>
+(上記の例はテストでのみ利用するライブラリがある場合に利用する書式です。)<br/>
+また、<code>post_install do |installer|</code>〜<code>end</code>までの書式はSwiftのバージョンを指定するために追加します。</p>
+
+<p><code>Podfile</code>ができたら<code>pod install</code>を実行して<code>xcworkspace</code>ファイルを開きましょう。</p>
+
+<h3>保存オブジェクトの生成</h3>
+
+<p>Objective-C用のときは<code>RLMObject</code>型のクラスを作成していましたが、<code>RealmSwift</code>では単に<code>Object</code>型のクラスを作成します。</p>
+
+<p>```objective-c
+// Engineer.swift</p>
+
+<p>import Foundation
+import RealmSwift</p>
+
+<p>// Skillクラス
+class Skill: Object {</p>
+
+<pre><code>dynamic var name: String = ""
+</code></pre>
+
+<p>}</p>
+
+<p>// Engineerクラス
+class Engineer: Object {</p>
+
+<pre><code>dynamic var id: Int = 0
+dynamic var name: String = ""
+dynamic var level: Int = 0
+let skills = List&lt;Skill&gt;()
+dynamic var created: Double = Date().timeIntervalSince1970
+dynamic var updated: Double = Date().timeIntervalSince1970
+
+// プライマリーキーの設定
+override static func primaryKey() -&gt; String? {
+    return "id"
+}
+
+// インデックスの設定
+override static func indexedProperties() -&gt; [String] {
+    return ["level"]
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Objective-C用の<code>Realm</code>では<code>RLMArray</code>型として<code>skills</code>を作成していましたが、<code>RealmSwift</code>では<code>List&lt;Skill&gt;</code>型として作成できます。<br/>
+こちらの方が直感的でわかりやすいですね。<br/>
+因みに、<code>dynamic var skills = List&lt;Skill&gt;()</code>と書くとエラーが発生するので<code>List</code>を利用する場合は<code>let</code>にしましょう。</p>
+
+<h3>オブジェクトのインサート/アップデート</h3>
+
+<p>先程作成したオブジェクトを保存する方法について紹介しましょう。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import RealmSwift</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()
+    // 新規オブジェクトをインサート
+    createEngineer(name: "test1", level: 1, skills: ["swift", "objective-c"])
+}
+
+&lt;省略&gt;
+
+func createEngineer(name: String, level: Int, skills: [String]) {
+    // Skill型オブジェクトに変換してList&lt;Skill&gt;に格納
+    let skillList = List&lt;Skill&gt;()
+    for skill in skills {
+        let newSkill = Skill()
+        newSkill.name = skill
+        skillList.append(newSkill)
+    }
+
+    // Engineer型オブジェクトの作成
+    let engineer = Engineer()
+    engineer.name = name
+    engineer.level = level
+    engineer.skills.append(objectsIn: skillList)
+    let realm = try! Realm()
+
+    // Realmへのオブジェクトの書き込み
+    try! realm.write {
+        realm.add(engineer)
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Objective-Cの際は<code>realm.beginWriteTransaction()</code>や<code>realm.commitWriteTransaction()</code>などわざわざ書いていたものの、<code>RealmSwift</code>では非常にコンパクトに書けますね。<br/>
+因みに、アップデートであれば、</p>
+
+<p><code>objective-c
+try! realm write {
+  engineer.name = "takahiro"
+}
+</code></p>
+
+<p>のようにすれば良さそうです。</p>
+
+<h3>データの確認</h3>
+
+<p>今は、Mac App Storeから<code>Realm Browser</code>アプリをインストールすることで簡単にデータ確認が可能になっています。</p>
+
+<p>手順は以下の通りです。<br/>
+１．<code>Realm Browser</code>を起動する<br/>
+２．<code>Realm</code>ファイルを選択して開く</p>
+
+<p>そうすることで、下記のようにデータを確認することができます。</p>
+
+<p><img src="/images/swift3-realm1.png" alt="Realm BrowserでEngineerオブジェクトを確認" /><br/>
+<img src="/images/swift3-realm2.png" alt="Realm BrowserでSkillオブジェクトを確認" /></p>
+
+<p>注意すべきこととしては、シミュレータだと<code>realm</code>ファイルを探すのに骨が折れるかもくらいでしょうか&hellip;<br/>
+<code>/Users/&lt;username&gt;/Library/Developer/CoreSimulator/Devices/&lt;simulator-uuid&gt;/data/Containers/Data/Application/&lt;application-uuid&gt;/Documents/default.realm</code>にありますので該当するファイルを検索するなどして探しましょう。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか。<br/>
+筆者は久しぶりに<code>Realm</code>を触ったため、以前利用していたときよりも『だいぶ変わったな』と正直思いました。<br/>
+ですが、<code>RealmSwift</code>になったことで、より<code>Swift</code>らしい書き方ができると思いますし、単純に記述量も少なく書けるような気がしています。<br/>
+今後も多くのアプリで利用されることでしょうし、知っておいて損は絶対になさそうですね。<br/>
+ということで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://qiita.com/shu223/items/e9d0145a2087da0d6d46">CocoaPods でビルド設定を追加する</a></li>
+<li><a href="https://guides.cocoapods.org/using/the-podfile.html">CocoaPods公式サイトでの説明</a></li>
+<li><a href="http://stackoverflow.com/questions/28465706/how-to-find-my-realm-file/28465803#28465803">stackoverflow &ndash; How to find my realm file?</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Swiftで使いたいんだけど思うように使えないsubscript]]></title>
@@ -217,9 +435,9 @@ $ docker exec -it ubuntu /bin/bash
 gpg: requesting key 21A56D5F from hkp server pool.sks-keyservers.net
 gpg: requesting key 91D306C6 from hkp server pool.sks-keyservers.net
 gpg: /root/.gnupg/trustdb.gpg: trustdb created
-gpg: key 412B37AD: public key &ldquo;Swift Automatic Signing Key #1 <a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#58;&#115;&#x77;&#105;&#102;&#x74;&#45;&#x69;&#x6e;&#x66;&#x72;&#x61;&#x73;&#x74;&#114;&#117;&#99;&#116;&#x75;&#x72;&#x65;&#64;&#x73;&#x77;&#105;&#102;&#116;&#x2e;&#x6f;&#114;&#x67;">&#x73;&#119;&#105;&#x66;&#116;&#45;&#105;&#110;&#x66;&#x72;&#x61;&#115;&#116;&#114;&#117;&#99;&#116;&#x75;&#x72;&#x65;&#64;&#x73;&#119;&#x69;&#102;&#x74;&#x2e;&#x6f;&#114;&#x67;</a>&rdquo; imported
-gpg: key 21A56D5F: public key &ldquo;Swift 2.2 Release Signing Key <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#115;&#119;&#105;&#x66;&#x74;&#45;&#x69;&#x6e;&#x66;&#x72;&#x61;&#115;&#116;&#x72;&#117;&#99;&#x74;&#x75;&#114;&#101;&#x40;&#x73;&#119;&#105;&#102;&#x74;&#46;&#111;&#114;&#103;">&#x73;&#119;&#105;&#102;&#116;&#x2d;&#105;&#x6e;&#102;&#x72;&#x61;&#x73;&#x74;&#x72;&#117;&#x63;&#x74;&#117;&#x72;&#x65;&#64;&#115;&#x77;&#x69;&#102;&#x74;&#46;&#111;&#x72;&#103;</a>&rdquo; imported
-gpg: key 91D306C6: public key &ldquo;Swift 3.x Release Signing Key <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#x73;&#119;&#x69;&#x66;&#x74;&#x2d;&#105;&#x6e;&#x66;&#114;&#97;&#x73;&#x74;&#114;&#117;&#x63;&#x74;&#x75;&#x72;&#101;&#x40;&#115;&#119;&#105;&#102;&#x74;&#x2e;&#x6f;&#114;&#103;">&#115;&#x77;&#105;&#102;&#116;&#45;&#x69;&#x6e;&#x66;&#114;&#x61;&#x73;&#116;&#114;&#x75;&#99;&#x74;&#117;&#x72;&#101;&#x40;&#115;&#119;&#x69;&#102;&#x74;&#46;&#x6f;&#114;&#103;</a>&rdquo; imported
+gpg: key 412B37AD: public key &ldquo;Swift Automatic Signing Key #1 <a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#58;&#x73;&#119;&#x69;&#102;&#116;&#x2d;&#x69;&#110;&#x66;&#x72;&#97;&#x73;&#116;&#x72;&#x75;&#99;&#116;&#x75;&#114;&#x65;&#x40;&#x73;&#119;&#x69;&#102;&#116;&#x2e;&#111;&#x72;&#x67;">&#x73;&#119;&#105;&#102;&#116;&#45;&#x69;&#x6e;&#x66;&#x72;&#x61;&#x73;&#116;&#x72;&#117;&#99;&#x74;&#117;&#x72;&#x65;&#x40;&#115;&#x77;&#105;&#102;&#x74;&#46;&#x6f;&#114;&#x67;</a>&rdquo; imported
+gpg: key 21A56D5F: public key &ldquo;Swift 2.2 Release Signing Key <a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#x73;&#119;&#105;&#102;&#x74;&#x2d;&#105;&#110;&#x66;&#114;&#x61;&#115;&#116;&#x72;&#x75;&#99;&#116;&#x75;&#114;&#x65;&#64;&#x73;&#x77;&#x69;&#102;&#116;&#x2e;&#111;&#114;&#103;">&#x73;&#x77;&#105;&#x66;&#x74;&#x2d;&#105;&#x6e;&#x66;&#114;&#97;&#115;&#116;&#114;&#x75;&#x63;&#116;&#x75;&#x72;&#x65;&#x40;&#x73;&#119;&#105;&#102;&#116;&#x2e;&#111;&#x72;&#x67;</a>&rdquo; imported
+gpg: key 91D306C6: public key &ldquo;Swift 3.x Release Signing Key <a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#x3a;&#115;&#119;&#105;&#102;&#116;&#45;&#105;&#110;&#102;&#114;&#x61;&#x73;&#x74;&#114;&#117;&#99;&#116;&#x75;&#114;&#x65;&#64;&#115;&#119;&#x69;&#102;&#116;&#x2e;&#111;&#114;&#103;">&#x73;&#x77;&#105;&#x66;&#x74;&#x2d;&#105;&#110;&#x66;&#114;&#97;&#115;&#x74;&#x72;&#117;&#99;&#x74;&#x75;&#x72;&#x65;&#64;&#x73;&#119;&#105;&#102;&#116;&#46;&#x6f;&#x72;&#x67;</a>&rdquo; imported
 gpg: no ultimately trusted keys found
 gpg: Total number processed: 3
 gpg:               imported: 3  (RSA: 3)
@@ -243,7 +461,7 @@ gpg:               imported: 3  (RSA: 3)
 
 <p>gpg: assuming signed data in `swift-3.1-RELEASE-ubuntu16.04.tar.gz'
 gpg: Signature made Tue Mar 28 07:36:36 2017 UTC using RSA key ID 91D306C6
-gpg: Good signature from &ldquo;Swift 3.x Release Signing Key <a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#58;&#x73;&#x77;&#x69;&#102;&#116;&#45;&#105;&#110;&#102;&#114;&#x61;&#115;&#x74;&#x72;&#x75;&#x63;&#116;&#117;&#114;&#x65;&#64;&#x73;&#x77;&#105;&#x66;&#x74;&#46;&#x6f;&#114;&#103;">&#x73;&#x77;&#x69;&#102;&#x74;&#x2d;&#105;&#x6e;&#x66;&#114;&#x61;&#115;&#x74;&#114;&#x75;&#99;&#116;&#x75;&#x72;&#101;&#64;&#x73;&#x77;&#x69;&#102;&#116;&#x2e;&#111;&#x72;&#x67;</a>&rdquo;
+gpg: Good signature from &ldquo;Swift 3.x Release Signing Key <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#115;&#x77;&#105;&#102;&#x74;&#45;&#x69;&#110;&#x66;&#x72;&#x61;&#115;&#116;&#x72;&#117;&#x63;&#x74;&#117;&#x72;&#x65;&#64;&#115;&#119;&#x69;&#x66;&#x74;&#x2e;&#x6f;&#x72;&#x67;">&#x73;&#x77;&#105;&#x66;&#x74;&#45;&#105;&#110;&#102;&#x72;&#97;&#115;&#x74;&#114;&#x75;&#x63;&#116;&#117;&#x72;&#x65;&#x40;&#x73;&#119;&#105;&#x66;&#x74;&#x2e;&#111;&#114;&#103;</a>&rdquo;
 gpg: WARNING: This key is not certified with a trusted signature!
 gpg:          There is no indication that the signature belongs to the owner.
 Primary key fingerprint: A3BA FD35 56A5 9079 C068  94BD 63BC 1CFE 91D3 06C6
@@ -880,466 +1098,6 @@ func doSomething() {
 普段考えずに利用している様々な処理が実際にはどのスレッドで実行されるのか、どういった書き方をするとどのスレッドで実行されうるのか調べてみることも面白いですね。<br/>
 ふとしたときにまた調べてみようと思います。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[ReSwiftを勉強してみよう！(2)]]></title>
-    <link href="http://grandbig.github.io/blog/2016/12/06/reswift-2/"/>
-    <updated>2016-12-06T00:00:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/12/06/reswift-2</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>こちらは<a href="http://qiita.com/advent-calendar/2016/ios2">iOS その2 Advent Calendar 2016</a> 6日目の記事です。</p>
-
-<p>今年は仕事でiOSを触る機会がめっきりと減ってしまったのですが、<br/>
-「やはり１年を振り返るのならiOS Advent Calendarは欠かせないでしょう」ということで投稿することにしました。</p>
-
-<p>最近、筆者が仕事で着手し始めた <strong>Redux</strong> に関連するということで <strong>ReSwift</strong> について見ていきたいと思います。<br/>
-タイトルが <strong>(2)</strong> になっているのは、<br/>
-以前に興味を持って自主的に取り組んでみた<a href="http://grandbig.github.io/blog/2016/09/03/reswift-1/">ReSwiftを勉強してみよう！(1)</a>の続きという意味です。<br/>
-しかし、Advent Calendarの記事でもあるので本記事のみで完結する形で書きたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>今回は公式GitHubに上がっている<a href="https://github.com/ReSwift/CounterExample-Navigation-TimeTravel">CounterExample-Navigation-TimeTravel</a>を元にReSwiftを勉強していきたいと思います。</p>
-
-<h3>ReSwiftに出てくるモノと役割</h3>
-
-<p>ReSwiftに出てくるモノと役割について改めて見直しをしてみましょう。</p>
-
-<ul>
-<li>Store
-
-<ul>
-<li>アプリ内で必ず1つの存在</li>
-<li>アプリの状態を管理する</li>
-<li>Stateを更新するための<code>dispatch</code>を提供する
-
-<ul>
-<li>言い換えれば<code>dispatch(action)</code>をすることでStoreにStateの変更を知らせられる</li>
-</ul>
-</li>
-<li>Stateの状態を追えるように<code>subscribe</code>を提供する
-
-<ul>
-<li>言い換えれば<code>subscribe(listener)</code>をすることでlistenerは<code>getState</code>を通してStateの状態を取得できる</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-
-
-<p>サンプルでは下記が該当します。<br/>
-Storeの宣言は下記のようになります。</p>
-
-<p>```objective-c
-// AppDelegate.swift
-var mainStore = RecordingMainStore<AppState>(</p>
-
-<pre><code>  reducer: AppReducer(),
-  state: nil,
-  typeMaps:[counterActionTypeMap, ReSwiftRouter.typeMap],
-  recording: "recording.json"
-</code></pre>
-
-<p>)
-```</p>
-
-<p>このサンプルでは<a href="https://github.com/ReSwift/ReSwift-Recorder">ReSwiftRecorder</a>モジュールを利用しているため通常のStore宣言とは異なります。<br/>
-ですが、重要なのは、<code>reducer</code>に<code>AppReducer()</code>を指定していることと、Storeが管理するStateの初期値を<code>state: nil</code>としているということです。</p>
-
-<ul>
-<li>State
-
-<ul>
-<li>アプリの状態</li>
-</ul>
-</li>
-</ul>
-
-
-<p>サンプルでは下記の通りです。</p>
-
-<p>```objective-c
-// AppState.swift
-struct AppState: StateType, HasNavigationState {</p>
-
-<pre><code>var counter: Int
-var navigationState: NavigationState
-</code></pre>
-
-<p>}
-```</p>
-
-<p>サンプルでは<code>CounterViewController</code>でカウント数の増加および減少をさせる処理が実装されており、<br/>
-<code>tabBarController</code>や<code>Button</code>のアクションなどで表示される画面を切り替える処理が実装されているため上記のように<code>counter</code>と<code>navigationState</code>の2つでアプリの状態を表すと定義しています。</p>
-
-<ul>
-<li>Action
-
-<ul>
-<li>何をするアクションなのかを表すオブジェクト</li>
-<li><code>type</code>プロパティを必ず持つ</li>
-</ul>
-</li>
-<li>ActionCreator
-
-<ul>
-<li>Actionを作成するメソッド</li>
-</ul>
-</li>
-</ul>
-
-
-<p>サンプルでは下記の通りです。</p>
-
-<p>```objective-c
-// CounterAction.swift
-struct CounterActionIncrease: StandardActionConvertible {</p>
-
-<pre><code>static let type = "COUNTER_ACTION_INCREASE"
-
-init() {}
-init(_ standardAction: StandardAction) {}
-
-func toStandardAction() -&gt; StandardAction {
-    return StandardAction(type: CounterActionIncrease.type, payload: [:], isTypedAction: true)
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>サンプルの<code>CounterAction.swift</code>の<code>CounterActionIncrease</code>はActionおよびActionCreatorの役割を兼ねています。</p>
-
-<ul>
-<li>Reducer
-
-<ul>
-<li>ActionとStateから新たなStateを作成して返す</li>
-<li>ポイントはStateを更新するのではなく、 <strong>新しく作成したState</strong> を返すということ</li>
-</ul>
-</li>
-</ul>
-
-
-<p>サンプルでは下記の通りです。</p>
-
-<p>```objective-c
-// CounterReducer.swift
-struct AppReducer: Reducer {</p>
-
-<pre><code>func handleAction(action: Action, state: AppState?) -&gt; AppState {
-    return AppState(
-        counter: counterReducer(action: action, counter: state?.counter),
-        navigationState: NavigationReducer.handleAction(action, state: state?.navigationState)
-    )
-}
-</code></pre>
-
-<p>}</p>
-
-<p>func counterReducer(action: Action, counter: Int?) &ndash;> Int {</p>
-
-<pre><code>var counter = counter ?? 0
-
-switch action {
-case _ as CounterActionIncrease:
-    counter += 1
-case _ as CounterActionDecrease:
-    counter -= 1
-default:
-    break
-}
-
-return counter
-</code></pre>
-
-<p>}
-```</p>
-
-<p>サンプルでは、<code>handleAction</code>メソッドで「引数として受け取った<code>action</code>と<code>state</code>から作成した<code>AppState</code>を返却」しています。<br/>
-カウントアップの処理がReducerに伝わった場合には、<br/>
-<code>counterReducer</code>メソッドでそのActionに合わせて新たに必要なStateの情報を生成しています。<br/>
-(カウントアップの場合は<code>CounterActionIncrease</code>アクションなので<code>counter += 1</code>しています。)</p>
-
-<h3>ReSwiftに出てくるモノ同士の連携</h3>
-
-<p>1個1個のモノと役割については理解が進みました。<br/>
-続いて、それらの連携について見ていきましょう。<br/>
-そのためには<code>ViewController</code>を見ていくのがわかりやすいかなと思います。</p>
-
-<h4>カウントアップ・ダウンに見る連携</h4>
-
-<p>まずは<code>CounterViewController</code>ですが、<br/>
-「+」や「-」ボタンをタップすることで画面中央に表示されたカウントを増減させる画面です。</p>
-
-<p>```objective-c
-// CounterViewController.swift
-import UIKit
-import ReSwift
-import ReSwiftRouter</p>
-
-<p>class CounterViewController: UIViewController, StoreSubscriber, Routable {</p>
-
-<p>  static let identifier = &ldquo;CounterViewController&rdquo;</p>
-
-<p>  @IBOutlet var counterLabel: UILabel!</p>
-
-<p>  override func viewWillAppear(_ animated: Bool) {</p>
-
-<pre><code>mainStore.subscribe(self)
-</code></pre>
-
-<p>  }</p>
-
-<p>  override func viewWillDisappear(_ animated: Bool) {</p>
-
-<pre><code>mainStore.unsubscribe(self)
-</code></pre>
-
-<p>  }</p>
-
-<p>  func newState(state: AppState) {</p>
-
-<pre><code>// 新規Stateをキャッチ
-// 画面のラベルを更新
-counterLabel.text = "\(state.counter)"
-</code></pre>
-
-<p>  }</p>
-
-<p>  @IBAction func increaseButtonTapped(_ sender: Any) {</p>
-
-<pre><code>mainStore.dispatch(
-  CounterActionIncrease()
-)
-</code></pre>
-
-<p>  }</p>
-
-<p>  @IBAction func decreaseButtonTapped(_ sender: Any) {</p>
-
-<pre><code>mainStore.dispatch(
-  CounterActionDecrease()
-)
-</code></pre>
-
-<p>  }
-}
-```</p>
-
-<p>細かく見ていきましょう。<br/>
-Storeの役割で説明した「Stateの状態を追えるように<code>subscribe</code>を提供する」に相当する部分が、</p>
-
-<p>```objective-c
-override func viewWillAppear(_ animated: Bool) {
-  mainStore.subscribe(self)
-}</p>
-
-<p>override func viewWillDisappear(_ animated: Bool) {
-  mainStore.unsubscribe(self)
-}
-```</p>
-
-<p>になります。<br/>
-<code>viewWillAppear</code>で<code>subscribe</code>を実行することで、その画面が表示されるときにStateの監視を開始して、<code>viewWillDisappear</code>で<code>unsubscribe</code>を実行することで、その画面が非表示になるときにStateの監視を終了することにしています。</p>
-
-<p>また、「Stateを更新するための<code>dispatch</code>を提供する」に相当する部分が、</p>
-
-<p>```objective-c
-@IBAction func increaseButtonTapped(_ sender: Any) {
-  mainStore.dispatch(</p>
-
-<pre><code>CounterActionIncrease()
-</code></pre>
-
-<p>  )
-}</p>
-
-<p>@IBAction func decreaseButtonTapped(_ sender: Any) {
-  mainStore.dispatch(</p>
-
-<pre><code>CounterActionDecrease()
-</code></pre>
-
-<p>  )
-}
-```</p>
-
-<p>になります。<br/>
-ユーザが「+」ボタンをタップしたときに<code>increaseButtonTapped</code>が呼び出されます。<br/>
-そのときに上記アクションが実行されたことを<code>dispatch</code>を実行することでStoreに知らせています。<br/>
-<code>decreaseButtonTapped</code>も同様です。</p>
-
-<h4>画面切り替えに見る連携</h4>
-
-<p>続いて<code>tabBarController</code>による画面の切り替えですが、これもこのサンプルでは状態変化として扱っています。<br/>
-ただし、<code>ReSwiftRouter</code>モジュールで役割を担っているので、これを利用すれば開発者が新たに書く部分は非常に少なくなります。</p>
-
-<p><code>UITabBarControllerDelegate</code>を利用してタブをタップしたタイミングをキャッチします。
-そのときに、<code>ReSwiftRouter</code>の<code>SetRouteAction</code>を利用してタブによる画面切り替えのアクションをStoreに伝えています。</p>
-
-<p>```objective-c
-// AppDelegate.swift
-extension AppDelegate: UITabBarControllerDelegate {</p>
-
-<p>  func tabBarController(_ tabBarController: UITabBarController,</p>
-
-<pre><code>shouldSelect viewController: UIViewController) -&gt; Bool {
-
-if viewController is CounterViewController {
-
-  mainStore.dispatch(
-    SetRouteAction(["TabBarViewController", CounterViewController.identifier])
-  )
-} else if viewController is StatsViewController {
-  mainStore.dispatch(
-    SetRouteAction(["TabBarViewController", StatsViewController.identifier])
-  )
-}
-    return false
-</code></pre>
-
-<p>  }
-}
-```</p>
-
-<p>因みに、<code>SetRouteAction</code>は下記のように定義されています。</p>
-
-<p>```objective-c
-public struct SetRouteAction: StandardActionConvertible {</p>
-
-<p>  let route: Route
-  let animated: Bool
-  public static let type = &ldquo;RE_SWIFT_ROUTER_SET_ROUTE&rdquo;</p>
-
-<p>  public init (_ route: Route, animated: Bool = true) {</p>
-
-<pre><code>self.route = route
-self.animated = animated
-</code></pre>
-
-<p>  }</p>
-
-<p>  public init(_ action: StandardAction) {</p>
-
-<pre><code>self.route = action.payload!["route"] as! Route
-self.animated = action.payload!["animated"] as! Bool
-</code></pre>
-
-<p>  }</p>
-
-<p>  public func toStandardAction() &ndash;> StandardAction {</p>
-
-<pre><code>return StandardAction(
-  type: SetRouteAction.type,
-  payload: ["route": route as AnyObject, "animated": animated as AnyObject],
-  isTypedAction: true
-)
-</code></pre>
-
-<p>  }<br/>
-}
-```</p>
-
-<p>中身を見てみると<code>CounterAction</code>と同様に<code>toStandardAction</code>を利用しているのがわかります。<br/>
-デバッグしていくとわかりますが、<code>tabBarController</code>を通した画面の切り替えでは、カウントアップやカウントダウンは無関係であるため<code>AppReducer</code>ではcountの状態を増減させることはありません。<br/>
-変化するのは<code>AppState.navigationState</code>のみです。<br/>
-こちらも追っていくとわかるのですが、下記の<code>NavigationReducer</code>に処理が引き継がれています。</p>
-
-<p>```objective-c
-public struct NavigationReducer {</p>
-
-<p>  public static func handleAction(_ action: Action, state: NavigationState?) &ndash;> NavigationState {</p>
-
-<pre><code>let state = state ?? NavigationState()
-
-switch action {
-case let action as SetRouteAction:
-  return setRoute(state, setRouteAction: action)
-case let action as SetRouteSpecificData:
-  return setRouteSpecificData(state, route: action.route, data: action.data)
-default:
-  break
-}
-
-return state
-</code></pre>
-
-<p>  }</p>
-
-<p>  static func setRoute(_ state: NavigationState, setRouteAction: SetRouteAction) &ndash;> NavigationState {</p>
-
-<pre><code>var state = state
-
-state.route = setRouteAction.route
-state.changeRouteAnimated = setRouteAction.animated
-
-return state
-</code></pre>
-
-<p>  }</p>
-
-<pre><code>&lt;省略&gt;
-</code></pre>
-
-<p>}
-```</p>
-
-<p>このように、<code>NavigationReducer</code>の中で<code>NavigationState</code>型のオブジェクトを生成して返しています。<br/>
-なので、アプリの状態である<code>AppState</code>が持つのは、</p>
-
-<ul>
-<li>counter: アプリのカウント状態</li>
-<li>navigationState: アプリの画面状態</li>
-</ul>
-
-
-<p>と言えます。</p>
-
-<h3>まとめ</h3>
-
-<p>相変わらず、(流行っていないというのもあるかもしれませんが&hellip;)ReSwiftに関する日本語の記事が少ないですね。<br/>
-恐らく、Web業界のようにFluxやReduxが実際のサービスに取り入れられているとは言い難いのでしょう。<br/>
-その理由として考えられるのは、iOSの場合はデフォルトとしてStoryboardやViewControllerというものが存在し、Appleもそれをそのまま利用することを推奨しているからかもしれません。<br/>
-しかしながら、複雑なアプリが世の中で求められるようになるに従って『ViewControllerの肥大化』や『複数人での開発による統一性の崩れ』といった課題により真剣に考えざるを得なくなってきました
-。<br/>
-必ずしも、これらの課題を解決するためにReSwiftを使わなければならないということはないのですが、1つの方法論として知っておくことで選択肢も増えてきます。<br/>
-ただ、WebでReact&amp;Reduxを取り入れるのと同様に理解するためのハードルが高くもあるので現場で嫌がられることもあるかもしれません。<br/>
-また、保守性として高いとは決して言えません。開発メンバーの入れ替えが発生したときにReSwiftを勉強するコストが発生します。<br/>
-Webと違ってそこまで浸透しているとは言えないため、より導入が難しいと言えるでしょう。<br/>
-ここにある種の矛盾が生じているわけですね&hellip;</p>
-
-<p>筆者がちょうどReact&amp;Reduxに触れる機会が増えてきたため、良い機会だと思って、iOSでのReSwiftの利用メリットなどを合わせて考えていきたいと思っています。<br/>
-そろそろ個人でのアプリ開発も復活させたい気持ちもありますし、その際には積極的に導入してみようかな&hellip;</p>
-
-<p>と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
