@@ -1,0 +1,969 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: test | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/test/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-05-06T23:15:41+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[QuickでSwiftコードのUnitテストをしよう！(2)]]></title>
+    <link href="http://grandbig.github.io/blog/2017/05/06/quick-2/"/>
+    <updated>2017-05-06T19:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/05/06/quick-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は久しぶりに<code>Quick</code>を使ったSwiftコードでのUnitテストについて見ていきたいと思います。<br/>
+<a href="https://grandbig.github.io/blog/2016/01/16/quick/">前回</a>記事を書いてから実に1年以上経過しました。<br/>
+当時、筆者はテスト駆動型での開発を業務で実行することがありませんでした。
+最近は当たり前に単体テストを書かずにコードを書くことがありえないという開発環境になってきました。<br/>
+しかし、それはWEBの世界に閉じており、iOSの世界では未だ、単体テストを書く工数が見合わないといった話が議論されていたりします。<br/>
+言わんとすることはわからんでもないものの、WEBの世界でもテスト駆動型開発が広まるまではきっと同じような話をしていたのではないかと思ったりしています。<br/>
+つまり、今後はiOSでも単体テストを書かないなんてありえないといった世界になるのでは？と期待しているのです。</p>
+
+<p>そんな期待を抱きつつ、本記事を書いていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>テスト内容</h3>
+
+<p>今回テスト内容として<code>Realm</code>に関わる処理を取り上げたいと思います。<br/>
+狙いとしてはSpring BootでWEBアプリケーションを開発したときで言うところの<code>Repository</code>に関するテストといったイメージになります。</p>
+
+<h3>テスト対象処理</h3>
+
+<p>さて、具体的なテストの対象となる処理を書きます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import RealmSwift</p>
+
+<p>class ViewController: UIViewController {
+  &lt;省略></p>
+
+<p>  // IDからデータを検索
+  func searchEngineerById(_ id: Int) &ndash;> Engineer? {</p>
+
+<pre><code>let realm = try! Realm()
+let engineers = realm.objects(Engineer.self).filter("id == \(id)")
+if engineers.count &gt; 0 {
+  return engineers[0]
+}
+return nil
+</code></pre>
+
+<p>  }</p>
+
+<p>  // 名前からデータを検索
+  func searchEngineerByName(_ name: String) &ndash;> Results<Engineer>? {</p>
+
+<pre><code>let realm = try! Realm()
+let engineers = realm.objects(Engineer.self).filter("name == '\(name)'")
+if engineers.count &gt; 0 {
+  return engineers
+}
+return nil
+</code></pre>
+
+<p>  }</p>
+
+<p>  // 保存しているデータ数を取得
+  func countEngineer() &ndash;> Int {</p>
+
+<pre><code>let realm = try! Realm()
+return realm.objects(Engineer.self).count
+</code></pre>
+
+<p>  }</p>
+
+<p>  // 新規データ作成
+  func createEngineer(name: String, level: Int, skills: [String]) {</p>
+
+<pre><code>if searchEngineerByName(name) != nil {
+  // 既に検索結果がある場合は処理を終了
+  return
+}
+
+// 検索結果がない場合は処理を継続
+let skillList = List&lt;Skill&gt;()
+for skill in skills {
+  let newSkill = Skill()
+  newSkill.name = skill
+  skillList.append(newSkill)
+}
+
+let engineer = Engineer()
+engineer.id = countEngineer()
+engineer.name = name
+engineer.level = level
+engineer.skills.append(objectsIn: skillList)
+let realm = try! Realm()
+
+try! realm.write {
+  realm.create(Engineer.self, value: engineer, update: false)
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  // IDを元にレベルを更新
+  func updateEngineerLevelById(_ id: Int, level: Int) &ndash;> Bool {</p>
+
+<pre><code>if let engineer = searchEngineerById(id) {
+  // 検索結果がある場合は処理を継続
+  let realm = try! Realm()
+  try! realm.write {
+    engineer.level = level
+  }
+  return true
+}
+
+// 検索結果がない場合は処理を終了
+return false
+</code></pre>
+
+<p>  }</p>
+
+<p>  // IDを元にスキルを更新
+  func updateEngineerSkillById(_ id: Int, skills: [String]) &ndash;> Bool {</p>
+
+<pre><code>if let engineer = searchEngineerById(id) {
+  // 検索結果がある場合は処理を継続
+  let realm = try! Realm()
+  try! realm.write {
+    for skill in skills {
+      let newSkill = Skill()
+      newSkill.name = skill
+      engineer.skills.append(newSkill)
+    }
+  }
+  return true
+}
+
+// 検索結果がない場合は処理を終了
+return false
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h3>Quickの導入方法</h3>
+
+<p>Swift3になっていることもあるので、念のためQuickの導入方法を書いておきたいと思います。<br/>
+(<code>Realm</code>も使っていることに注意してください。)</p>
+
+<p><code>CocoaPods</code>にて導入します。</p>
+
+<p>```objective-c</p>
+
+<h1>Podfile</h1>
+
+<p>use_frameworks!</p>
+
+<p>target &ldquo;QuickTestSample&rdquo; do
+  # Normal libraries
+  pod &lsquo;RealmSwift&rsquo;</p>
+
+<p>  abstract_target &lsquo;Tests&rsquo; do</p>
+
+<pre><code>inherit! :search_paths
+target "QuickTestSampleTests"
+target "QuickTestSampleUITests"
+
+pod 'Quick'
+pod 'Nimble'
+</code></pre>
+
+<p>  end
+end</p>
+
+<p>post_install do |installer|
+  installer.pods_project.targets.each do |target|</p>
+
+<pre><code>target.build_configurations.each do |config|
+  config.build_settings['SWIFT_VERSION'] = '3.0'
+end
+</code></pre>
+
+<p>  end
+end
+```</p>
+
+<h3>Quickでのテストコードの実装</h3>
+
+<p>早速、Quickでのテストコードを実装していきましょう。</p>
+
+<h4>Quickでテスト実行するための準備</h4>
+
+<p>Quickでテストを実行するためには、テスト用に用意されたファイルのクラスを変更する必要があります。</p>
+
+<p>```objective-c
+// QuickTestSampleTests
+import XCTest
+import Quick
+import Nimble
+@testable import QuickTestSample</p>
+
+<p>class QuickTestSampleTests: QuickSpec {
+  override func spec() {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h4>テスト用データの作成について</h4>
+
+<p>今回、<code>Realm</code>関連の処理を実装するにあたって悩んだのが、モック用のデータをどうするかという問題です。<br/>
+今回取り上げている処理がかなりシンプルな処理であるため、<strong>manual mocking</strong> で作成するのも微妙です。</p>
+
+<p>結果、下記のように実装しました。</p>
+
+<p>```objective-c
+// QuickTestSampleTests
+import XCTest
+import Quick
+import Nimble
+import RealmSwift   // 追加
+@testable import QuickTestSample</p>
+
+<p>class QuickTestSampleTests: QuickSpec {</p>
+
+<p>  override func spec() {</p>
+
+<pre><code>describe("Realm Database") {
+  // テスト用のRealmデータ保存ファイルを作成
+  // 保存場所はdefault.realmと同じでファイル名のみtest.realmに変更
+  var config = Realm.Configuration()
+  config.fileURL = config.fileURL!.deletingLastPathComponent().appendingPathComponent("test.realm")
+  Realm.Configuration.defaultConfiguration = config
+  // 上記の設定情報を利用してRealmを扱う
+  let realm = try! Realm(configuration: config)
+
+  beforeEach {
+    // テスト用にモックデータを追加
+    let engineer = Engineer()
+    engineer.name = "mock_name"
+    engineer.level = 1
+    let skill = Skill()
+    skill.name = "mock_skill_name"
+    engineer.skills.append(skill)
+
+    try! realm.write {
+      realm.create(Engineer.self, value: engineer, update: false)
+    }
+
+    expect(engineer).notTo(beNil())
+  }
+
+  &lt;省略&gt;
+
+  afterEach {
+    // テスト終了後にデータを全て削除
+    try! realm.write {
+      realm.deleteAll()
+    }
+  }
+}
+</code></pre>
+
+<p>  }<br/>
+}
+```</p>
+
+<p>このように、最低限必要なモックデータをテスト用の<code>Realm</code>のデータベースに作成してみました。<br/>
+<code>Realm</code>の使い方さえ間違えなければ、こちらでテストしたい独自処理には影響を与えないはずです。</p>
+
+<p>上記のソースコードにコメントとして書いていますが、ポイントとしては下記の通りです。</p>
+
+<ul>
+<li>実際のアプリで利用する<code>Realm</code>ファイルとは別のテスト用の<code>Realm</code>ファイルを利用する</li>
+<li>テスト実行前にテスト用のモックデータを作成する</li>
+<li>テスト実行後はテスト用のモックデータを全て削除する</li>
+</ul>
+
+
+<h4>テストの記載箇所</h4>
+
+<p>さて、実際にテストを実装すると下記のようになります。</p>
+
+<p>```objective-c
+// QuickTestSampleTests
+&lt;省略></p>
+
+<p>override func spec() {
+  var subject: ViewController!
+  describe(&ldquo;Realm Database&rdquo;) {</p>
+
+<pre><code>beforeEach {
+  &lt;省略&gt;
+}
+
+describe("searchEngineerById") {
+  it("find realm data by id") {
+    let engineer = subject.searchEngineerById(0)
+    expect(engineer).notTo(beNil())
+    expect(engineer?.name).to(equal("mock_name"))
+  }
+}
+
+afterEach {
+  &lt;省略&gt;
+}
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>&lt;省略>
+```</p>
+
+<p>ポイント次の通りです。</p>
+
+<ul>
+<li>テストの内容は<code>beforeEach</code>と<code>afterEach</code>の間に書く</li>
+<li>メソッドごとにテストを記載していることをわかりやすくするために、<code>describe</code>でメソッドごとにくくる</li>
+<li>テストで確かめたい内容次第で<code>notTo</code> / <code>to</code> / <code>equal</code> などを使い分ける</li>
+</ul>
+
+
+<h4>テストの内容</h4>
+
+<p>では、テスト内容の詳細を個別に見ていきたいと思います。</p>
+
+<h5>searchEngineerByIdのテスト</h5>
+
+<p>まずは、<code>searchEngineerById</code>のテストを書きます。<br/>
+このメソッドは検索成功時に<code>Engineer</code>型のオブジェクトを返し、検索失敗時には<code>nil</code>を返します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>検索成功：取得内容の整合性をチェック</li>
+<li>検索失敗：<code>nil</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<p>```objective-c
+// QuickTestSampleTests
+describe(&ldquo;searchEngineerById&rdquo;) {
+  // 取得内容の整合性チェック
+  it(&ldquo;find realm data by id&rdquo;) {</p>
+
+<pre><code>let engineer = subject.searchEngineerById(0)
+expect(engineer).notTo(beNil())
+expect(engineer?.name).to(equal("mock_name"))
+expect(engineer?.skills[0].name).to(equal("mock_skill_name"))
+</code></pre>
+
+<p>  }</p>
+
+<p>  // nilであることのチェック
+  it(&ldquo;cannot find realm data by id&rdquo;) {</p>
+
+<pre><code>let engineer = subject.searchEngineerById(1)
+expect(engineer).to(beNil())
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h5>searchEngineerByNameのテスト</h5>
+
+<p>続いて、<code>searchEngineerByName</code>のテストを書きます。<br/>
+このメソッドは検索成功時に<code>List&lt;Engineer&gt;</code>型のオブジェクトを返し、検索失敗時には<code>nil</code>を返します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>検索成功：取得内容の整合性およびカウント数のチェック</li>
+<li>検索失敗：<code>nil</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<p>```objective-c
+describe(&ldquo;searchEngineerByName&rdquo;) {
+  // 取得内容の整合性およびカウント数のチェック
+  it(&ldquo;find realm data by name&rdquo;) {</p>
+
+<pre><code>let engineers = subject.searchEngineerByName("mock_name")
+expect(engineers).notTo(beNil())
+expect(engineers?.count).to(equal(1))
+expect(engineers?[0].name).to(equal("mock_name"))
+expect(engineers?[0].skills[0].name).to(equal("mock_skill_name"))
+</code></pre>
+
+<p>  }</p>
+
+<p>  // nilであることのチェック
+  it(&ldquo;cannot find realm data by name&rdquo;) {</p>
+
+<pre><code>let engineers = subject.searchEngineerByName("mock_mistake_name")
+expect(engineers).to(beNil())
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h5>countEngineerのテスト</h5>
+
+<p>次は<code>countEngineer</code>のテストを書きます。<br/>
+このメソッドは検索成功時にデータのレコード数を返却します。<br/>
+検索失敗時の処理は独自実装していないため成功時のテストのみ書きます。</p>
+
+<p>```objective-c
+describe(&ldquo;countEngineer&rdquo;) {
+  // カウント数のチェック
+  it(&ldquo;count realm data&rdquo;) {</p>
+
+<pre><code>let count = subject.countEngineer()
+expect(count).to(equal(1))
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h5>createEngineerのテスト</h5>
+
+<p>今度は<code>createEngineer</code>のテストを書きます。<br/>
+このメソッドは同名の<code>Engineer</code>オブジェクトが保存されている場合は、新規オブジェクトを作成しないということがポイントです。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>新規<code>Engineer</code>オブジェクト作成が成功した場合：取得内容の整合性およびカウント数のチェック</li>
+<li>新規<code>Engineer</code>オブジェクト作成が失敗した場合：カウント数が変わっていないことをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<p>```objective-c
+describe(&ldquo;createEngineer&rdquo;) {
+  // カウント数が変わっていないことのチェック
+  it(&ldquo;cannot create engineer&rdquo;) {</p>
+
+<pre><code>subject.createEngineer(name: "mock_name", level: 1, skills: ["swift"])
+let engineers = subject.searchEngineerByName("mock_name")
+expect(engineers).notTo(beNil())
+expect(engineers?.count).to(equal(1))
+</code></pre>
+
+<p>  }</p>
+
+<p>  // 取得内容の整合性およびカウント数のチェック
+  it(&ldquo;create new engineer&rdquo;) {</p>
+
+<pre><code>subject.createEngineer(name: "takahiro", level: 1, skills: ["swift", "spring boot", "react.js"])
+let engineers = subject.searchEngineerByName("takahiro")
+expect(engineers).notTo(beNil())
+expect(engineers?.count).to(equal(1))
+expect(engineers?[0].name).to(equal("takahiro"))
+expect(engineers?[0].skills.count).to(equal(3))
+expect(engineers?[0].skills[0].name).to(equal("swift"))
+expect(engineers?[0].skills[1].name).to(equal("spring boot"))
+expect(engineers?[0].skills[2].name).to(equal("react.js"))
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h5>updateEngineerLevelByIdのテスト</h5>
+
+<p><code>updateEngineerLevelById</code>のテストを書きます。<br/>
+このメソッドは成功可否に応じて<code>true / false</code>を返却します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>更新成功：<code>true</code>であることをチェック</li>
+<li>更新失敗：<code>false</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<p>```objective-c
+describe(&ldquo;updateEngineerLevelById&rdquo;) {
+  // trueであることをチェック
+  it(&ldquo;update level for realm data by id&rdquo;) {</p>
+
+<pre><code>let updated = subject.updateEngineerLevelById(0, level: 2)
+let engineer = subject.searchEngineerById(0)
+expect(updated).to(beTrue())
+expect(engineer?.level).to(equal(2))
+</code></pre>
+
+<p>  }</p>
+
+<p>  // falseであることをチェック
+  it(&ldquo;cannot update level for realm data by id&rdquo;) {</p>
+
+<pre><code>let updated = subject.updateEngineerLevelById(2, level: 2)
+expect(updated).to(beFalse())
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h5>updateEngineerSkillByIdのテスト</h5>
+
+<p><code>updateEngineerSkillById</code>のテストを書きます。<br/>
+このメソッドは成功可否に応じて<code>true / false</code>を返却します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>更新成功：<code>true</code>であることをチェック</li>
+<li>更新失敗：<code>false</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<p>```objective-c
+describe(&ldquo;updateEngineerSkillById&rdquo;) {
+  // trueであることをチェック
+  it(&ldquo;update skill for realm data by id&rdquo;) {</p>
+
+<pre><code>let updated = subject.updateEngineerSkillById(0, skills: ["mock_skill_name_2"])
+let engineer = subject.searchEngineerById(0)
+expect(updated).to(beTrue())
+expect(engineer?.skills.count).to(equal(2))
+expect(engineer?.skills[0].name).to(equal("mock_skill_name"))
+expect(engineer?.skills[1].name).to(equal("mock_skill_name_2"))
+</code></pre>
+
+<p>  }</p>
+
+<p>  // falseであることをチェック
+  it(&ldquo;cannot update skill for realm data by id&rdquo;) {</p>
+
+<pre><code>let updated = subject.updateEngineerSkillById(2, skills: ["mock_skill_name_2"])
+expect(updated).to(beFalse())
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h3>Quickでのテストコードの書式</h3>
+
+<p>今回新たに出た書式についてまとめておきます。</p>
+
+<h4>notTo</h4>
+
+<p>対象と異なることを期待するときに利用します。</p>
+
+<ul>
+<li>書式例：<code>expect(engineer).notTo(beNil())</code></li>
+<li>期待値：<code>engineer</code>オブジェクトが<code>nil</code>でない</li>
+</ul>
+
+
+<h4>to</h4>
+
+<p>対象と一致することを期待するときに利用します。</p>
+
+<h5>equalと組み合わせた場合</h5>
+
+<ul>
+<li>書式例：<code>expect(engineer?.name).to(equal("mock_name"))</code></li>
+<li>期待値：<code>engineer</code>オブジェクトの<code>name</code>プロパティが<code>mock_name</code>と一致すること</li>
+</ul>
+
+
+<h5>beTrue / beFalseと組み合わせた場合</h5>
+
+<ul>
+<li>書式例：<code>expect(updated).to(beTrue())</code></li>
+<li>期待値：<code>updated</code>の値が<code>true</code>と一致すること</li>
+</ul>
+
+
+<h4>beNil / equal / beTrue / beFalse</h4>
+
+<p>それぞれ、</p>
+
+<ul>
+<li>beNil()：<code>nil</code>であること</li>
+<li>equal()：引数の値であること(数字や文字列などを引数に設定します)</li>
+<li>beTrue()：<code>true</code>であること</li>
+<li>beFalse()：<code>false</code>であること</li>
+</ul>
+
+
+<p>を意味します。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+今回は最近の経験を元にiOSでテスト駆動型の開発をするなら&hellip;をイメージして書いてみました。<br/>
+次はもっと複雑なパターンのテストを試しに書いてみても良いかなと思いつつ、本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="https://realm.io/jp/docs/swift/latest/#realm-3">Realm公式ドキュメント</a></li>
+<li><a href="https://news.realm.io/jp/news/rachel-bobbins-testing-view-controllers-quick/">Quickを使ってビューコントローラをテストする</a></li>
+<li><a href="https://github.com/Quick/Quick/blob/master/Documentation/ja/ConfiguringQuick.md">Quickの挙動をカスタマイズしましょう</a></li>
+<li><a href="https://github.com/Quick/Quick/blob/master/Documentation/ja/QuickExamplesAndGroups.md">QuickのExamplesとExample Groupsで、たくさんのテストでも整理整頓</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[QuickでSwiftコードのUnitテストをしよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/01/16/quick/"/>
+    <updated>2016-01-16T19:49:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/01/16/quick</id>
+    <content type="html"><![CDATA[<h4>Quickフレームワークを使おう！</h4>
+
+<p>先日、XCTestによるiOSアプリのUnit TestとUI Testについて記事を書きました。<br/>
+もちろんXCTestを使って、テストをすることに問題はありません。<br/>
+ですが、XCTestは非常に独特な書式で、初めて使う人には取っ付きにくいかと思います。</p>
+
+<p>そんな中、注目を集めているiOSアプリ用のテストフレームワークが<a href="https://github.com/Quick/Quick">Quick</a>です。<br/>
+GitHubに書かれている通り、<a href="https://github.com/rspec/rspec">RSpec</a> / <a href="https://github.com/specta/specta">Specta</a> / <a href="https://github.com/onsi/ginkgo">Ginkgo</a>にインスパイアされて開発されているため、親しみやすい書式でテストコードを書くことができます。<br/>
+(筆者もこれを機に親しもうと思います笑)</p>
+
+<p>これまでiOSアプリのテストコードは独特で&hellip;と避けてきた方がいましたら、ぜひ <strong>Quick</strong> を導入してみて頂ければと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>Quickの導入方法</h4>
+
+<p>では、Quickを導入しましょう。<br/>
+GitHubにも書いてありますが、CocoaPodsでの導入方法は下記です。<br/>
+※ 説明用のプロジェクト名を <strong>QuickSample</strong> とします。</p>
+
+<p>１．Podfileの作成</p>
+
+<p>```objective-c</p>
+
+<h1>Podfile</h1>
+
+<p>use_frameworks!</p>
+
+<p>def testing_pods</p>
+
+<pre><code>pod 'Quick', '~&gt; 0.8.0'
+pod 'Nimble', '3.0.0'
+</code></pre>
+
+<p>end</p>
+
+<p>target &lsquo;QuickSampleTests&rsquo; do</p>
+
+<pre><code>testing_pods
+</code></pre>
+
+<p>end</p>
+
+<p>target &lsquo;QuickSampleUITests&rsquo; do</p>
+
+<pre><code>testing_pods
+</code></pre>
+
+<p>end
+```</p>
+
+<p>２．CocoaPodsコマンドを実行<br/>
+Podfileと同階層で<code>pod install</code>を実行</p>
+
+<p>３．テストファイルを用意<br/>
+プロジェクト作成時に<code>QuickSampleTests.swift</code>を作成しておいたので、それを編集します。</p>
+
+<p>```objective-c
+// QuickSampleTests.swift
+import XCTest
+import Quick
+import Nimble
+@testable import QuickSample</p>
+
+<p>class QuickSampleTests: QuickSpec {</p>
+
+<pre><code>override func spec() {
+    // ここにテストコードを書いていきます。
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これで<code>QuickSpec</code>をオーバーライドしたテスト用クラスになりました。<br/>
+最低限の準備はこれで完了です。</p>
+
+<h4>Quickでのテストコードの書式</h4>
+
+<p>続いて、基本的なテストコードの書式を見ていきましょう。</p>
+
+<p>１．<code>describe</code>：『何のテストをするのか』を記述</p>
+
+<p>```objective-c
+// テストコード
+override func spec() {</p>
+
+<pre><code>describe("天気情報をログ出力する") {
+    // 「天気情報をログ出力する」ことをテストするためのコードを書いていきます。
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>２．<code>context</code>：『どういった条件のテストをするのか』を記述</p>
+
+<p>```objective-c
+// テストコード
+override func spec() {</p>
+
+<pre><code>describe("天気情報をログ出力する") {
+    context("晴れの場合") {
+        // 天気が晴れの場合のテスト
+    }
+
+    context("雨の場合") {
+        // 天気が雨の場合のテスト
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>３．<code>it</code>：『このテストはこういった結果になる』ということを記述</p>
+
+<p>```objective-c
+// テストコード
+override func spec() {</p>
+
+<pre><code>describe("天気情報をログ出力する") {
+    context("晴れの場合") {
+        // 天気が晴れの場合のテスト
+        it("print out 'sunny'") {
+            // 実行するテストコードをここに記述します
+        }
+    }
+
+    &lt;省略&gt;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>４．<code>expect('☓☓☓').to(△△△)</code>：『「☓☓☓」が「△△△」と等しい結果になる』ことを記述<br/>
+ここは説明のために、テスト対象を<code>Weather.swift</code>として下記のようなコードだとします。<br/>
+あくまでも<code>expect('☓☓☓').to(△△△)</code>の説明であるため、<code>Weather.getWeather</code>の処理は超簡単にしています。</p>
+
+<p>```objective-c
+// Weather.swift
+class Weather:NSObject {</p>
+
+<pre><code>&lt;省略&gt;
+
+func getWeather() -&gt; String {
+    return "sunny"
+}
+
+&lt;省略&gt;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いてテストコードです。</p>
+
+<p>```objective-c
+// テストコード
+override func spec() {</p>
+
+<pre><code>describe("天気情報をログ出力する") {
+    context("晴れの場合") {
+        // 天気が晴れの場合のテスト
+        it("print out 'sunny'") {
+            let weather = Weather().getWeather()
+            expect(weather).to(contain("sunny"))
+        }
+    }
+
+    &lt;省略&gt;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>補足すると、</p>
+
+<p>・戻り値と期待値が完全一致する場合：<code>to(equal(△△△))</code><br/>
+・戻り値が期待値の一部を含む場合：<code>to(contain(△△△))</code></p>
+
+<p>といったように使い分けましょう。</p>
+
+<p>５．非同期処理のテストをする場合<br/>
+これまで同期処理を見てきましたが、今度は非同期処理を見ていきましょう。</p>
+
+<p><code>Weather.swift</code>クラスに非同期処理を追加します。</p>
+
+<p>```objective-c
+// Weather.swift
+class Weather:NSObject {</p>
+
+<pre><code>&lt;省略&gt;
+
+func getAsyncWeather(closure:(String) -&gt; Void) {
+    Alamofire.request(.GET, "http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPIDを指定&gt;", parameters:
+        ["q":"Tokyo,jp"]).response { (request, response, data, error) -&gt; Void in
+        if(error == nil) {
+            do {
+                let dataDict = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+                let weatherArray:[AnyObject] = dataDict["weather"] as! [AnyObject]
+                let weather:AnyObject = weatherArray[0]
+                let description:String = weather["description"] as! String
+                closure(description)
+            } catch {
+                clouser("exception")
+            }
+        }
+}
+
+&lt;省略&gt;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>XCTestでも説明しましたが、<br/>
+Swiftではスタブの代わりに <strong>manual mocking</strong> という手法を採用しています。<br/>
+なので、通信処理はテストコード内で継承したクラスを作成して、そちらで定数を返すようにしましょう。</p>
+
+<p>```objective-c
+// テストコード
+override func spec() {</p>
+
+<pre><code>// manual mockingのための用意
+class WeatherMock:Weather {
+    override func getAsyncWeather(closure:(String) -&gt; Void) {
+        closure("sunny")
+    }
+}
+
+describe("天気情報を取得する") {
+    context("晴れの場合") {
+        // 天気が晴れの場合のテスト
+        it("print out 'sunny'") {
+            var result:String = ""
+            let wm:WeatherMock = WeatherMock()
+            wm.getAsyncWeather{(weather) -&gt; Void in
+                result = weather
+            }
+            expect(result).toEventually(equal("sunny"))"
+        }
+    }
+
+    &lt;省略&gt;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>因みに、非同期処理では、<code>to</code>ではなく<code>toEventually</code>を利用します。<br/>
+<code>expect(result).toEventually(equal("sunny"), timeout: 10)</code>と書けば、<br/>
+任意のタイムアウトを設定可能です。</p>
+
+<p>その他のメソッドを探したい場合は、<br/>
+<strong>Pods > Nimble > ObjCExpectation.swift > NMBExpectation</strong> を確認してみてください。<br/>
+また、<a href="https://github.com/Quick/Nimble">GitHubのNimble</a>も参考になります。</p>
+
+<h4>Quickでのテスト結果</h4>
+
+<p>テストの実行方法はXCTestと同じです。<br/>
+<strong>Xcodeメニュー > Product > Test</strong> を選択してテストを実行しましょう。</p>
+
+<p>結果は同じく、Xcodeの左メニューに表示されます。</p>
+
+<p><img src="/images/quick.png" alt="Xcodeのテスト結果" /></p>
+
+<p>また、ログでも細かな結果が出力されますので、<br/>
+(少し見づらいですが)なぜかテストが成功しないといったことがあれば、<br/>
+積極的に確認してみましょう。</p>
+
+<p>さて、いかがでしたでしょうか？<br/>
+今のところは <strong>XCTest</strong> もしくは <strong>Quick</strong> によるUnit テストが主流になると思います。<br/>
+開発者の使いやすさに合わせて選んでみてください。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

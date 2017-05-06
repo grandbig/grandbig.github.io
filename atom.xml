@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-05-06T02:56:39+09:00</updated>
+  <updated>2017-05-06T23:15:41+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,878 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[QuickでSwiftコードのUnitテストをしよう！(2)]]></title>
+    <link href="http://grandbig.github.io/blog/2017/05/06/quick-2/"/>
+    <updated>2017-05-06T19:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/05/06/quick-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は久しぶりに<code>Quick</code>を使ったSwiftコードでのUnitテストについて見ていきたいと思います。<br/>
+<a href="https://grandbig.github.io/blog/2016/01/16/quick/">前回</a>記事を書いてから実に1年以上経過しました。<br/>
+当時、筆者はテスト駆動型での開発を業務で実行することがありませんでした。
+最近は当たり前に単体テストを書かずにコードを書くことがありえないという開発環境になってきました。<br/>
+しかし、それはWEBの世界に閉じており、iOSの世界では未だ、単体テストを書く工数が見合わないといった話が議論されていたりします。<br/>
+言わんとすることはわからんでもないものの、WEBの世界でもテスト駆動型開発が広まるまではきっと同じような話をしていたのではないかと思ったりしています。<br/>
+つまり、今後はiOSでも単体テストを書かないなんてありえないといった世界になるのでは？と期待しているのです。</p>
+
+<p>そんな期待を抱きつつ、本記事を書いていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>テスト内容</h3>
+
+<p>今回テスト内容として<code>Realm</code>に関わる処理を取り上げたいと思います。<br/>
+狙いとしてはSpring BootでWEBアプリケーションを開発したときで言うところの<code>Repository</code>に関するテストといったイメージになります。</p>
+
+<h3>テスト対象処理</h3>
+
+<p>さて、具体的なテストの対象となる処理を書きます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// IDからデータを検索</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">searchEngineerById</span><span class="p">(</span><span class="n">_</span> <span class="kt">id</span><span class="o">:</span> <span class="n">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Engineer</span><span class="o">?</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">filter</span><span class="p">(</span><span class="s">&quot;id == \(id)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">engineers</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">engineers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">nil</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 名前からデータを検索</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">searchEngineerByName</span><span class="p">(</span><span class="n">_</span> <span class="nl">name:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Results</span><span class="o">&lt;</span><span class="n">Engineer</span><span class="o">&gt;?</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">filter</span><span class="p">(</span><span class="s">&quot;name == &#39;\(name)&#39;&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">engineers</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">engineers</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">nil</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 保存しているデータ数を取得</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">countEngineer</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Int</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">count</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 新規データ作成</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">createEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="n">String</span><span class="p">,</span> <span class="nl">level:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="n">String</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">searchEngineerByName</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">nil</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 既に検索結果がある場合は処理を終了</span>
+</span><span class='line'>      <span class="k">return</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 検索結果がない場合は処理を継続</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">skillList</span> <span class="o">=</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Skill</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>    <span class="k">for</span> <span class="n">skill</span> <span class="k">in</span> <span class="n">skills</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">newSkill</span> <span class="o">=</span> <span class="n">Skill</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">newSkill</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">skill</span>
+</span><span class='line'>      <span class="n">skillList</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">newSkill</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">Engineer</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">engineer</span><span class="p">.</span><span class="kt">id</span> <span class="o">=</span> <span class="n">countEngineer</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">engineer</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+</span><span class='line'>    <span class="n">engineer</span><span class="p">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">level</span>
+</span><span class='line'>    <span class="n">engineer</span><span class="p">.</span><span class="n">skills</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">objectsIn:</span> <span class="n">skillList</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">realm</span><span class="p">.</span><span class="n">create</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">value:</span> <span class="n">engineer</span><span class="p">,</span> <span class="nl">update:</span> <span class="n">false</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// IDを元にレベルを更新</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">updateEngineerLevelById</span><span class="p">(</span><span class="n">_</span> <span class="kt">id</span><span class="o">:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">level:</span> <span class="n">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">searchEngineerById</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 検索結果がある場合は処理を継続</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">level</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 検索結果がない場合は処理を終了</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">false</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// IDを元にスキルを更新</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">updateEngineerSkillById</span><span class="p">(</span><span class="n">_</span> <span class="kt">id</span><span class="o">:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="n">String</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">searchEngineerById</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 検索結果がある場合は処理を継続</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">skill</span> <span class="k">in</span> <span class="n">skills</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">let</span> <span class="n">newSkill</span> <span class="o">=</span> <span class="n">Skill</span><span class="p">()</span>
+</span><span class='line'>          <span class="n">newSkill</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">skill</span>
+</span><span class='line'>          <span class="n">engineer</span><span class="p">.</span><span class="n">skills</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">newSkill</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 検索結果がない場合は処理を終了</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">false</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Quickの導入方法</h3>
+
+<p>Swift3になっていることもあるので、念のためQuickの導入方法を書いておきたいと思います。<br/>
+(<code>Realm</code>も使っていることに注意してください。)</p>
+
+<p><code>CocoaPods</code>にて導入します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp"># Podfile</span>
+</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="s">&quot;QuickTestSample&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="err">#</span> <span class="n">Normal</span> <span class="n">libraries</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RealmSwift</span><span class="err">&#39;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">abstract_target</span> <span class="err">&#39;</span><span class="n">Tests</span><span class="err">&#39;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">inherit</span><span class="o">!</span> <span class="o">:</span><span class="n">search_paths</span>
+</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;QuickTestSampleTests&quot;</span>
+</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;QuickTestSampleUITests&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Quick</span><span class="err">&#39;</span>
+</span><span class='line'>    <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Nimble</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">end</span>
+</span><span class='line'><span class="n">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">post_install</span> <span class="k">do</span> <span class="o">|</span><span class="n">installer</span><span class="o">|</span>
+</span><span class='line'>  <span class="n">installer</span><span class="p">.</span><span class="n">pods_project</span><span class="p">.</span><span class="n">targets</span><span class="p">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">target</span><span class="o">|</span>
+</span><span class='line'>    <span class="n">target</span><span class="p">.</span><span class="n">build_configurations</span><span class="p">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">config</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">config</span><span class="p">.</span><span class="n">build_settings</span><span class="p">[</span><span class="err">&#39;</span><span class="n">SWIFT_VERSION</span><span class="err">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="err">&#39;</span><span class="mf">3.0</span><span class="err">&#39;</span>
+</span><span class='line'>    <span class="n">end</span>
+</span><span class='line'>  <span class="n">end</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Quickでのテストコードの実装</h3>
+
+<p>早速、Quickでのテストコードを実装していきましょう。</p>
+
+<h4>Quickでテスト実行するための準備</h4>
+
+<p>Quickでテストを実行するためには、テスト用に用意されたファイルのクラスを変更する必要があります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// QuickTestSampleTests</span>
+</span><span class='line'><span class="n">import</span> <span class="n">XCTest</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Quick</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Nimble</span>
+</span><span class='line'><span class="err">@</span><span class="n">testable</span> <span class="n">import</span> <span class="n">QuickTestSample</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">QuickTestSampleTests:</span> <span class="n">QuickSpec</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">spec</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>テスト用データの作成について</h4>
+
+<p>今回、<code>Realm</code>関連の処理を実装するにあたって悩んだのが、モック用のデータをどうするかという問題です。<br/>
+今回取り上げている処理がかなりシンプルな処理であるため、<strong>manual mocking</strong> で作成するのも微妙です。</p>
+
+<p>結果、下記のように実装しました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// QuickTestSampleTests</span>
+</span><span class='line'><span class="n">import</span> <span class="n">XCTest</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Quick</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Nimble</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>   <span class="c1">// 追加</span>
+</span><span class='line'><span class="err">@</span><span class="n">testable</span> <span class="n">import</span> <span class="n">QuickTestSample</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">QuickTestSampleTests:</span> <span class="n">QuickSpec</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">spec</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">describe</span><span class="p">(</span><span class="s">&quot;Realm Database&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// テスト用のRealmデータ保存ファイルを作成</span>
+</span><span class='line'>      <span class="c1">// 保存場所はdefault.realmと同じでファイル名のみtest.realmに変更</span>
+</span><span class='line'>      <span class="n">var</span> <span class="n">config</span> <span class="o">=</span> <span class="n">Realm</span><span class="p">.</span><span class="n">Configuration</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">config</span><span class="p">.</span><span class="n">fileURL</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">fileURL</span><span class="o">!</span><span class="p">.</span><span class="n">deletingLastPathComponent</span><span class="p">().</span><span class="n">appendingPathComponent</span><span class="p">(</span><span class="s">&quot;test.realm&quot;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">Realm</span><span class="p">.</span><span class="n">Configuration</span><span class="p">.</span><span class="n">defaultConfiguration</span> <span class="o">=</span> <span class="n">config</span>
+</span><span class='line'>      <span class="c1">// 上記の設定情報を利用してRealmを扱う</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">(</span><span class="nl">configuration:</span> <span class="n">config</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">beforeEach</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// テスト用にモックデータを追加</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">Engineer</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;mock_name&quot;</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">level</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">skill</span> <span class="o">=</span> <span class="n">Skill</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">skill</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;mock_skill_name&quot;</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">skills</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">skill</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">realm</span><span class="p">.</span><span class="n">create</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">value:</span> <span class="n">engineer</span><span class="p">,</span> <span class="nl">update:</span> <span class="n">false</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">afterEach</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// テスト終了後にデータを全て削除</span>
+</span><span class='line'>        <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">realm</span><span class="p">.</span><span class="n">deleteAll</span><span class="p">()</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このように、最低限必要なモックデータをテスト用の<code>Realm</code>のデータベースに作成してみました。<br/>
+<code>Realm</code>の使い方さえ間違えなければ、こちらでテストしたい独自処理には影響を与えないはずです。</p>
+
+<p>上記のソースコードにコメントとして書いていますが、ポイントとしては下記の通りです。</p>
+
+<ul>
+<li>実際のアプリで利用する<code>Realm</code>ファイルとは別のテスト用の<code>Realm</code>ファイルを利用する</li>
+<li>テスト実行前にテスト用のモックデータを作成する</li>
+<li>テスト実行後はテスト用のモックデータを全て削除する</li>
+</ul>
+
+
+<h4>テストの記載箇所</h4>
+
+<p>さて、実際にテストを実装すると下記のようになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// QuickTestSampleTests</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">override</span> <span class="n">func</span> <span class="n">spec</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">subject:</span> <span class="n">ViewController</span><span class="o">!</span>
+</span><span class='line'>  <span class="n">describe</span><span class="p">(</span><span class="s">&quot;Realm Database&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">beforeEach</span> <span class="p">{</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">describe</span><span class="p">(</span><span class="s">&quot;searchEngineerById&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">it</span><span class="p">(</span><span class="s">&quot;find realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerById</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>        <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_name&quot;</span><span class="p">))</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">afterEach</span> <span class="p">{</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ポイント次の通りです。</p>
+
+<ul>
+<li>テストの内容は<code>beforeEach</code>と<code>afterEach</code>の間に書く</li>
+<li>メソッドごとにテストを記載していることをわかりやすくするために、<code>describe</code>でメソッドごとにくくる</li>
+<li>テストで確かめたい内容次第で<code>notTo</code> / <code>to</code> / <code>equal</code> などを使い分ける</li>
+</ul>
+
+
+<h4>テストの内容</h4>
+
+<p>では、テスト内容の詳細を個別に見ていきたいと思います。</p>
+
+<h5>searchEngineerByIdのテスト</h5>
+
+<p>まずは、<code>searchEngineerById</code>のテストを書きます。<br/>
+このメソッドは検索成功時に<code>Engineer</code>型のオブジェクトを返し、検索失敗時には<code>nil</code>を返します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>検索成功：取得内容の整合性をチェック</li>
+<li>検索失敗：<code>nil</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// QuickTestSampleTests</span>
+</span><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;searchEngineerById&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 取得内容の整合性チェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;find realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerById</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_name&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">skills</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_skill_name&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// nilであることのチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;cannot find realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerById</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>searchEngineerByNameのテスト</h5>
+
+<p>続いて、<code>searchEngineerByName</code>のテストを書きます。<br/>
+このメソッドは検索成功時に<code>List&lt;Engineer&gt;</code>型のオブジェクトを返し、検索失敗時には<code>nil</code>を返します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>検索成功：取得内容の整合性およびカウント数のチェック</li>
+<li>検索失敗：<code>nil</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;searchEngineerByName&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 取得内容の整合性およびカウント数のチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;find realm data by name&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerByName</span><span class="p">(</span><span class="s">&quot;mock_name&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">.</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_name&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">skills</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_skill_name&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// nilであることのチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;cannot find realm data by name&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerByName</span><span class="p">(</span><span class="s">&quot;mock_mistake_name&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>countEngineerのテスト</h5>
+
+<p>次は<code>countEngineer</code>のテストを書きます。<br/>
+このメソッドは検索成功時にデータのレコード数を返却します。<br/>
+検索失敗時の処理は独自実装していないため成功時のテストのみ書きます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;countEngineer&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// カウント数のチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;count realm data&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">count</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">countEngineer</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>createEngineerのテスト</h5>
+
+<p>今度は<code>createEngineer</code>のテストを書きます。<br/>
+このメソッドは同名の<code>Engineer</code>オブジェクトが保存されている場合は、新規オブジェクトを作成しないということがポイントです。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>新規<code>Engineer</code>オブジェクト作成が成功した場合：取得内容の整合性およびカウント数のチェック</li>
+<li>新規<code>Engineer</code>オブジェクト作成が失敗した場合：カウント数が変わっていないことをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;createEngineer&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// カウント数が変わっていないことのチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;cannot create engineer&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">subject</span><span class="p">.</span><span class="n">createEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;mock_name&quot;</span><span class="p">,</span> <span class="nl">level:</span> <span class="mi">1</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="s">&quot;swift&quot;</span><span class="p">])</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerByName</span><span class="p">(</span><span class="s">&quot;mock_name&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">.</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 取得内容の整合性およびカウント数のチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;create new engineer&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">subject</span><span class="p">.</span><span class="n">createEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;takahiro&quot;</span><span class="p">,</span> <span class="nl">level:</span> <span class="mi">1</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="s">&quot;swift&quot;</span><span class="p">,</span> <span class="s">&quot;spring boot&quot;</span><span class="p">,</span> <span class="s">&quot;react.js&quot;</span><span class="p">])</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerByName</span><span class="p">(</span><span class="s">&quot;takahiro&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">.</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;takahiro&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">skills</span><span class="p">.</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">skills</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;swift&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">skills</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;spring boot&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">skills</span><span class="p">[</span><span class="mi">2</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;react.js&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>updateEngineerLevelByIdのテスト</h5>
+
+<p><code>updateEngineerLevelById</code>のテストを書きます。<br/>
+このメソッドは成功可否に応じて<code>true / false</code>を返却します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>更新成功：<code>true</code>であることをチェック</li>
+<li>更新失敗：<code>false</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;updateEngineerLevelById&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// trueであることをチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;update level for realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">updated</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">updateEngineerLevelById</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nl">level:</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerById</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">updated</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beTrue</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">level</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// falseであることをチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;cannot update level for realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">updated</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">updateEngineerLevelById</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nl">level:</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">updated</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beFalse</span><span class="p">())</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>updateEngineerSkillByIdのテスト</h5>
+
+<p><code>updateEngineerSkillById</code>のテストを書きます。<br/>
+このメソッドは成功可否に応じて<code>true / false</code>を返却します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>更新成功：<code>true</code>であることをチェック</li>
+<li>更新失敗：<code>false</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;updateEngineerSkillById&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// trueであることをチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;update skill for realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">updated</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">updateEngineerSkillById</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="s">&quot;mock_skill_name_2&quot;</span><span class="p">])</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerById</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">updated</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beTrue</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">skills</span><span class="p">.</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">skills</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_skill_name&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">skills</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_skill_name_2&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// falseであることをチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;cannot update skill for realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">updated</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">updateEngineerSkillById</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="s">&quot;mock_skill_name_2&quot;</span><span class="p">])</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">updated</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beFalse</span><span class="p">())</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Quickでのテストコードの書式</h3>
+
+<p>今回新たに出た書式についてまとめておきます。</p>
+
+<h4>notTo</h4>
+
+<p>対象と異なることを期待するときに利用します。</p>
+
+<ul>
+<li>書式例：<code>expect(engineer).notTo(beNil())</code></li>
+<li>期待値：<code>engineer</code>オブジェクトが<code>nil</code>でない</li>
+</ul>
+
+
+<h4>to</h4>
+
+<p>対象と一致することを期待するときに利用します。</p>
+
+<h5>equalと組み合わせた場合</h5>
+
+<ul>
+<li>書式例：<code>expect(engineer?.name).to(equal("mock_name"))</code></li>
+<li>期待値：<code>engineer</code>オブジェクトの<code>name</code>プロパティが<code>mock_name</code>と一致すること</li>
+</ul>
+
+
+<h5>beTrue / beFalseと組み合わせた場合</h5>
+
+<ul>
+<li>書式例：<code>expect(updated).to(beTrue())</code></li>
+<li>期待値：<code>updated</code>の値が<code>true</code>と一致すること</li>
+</ul>
+
+
+<h4>beNil / equal / beTrue / beFalse</h4>
+
+<p>それぞれ、</p>
+
+<ul>
+<li>beNil()：<code>nil</code>であること</li>
+<li>equal()：引数の値であること(数字や文字列などを引数に設定します)</li>
+<li>beTrue()：<code>true</code>であること</li>
+<li>beFalse()：<code>false</code>であること</li>
+</ul>
+
+
+<p>を意味します。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+今回は最近の経験を元にiOSでテスト駆動型の開発をするなら&hellip;をイメージして書いてみました。<br/>
+次はもっと複雑なパターンのテストを試しに書いてみても良いかなと思いつつ、本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="https://realm.io/jp/docs/swift/latest/#realm-3">Realm公式ドキュメント</a></li>
+<li><a href="https://news.realm.io/jp/news/rachel-bobbins-testing-view-controllers-quick/">Quickを使ってビューコントローラをテストする</a></li>
+<li><a href="https://github.com/Quick/Quick/blob/master/Documentation/ja/ConfiguringQuick.md">Quickの挙動をカスタマイズしましょう</a></li>
+<li><a href="https://github.com/Quick/Quick/blob/master/Documentation/ja/QuickExamplesAndGroups.md">QuickのExamplesとExample Groupsで、たくさんのテストでも整理整頓</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Swift3でRealmSwiftを使ってみよう！]]></title>
@@ -8731,591 +9603,6 @@ iPhoneやAndroidといったモバイル端末の登場が私の人生を大き�
 来年はもっと頑張れる自分でありたいと思ういつつ本記事の結びとさせてください。</p>
 
 <p>拙い文章にお付き合い頂きましてありがとうございました。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[ReSwiftを勉強してみよう！(2)]]></title>
-    <link href="http://grandbig.github.io/blog/2016/12/06/reswift-2/"/>
-    <updated>2016-12-06T00:00:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/12/06/reswift-2</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>こちらは<a href="http://qiita.com/advent-calendar/2016/ios2">iOS その2 Advent Calendar 2016</a> 6日目の記事です。</p>
-
-<p>今年は仕事でiOSを触る機会がめっきりと減ってしまったのですが、<br/>
-「やはり１年を振り返るのならiOS Advent Calendarは欠かせないでしょう」ということで投稿することにしました。</p>
-
-<p>最近、筆者が仕事で着手し始めた <strong>Redux</strong> に関連するということで <strong>ReSwift</strong> について見ていきたいと思います。<br/>
-タイトルが <strong>(2)</strong> になっているのは、<br/>
-以前に興味を持って自主的に取り組んでみた<a href="http://grandbig.github.io/blog/2016/09/03/reswift-1/">ReSwiftを勉強してみよう！(1)</a>の続きという意味です。<br/>
-しかし、Advent Calendarの記事でもあるので本記事のみで完結する形で書きたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>今回は公式GitHubに上がっている<a href="https://github.com/ReSwift/CounterExample-Navigation-TimeTravel">CounterExample-Navigation-TimeTravel</a>を元にReSwiftを勉強していきたいと思います。</p>
-
-<h3>ReSwiftに出てくるモノと役割</h3>
-
-<p>ReSwiftに出てくるモノと役割について改めて見直しをしてみましょう。</p>
-
-<ul>
-<li>Store
-
-<ul>
-<li>アプリ内で必ず1つの存在</li>
-<li>アプリの状態を管理する</li>
-<li>Stateを更新するための<code>dispatch</code>を提供する
-
-<ul>
-<li>言い換えれば<code>dispatch(action)</code>をすることでStoreにStateの変更を知らせられる</li>
-</ul>
-</li>
-<li>Stateの状態を追えるように<code>subscribe</code>を提供する
-
-<ul>
-<li>言い換えれば<code>subscribe(listener)</code>をすることでlistenerは<code>getState</code>を通してStateの状態を取得できる</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-
-
-<p>サンプルでは下記が該当します。<br/>
-Storeの宣言は下記のようになります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
-</span><span class='line'><span class="n">var</span> <span class="n">mainStore</span> <span class="o">=</span> <span class="n">RecordingMainStore</span><span class="o">&lt;</span><span class="n">AppState</span><span class="o">&gt;</span><span class="p">(</span>
-</span><span class='line'>      <span class="nl">reducer:</span> <span class="n">AppReducer</span><span class="p">(),</span>
-</span><span class='line'>      <span class="nl">state:</span> <span class="nb">nil</span><span class="p">,</span>
-</span><span class='line'>      <span class="nl">typeMaps:</span><span class="p">[</span><span class="n">counterActionTypeMap</span><span class="p">,</span> <span class="n">ReSwiftRouter</span><span class="p">.</span><span class="n">typeMap</span><span class="p">],</span>
-</span><span class='line'>      <span class="nl">recording:</span> <span class="s">&quot;recording.json&quot;</span>
-</span><span class='line'><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>このサンプルでは<a href="https://github.com/ReSwift/ReSwift-Recorder">ReSwiftRecorder</a>モジュールを利用しているため通常のStore宣言とは異なります。<br/>
-ですが、重要なのは、<code>reducer</code>に<code>AppReducer()</code>を指定していることと、Storeが管理するStateの初期値を<code>state: nil</code>としているということです。</p>
-
-<ul>
-<li>State
-
-<ul>
-<li>アプリの状態</li>
-</ul>
-</li>
-</ul>
-
-
-<p>サンプルでは下記の通りです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppState.swift</span>
-</span><span class='line'><span class="k">struct</span> <span class="nl">AppState:</span> <span class="n">StateType</span><span class="p">,</span> <span class="n">HasNavigationState</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">counter:</span> <span class="n">Int</span>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">navigationState:</span> <span class="n">NavigationState</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>サンプルでは<code>CounterViewController</code>でカウント数の増加および減少をさせる処理が実装されており、<br/>
-<code>tabBarController</code>や<code>Button</code>のアクションなどで表示される画面を切り替える処理が実装されているため上記のように<code>counter</code>と<code>navigationState</code>の2つでアプリの状態を表すと定義しています。</p>
-
-<ul>
-<li>Action
-
-<ul>
-<li>何をするアクションなのかを表すオブジェクト</li>
-<li><code>type</code>プロパティを必ず持つ</li>
-</ul>
-</li>
-<li>ActionCreator
-
-<ul>
-<li>Actionを作成するメソッド</li>
-</ul>
-</li>
-</ul>
-
-
-<p>サンプルでは下記の通りです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// CounterAction.swift</span>
-</span><span class='line'><span class="k">struct</span> <span class="nl">CounterActionIncrease:</span> <span class="n">StandardActionConvertible</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">static</span> <span class="n">let</span> <span class="n">type</span> <span class="o">=</span> <span class="s">&quot;COUNTER_ACTION_INCREASE&quot;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">init</span><span class="p">()</span> <span class="p">{}</span>
-</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">_</span> <span class="nl">standardAction:</span> <span class="n">StandardAction</span><span class="p">)</span> <span class="p">{}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">func</span> <span class="n">toStandardAction</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">StandardAction</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">StandardAction</span><span class="p">(</span><span class="nl">type:</span> <span class="n">CounterActionIncrease</span><span class="p">.</span><span class="n">type</span><span class="p">,</span> <span class="nl">payload:</span> <span class="p">[</span><span class="o">:</span><span class="p">],</span> <span class="nl">isTypedAction:</span> <span class="n">true</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>サンプルの<code>CounterAction.swift</code>の<code>CounterActionIncrease</code>はActionおよびActionCreatorの役割を兼ねています。</p>
-
-<ul>
-<li>Reducer
-
-<ul>
-<li>ActionとStateから新たなStateを作成して返す</li>
-<li>ポイントはStateを更新するのではなく、 <strong>新しく作成したState</strong> を返すということ</li>
-</ul>
-</li>
-</ul>
-
-
-<p>サンプルでは下記の通りです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// CounterReducer.swift</span>
-</span><span class='line'><span class="k">struct</span> <span class="nl">AppReducer:</span> <span class="n">Reducer</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">func</span> <span class="n">handleAction</span><span class="p">(</span><span class="nl">action:</span> <span class="n">Action</span><span class="p">,</span> <span class="nl">state:</span> <span class="n">AppState</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AppState</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">AppState</span><span class="p">(</span>
-</span><span class='line'>            <span class="nl">counter:</span> <span class="n">counterReducer</span><span class="p">(</span><span class="nl">action:</span> <span class="n">action</span><span class="p">,</span> <span class="nl">counter:</span> <span class="n">state</span><span class="o">?</span><span class="p">.</span><span class="n">counter</span><span class="p">),</span>
-</span><span class='line'>            <span class="nl">navigationState:</span> <span class="n">NavigationReducer</span><span class="p">.</span><span class="n">handleAction</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="nl">state:</span> <span class="n">state</span><span class="o">?</span><span class="p">.</span><span class="n">navigationState</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">func</span> <span class="n">counterReducer</span><span class="p">(</span><span class="nl">action:</span> <span class="n">Action</span><span class="p">,</span> <span class="nl">counter:</span> <span class="n">Int</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Int</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">var</span> <span class="n">counter</span> <span class="o">=</span> <span class="n">counter</span> <span class="o">??</span> <span class="mi">0</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">switch</span> <span class="n">action</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">case</span> <span class="n">_</span> <span class="n">as</span> <span class="nl">CounterActionIncrease:</span>
-</span><span class='line'>        <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
-</span><span class='line'>    <span class="k">case</span> <span class="n">_</span> <span class="n">as</span> <span class="nl">CounterActionDecrease:</span>
-</span><span class='line'>        <span class="n">counter</span> <span class="o">-=</span> <span class="mi">1</span>
-</span><span class='line'>    <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>        <span class="k">break</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">return</span> <span class="n">counter</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>サンプルでは、<code>handleAction</code>メソッドで「引数として受け取った<code>action</code>と<code>state</code>から作成した<code>AppState</code>を返却」しています。<br/>
-カウントアップの処理がReducerに伝わった場合には、<br/>
-<code>counterReducer</code>メソッドでそのActionに合わせて新たに必要なStateの情報を生成しています。<br/>
-(カウントアップの場合は<code>CounterActionIncrease</code>アクションなので<code>counter += 1</code>しています。)</p>
-
-<h3>ReSwiftに出てくるモノ同士の連携</h3>
-
-<p>1個1個のモノと役割については理解が進みました。<br/>
-続いて、それらの連携について見ていきましょう。<br/>
-そのためには<code>ViewController</code>を見ていくのがわかりやすいかなと思います。</p>
-
-<h4>カウントアップ・ダウンに見る連携</h4>
-
-<p>まずは<code>CounterViewController</code>ですが、<br/>
-「+」や「-」ボタンをタップすることで画面中央に表示されたカウントを増減させる画面です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// CounterViewController.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">ReSwiftRouter</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">CounterViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">StoreSubscriber</span><span class="p">,</span> <span class="n">Routable</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">static</span> <span class="n">let</span> <span class="n">identifier</span> <span class="o">=</span> <span class="s">&quot;CounterViewController&quot;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">var</span> <span class="nl">counterLabel:</span> <span class="n">UILabel</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewWillAppear</span><span class="p">(</span><span class="n">_</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">mainStore</span><span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewWillDisappear</span><span class="p">(</span><span class="n">_</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">mainStore</span><span class="p">.</span><span class="n">unsubscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">func</span> <span class="n">newState</span><span class="p">(</span><span class="nl">state:</span> <span class="n">AppState</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">// 新規Stateをキャッチ</span>
-</span><span class='line'>    <span class="c1">// 画面のラベルを更新</span>
-</span><span class='line'>    <span class="n">counterLabel</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;\(state.counter)&quot;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">increaseButtonTapped</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
-</span><span class='line'>      <span class="n">CounterActionIncrease</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">decreaseButtonTapped</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
-</span><span class='line'>      <span class="n">CounterActionDecrease</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>細かく見ていきましょう。<br/>
-Storeの役割で説明した「Stateの状態を追えるように<code>subscribe</code>を提供する」に相当する部分が、</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">override</span> <span class="n">func</span> <span class="nf">viewWillAppear</span><span class="p">(</span><span class="n">_</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">mainStore</span><span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">override</span> <span class="n">func</span> <span class="nf">viewWillDisappear</span><span class="p">(</span><span class="n">_</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">mainStore</span><span class="p">.</span><span class="n">unsubscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>になります。<br/>
-<code>viewWillAppear</code>で<code>subscribe</code>を実行することで、その画面が表示されるときにStateの監視を開始して、<code>viewWillDisappear</code>で<code>unsubscribe</code>を実行することで、その画面が非表示になるときにStateの監視を終了することにしています。</p>
-
-<p>また、「Stateを更新するための<code>dispatch</code>を提供する」に相当する部分が、</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">increaseButtonTapped</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
-</span><span class='line'>    <span class="n">CounterActionIncrease</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">decreaseButtonTapped</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
-</span><span class='line'>    <span class="n">CounterActionDecrease</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>になります。<br/>
-ユーザが「+」ボタンをタップしたときに<code>increaseButtonTapped</code>が呼び出されます。<br/>
-そのときに上記アクションが実行されたことを<code>dispatch</code>を実行することでStoreに知らせています。<br/>
-<code>decreaseButtonTapped</code>も同様です。</p>
-
-<h4>画面切り替えに見る連携</h4>
-
-<p>続いて<code>tabBarController</code>による画面の切り替えですが、これもこのサンプルでは状態変化として扱っています。<br/>
-ただし、<code>ReSwiftRouter</code>モジュールで役割を担っているので、これを利用すれば開発者が新たに書く部分は非常に少なくなります。</p>
-
-<p><code>UITabBarControllerDelegate</code>を利用してタブをタップしたタイミングをキャッチします。
-そのときに、<code>ReSwiftRouter</code>の<code>SetRouteAction</code>を利用してタブによる画面切り替えのアクションをStoreに伝えています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
-</span><span class='line'><span class="n">extension</span> <span class="nl">AppDelegate:</span> <span class="n">UITabBarControllerDelegate</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">func</span> <span class="n">tabBarController</span><span class="p">(</span><span class="n">_</span> <span class="nl">tabBarController:</span> <span class="n">UITabBarController</span><span class="p">,</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">shouldSelect</span> <span class="nl">viewController:</span> <span class="n">UIViewController</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">if</span> <span class="n">viewController</span> <span class="n">is</span> <span class="n">CounterViewController</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
-</span><span class='line'>        <span class="n">SetRouteAction</span><span class="p">([</span><span class="s">&quot;TabBarViewController&quot;</span><span class="p">,</span> <span class="n">CounterViewController</span><span class="p">.</span><span class="n">identifier</span><span class="p">])</span>
-</span><span class='line'>      <span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="n">viewController</span> <span class="n">is</span> <span class="n">StatsViewController</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span>
-</span><span class='line'>        <span class="n">SetRouteAction</span><span class="p">([</span><span class="s">&quot;TabBarViewController&quot;</span><span class="p">,</span> <span class="n">StatsViewController</span><span class="p">.</span><span class="n">identifier</span><span class="p">])</span>
-</span><span class='line'>      <span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">false</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>因みに、<code>SetRouteAction</code>は下記のように定義されています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">SetRouteAction:</span> <span class="n">StandardActionConvertible</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">let</span> <span class="nl">route:</span> <span class="n">Route</span>
-</span><span class='line'>  <span class="n">let</span> <span class="nl">animated:</span> <span class="n">Bool</span>
-</span><span class='line'>  <span class="n">public</span> <span class="k">static</span> <span class="n">let</span> <span class="n">type</span> <span class="o">=</span> <span class="s">&quot;RE_SWIFT_ROUTER_SET_ROUTE&quot;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">public</span> <span class="n">init</span> <span class="p">(</span><span class="n">_</span> <span class="nl">route:</span> <span class="n">Route</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">Bool</span> <span class="o">=</span> <span class="n">true</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">route</span> <span class="o">=</span> <span class="n">route</span>
-</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">animated</span> <span class="o">=</span> <span class="n">animated</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">public</span> <span class="n">init</span><span class="p">(</span><span class="n">_</span> <span class="nl">action:</span> <span class="n">StandardAction</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">route</span> <span class="o">=</span> <span class="n">action</span><span class="p">.</span><span class="n">payload</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;route&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">!</span> <span class="n">Route</span>
-</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">animated</span> <span class="o">=</span> <span class="n">action</span><span class="p">.</span><span class="n">payload</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;animated&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">!</span> <span class="n">Bool</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">public</span> <span class="n">func</span> <span class="n">toStandardAction</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">StandardAction</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">StandardAction</span><span class="p">(</span>
-</span><span class='line'>      <span class="nl">type:</span> <span class="n">SetRouteAction</span><span class="p">.</span><span class="n">type</span><span class="p">,</span>
-</span><span class='line'>      <span class="nl">payload:</span> <span class="p">[</span><span class="s">&quot;route&quot;</span><span class="o">:</span> <span class="n">route</span> <span class="n">as</span> <span class="n">AnyObject</span><span class="p">,</span> <span class="s">&quot;animated&quot;</span><span class="o">:</span> <span class="n">animated</span> <span class="n">as</span> <span class="n">AnyObject</span><span class="p">],</span>
-</span><span class='line'>      <span class="nl">isTypedAction:</span> <span class="n">true</span>
-</span><span class='line'>    <span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>中身を見てみると<code>CounterAction</code>と同様に<code>toStandardAction</code>を利用しているのがわかります。<br/>
-デバッグしていくとわかりますが、<code>tabBarController</code>を通した画面の切り替えでは、カウントアップやカウントダウンは無関係であるため<code>AppReducer</code>ではcountの状態を増減させることはありません。<br/>
-変化するのは<code>AppState.navigationState</code>のみです。<br/>
-こちらも追っていくとわかるのですが、下記の<code>NavigationReducer</code>に処理が引き継がれています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="n">NavigationReducer</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">public</span> <span class="k">static</span> <span class="n">func</span> <span class="n">handleAction</span><span class="p">(</span><span class="n">_</span> <span class="nl">action:</span> <span class="n">Action</span><span class="p">,</span> <span class="nl">state:</span> <span class="n">NavigationState</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NavigationState</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">state</span> <span class="o">=</span> <span class="n">state</span> <span class="o">??</span> <span class="n">NavigationState</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">switch</span> <span class="n">action</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">case</span> <span class="n">let</span> <span class="n">action</span> <span class="n">as</span> <span class="nl">SetRouteAction:</span>
-</span><span class='line'>      <span class="k">return</span> <span class="n">setRoute</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="nl">setRouteAction:</span> <span class="n">action</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">case</span> <span class="n">let</span> <span class="n">action</span> <span class="n">as</span> <span class="nl">SetRouteSpecificData:</span>
-</span><span class='line'>      <span class="k">return</span> <span class="n">setRouteSpecificData</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="nl">route:</span> <span class="n">action</span><span class="p">.</span><span class="n">route</span><span class="p">,</span> <span class="nl">data:</span> <span class="n">action</span><span class="p">.</span><span class="n">data</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>      <span class="k">break</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">return</span> <span class="n">state</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">static</span> <span class="n">func</span> <span class="n">setRoute</span><span class="p">(</span><span class="n">_</span> <span class="nl">state:</span> <span class="n">NavigationState</span><span class="p">,</span> <span class="nl">setRouteAction:</span> <span class="n">SetRouteAction</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NavigationState</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">var</span> <span class="n">state</span> <span class="o">=</span> <span class="n">state</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">state</span><span class="p">.</span><span class="n">route</span> <span class="o">=</span> <span class="n">setRouteAction</span><span class="p">.</span><span class="n">route</span>
-</span><span class='line'>    <span class="n">state</span><span class="p">.</span><span class="n">changeRouteAnimated</span> <span class="o">=</span> <span class="n">setRouteAction</span><span class="p">.</span><span class="n">animated</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">return</span> <span class="n">state</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>このように、<code>NavigationReducer</code>の中で<code>NavigationState</code>型のオブジェクトを生成して返しています。<br/>
-なので、アプリの状態である<code>AppState</code>が持つのは、</p>
-
-<ul>
-<li>counter: アプリのカウント状態</li>
-<li>navigationState: アプリの画面状態</li>
-</ul>
-
-
-<p>と言えます。</p>
-
-<h3>まとめ</h3>
-
-<p>相変わらず、(流行っていないというのもあるかもしれませんが&hellip;)ReSwiftに関する日本語の記事が少ないですね。<br/>
-恐らく、Web業界のようにFluxやReduxが実際のサービスに取り入れられているとは言い難いのでしょう。<br/>
-その理由として考えられるのは、iOSの場合はデフォルトとしてStoryboardやViewControllerというものが存在し、Appleもそれをそのまま利用することを推奨しているからかもしれません。<br/>
-しかしながら、複雑なアプリが世の中で求められるようになるに従って『ViewControllerの肥大化』や『複数人での開発による統一性の崩れ』といった課題により真剣に考えざるを得なくなってきました
-。<br/>
-必ずしも、これらの課題を解決するためにReSwiftを使わなければならないということはないのですが、1つの方法論として知っておくことで選択肢も増えてきます。<br/>
-ただ、WebでReact&amp;Reduxを取り入れるのと同様に理解するためのハードルが高くもあるので現場で嫌がられることもあるかもしれません。<br/>
-また、保守性として高いとは決して言えません。開発メンバーの入れ替えが発生したときにReSwiftを勉強するコストが発生します。<br/>
-Webと違ってそこまで浸透しているとは言えないため、より導入が難しいと言えるでしょう。<br/>
-ここにある種の矛盾が生じているわけですね&hellip;</p>
-
-<p>筆者がちょうどReact&amp;Reduxに触れる機会が増えてきたため、良い機会だと思って、iOSでのReSwiftの利用メリットなどを合わせて考えていきたいと思っています。<br/>
-そろそろ個人でのアプリ開発も復活させたい気持ちもありますし、その際には積極的に導入してみようかな&hellip;</p>
-
-<p>と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
