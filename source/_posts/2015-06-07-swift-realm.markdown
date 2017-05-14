@@ -3,7 +3,7 @@ layout: post
 title: "SwiftでRealmを使ってみよう！"
 date: 2015-06-07 16:35
 comments: true
-categories: ios swift
+categories: ios swift realm
 ---
 
 ####Realmをプロジェクトに追加しよう
@@ -112,7 +112,7 @@ class Skills: RLMObject {
 import UIKit
 
 class ViewController: UIViewController {
-	
+
 	override func viewDidLoad() {
 		super.viewDidLoad()
 

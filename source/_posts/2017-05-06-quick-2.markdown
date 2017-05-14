@@ -1,0 +1,511 @@
+---
+layout: post
+title: "QuickでSwiftコードのUnitテストをしよう！(2)"
+date: 2017-05-06 19:39
+comments: true
+categories: ios swift quick test realm
+---
+
+### はじめに
+今回は久しぶりに`Quick`を使ったSwiftコードでのUnitテストについて見ていきたいと思います。  
+[前回](https://grandbig.github.io/blog/2016/01/16/quick/)記事を書いてから実に1年以上経過しました。  
+当時、筆者はテスト駆動型での開発を業務で実行することがありませんでした。
+最近は当たり前に単体テストを書かずにコードを書くことがありえないという開発環境になってきました。  
+しかし、それはWEBの世界に閉じており、iOSの世界では未だ、単体テストを書く工数が見合わないといった話が議論されていたりします。  
+言わんとすることはわからんでもないものの、WEBの世界でもテスト駆動型開発が広まるまではきっと同じような話をしていたのではないかと思ったりしています。  
+つまり、今後はiOSでも単体テストを書かないなんてありえないといった世界になるのでは？と期待しているのです。  
+
+そんな期待を抱きつつ、本記事を書いていきたいと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### テスト内容
+今回テスト内容として`Realm`に関わる処理を取り上げたいと思います。  
+狙いとしてはSpring BootでWEBアプリケーションを開発したときで言うところの`Repository`に関するテストといったイメージになります。  
+
+### テスト対象処理
+さて、具体的なテストの対象となる処理を書きます。  
+
+```objective-c
+// ViewController.swift
+import UIKit
+import RealmSwift
+
+class ViewController: UIViewController {
+  <省略>
+
+  // IDからデータを検索
+  func searchEngineerById(_ id: Int) -> Engineer? {
+
+    let realm = try! Realm()
+    let engineers = realm.objects(Engineer.self).filter("id == \(id)")
+    if engineers.count > 0 {
+      return engineers[0]
+    }
+    return nil
+  }
+
+  // 名前からデータを検索
+  func searchEngineerByName(_ name: String) -> Results<Engineer>? {
+    let realm = try! Realm()
+    let engineers = realm.objects(Engineer.self).filter("name == '\(name)'")
+    if engineers.count > 0 {
+      return engineers
+    }
+    return nil
+  }
+
+  // 保存しているデータ数を取得
+  func countEngineer() -> Int {
+    let realm = try! Realm()
+    return realm.objects(Engineer.self).count
+  }
+
+  // 新規データ作成
+  func createEngineer(name: String, level: Int, skills: [String]) {
+    if searchEngineerByName(name) != nil {
+      // 既に検索結果がある場合は処理を終了
+      return
+    }
+
+    // 検索結果がない場合は処理を継続
+    let skillList = List<Skill>()
+    for skill in skills {
+      let newSkill = Skill()
+      newSkill.name = skill
+      skillList.append(newSkill)
+    }
+
+    let engineer = Engineer()
+    engineer.id = countEngineer()
+    engineer.name = name
+    engineer.level = level
+    engineer.skills.append(objectsIn: skillList)
+    let realm = try! Realm()
+
+    try! realm.write {
+      realm.create(Engineer.self, value: engineer, update: false)
+    }
+  }
+
+  // IDを元にレベルを更新
+  func updateEngineerLevelById(_ id: Int, level: Int) -> Bool {
+    if let engineer = searchEngineerById(id) {
+      // 検索結果がある場合は処理を継続
+      let realm = try! Realm()
+      try! realm.write {
+        engineer.level = level
+      }
+      return true
+    }
+
+    // 検索結果がない場合は処理を終了
+    return false
+  }
+
+  // IDを元にスキルを更新
+  func updateEngineerSkillById(_ id: Int, skills: [String]) -> Bool {
+    if let engineer = searchEngineerById(id) {
+      // 検索結果がある場合は処理を継続
+      let realm = try! Realm()
+      try! realm.write {
+        for skill in skills {
+          let newSkill = Skill()
+          newSkill.name = skill
+          engineer.skills.append(newSkill)
+        }
+      }
+      return true
+    }
+
+    // 検索結果がない場合は処理を終了
+    return false
+  }
+}
+```
+
+### Quickの導入方法
+Swift3になっていることもあるので、念のためQuickの導入方法を書いておきたいと思います。  
+(`Realm`も使っていることに注意してください。)  
+
+`CocoaPods`にて導入します。  
+
+```objective-c
+# Podfile
+use_frameworks!
+
+target "QuickTestSample" do
+  # Normal libraries
+  pod 'RealmSwift'
+
+  abstract_target 'Tests' do
+    inherit! :search_paths
+    target "QuickTestSampleTests"
+    target "QuickTestSampleUITests"
+
+    pod 'Quick'
+    pod 'Nimble'
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['SWIFT_VERSION'] = '3.0'
+    end
+  end
+end
+```
+
+### Quickでのテストコードの実装
+早速、Quickでのテストコードを実装していきましょう。  
+
+#### Quickでテスト実行するための準備
+Quickでテストを実行するためには、テスト用に用意されたファイルのクラスを変更する必要があります。  
+
+```objective-c
+// QuickTestSampleTests
+import XCTest
+import Quick
+import Nimble
+@testable import QuickTestSample
+
+class QuickTestSampleTests: QuickSpec {
+  override func spec() {
+    ...
+  }
+}
+```
+
+#### テスト用データの作成について
+今回、`Realm`関連の処理を実装するにあたって悩んだのが、モック用のデータをどうするかという問題です。  
+今回取り上げている処理がかなりシンプルな処理であるため、**manual mocking** で作成するのも微妙です。  
+
+結果、下記のように実装しました。  
+
+```objective-c
+// QuickTestSampleTests
+import XCTest
+import Quick
+import Nimble
+import RealmSwift   // 追加
+@testable import QuickTestSample
+
+class QuickTestSampleTests: QuickSpec {
+
+  override func spec() {
+
+    describe("Realm Database") {
+      // テスト用のRealmデータ保存ファイルを作成
+      // 保存場所はdefault.realmと同じでファイル名のみtest.realmに変更
+      var config = Realm.Configuration()
+      config.fileURL = config.fileURL!.deletingLastPathComponent().appendingPathComponent("test.realm")
+      Realm.Configuration.defaultConfiguration = config
+      // 上記の設定情報を利用してRealmを扱う
+      let realm = try! Realm(configuration: config)
+
+      beforeEach {
+        // テスト用にモックデータを追加
+        let engineer = Engineer()
+        engineer.name = "mock_name"
+        engineer.level = 1
+        let skill = Skill()
+        skill.name = "mock_skill_name"
+        engineer.skills.append(skill)
+
+        try! realm.write {
+          realm.create(Engineer.self, value: engineer, update: false)
+        }
+
+        expect(engineer).notTo(beNil())
+      }
+
+      <省略>
+
+      afterEach {
+        // テスト終了後にデータを全て削除
+        try! realm.write {
+          realm.deleteAll()
+        }
+      }
+    }
+  }  
+}
+```
+
+このように、最低限必要なモックデータをテスト用の`Realm`のデータベースに作成してみました。  
+`Realm`の使い方さえ間違えなければ、こちらでテストしたい独自処理には影響を与えないはずです。  
+
+上記のソースコードにコメントとして書いていますが、ポイントとしては下記の通りです。  
+
+* 実際のアプリで利用する`Realm`ファイルとは別のテスト用の`Realm`ファイルを利用する  
+* テスト実行前にテスト用のモックデータを作成する  
+* テスト実行後はテスト用のモックデータを全て削除する  
+
+#### テストの記載箇所
+さて、実際にテストを実装すると下記のようになります。  
+
+```objective-c
+// QuickTestSampleTests
+<省略>
+
+override func spec() {
+  var subject: ViewController!
+  describe("Realm Database") {
+    beforeEach {
+      <省略>
+    }
+
+    describe("searchEngineerById") {
+      it("find realm data by id") {
+        let engineer = subject.searchEngineerById(0)
+        expect(engineer).notTo(beNil())
+        expect(engineer?.name).to(equal("mock_name"))
+      }
+    }
+
+    afterEach {
+      <省略>
+    }
+  }
+}
+
+<省略>
+```
+
+ポイント次の通りです。  
+
+* テストの内容は`beforeEach`と`afterEach`の間に書く  
+* メソッドごとにテストを記載していることをわかりやすくするために、`describe`でメソッドごとにくくる  
+* テストで確かめたい内容次第で`notTo` / `to` / `equal` などを使い分ける  
+
+#### テストの内容
+では、テスト内容の詳細を個別に見ていきたいと思います。  
+
+##### searchEngineerByIdのテスト
+まずは、`searchEngineerById`のテストを書きます。  
+このメソッドは検索成功時に`Engineer`型のオブジェクトを返し、検索失敗時には`nil`を返します。  
+
+そのため、このメソッドに対するテストとしては、  
+
+* 検索成功：取得内容の整合性をチェック  
+* 検索失敗：`nil`であることをチェック  
+
+を書くことになります。  
+
+```objective-c
+// QuickTestSampleTests
+describe("searchEngineerById") {
+  // 取得内容の整合性チェック
+  it("find realm data by id") {
+    let engineer = subject.searchEngineerById(0)
+    expect(engineer).notTo(beNil())
+    expect(engineer?.name).to(equal("mock_name"))
+    expect(engineer?.skills[0].name).to(equal("mock_skill_name"))
+  }
+
+  // nilであることのチェック
+  it("cannot find realm data by id") {
+    let engineer = subject.searchEngineerById(1)
+    expect(engineer).to(beNil())
+  }
+}
+```
+
+##### searchEngineerByNameのテスト
+続いて、`searchEngineerByName`のテストを書きます。  
+このメソッドは検索成功時に`List<Engineer>`型のオブジェクトを返し、検索失敗時には`nil`を返します。  
+
+そのため、このメソッドに対するテストとしては、  
+
+* 検索成功：取得内容の整合性およびカウント数のチェック  
+* 検索失敗：`nil`であることをチェック  
+
+を書くことになります。  
+
+```objective-c
+describe("searchEngineerByName") {
+  // 取得内容の整合性およびカウント数のチェック
+  it("find realm data by name") {
+    let engineers = subject.searchEngineerByName("mock_name")
+    expect(engineers).notTo(beNil())
+    expect(engineers?.count).to(equal(1))
+    expect(engineers?[0].name).to(equal("mock_name"))
+    expect(engineers?[0].skills[0].name).to(equal("mock_skill_name"))
+  }
+
+  // nilであることのチェック
+  it("cannot find realm data by name") {
+    let engineers = subject.searchEngineerByName("mock_mistake_name")
+    expect(engineers).to(beNil())
+  }
+}
+```
+
+##### countEngineerのテスト
+次は`countEngineer`のテストを書きます。  
+このメソッドは検索成功時にデータのレコード数を返却します。  
+検索失敗時の処理は独自実装していないため成功時のテストのみ書きます。  
+
+```objective-c
+describe("countEngineer") {
+  // カウント数のチェック
+  it("count realm data") {
+    let count = subject.countEngineer()
+    expect(count).to(equal(1))
+  }
+}
+```
+
+##### createEngineerのテスト
+今度は`createEngineer`のテストを書きます。  
+このメソッドは同名の`Engineer`オブジェクトが保存されている場合は、新規オブジェクトを作成しないということがポイントです。  
+
+そのため、このメソッドに対するテストとしては、  
+
+* 新規`Engineer`オブジェクト作成が成功した場合：取得内容の整合性およびカウント数のチェック  
+* 新規`Engineer`オブジェクト作成が失敗した場合：カウント数が変わっていないことをチェック  
+
+を書くことになります。  
+
+```objective-c
+describe("createEngineer") {
+  // カウント数が変わっていないことのチェック
+  it("cannot create engineer") {
+    subject.createEngineer(name: "mock_name", level: 1, skills: ["swift"])
+    let engineers = subject.searchEngineerByName("mock_name")
+    expect(engineers).notTo(beNil())
+    expect(engineers?.count).to(equal(1))
+  }
+
+  // 取得内容の整合性およびカウント数のチェック
+  it("create new engineer") {
+    subject.createEngineer(name: "takahiro", level: 1, skills: ["swift", "spring boot", "react.js"])
+    let engineers = subject.searchEngineerByName("takahiro")
+    expect(engineers).notTo(beNil())
+    expect(engineers?.count).to(equal(1))
+    expect(engineers?[0].name).to(equal("takahiro"))
+    expect(engineers?[0].skills.count).to(equal(3))
+    expect(engineers?[0].skills[0].name).to(equal("swift"))
+    expect(engineers?[0].skills[1].name).to(equal("spring boot"))
+    expect(engineers?[0].skills[2].name).to(equal("react.js"))
+  }
+}
+```
+
+##### updateEngineerLevelByIdのテスト
+`updateEngineerLevelById`のテストを書きます。  
+このメソッドは成功可否に応じて`true / false`を返却します。  
+
+そのため、このメソッドに対するテストとしては、  
+
+* 更新成功：`true`であることをチェック  
+* 更新失敗：`false`であることをチェック  
+
+を書くことになります。  
+
+```objective-c
+describe("updateEngineerLevelById") {
+  // trueであることをチェック
+  it("update level for realm data by id") {
+    let updated = subject.updateEngineerLevelById(0, level: 2)
+    let engineer = subject.searchEngineerById(0)
+    expect(updated).to(beTrue())
+    expect(engineer?.level).to(equal(2))
+  }
+
+  // falseであることをチェック
+  it("cannot update level for realm data by id") {
+    let updated = subject.updateEngineerLevelById(2, level: 2)
+    expect(updated).to(beFalse())
+  }
+}
+```
+
+##### updateEngineerSkillByIdのテスト
+`updateEngineerSkillById`のテストを書きます。  
+このメソッドは成功可否に応じて`true / false`を返却します。  
+
+そのため、このメソッドに対するテストとしては、  
+
+* 更新成功：`true`であることをチェック  
+* 更新失敗：`false`であることをチェック  
+
+を書くことになります。  
+
+```objective-c
+describe("updateEngineerSkillById") {
+  // trueであることをチェック
+  it("update skill for realm data by id") {
+    let updated = subject.updateEngineerSkillById(0, skills: ["mock_skill_name_2"])
+    let engineer = subject.searchEngineerById(0)
+    expect(updated).to(beTrue())
+    expect(engineer?.skills.count).to(equal(2))
+    expect(engineer?.skills[0].name).to(equal("mock_skill_name"))
+    expect(engineer?.skills[1].name).to(equal("mock_skill_name_2"))
+  }
+
+  // falseであることをチェック
+  it("cannot update skill for realm data by id") {
+    let updated = subject.updateEngineerSkillById(2, skills: ["mock_skill_name_2"])
+    expect(updated).to(beFalse())
+  }
+}
+```
+
+### Quickでのテストコードの書式
+今回新たに出た書式についてまとめておきます。  
+
+#### notTo
+対象と異なることを期待するときに利用します。  
+
+* 書式例：`expect(engineer).notTo(beNil())`  
+* 期待値：`engineer`オブジェクトが`nil`でない  
+
+#### to
+対象と一致することを期待するときに利用します。  
+
+##### equalと組み合わせた場合
+
+* 書式例：`expect(engineer?.name).to(equal("mock_name"))`  
+* 期待値：`engineer`オブジェクトの`name`プロパティが`mock_name`と一致すること  
+
+##### beTrue / beFalseと組み合わせた場合
+
+* 書式例：`expect(updated).to(beTrue())`  
+* 期待値：`updated`の値が`true`と一致すること  
+
+#### beNil / equal / beTrue / beFalse
+
+それぞれ、  
+
+* beNil()：`nil`であること  
+* equal()：引数の値であること(数字や文字列などを引数に設定します)  
+* beTrue()：`true`であること  
+* beFalse()：`false`であること  
+
+を意味します。  
+
+### まとめ
+さて如何でしたでしょうか。  
+今回は最近の経験を元にiOSでテスト駆動型の開発をするなら...をイメージして書いてみました。  
+次はもっと複雑なパターンのテストを試しに書いてみても良いかなと思いつつ、本日はここまで。  
+
+参考:  
+
+* [Realm公式ドキュメント](https://realm.io/jp/docs/swift/latest/#realm-3)  
+* [Quickを使ってビューコントローラをテストする](https://news.realm.io/jp/news/rachel-bobbins-testing-view-controllers-quick/)  
+* [Quickの挙動をカスタマイズしましょう](https://github.com/Quick/Quick/blob/master/Documentation/ja/ConfiguringQuick.md)  
+* [QuickのExamplesとExample Groupsで、たくさんのテストでも整理整頓](https://github.com/Quick/Quick/blob/master/Documentation/ja/QuickExamplesAndGroups.md)  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>

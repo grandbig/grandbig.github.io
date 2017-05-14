@@ -18,6 +18,12 @@ categories: java springboot facebook
 トップページから新規アプリを追加しましょう。  
 ![facebook developersトップページ](/images/web_facebook_login_1.png)  
 
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
 <!-- more -->
 
 ２．必要項目を入力  
