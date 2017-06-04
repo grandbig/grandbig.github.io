@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-05-14T17:52:01+09:00</updated>
+  <updated>2017-06-04T22:03:18+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,184 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Mapに好きな画像を配置しよう！ Swift編]]></title>
+    <link href="http://grandbig.github.io/blog/2017/06/04/put-annotation-2/"/>
+    <updated>2017-06-04T21:24:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/06/04/put-annotation-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>実に3年半ほど前のブログを始めた当初、<a href="https://grandbig.github.io/blog/2013/09/28/put-annotation/">Mapに好きな画像を配置しよう！</a>といった記事を書いたことがありました。<br/>
+駆け出しのiOSエンジニアであった当時の筆者はお世辞にもObjective-CやiOS自体について詳しいとは言い難きスキルレベルでした。<br/>
+(当時のブログ記事に不必要な記述があるかとは思いますが、あえてそのまま残しています。)</p>
+
+<p>それから月日を経て、Swiftで同じ実装をするタイミングがあったことで、本記事を書こうと思い、今に至ります。<br/>
+簡単な内容ではありますが、感慨深く書かせて頂いています笑</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>CustomAnnotationを作成しよう</h3>
+
+<p>当時と同じ手法で実装してみます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">MapKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">CustomAnnotation:</span><span class="n">NSObject</span><span class="p">,</span> <span class="n">MKAnnotation</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">public</span> <span class="n">var</span> <span class="nl">coordinate:</span> <span class="n">CLLocationCoordinate2D</span>
+</span><span class='line'>  <span class="n">public</span> <span class="n">var</span> <span class="nl">title:</span> <span class="n">String</span><span class="o">?</span>
+</span><span class='line'>  <span class="n">public</span> <span class="n">var</span> <span class="nl">subtitle:</span> <span class="n">String</span><span class="o">?</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">init</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">,</span> <span class="nl">title:</span> <span class="n">String</span><span class="p">,</span> <span class="nl">subtitle:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">coordinate</span> <span class="o">=</span> <span class="n">coordinate</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">title</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">subtitle</span> <span class="o">=</span> <span class="n">subtitle</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記では、<code>MKAnnotation</code>を拡張し、<code>coordinate</code> / <code>title</code> / <code>subtitle</code>を初期化時に一斉に設定できるようなイニシャライザを用意しました。</p>
+
+<h3>Mapに画像を配置しよう</h3>
+
+<p>さて、ではMapに画像を配置する方法を見ていきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">MapKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">MKMapViewDelegate</span> <span class="p">{</span>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">mapView:</span> <span class="n">MKMapView</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// マップ関連の初期化処理</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">mapView</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">mapView</span><span class="p">.</span><span class="n">setUserTrackingMode</span><span class="p">(</span><span class="n">MKUserTrackingMode</span><span class="p">.</span><span class="n">followWithHeading</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">true</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// CustomAnnotationの初期化</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">ann</span> <span class="o">=</span> <span class="n">CustomAnnotation</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">latitude:</span> <span class="mf">35.685623</span><span class="p">,</span> <span class="nl">longitude:</span> <span class="mf">139.763153</span><span class="p">),</span> <span class="nl">title:</span> <span class="s">&quot;TEST&quot;</span><span class="p">,</span> <span class="nl">subtitle:</span> <span class="s">&quot;test&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="c1">// CustomAnnotationをマップに配置</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">mapView</span><span class="p">.</span><span class="n">addAnnotation</span><span class="p">(</span><span class="n">ann</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// MARK: MKMapViewDelegate</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">mapView</span><span class="p">(</span><span class="n">_</span> <span class="nl">mapView:</span> <span class="n">MKMapView</span><span class="p">,</span> <span class="n">viewFor</span> <span class="nl">annotation:</span> <span class="n">MKAnnotation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MKAnnotationView</span><span class="o">?</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">annotation</span> <span class="n">is</span> <span class="n">MKUserLocation</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// ユーザの現在地の青丸マークは置き換えない</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nb">nil</span>
+</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// CustomAnnotationの場合に画像を配置</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">identifier</span> <span class="o">=</span> <span class="s">&quot;Pin&quot;</span>
+</span><span class='line'>      <span class="n">var</span> <span class="nl">annotationView:</span> <span class="n">MKAnnotationView</span><span class="o">?</span> <span class="o">=</span> <span class="n">mapView</span><span class="p">.</span><span class="n">dequeueReusableAnnotationView</span><span class="p">(</span><span class="nl">withIdentifier:</span> <span class="n">identifier</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">annotationView</span> <span class="o">==</span> <span class="nb">nil</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">annotationView</span> <span class="o">=</span> <span class="n">MKAnnotationView</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">annotation:</span> <span class="n">annotation</span><span class="p">,</span> <span class="nl">reuseIdentifier:</span> <span class="n">identifier</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">annotationView</span><span class="o">?</span><span class="p">.</span><span class="n">image</span> <span class="o">=</span> <span class="n">UIImage</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">named:</span> <span class="s">&quot;xxxx&quot;</span><span class="p">)</span> <span class="c1">// 任意の画像名</span>
+</span><span class='line'>      <span class="n">annotationView</span><span class="o">?</span><span class="p">.</span><span class="n">annotation</span> <span class="o">=</span> <span class="n">annotation</span>
+</span><span class='line'>      <span class="n">annotationView</span><span class="p">.</span><span class="n">canShowCallout</span> <span class="o">=</span> <span class="n">true</span>  <span class="c1">// タップで吹き出しを表示</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">annotationView</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>結果は次のようになります。<br/>
+<img src="http://grandbig.github.io/images/annotation_practice.png" alt="Mapに画像を表示" /></p>
+
+<h3>まとめ</h3>
+
+<p>昔は様々なサイトを参考にしながら、解読しながら書いていたソースがすんなりと書くことができました。<br/>
+今回の記事を通して、もっと他にもSwiftに書き直しても良い記事がありそうだなと思いました。
+まあ、タイミング見てですかね&hellip;といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[FirebaseをiOSで使ってみよう！]]></title>
@@ -9165,178 +9343,6 @@ Exampleでは下記のように<code>store</code>を作成しています。</p>
 <li><a href="http://grandbig.github.io/blog/2016/12/06/reswift-2/">ReSwiftを勉強してみよう(2)</a></li>
 </ul>
 
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[転職面接で聞かれた質問から求めている人材を考えてみる]]></title>
-    <link href="http://grandbig.github.io/blog/2016/12/22/mycareer-2/"/>
-    <updated>2016-12-22T23:56:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/12/22/mycareer-2</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p><a href="http://qiita.com/advent-calendar/2016/job">転職 Advent Calendar 2016</a> 21日目の記事です。<br/>
-枠が1つ余っているようなので、年の瀬も近いことですし、他に思い出せることがないか今年の転職を振り返っていました。<br/>
-少しでも有益な情報を書こうという想いの元、表題の件について書いていきたいと思います。</p>
-
-<p><a href="http://grandbig.github.io/blog/2016/12/11/mycareer-1/">転職 Advent Calendar 2016: 人生初転職を振り返る</a>を先に読んで頂けると話に入りやすいかもしれません。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>自己紹介</h3>
-
-<p>改めて自己紹介です。</p>
-
-<ul>
-<li>社会人6年目</li>
-<li>30歳(転職活動時は29歳)</li>
-<li>独身</li>
-<li>iOSエンジニア(+雑多に技術に勤しむ)</li>
-</ul>
-
-
-<p>どうぞよろしくお願いします。</p>
-
-<h3>5W1Hで簡単に振り返る転職活動</h3>
-
-<ul>
-<li>Who: 私は</li>
-<li>When: 2015年10〜12月に</li>
-<li>Where: 東京都内で</li>
-<li>How: 転職エージェントを利用して</li>
-<li>Why: 内製エンジニアとして高みを目指して働きたいので</li>
-</ul>
-
-
-<p>転職活動をしていました。</p>
-
-<h3>転職活動で聞かれたこと</h3>
-
-<p>さて本題です。<br/>
-私は今回が初転職だったため、面接と言えば『新卒入社を目指した時』と『バイト先を探していた時』くらいの経験しかありませんでした。<br/>
-そのため、当初はどんなことを聞かれるのか想像もできませんでした。</p>
-
-<h4>共通して聞かれたこと</h4>
-
-<p>私は6社ほど面接を受けたのですが、どこでも必ず下記のことを聞かれました。</p>
-
-<ul>
-<li>自己紹介
-
-<ul>
-<li>これまでの経歴を説明する</li>
-<li>どんなプロジェクトに属し、どんな立場で、何をしてきたのか</li>
-<li>これまで経験したプロジェクトの規模</li>
-</ul>
-</li>
-<li>なぜ転職活動をしているのか</li>
-<li>自身の今後のキャリアについて</li>
-</ul>
-
-
-<p>「新卒のときにも聞かれたじゃん！」と思われるかもしれませんが、転職活動の方が実際に職務経歴があるため、より具体的に深掘って質問をされます。<br/>
-ここは次の観点で見られているのではないかなと思っています。</p>
-
-<ul>
-<li>質問への回答
-
-<ul>
-<li>要領を得た答えになっているか</li>
-<li>聞きたかったことが答えられているか</li>
-</ul>
-</li>
-<li>論理的思考能力
-
-<ul>
-<li>わかりやすくポイントを絞って説明できているか</li>
-</ul>
-</li>
-<li>人となりの確認
-
-<ul>
-<li>求める人物像にマッチしているか</li>
-<li>会社の文化や雰囲気にマッチするかどうか</li>
-</ul>
-</li>
-</ul>
-
-
-<h4>技術的な質問</h4>
-
-<p>新卒のときと大きく違ったのは具体的に技術質問をされることです。<br/>
-内心、ここまで具体的に聞かれるのだと驚いていました。<br/>
-例えば、</p>
-
-<ul>
-<li>Objective-Cの◯◯はどういうときに使っていますか？</li>
-<li>Objective-Cで◯◯する方法を説明してください</li>
-<li>Webアプリを開発するときに今なら AngularJS, React, Vue.js etc 何を使いますか？</li>
-<li>RDBMSとNoSQLの使い分けを教えてください(どういう時にNoSQLを使うか)</li>
-</ul>
-
-
-<p>などです。<br/>
-面接官の観点としては明快なのではないでしょうか？</p>
-
-<ul>
-<li>技術力のレベル
-
-<ul>
-<li>職務経歴書や履歴書の正当性を確認</li>
-<li>できないのにできると書いていないか</li>
-</ul>
-</li>
-</ul>
-
-
-<h4>印象に残った質問</h4>
-
-<p>印象に残った質問も幾つかありました。<br/>
-例えば、</p>
-
-<ol>
-<li>あなたがスゴイと思うエンジニアはどういう人か</li>
-<li>弊社のサービスの悪いところ/直した方が良いと思うところを上げてください</li>
-<li>この業界に変革を起こすためのアイデアを教えてください</li>
-</ol>
-
-
-<p>といったことです。<br/>
-これらはそれぞれ意図が異なる質問と思われます。</p>
-
-<p>1は「考え方が『 <strong>技術ファースト</strong> 』なのか『 <strong>プロダクトファースト</strong> 』なのか」ということだと思っています。<br/>
-2は「 <strong>興味を持ってプロダクトの下調べをしてきているか</strong> 」や「 <strong>エンジニアとして具体的に解決方法を提案できるか</strong> 」なのかなと思っています。<br/>
-3は「 <strong>業界に興味を持っているか</strong> 」や「 <strong>本気でビジョンを持って面接に臨んできているのか</strong> 」なのかなと思っています。</p>
-
-<h3>まとめ</h3>
-
-<p>振り返ってみると、いずれも自身が面接官であれば聞いてみたい質問ばかりです。<br/>
-『もし自身が面接官だったら』という視点で事前に考えをまとめてきていれば、面接で答えに困ることは少ないのかもしれませんね。</p>
-
-<p>ということで2016年もあと僅かですが、今年(もしくは来年)転職活動を控えている方々に少しでも参考になれば幸いです。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
