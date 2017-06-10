@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-06-05T00:16:51+09:00</updated>
+  <updated>2017-06-11T01:05:20+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,148 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[RealmSwiftでdistinctしよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/06/11/swift3-realm-2/"/>
+    <updated>2017-06-11T00:41:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/06/11/swift3-realm-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は<a href="https://github.com/realm/realm-cocoa/tree/master/RealmSwift">RealmSwift</a>に関するメモ書きです。<br/>
+<code>RealmSwift</code>を使って保存したデータを<code>distinct</code>したいときがあったのですが、<code>RealmSwift</code>内で定義されているわけではなさそうなので迷いました。<br/>
+よく考えてみれば、なんてことはなく<code>Swift</code>に標準で用意されたものを使えばよかったのでした。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>distinctする方法</h3>
+
+<p>さて、具体的な方法を見てみましょう。<br/>
+例として<code>RealmSwift</code>で保存するオブジェクトを下記のように定義します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Footprint.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> 足跡</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">Footprint:</span> <span class="n">Object</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">dynamic</span> <span class="n">var</span> <span class="kt">id</span><span class="o">:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>  <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">title:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>  <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">latitude:</span> <span class="n">Double</span> <span class="o">=</span> <span class="mf">0.0</span>
+</span><span class='line'>  <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">longitude:</span> <span class="n">Double</span> <span class="o">=</span> <span class="mf">0.0</span>
+</span><span class='line'>  <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">speed:</span> <span class="n">Double</span> <span class="o">=</span> <span class="mf">0.0</span>
+</span><span class='line'>  <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">direction:</span> <span class="n">Double</span> <span class="o">=</span> <span class="mf">0.0</span>
+</span><span class='line'>  <span class="n">dynamic</span> <span class="n">var</span> <span class="nl">created:</span> <span class="n">Double</span> <span class="o">=</span> <span class="n">Date</span><span class="p">().</span><span class="n">timeIntervalSince1970</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// プライマリーキーの設定</span>
+</span><span class='line'>  <span class="n">override</span> <span class="k">static</span> <span class="n">func</span> <span class="n">primaryKey</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">String</span><span class="o">?</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="s">&quot;id&quot;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// インデックスの設定</span>
+</span><span class='line'>  <span class="n">override</span> <span class="k">static</span> <span class="n">func</span> <span class="n">indexedProperties</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="p">[</span><span class="s">&quot;title&quot;</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>RealmSwift</code>で保存していくと、下記のような結果になるでしょう。</p>
+
+<p><img src="http://grandbig.github.io/images/realmswift_distinct_1.png" alt="RealmSwiftブラウザで結果を見てみる" /></p>
+
+<p>もし、これらのデータから<code>title</code>を<code>distinct</code>して取得したい場合があったとしましょう。<br/>
+その場合は下記のように取得します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// FootprintManager.swift</span>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm">  保存した足跡タイトルを取得する処理</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">  - returns: [タイトル]の配列</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">let</span> <span class="n">distinctTitles</span> <span class="o">=</span> <span class="n">Set</span><span class="p">(</span><span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Footprint</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">value</span><span class="p">(</span><span class="nl">forKey:</span> <span class="s">&quot;title&quot;</span><span class="p">)</span> <span class="n">as</span><span class="o">!</span> <span class="p">[</span><span class="n">String</span><span class="p">])</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">distinctTitles</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>実はSwiftでは<code>Set</code>という重複を許さない集合体を定義するための型が用意されています。<br/>
+なので、<code>RealmSwift</code>から単に取得してきた値を<code>Set</code>型に変換することで<code>distinct</code>と同じ結果が得られるということになります。</p>
+
+<h3>まとめ</h3>
+
+<p>さていかがでしたでしょうか。<br/>
+<code>distinct</code>は決して負荷の軽い処理ではありませんが、様々な場面で求められることでしょう。<br/>
+使い方を知っておいて損はありません。<br/>
+ということで今回はメモ書きでした。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Mapに好きな画像を配置しよう！ Swift編]]></title>
@@ -8886,463 +9028,6 @@ Reduxの理解を促進する上で重要なのは、</p>
 <p>だと思っています。<br/>
 ここまでの流れさえ理解できてしまえば、応用的な内容も躓かずに理解できるはずです。<br/>
 さて次回はいよいよ<code>connect()</code>を利用したReact&amp;Reduxの実装について見ていきます。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Reduxの基礎を学ぼう！〜iOSエンジニアが苦しんだReduxの基礎(1)〜]]></title>
-    <link href="http://grandbig.github.io/blog/2016/12/31/redux-base-1/"/>
-    <updated>2016-12-31T01:17:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/12/31/redux-base-1</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>今年も残すところ1日となりましたね。<br/>
-筆者にとって2016年は新しいことだらけの1年となりました。<br/>
-技術的にもこれまで触ってこなかったものに挑戦する機会を得ることができました。<br/>
-その1つは本日のお題である <strong>Redux</strong> です。<br/>
-実は現在進行系で理解に苦しんでいる途中なので、休暇中に理解を促進する意味も込めて記事を書きたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>Reduxは難しい！？</h3>
-
-<p>ここ最近、iOSエンジニアとして活動してきた筆者にとって <strong>なぜReduxが難しいと感じたのか</strong> について語りたいと思います。<br/>
-結論から言うと、 <strong>ReactとReduxを組み合わせた場合の実装から入ったため</strong> 難しく感じたのではないかと思っています。<br/>
-具体的には、ReactとReduxの公式ページや様々な紹介ページを読むと必ず出てくる <strong>connect()</strong> がかなり難しいと感じました。</p>
-
-<p>プロジェクトに参画するタイミングによっては悠長に勉強をしている場合ではないと思いますが、<br/>
-まずは素のReduxを理解することが最も近道だと実体験として感じました。</p>
-
-<p>では、素のReduxはどうやって学べば良いのでしょうか？<br/>
-Reduxで検索をしてもほとんどの場合、Reactと一緒に使われている記事しか出てこないと思います。<br/>
-答えは簡単です！<br/>
-(当たり前ではあるのですが、)公式のExampleを勉強すれば良いのです。</p>
-
-<h3>Counter Vanilla サンプルで学ぼう！</h3>
-
-<p><a href="http://redux.js.org/docs/introduction/Examples.html">公式ReduxページのExample</a>の先頭に書かれている <strong>Counter Vanilla</strong> を見ていきましょう。<br/>
-ソースコードは下記のようになっています。<br/>
-(少々、Reduxの原則と照らし合わせられるようにソースコードを改変しています。)</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c">&lt;!--</span> <span class="nx">index</span><span class="p">.</span><span class="nx">html</span> <span class="o">--&gt;</span>
-</span><span class='line'><span class="o">&lt;!</span><span class="nx">DOCTYPE</span> <span class="nx">html</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="nx">html</span><span class="o">&gt;</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="nx">head</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="nx">title</span><span class="o">&gt;</span><span class="nx">Redux</span> <span class="nx">basic</span> <span class="nx">example</span><span class="o">&lt;</span><span class="err">/title&gt;</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="nx">script</span> <span class="nx">src</span><span class="o">=</span><span class="s2">&quot;https://unpkg.com/redux@latest/dist/redux.min.js&quot;</span><span class="o">&gt;&lt;</span><span class="err">/script&gt;</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="err">/head&gt;</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="nx">body</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="nx">div</span><span class="o">&gt;</span>
-</span><span class='line'>      <span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span>
-</span><span class='line'>        <span class="nx">Clicked</span><span class="o">:</span> <span class="o">&lt;</span><span class="nx">span</span> <span class="nx">id</span><span class="o">=</span><span class="s2">&quot;value&quot;</span><span class="o">&gt;</span><span class="mi">0</span><span class="o">&lt;</span><span class="err">/span&gt; times</span>
-</span><span class='line'>        <span class="o">&lt;</span><span class="nx">button</span> <span class="nx">id</span><span class="o">=</span><span class="s2">&quot;increment&quot;</span><span class="o">&gt;+&lt;</span><span class="err">/button&gt;</span>
-</span><span class='line'>        <span class="o">&lt;</span><span class="nx">button</span> <span class="nx">id</span><span class="o">=</span><span class="s2">&quot;decrement&quot;</span><span class="o">&gt;-&lt;</span><span class="err">/button&gt;</span>
-</span><span class='line'>        <span class="o">&lt;</span><span class="nx">button</span> <span class="nx">id</span><span class="o">=</span><span class="s2">&quot;incrementIfOdd&quot;</span><span class="o">&gt;</span><span class="nx">Increment</span> <span class="k">if</span> <span class="nx">odd</span><span class="o">&lt;</span><span class="err">/button&gt;</span>
-</span><span class='line'>        <span class="o">&lt;</span><span class="nx">button</span> <span class="nx">id</span><span class="o">=</span><span class="s2">&quot;incrementAsync&quot;</span><span class="o">&gt;</span><span class="nx">Increment</span> <span class="nx">async</span><span class="o">&lt;</span><span class="err">/button&gt;</span>
-</span><span class='line'>      <span class="o">&lt;</span><span class="err">/p&gt;</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="err">/div&gt;</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="nx">script</span><span class="o">&gt;</span>
-</span><span class='line'>      <span class="kr">const</span> <span class="nx">INCREMENT</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">type</span><span class="o">:</span> <span class="s1">&#39;INCREMENT&#39;</span> <span class="p">};</span>
-</span><span class='line'>      <span class="kr">const</span> <span class="nx">DECREMENT</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">type</span><span class="o">:</span> <span class="s1">&#39;DECREMENT&#39;</span> <span class="p">};</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="kd">function</span> <span class="nx">increment</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="nx">INCREMENT</span><span class="p">;</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="kd">function</span> <span class="nx">decrement</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="nx">DECREMENT</span><span class="p">;</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="kd">function</span> <span class="nx">counter</span><span class="p">(</span><span class="nx">state</span><span class="p">,</span> <span class="nx">action</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">state</span> <span class="o">===</span> <span class="s1">&#39;undefined&#39;</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">return</span> <span class="mi">0</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">switch</span> <span class="p">(</span><span class="nx">action</span><span class="p">.</span><span class="nx">type</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">case</span> <span class="s1">&#39;INCREMENT&#39;</span><span class="o">:</span>
-</span><span class='line'>            <span class="k">return</span> <span class="nx">state</span> <span class="o">+</span> <span class="mi">1</span>
-</span><span class='line'>          <span class="k">case</span> <span class="s1">&#39;DECREMENT&#39;</span><span class="o">:</span>
-</span><span class='line'>            <span class="k">return</span> <span class="nx">state</span> <span class="o">-</span> <span class="mi">1</span>
-</span><span class='line'>          <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>            <span class="k">return</span> <span class="nx">state</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="kd">var</span> <span class="nx">store</span> <span class="o">=</span> <span class="nx">Redux</span><span class="p">.</span><span class="nx">createStore</span><span class="p">(</span><span class="nx">counter</span><span class="p">)</span>
-</span><span class='line'>      <span class="kd">var</span> <span class="nx">valueEl</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="kd">function</span> <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="nx">valueEl</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">store</span><span class="p">.</span><span class="nx">getState</span><span class="p">().</span><span class="nx">toString</span><span class="p">()</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="nx">render</span><span class="p">()</span>
-</span><span class='line'>      <span class="nx">store</span><span class="p">.</span><span class="nx">subscribe</span><span class="p">(</span><span class="nx">render</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;increment&#39;</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>          <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">(</span><span class="nx">increment</span><span class="p">())</span>
-</span><span class='line'>        <span class="p">})</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;decrement&#39;</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>          <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">(</span><span class="nx">decrement</span><span class="p">())</span>
-</span><span class='line'>        <span class="p">})</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;incrementIfOdd&#39;</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="nx">store</span><span class="p">.</span><span class="nx">getState</span><span class="p">()</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>            <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">(</span><span class="nx">increment</span><span class="p">())</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>        <span class="p">})</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;incrementAsync&#39;</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>          <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>            <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">(</span><span class="nx">increment</span><span class="p">())</span>
-</span><span class='line'>          <span class="p">},</span> <span class="mi">1000</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">})</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="err">/script&gt;</span>
-</span><span class='line'>  <span class="o">&lt;</span><span class="err">/body&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="err">/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ブラウザに表示される画面は下記のようになります。<br/>
-<img src="http://grandbig.github.io/images/redux_base_1.png" alt="Counter Example画面" /></p>
-
-<p>実装されている機能としては下記の4つになります。</p>
-
-<ul>
-<li>「+」ボタンを選択するとClick数が+1される</li>
-<li>「-」ボタンを選択するとClick数が-1される</li>
-<li>「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される</li>
-<li>「Increment async」ボタンを選択すると1秒後にClick数が+1される</li>
-</ul>
-
-
-<p>これだけを見せられても実装内容がよくわからない(かもしれない)ですよね？<br/>
-そこで1つ1つReduxの原則と照らし合わせつつ見ていきましょう。</p>
-
-<h4>Actions</h4>
-
-<p><code>Actions</code>とは</p>
-
-<ul>
-<li>何をするアクションなのかを表すオブジェクト</li>
-<li><code>type</code>プロパティを必ず持つ</li>
-</ul>
-
-
-<p>です。<br/>
-Exampleでは、下記に当たります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kr">const</span> <span class="nx">INCREMENT</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">type</span><span class="o">:</span> <span class="s1">&#39;INCREMENT&#39;</span> <span class="p">}</span>
-</span><span class='line'><span class="kr">const</span> <span class="nx">DECREMENT</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">type</span><span class="o">:</span> <span class="s1">&#39;DECREMENT&#39;</span> <span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Action Creators</h4>
-
-<p><code>Action Creators</code>とは</p>
-
-<ul>
-<li><code>Action</code>を作成するメソッド</li>
-</ul>
-
-
-<p>です。<br/>
-Exampleでは、下記に当たります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span> <span class="nx">increment</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">return</span> <span class="nx">INCREMENT</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="kd">function</span> <span class="nx">decrement</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">return</span> <span class="nx">DECREMENT</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Reducers</h4>
-
-<p><code>Reducers</code>とは</p>
-
-<ul>
-<li><code>Action</code>と<code>State</code>から新たな<code>State</code>を作成して返す</li>
-<li>ポイントは<code>State</code>を更新するのではなく、 新しく作成した<code>State</code> を返すということ</li>
-</ul>
-
-
-<p>です。<br/>
-Exampleでは、下記に当たります。<br/>
-※Counter Exampleのため、<code>state</code>は <strong>カウント数</strong> を表します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span> <span class="nx">counter</span><span class="p">(</span><span class="nx">state</span><span class="p">,</span> <span class="nx">action</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">state</span> <span class="o">===</span> <span class="s1">&#39;undefined&#39;</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">// 初期値は0として返却する</span>
-</span><span class='line'>    <span class="k">return</span> <span class="mi">0</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">switch</span> <span class="p">(</span><span class="nx">action</span><span class="p">.</span><span class="nx">type</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">case</span> <span class="s1">&#39;INCREMENT&#39;</span><span class="o">:</span>
-</span><span class='line'>      <span class="k">return</span> <span class="nx">state</span> <span class="o">+</span> <span class="mi">1</span>
-</span><span class='line'>    <span class="k">case</span> <span class="s1">&#39;DECREMENT&#39;</span><span class="o">:</span>
-</span><span class='line'>      <span class="k">return</span> <span class="nx">state</span> <span class="o">-</span> <span class="mi">1</span>
-</span><span class='line'>    <span class="k">default</span><span class="o">:</span>
-</span><span class='line'>      <span class="k">return</span> <span class="nx">state</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Store</h4>
-
-<p><code>Store</code>とは</p>
-
-<ul>
-<li>アプリ内で必ず1つの存在</li>
-<li>アプリの状態を管理する</li>
-<li><code>State</code>を更新するための<code>dispatch</code>を提供する
-
-<ul>
-<li>言い換えれば<code>dispatch(action)</code>をすることで<code>Store</code>に<code>State</code>の変更を知らせられる</li>
-</ul>
-</li>
-<li><code>State</code>の状態を追えるように<code>subscribe</code>を提供する
-
-<ul>
-<li>言い換えれば<code>subscribe(listener)</code>をすることで<code>listener</code>は<code>getState</code>を通して<code>State</code>の状態を取得できる</li>
-</ul>
-</li>
-</ul>
-
-
-<p>です。<br/>
-Exampleでは下記のように<code>store</code>を作成しています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// Storeを作成するためのcreateStoreメソッドの第一引数にReducerを渡す</span>
-</span><span class='line'><span class="kd">var</span> <span class="nx">store</span> <span class="o">=</span> <span class="nx">Redux</span><span class="p">.</span><span class="nx">createStore</span><span class="p">(</span><span class="nx">counter</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>今回はCounter Exampleであるため、</p>
-
-<ul>
-<li>「+」ボタンを選択したら「+1」された結果が表示される</li>
-<li>「-」ボタンを選択したら「-1」された結果が表示される</li>
-</ul>
-
-
-<p>ようになっています。<br/>
-よって、「+ / -」ボタンをクリックしたタイミングで</p>
-
-<ul>
-<li>Storeに<code>state</code>の変更を知らせる</li>
-<li><code>state</code>の変更を結果として描画に反映させる</li>
-</ul>
-
-
-<p>必要があります。<br/>
-これはStore項目の冒頭で書いた<code>dispatch</code>と<code>listener</code>を利用することで達成できます。</p>
-
-<p>まずは<code>dispatch</code>から見ていきましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// 「+」ボタンを選択した場合</span>
-</span><span class='line'><span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;increment&#39;</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">(</span><span class="nx">increment</span><span class="p">())</span>
-</span><span class='line'>  <span class="p">})</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// 「-」ボタンを選択した場合</span>
-</span><span class='line'><span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;decrement&#39;</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">(</span><span class="nx">decrement</span><span class="p">())</span>
-</span><span class='line'>  <span class="p">})</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記のようにクリックしたタイミングで<code>store.dispatch</code>に<code>Action Creators</code>である<code>increment()</code>および<code>decrement()</code>で作成した<code>Actions</code>を渡しています。<br/>
-こうすることで、『 <strong>Storeにstateの変更を知らせる</strong> 』ことができます。</p>
-
-<p>次に<code>listener</code>から見ていきましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// Click数を示すDOMの取得</span>
-</span><span class='line'><span class="kd">var</span> <span class="nx">valueEl</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">)</span>
-</span><span class='line'><span class="c1">// 最新のstateの状態をClick数に反映するメソッド</span>
-</span><span class='line'><span class="kd">function</span> <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>  <span class="nx">valueEl</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">store</span><span class="p">.</span><span class="nx">getState</span><span class="p">().</span><span class="nx">toString</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="c1">// 初期状態を表示するために実行</span>
-</span><span class='line'><span class="nx">render</span><span class="p">()</span>
-</span><span class='line'><span class="c1">// subscribeの第一引数にrenderメソッドを指定</span>
-</span><span class='line'><span class="nx">store</span><span class="p">.</span><span class="nx">subscribe</span><span class="p">(</span><span class="nx">render</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記のように、<code>store.subscribe</code>に<code>render</code>メソッドを渡すことで、<code>dispatch</code>実行して<code>state</code>の状態が変化したときに、毎回<code>render</code>メソッドが実行されることになります。<br/>
-こうすることで、『 <strong>stateの変更結果として描画に反映させる</strong> 』ことができます。<br/>
-<code>subscribe</code>は<code>state</code>の状態を監視する役割を持っていることがわかると思います。</p>
-
-<h3>まとめ</h3>
-
-<p>さて如何でしたでしょうか？<br/>
-今回はReduxの本質を理解するために、あえてReactを利用するExampleは選択しませんでした。<br/>
-「React&amp;Reduxが全然わからん！！」という方はゆっくりと時間をとってReduxからチャレンジしてみることをオススメします。<br/>
-次回はReactとの組み合わせを見ていきたいと思います。</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="http://redux.js.org/docs/introduction/Examples.html">公式ReduxページのExample</a></li>
-<li><a href="http://grandbig.github.io/blog/2016/12/06/reswift-2/">ReSwiftを勉強してみよう(2)</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
