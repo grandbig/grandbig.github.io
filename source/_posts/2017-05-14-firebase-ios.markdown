@@ -3,7 +3,7 @@ layout: post
 title: "FirebaseをiOSで使ってみよう！"
 date: 2017-05-14 16:30
 comments: true
-categories: ios firebase
+categories: ios swift firebase google
 ---
 
 ### はじめに

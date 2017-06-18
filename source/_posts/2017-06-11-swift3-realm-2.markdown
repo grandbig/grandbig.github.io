@@ -1,0 +1,90 @@
+---
+layout: post
+title: "RealmSwiftでdistinctしよう！"
+date: 2017-06-11 00:41
+comments: true
+categories: ios swift realm
+---
+
+### はじめに
+今回は[RealmSwift](https://github.com/realm/realm-cocoa/tree/master/RealmSwift)に関するメモ書きです。  
+`RealmSwift`を使って保存したデータを`distinct`したいときがあったのですが、`RealmSwift`内で定義されているわけではなさそうなので迷いました。  
+よく考えてみれば、なんてことはなく`Swift`に標準で用意されたものを使えばよかったのでした。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### distinctする方法
+さて、具体的な方法を見てみましょう。  
+例として`RealmSwift`で保存するオブジェクトを下記のように定義します。  
+
+```objective-c
+// Footprint.swift
+import Foundation
+import RealmSwift
+
+/**
+ 足跡
+ */
+class Footprint: Object {
+  dynamic var id: Int = 0
+  dynamic var title: String = ""
+  dynamic var latitude: Double = 0.0
+  dynamic var longitude: Double = 0.0
+  dynamic var speed: Double = 0.0
+  dynamic var direction: Double = 0.0
+  dynamic var created: Double = Date().timeIntervalSince1970
+
+  // プライマリーキーの設定
+  override static func primaryKey() -> String? {
+    return "id"
+  }
+
+  // インデックスの設定
+  override static func indexedProperties() -> [String] {
+    return ["title"]
+  }
+}
+```
+
+`RealmSwift`で保存していくと、下記のような結果になるでしょう。  
+
+![RealmSwiftブラウザで結果を見てみる](/images/realmswift_distinct_1.png)  
+
+もし、これらのデータから`title`を`distinct`して取得したい場合があったとしましょう。  
+その場合は下記のように取得します。  
+
+```objective-c
+// FootprintManager.swift
+/**
+  保存した足跡タイトルを取得する処理
+
+  - returns: [タイトル]の配列
+ */
+func distinctByTitle() -> [String] {
+  let realm = try! Realm()
+  let distinctTitles = Set(realm.objects(Footprint.self).value(forKey: "title") as! [String])
+
+  return distinctTitles
+}
+```
+
+実はSwiftでは`Set`という重複を許さない集合体を定義するための型が用意されています。  
+なので、`RealmSwift`から単に取得してきた値を`Set`型に変換することで`distinct`と同じ結果が得られるということになります。  
+
+### まとめ
+さていかがでしたでしょうか。  
+`distinct`は決して負荷の軽い処理ではありませんが、様々な場面で求められることでしょう。  
+使い方を知っておいて損はありません。  
+ということで今回はメモ書きでした。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
