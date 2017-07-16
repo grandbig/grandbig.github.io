@@ -4,7 +4,7 @@
   <title><![CDATA[Category: google | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/google/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-06-30T00:26:26+09:00</updated>
+  <updated>2017-07-17T01:15:42+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,216 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Google Maps SDK for iOSを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/07/16/google-maps-sdk-2/"/>
+    <updated>2017-07-16T23:43:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/07/16/google-maps-sdk-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>前回、<a href="http://grandbig.github.io/blog/2017/06/18/google-maps-sdk/">Google Maps SDK for iOSを導入してみよう！</a>について説明しましたが、今回はもう一歩踏み込んで使い方を見ていこうと思います。</p>
+
+<p>これまた本家の<a href="https://developers.google.com/maps/documentation/ios-sdk/start?hl=ja">Google スタートガイド</a>を見ればできることも多いのですが、見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Google Mapにマーカを配置する</h3>
+
+<p>Google Mapを使う上で必ずと言っていいほど利用する機能である「マーカの配置」を見ていきましょう。<br/>
+これは実に簡単で「マーカを配置するメソッド」はたった下記だけで実装できます。</p>
+
+<p>```objective-c
+/**
+  マップにマーカを設置する処理</p>
+
+<ul>
+<li>parameter title: マーカのタイトル</li>
+<li>parameter coordinate: 位置</li>
+<li>parameter iconName: アイコン名</li>
+<li>parameter completion: Callback
+*/
+private func putMarker(title: String?, coordinate: CLLocationCoordinate2D, iconName: String?, completion: @escaping ((GMSMarker) &ndash;> Void)) {
+// マーカの生成
+let marker = GMSMarker()
+marker.title = title
+marker.position = coordinate
+if iconName != nil {
+// アイコン名が指定されている場合は画像を設定
+marker.icon = UIImage.init(named: iconName!)
+}
+marker.map = self.mapView
+completion(marker)
+}
+```</li>
+</ul>
+
+
+<h3>Google Mapからマーカを削除する</h3>
+
+<p>逆にGoogle Mapからマーカを削除する場合はどうするかを見ていきます。<br/>
+これも簡単なので、下記のように実装できます。</p>
+
+<p>```objective-c
+/**
+  マップからマーカを削除する処理</p>
+
+<ul>
+<li>parameter marker: マーカ
+*/
+private func deleteMarker(marker: GMSMarker) {
+marker.map = nil
+}
+```</li>
+</ul>
+
+
+<h3>2つのマーカが入る縮尺にGoogle Mapを変更する</h3>
+
+<p>こちらはGoogle Mapを捉えるカメラの位置を移動することで実現可能です。</p>
+
+<p>```objective-c
+@IBOutlet weak var mapView: GMSMapView!</p>
+
+<p>&lt;省略></p>
+
+<p>/**
+  現在地と指定した場所の両方が入るようにマップの縮尺を変更する処理</p>
+
+<ul>
+<li>parameter coordinate: 場所
+*/
+private func changeCameraPosition(fromCoordinate: CLLocationCoordinate2D, toCoordinate: CLLocationCoordinate2D) {
+let bounds = GMSCoordinateBounds(coordinate: fromCoordinate, coordinate: toCoordinate)
+let margin: CGFloat = 50.0  // 上下左右に設定するマージン
+guard let camera = self.mapView.camera(for: bounds, insets: UIEdgeInsets(top: margin, left: margin, bottom: margin, right: margin)) else {
+return
+}
+self.mapView.camera = camera
+}
+```</li>
+</ul>
+
+
+<h3>Google Mapに線を描画する</h3>
+
+<p>これもそんなに難しくありません。</p>
+
+<p>```objective-c
+@IBOutlet weak var mapView: GMSMapView!
+private var routePath: GMSPolyline = GMSPolyline()</p>
+
+<p>&lt;省略></p>
+
+<p>/**
+  マップへの線描画</p>
+
+<ul>
+<li>parameter fromCoordinate: 起点位置</li>
+<li>parameter toCoordinate: 終点位置
+*/
+private func drawPolyline(fromCoordinate: CLLocationCoordinate2D, toCoordinate: CLLocationCoordinate2D) {</li>
+</ul>
+
+
+<p>  let path = GMSMutablePath()
+  path.add(fromCoordinate)
+  path.add(toCoordinate)</p>
+
+<p>  self.routePath = GMSPolyline(path: path)
+  self.routePath.strokeWidth = 3.0
+  self.routePath.map = self.mapView
+}
+```</p>
+
+<h3>Google Mapから線を削除する</h3>
+
+<p>先程描画した線を削除するには下記で実行できます。</p>
+
+<p>```objective-c
+private var routePath: GMSPolyline = GMSPolyline()</p>
+
+<p>&lt;省略></p>
+
+<p>/<em>*
+  マップへの描画線を削除する処理
+</em>/
+private func clearRoutePath() {
+  self.routePath.map = nil
+}
+```</p>
+
+<h3>緯度/経度とピクセル座標の相互変換</h3>
+
+<p>これは利用ケースが限られるかもしれませんが、覚えておくと役に立つ処理です。<br/>
+Google Mapは複数のマップ座標を扱うことができます。</p>
+
+<ul>
+<li>緯度/経度を用いて地球上にプロット</li>
+<li>世界座標: メルカトル図法を用いて緯度/経度を地図に変換した座標</li>
+<li>ピクセル座標: 世界座標を指定したズームレベルで変換した座標</li>
+<li>タイル座標: 地図を複数の画像に分けたときの座標</li>
+</ul>
+
+
+<p>ほとんどの場合は緯度/経度をマップにプロットすると思いますが、<br/>
+筆者は先日ピクセル座標を利用する場面がありました。</p>
+
+<p>それは、「Google Mapの上に透過Viewが載せられた状態でGoogle Mapにマーカを配置する」というものでした。
+今回はこれを例に変換方法を見ていきましょう。</p>
+
+<h4>ピクセル座標を緯度/経度に変換</h4>
+
+<p>これはGoogle Maps SDKに用意されています。</p>
+
+<p><code>objective-c
+let pressPoint = CGPoint(x: 100, y: 200)
+let coordinate = self.mapView.projection.coordinate(for: pressPoint)
+</code></p>
+
+<p>たったのこれだけでピクセル座標を緯度/経度に変換できるんです。</p>
+
+<h4>緯度/経度をピクセル座標に変換</h4>
+
+<p>これもGoogle Maps SDKに用意されています。</p>
+
+<p><code>objective-c
+let coordinate = CLLocationCoordinate2D(latitude: 35, longitude: 139)
+let point = self.mapView.projection.point(for: coordinate)
+</code></p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+JavaScriptでGoogle Maps APIを利用していた方々も臆することなく使えるような簡単さだと思います。<br/>
+次回はGeocoding APIやDirection APIを見ていきたいと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Google Maps SDK for iOSを導入してみよう！]]></title>
