@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-07-17T22:28:26+09:00</updated>
+  <updated>2017-07-17T22:57:52+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,241 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Geocoding APIとDirections APIを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/07/17/google-maps-api/"/>
+    <updated>2017-07-17T22:32:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/07/17/google-maps-api</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日はGoogleが提供している<a href="https://developers.google.com/maps/documentation/geocoding/intro?hl=ja">Geocoding API</a>と<a href="https://developers.google.com/maps/documentation/directions/?hl=ja">Directions API</a>をiOSで使ってみた話を書きます。</p>
+
+<p>まずは、Google Cloud Platform > API Managerから <strong>Geocoding API</strong> と <strong>Directions API</strong> を有効にしましょう。</p>
+
+<p><img src="http://grandbig.github.io/images/google_api_1.png" alt="API Manager" /></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Geocoding APIの利用</h3>
+
+<p>Googleから提供されたAPIを利用し、それがJSON形式が返却されるため、<code>Alamofire</code>と<code>SwiftyJSON</code>をあわせて利用します。</p>
+
+<p>因みに、APIキーは<a href="http://grandbig.github.io/blog/2017/06/18/google-maps-sdk/">Google Maps SDK for iOSを導入してみよう！</a>で説明した通り<code>key.plist</code>に記載することでGitHubにアップすることを避けています。</p>
+
+<p>今回実装する処理は <strong>住所を緯度/経度に変換する処理</strong> になります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Alamofire</span>
+</span><span class='line'><span class="n">import</span> <span class="n">SwiftyJSON</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="n">Geocoding</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">/// API Key</span>
+</span><span class='line'>  <span class="n">private</span> <span class="n">var</span> <span class="nl">apiKey:</span> <span class="n">String</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+</span><span class='line'>  <span class="c1">/// Geocoding APIのベースURL</span>
+</span><span class='line'>  <span class="n">private</span> <span class="n">let</span> <span class="nl">baseURL:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;https://maps.googleapis.com/maps/api/geocode/json?language=ja&quot;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">/// 初期化処理</span>
+</span><span class='line'>  <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="s">&quot;key&quot;</span><span class="p">,</span> <span class="nl">ofType:</span> <span class="s">&quot;plist&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s">&quot;googleWebApiKey&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">apiKey</span> <span class="o">=</span> <span class="n">apiKey</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="cm">/**</span>
+</span><span class='line'><span class="cm">   ジオコーディング</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">   - parameter address: 住所</span>
+</span><span class='line'><span class="cm">   - parameter completion: 緯度/経度を返すcallback</span>
+</span><span class='line'><span class="cm">   */</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">geocoding</span><span class="p">(</span><span class="nl">address:</span> <span class="n">String</span><span class="p">,</span> <span class="nl">completion:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">((</span><span class="n">CLLocationCoordinate2D</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">requestURL</span> <span class="o">=</span> <span class="s">&quot;\(baseURL)&amp;key=\(String(describing: self.apiKey))&quot;</span>
+</span><span class='line'>    <span class="n">Alamofire</span><span class="p">.</span><span class="n">request</span><span class="p">(</span><span class="n">requestURL</span><span class="p">,</span> <span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">parameters:</span> <span class="p">[</span><span class="s">&quot;address&quot;</span><span class="o">:</span> <span class="n">address</span><span class="p">],</span> <span class="nl">encoding:</span> <span class="n">URLEncoding</span><span class="p">.</span><span class="k">default</span><span class="p">,</span> <span class="nl">headers:</span> <span class="nb">nil</span><span class="p">).</span><span class="n">responseJSON</span> <span class="p">{</span> <span class="n">response</span> <span class="k">in</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">json</span> <span class="o">=</span> <span class="n">JSON</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">value</span> <span class="n">as</span> <span class="n">Any</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">guard</span> <span class="n">let</span> <span class="n">latitude</span> <span class="o">=</span> <span class="n">json</span><span class="p">[</span><span class="s">&quot;results&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;geometry&quot;</span><span class="p">][</span><span class="s">&quot;location&quot;</span><span class="p">][</span><span class="s">&quot;lat&quot;</span><span class="p">].</span><span class="kt">double</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">guard</span> <span class="n">let</span> <span class="n">longitude</span> <span class="o">=</span> <span class="n">json</span><span class="p">[</span><span class="s">&quot;results&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;geometry&quot;</span><span class="p">][</span><span class="s">&quot;location&quot;</span><span class="p">][</span><span class="s">&quot;lng&quot;</span><span class="p">].</span><span class="kt">double</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">completion</span><span class="p">(</span><span class="n">CLLocationCoordinate2D</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">latitude:</span> <span class="n">latitude</span><span class="p">,</span> <span class="nl">longitude:</span> <span class="n">longitude</span><span class="p">))</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Directions APIの利用</h3>
+
+<p>ここで実装する処理は <strong>開始地点から終了地点までの道順を取得する処理</strong> になります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Alamofire</span>
+</span><span class='line'><span class="n">import</span> <span class="n">SwiftyJSON</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="n">Direction</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">/// API Key</span>
+</span><span class='line'>  <span class="n">private</span> <span class="n">var</span> <span class="nl">apiKey:</span> <span class="n">String</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+</span><span class='line'>  <span class="c1">/// Geocoding APIのベースURL</span>
+</span><span class='line'>  <span class="n">private</span> <span class="n">let</span> <span class="nl">baseURL:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;https://maps.googleapis.com/maps/api/directions/json?language=ja&amp;mode=walking&quot;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">/// 初期化処理</span>
+</span><span class='line'>  <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="s">&quot;key&quot;</span><span class="p">,</span> <span class="nl">ofType:</span> <span class="s">&quot;plist&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s">&quot;googleWebApiKey&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">apiKey</span> <span class="o">=</span> <span class="n">apiKey</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="cm">/**</span>
+</span><span class='line'><span class="cm">   目的地までの道順を取得</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">   - parameter from: 開始地点</span>
+</span><span class='line'><span class="cm">   - parameter to: 終了地点</span>
+</span><span class='line'><span class="cm">   - parameter completion: 道順を返すcallback</span>
+</span><span class='line'><span class="cm">   */</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">getRoutes</span><span class="p">(</span><span class="nl">from:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">,</span> <span class="nl">to:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">,</span> <span class="nl">completion:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">((</span><span class="n">JSON</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">requestURL</span> <span class="o">=</span> <span class="s">&quot;\(baseURL)&amp;key=\(String(describing: self.apiKey))&quot;</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">parameters</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;origin&quot;</span><span class="o">:</span> <span class="s">&quot;\(from.latitude),\(from.longitude)&quot;</span><span class="p">,</span> <span class="s">&quot;destination&quot;</span><span class="o">:</span> <span class="s">&quot;\(to.latitude),\(to.longitude)&quot;</span><span class="p">]</span>
+</span><span class='line'>    <span class="n">Alamofire</span><span class="p">.</span><span class="n">request</span><span class="p">(</span><span class="n">requestURL</span><span class="p">,</span> <span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">parameters:</span> <span class="n">parameters</span><span class="p">,</span> <span class="nl">encoding:</span> <span class="n">URLEncoding</span><span class="p">.</span><span class="k">default</span><span class="p">,</span> <span class="nl">headers:</span> <span class="nb">nil</span><span class="p">).</span><span class="n">responseJSON</span> <span class="p">{</span> <span class="n">response</span> <span class="k">in</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">json</span> <span class="o">=</span> <span class="n">JSON</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">value</span> <span class="n">as</span> <span class="n">Any</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">steps</span> <span class="o">=</span> <span class="n">json</span><span class="p">[</span><span class="s">&quot;routes&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;legs&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;steps&quot;</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">completion</span><span class="p">(</span><span class="n">steps</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>まとめ</h3>
+
+<p>今回はGoogleが提供している <strong>Geocoding API</strong> と <strong>Directions API</strong> について見てみました。<br/>
+Google Mapを利用するサービスを考えると案外必要となる場面が多いんですよね。<br/>
+知っておいて損はないかと思います。<br/>
+本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Geccoを使ったiOSアプリのチュートリアルを実装しよう！]]></title>
@@ -8018,341 +8253,6 @@ Ubuntuの場合、<code>/etc/apache2/conf-enabled/localized-error-pages.conf</co
 WEBサーバとはどんなものなのか、わかったようでわかっていなかったことが見えてきた気がします。<br/>
 引き続き勉強を続けていきたいものです。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuにWebサーバーを立てよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/"/>
-    <updated>2017-02-19T15:05:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>さて、今回は前回(<a href="http://grandbig.github.io/blog/2017/02/13/docker-for-mac-1/">Docker for Macをインストールしよう！</a>)構築したDocker内のUbuntuサーバの中で遊んでみます。<br/>
-まずは、基本となるWebサーバを立てるところから始めたいと思います。</p>
-
-<p>今回は最も有名であろう(Nginxも人気ですが&hellip;) <strong>Apache</strong> を利用したWebサーバの構築をしてみます。<br/>
-限りなく常識に近いと思うものの、一応概要だけ紹介すると、Apacheとは下記の通りです。</p>
-
-<ul>
-<li>正式名所は「 <strong>Apache HTTP Server</strong> 」</li>
-<li>Webサーバソフトウェア</li>
-<li>Apache Licenseで無償で提供</li>
-<li>2.2系と2.4系があるがモダンなのは <strong>2.4系</strong></li>
-</ul>
-
-
-<p>というところで早速見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>Host Macからアクセスするためのポートフォワード設定</h3>
-
-<p>これからApacheをインストールするわけですが、その前にDockerコンテナにポートフォワード設定をしてみましょう。<br/>
-Docker for Macなら簡単にできます。</p>
-
-<p>１．該当コンテナの設定を見ましょう</p>
-
-<p><img src="http://grandbig.github.io/images/docker_port_forward_1.png" alt="設定を見る" /></p>
-
-<p>２．Port設定を見ましょう</p>
-
-<p><img src="http://grandbig.github.io/images/docker_port_forward_2.png" alt="Port設定を見る" /></p>
-
-<p>３．ポートフォワードの設定を追加する</p>
-
-<p><img src="http://grandbig.github.io/images/docker_port_forward_3.png" alt="ポートフォワードの設定を追加" /></p>
-
-<p>上記では、<code>http://localhost:15600/</code>でMacからアクセスできるようにしています。<br/>
-<code>localhost</code>でなく、具体的にIPアドレスを指定しても良いようですが、今回は特に必要ないのでこれでいきます。</p>
-
-<h3>Apacheのインストール</h3>
-
-<p>まずは当然のことながらインストール作業から始めます。<br/>
-DockerのUbuntuコンテナを起動した後にログインして、下記コマンドを叩きましょう。</p>
-
-<p>ログインはDockerアプリに含まれている <strong>Kitematic</strong> からもできますし、コマンドでもできます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// docker コンテナにログイン</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">exec</span> <span class="o">-</span><span class="nx">it</span> <span class="o">&lt;&lt;</span><span class="err">コンテナ名</span><span class="o">&gt;&gt;</span> <span class="nx">bash</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// apt-getのアップデート</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">update</span>
-</span><span class='line'><span class="c1">// Apacheのインストール</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">apache2</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>なぜ初めに<code>apt-get update</code>をやっているかと言うと、これをやらずに突き進もうとした際に下記エラーが発生したためです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">apache2</span>
-</span><span class='line'><span class="nx">Reading</span> <span class="kr">package</span> <span class="nx">lists</span><span class="p">...</span> <span class="nx">Done</span>
-</span><span class='line'><span class="nx">Building</span> <span class="nx">dependency</span> <span class="nx">tree</span>
-</span><span class='line'><span class="nx">Reading</span> <span class="nx">state</span> <span class="nx">information</span><span class="p">...</span> <span class="nx">Done</span>
-</span><span class='line'><span class="nx">E</span><span class="o">:</span> <span class="nx">Unable</span> <span class="nx">to</span> <span class="nx">locate</span> <span class="kr">package</span> <span class="nx">apache2</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>きちんとApacheのインストールが完了したか確認するためにバージョンを見てみましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// バージョン確認方法(1)</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apachectl</span> <span class="o">-</span><span class="nx">v</span>
-</span><span class='line'><span class="nx">Server</span> <span class="nx">version</span><span class="o">:</span> <span class="nx">Apache</span><span class="o">/</span><span class="mf">2.4</span><span class="p">.</span><span class="mi">18</span> <span class="p">(</span><span class="nx">Ubuntu</span><span class="p">)</span>
-</span><span class='line'><span class="nx">Server</span> <span class="nx">built</span><span class="o">:</span>   <span class="mi">2016</span><span class="o">-</span><span class="mi">07</span><span class="o">-</span><span class="mi">14</span><span class="nx">T12</span><span class="o">:</span><span class="mi">32</span><span class="o">:</span><span class="mi">26</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// バージョン確認方法(2)</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apache2</span> <span class="o">-</span><span class="nx">v</span>
-</span><span class='line'><span class="nx">Server</span> <span class="nx">version</span><span class="o">:</span> <span class="nx">Apache</span><span class="o">/</span><span class="mf">2.4</span><span class="p">.</span><span class="mi">18</span> <span class="p">(</span><span class="nx">Ubuntu</span><span class="p">)</span>
-</span><span class='line'><span class="nx">Server</span> <span class="nx">built</span><span class="o">:</span>   <span class="mi">2016</span><span class="o">-</span><span class="mi">07</span><span class="o">-</span><span class="mi">14</span><span class="nx">T12</span><span class="o">:</span><span class="mi">32</span><span class="o">:</span><span class="mi">26</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Apacheの起動確認</h3>
-
-<p>インストール後はデフォルトで起動していると思いますが、念のため確認しておきましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">status</span>
-</span><span class='line'> <span class="o">*</span> <span class="nx">apache2</span> <span class="nx">is</span> <span class="nx">running</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>因みに、初期状態では<code>start</code>や<code>restart</code>コマンドを実行したときに下記警告が表示されます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">restart</span>
-</span><span class='line'> <span class="o">*</span> <span class="nx">Restarting</span> <span class="nx">Apache</span> <span class="nx">httpd</span> <span class="nx">web</span> <span class="nx">server</span> <span class="nx">apache2</span>                                                                                                                                                           <span class="nx">AH00558</span><span class="o">:</span> <span class="nx">apache2</span><span class="o">:</span> <span class="nx">Could</span> <span class="nx">not</span> <span class="nx">reliably</span> <span class="nx">determine</span> <span class="nx">the</span> <span class="nx">server</span><span class="err">’</span><span class="nx">s</span> <span class="nx">fully</span> <span class="nx">qualified</span> <span class="nx">domain</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">using</span> <span class="nx">XX</span><span class="p">.</span><span class="nx">XX</span><span class="p">.</span><span class="nx">XX</span><span class="p">.</span><span class="nx">XX</span><span class="p">.</span> <span class="nx">Set</span> <span class="nx">the</span> <span class="s1">&#39;ServerName&#39;</span> <span class="nx">directive</span> <span class="nx">globally</span> <span class="nx">to</span> <span class="nx">suppress</span> <span class="k">this</span> <span class="nx">message</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これを回避するためには設定ファイルに<code>ServerName</code>を定義する必要があります。<br/>
-(警告は出るものの、起動には何ら問題はありません。)</p>
-
-<p>下記のように設定ファイルを開きます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// 設定ファイルを開く</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">vi</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">apache2</span><span class="o">/</span><span class="nx">apache2</span><span class="p">.</span><span class="nx">conf</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>続いて、<code>ServerName</code>を適当な場所に定義してやりましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /etc/apache2/apache2.conf</span>
-</span><span class='line'><span class="c1">// 省略</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Include</span> <span class="nx">list</span> <span class="nx">of</span> <span class="nx">ports</span> <span class="nx">to</span> <span class="nx">listen</span> <span class="nx">on</span>
-</span><span class='line'><span class="nx">Include</span> <span class="nx">ports</span><span class="p">.</span><span class="nx">conf</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">ServerName</span> <span class="nx">xxx</span><span class="p">.</span><span class="nx">com</span>
-</span><span class='line'><span class="c1">// 省略</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これにより、エラーなく起動や再起動できることを確認できるはずです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">restart</span>
-</span><span class='line'> <span class="o">*</span> <span class="nx">Restarting</span> <span class="nx">Apache</span> <span class="nx">httpd</span> <span class="nx">web</span> <span class="nx">server</span> <span class="nx">apache2</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これでApacheが起動していることが確認できたので、GETリクエストを投げてアクセスしてみましょう。<br/>
-Ubuntu用のApacheデフォルトページが返却されるはずです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">curl</span> <span class="nx">http</span><span class="o">:</span><span class="c1">//127.0.0.1/</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;!</span><span class="nx">DOCTYPE</span> <span class="nx">html</span> <span class="nx">PUBLIC</span> <span class="s2">&quot;-//W3C//DTD XHTML 1.0 Transitional//EN&quot;</span> <span class="s2">&quot;http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd&quot;</span><span class="o">&gt;</span>
-</span><span class='line'><span class="o">&lt;</span><span class="nx">html</span> <span class="nx">xmlns</span><span class="o">=</span><span class="s2">&quot;http://www.w3.org/1999/xhtml&quot;</span><span class="o">&gt;</span>
-</span><span class='line'>  <span class="p">...</span>
-</span><span class='line'><span class="o">&lt;</span><span class="err">/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Webページにアクセス</h3>
-
-<p>冒頭でポートフォワード設定をしたので、Apacheが起動しているのであれば、Macからページを見れるはずです！<br/>
-早速見てみましょう。<br/>
-設定した<code>http://localhost:15600/</code>でアクセスすると下記のようにページが表示されます。</p>
-
-<p><img src="http://grandbig.github.io/images/docker_apache_1.png" alt="DockerコンテナのWEBページ" /></p>
-
-<h3>便利コマンド利用するためにモジュールをインストール</h3>
-
-<p>Webサーバを構築する上で、あまりにもまっさらなUbuntuだったため幾つか必要なものをインストールする必要がありました。<br/>
-その紹介もおまけ程度に書いておきます。</p>
-
-<h4>lessのインストール</h4>
-
-<p>毎回<code>cat</code>コマンドで中身を見る必要性がないこともあると思います。<br/>
-流石に<code>less</code>くらいはインストールしておきます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// lessのインストール</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">less</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// lessのバージョン確認</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">less</span> <span class="o">--</span><span class="nx">help</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>lessコマンドで色をつける</h4>
-
-<p>ついでに<code>less</code>コマンドで色を付けて見やすくする方法を書いておきます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// source-highlightのインストール</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">source</span><span class="o">-</span><span class="nx">highlight</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Dockerコンテナ内の環境変数は<code>.dockerenv</code>ファイル内に書きます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// .dockerenvに下記を追加</span>
-</span><span class='line'><span class="err">#</span><span class="nx">Source</span><span class="o">-</span><span class="nx">hilight</span> <span class="kd">with</span> <span class="nx">less</span>
-</span><span class='line'><span class="kr">export</span> <span class="nx">LESSOPEN</span><span class="o">=</span><span class="s2">&quot;| /usr/share/source-highlight/src-hilite-lesspipe.sh %s&quot;</span>
-</span><span class='line'><span class="kr">export</span> <span class="nx">LESS</span><span class="o">=</span><span class="s1">&#39;-R&#39;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>結果を反映させるために、下記コマンドを叩きましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">source</span> <span class="o">~</span><span class="err">/.dockerenv</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>vi/vimのインストール</h4>
-
-<p>ファイルを作成する際に必ず必要になります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// vimのインストール</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">vim</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// vimのバージョン確認</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">vim</span> <span class="o">-</span><span class="nx">v</span>
-</span><span class='line'><span class="c1">// viのバージョン確認</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">vi</span> <span class="o">-</span><span class="nx">v</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>curlのインストール</h4>
-
-<p><code>curl</code>は試しにHTTPリクエストを投げてみたいことがあると思ったのでインストールしてみました。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// curlのインストール</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">curl</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// curlのバージョン確認</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">curl</span> <span class="o">-</span><span class="nx">V</span>
-</span><span class='line'><span class="nx">curl</span> <span class="mf">7.47</span><span class="p">.</span><span class="mi">0</span> <span class="p">(</span><span class="nx">x86_64</span><span class="o">-</span><span class="nx">pc</span><span class="o">-</span><span class="nx">linux</span><span class="o">-</span><span class="nx">gnu</span><span class="p">)</span> <span class="nx">libcurl</span><span class="o">/</span><span class="mf">7.47</span><span class="p">.</span><span class="mi">0</span> <span class="nx">GnuTLS</span><span class="o">/</span><span class="mf">3.4</span><span class="p">.</span><span class="mi">10</span> <span class="nx">zlib</span><span class="o">/</span><span class="mf">1.2</span><span class="p">.</span><span class="mi">8</span> <span class="nx">libidn</span><span class="o">/</span><span class="mf">1.32</span> <span class="nx">librtmp</span><span class="o">/</span><span class="mf">2.3</span>
-</span><span class='line'><span class="nx">Protocols</span><span class="o">:</span> <span class="nx">dict</span> <span class="nx">file</span> <span class="nx">ftp</span> <span class="nx">ftps</span> <span class="nx">gopher</span> <span class="nx">http</span> <span class="nx">https</span> <span class="nx">imap</span> <span class="nx">imaps</span> <span class="nx">ldap</span> <span class="nx">ldaps</span> <span class="nx">pop3</span> <span class="nx">pop3s</span> <span class="nx">rtmp</span> <span class="nx">rtsp</span> <span class="nx">smb</span> <span class="nx">smbs</span> <span class="nx">smtp</span> <span class="nx">smtps</span> <span class="nx">telnet</span> <span class="nx">tftp</span>
-</span><span class='line'><span class="nx">Features</span><span class="o">:</span> <span class="nx">AsynchDNS</span> <span class="nx">IDN</span> <span class="nx">IPv6</span> <span class="nx">Largefile</span> <span class="nx">GSS</span><span class="o">-</span><span class="nx">API</span> <span class="nx">Kerberos</span> <span class="nx">SPNEGO</span> <span class="nx">NTLM</span> <span class="nx">NTLM_WB</span> <span class="nx">SSL</span> <span class="nx">libz</span> <span class="nx">TLS</span><span class="o">-</span><span class="nx">SRP</span> <span class="nx">UnixSockets</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>まとめ</h3>
-
-<p>さて一先ず本記事の目的は達成できました。<br/>
-が、Apacheのあまりにも簡単な基礎部分しか見ていません。<br/>
-引き続き、最低限の設定を見ていきたいと思っています。</p>
-
-<p>と言ったところで本日はここまで。</p>
-
-<h3>参考</h3>
-
-<p>以下、ページを参考にさせて頂きました。</p>
-
-<ul>
-<li><a href="http://www.nemotos.net/?p=1100">Ubuntuでlessを使って構文をカラー表示する方法</a></li>
-<li><a href="http://qiita.com/maemori/items/e7318b088b9e4bf22310">docker-machineコマンド</a></li>
-<li><a href="https://docs.docker.com/kitematic/userguide/">Kitematic user guide</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

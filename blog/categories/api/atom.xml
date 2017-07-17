@@ -4,7 +4,7 @@
   <title><![CDATA[Category: api | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/api/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-07-17T22:28:26+09:00</updated>
+  <updated>2017-07-17T22:57:52+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,168 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Geocoding APIとDirections APIを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/07/17/google-maps-api/"/>
+    <updated>2017-07-17T22:32:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/07/17/google-maps-api</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日はGoogleが提供している<a href="https://developers.google.com/maps/documentation/geocoding/intro?hl=ja">Geocoding API</a>と<a href="https://developers.google.com/maps/documentation/directions/?hl=ja">Directions API</a>をiOSで使ってみた話を書きます。</p>
+
+<p>まずは、Google Cloud Platform > API Managerから <strong>Geocoding API</strong> と <strong>Directions API</strong> を有効にしましょう。</p>
+
+<p><img src="/images/google_api_1.png" alt="API Manager" /></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Geocoding APIの利用</h3>
+
+<p>Googleから提供されたAPIを利用し、それがJSON形式が返却されるため、<code>Alamofire</code>と<code>SwiftyJSON</code>をあわせて利用します。</p>
+
+<p>因みに、APIキーは<a href="http://grandbig.github.io/blog/2017/06/18/google-maps-sdk/">Google Maps SDK for iOSを導入してみよう！</a>で説明した通り<code>key.plist</code>に記載することでGitHubにアップすることを避けています。</p>
+
+<p>今回実装する処理は <strong>住所を緯度/経度に変換する処理</strong> になります。</p>
+
+<p>```objective-c
+import CoreLocation
+import Alamofire
+import SwiftyJSON</p>
+
+<p>class Geocoding {</p>
+
+<p>  /// API Key
+  private var apiKey: String = String()
+  /// Geocoding APIのベースURL
+  private let baseURL: String = &ldquo;<a href="https://maps.googleapis.com/maps/api/geocode/json?language=ja">https://maps.googleapis.com/maps/api/geocode/json?language=ja</a>&rdquo;</p>
+
+<p>  /// 初期化処理
+  init() {</p>
+
+<pre><code>if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
+  if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
+    if let apiKey = dic["googleWebApiKey"] as? String {
+      self.apiKey = apiKey
+    }
+  }
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  /**
+   ジオコーディング</p>
+
+<ul>
+<li> parameter address: 住所</li>
+<li><p> parameter completion: 緯度/経度を返すcallback
+*/
+func geocoding(address: String, completion: @escaping ((CLLocationCoordinate2D) &ndash;> Void)) {
+let requestURL = &ldquo;(baseURL)&amp;key=(String(describing: self.apiKey))&rdquo;
+Alamofire.request(requestURL, method: .get, parameters: [&ldquo;address&rdquo;: address], encoding: URLEncoding.default, headers: nil).responseJSON { response in
+  let json = JSON(response.result.value as Any)</p>
+
+<p>  guard let latitude = json[&ldquo;results&rdquo;][0][&ldquo;geometry&rdquo;][&ldquo;location&rdquo;][&ldquo;lat&rdquo;].double else {
+    return
+  }</p>
+
+<p>  guard let longitude = json[&ldquo;results&rdquo;][0][&ldquo;geometry&rdquo;][&ldquo;location&rdquo;][&ldquo;lng&rdquo;].double else {
+    return
+  }</p>
+
+<p>  completion(CLLocationCoordinate2D.init(latitude: latitude, longitude: longitude))
+}
+}<br/>
+}
+```</p></li>
+</ul>
+
+
+<h3>Directions APIの利用</h3>
+
+<p>ここで実装する処理は <strong>開始地点から終了地点までの道順を取得する処理</strong> になります。</p>
+
+<p>```objective-c
+import CoreLocation
+import Alamofire
+import SwiftyJSON</p>
+
+<p>class Direction {</p>
+
+<p>  /// API Key
+  private var apiKey: String = String()
+  /// Geocoding APIのベースURL
+  private let baseURL: String = &ldquo;<a href="https://maps.googleapis.com/maps/api/directions/json?language=ja&amp;mode=walking">https://maps.googleapis.com/maps/api/directions/json?language=ja&amp;mode=walking</a>&rdquo;</p>
+
+<p>  /// 初期化処理
+  init() {</p>
+
+<pre><code>if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
+  if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
+    if let apiKey = dic["googleWebApiKey"] as? String {
+      self.apiKey = apiKey
+    }
+  }
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  /**
+   目的地までの道順を取得</p>
+
+<ul>
+<li> parameter from: 開始地点</li>
+<li> parameter to: 終了地点</li>
+<li><p> parameter completion: 道順を返すcallback
+*/
+func getRoutes(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D, completion: @escaping ((JSON) &ndash;> Void)) {
+let requestURL = &ldquo;(baseURL)&amp;key=(String(describing: self.apiKey))&rdquo;
+let parameters = [&ldquo;origin&rdquo;: &ldquo;(from.latitude),(from.longitude)&rdquo;, &ldquo;destination&rdquo;: &ldquo;(to.latitude),(to.longitude)&rdquo;]
+Alamofire.request(requestURL, method: .get, parameters: parameters, encoding: URLEncoding.default, headers: nil).responseJSON { response in
+  let json = JSON(response.result.value as Any)
+  let steps = json[&ldquo;routes&rdquo;][0][&ldquo;legs&rdquo;][0][&ldquo;steps&rdquo;]</p>
+
+<p>  completion(steps)
+}
+}
+}
+```</p></li>
+</ul>
+
+
+<h3>まとめ</h3>
+
+<p>今回はGoogleが提供している <strong>Geocoding API</strong> と <strong>Directions API</strong> について見てみました。<br/>
+Google Mapを利用するサービスを考えると案外必要となる場面が多いんですよね。<br/>
+知っておいて損はないかと思います。<br/>
+本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AFNetworking2.xでWeb-APIを叩いてみた！]]></title>
