@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-07-17T01:15:42+09:00</updated>
+  <updated>2017-07-17T22:28:26+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,305 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Geccoを使ったiOSアプリのチュートリアルを実装しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/07/17/gecco/"/>
+    <updated>2017-07-17T21:29:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/07/17/gecco</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日はアプリでのチュートリアル実装について見ていきたいと思います。<br/>
+あまたあるOSSライブラリの中で筆者が注目したのは、<a href="https://github.com/yukiasai/Gecco">Gecco</a>です。<br/>
+理由は</p>
+
+<ul>
+<li>Swiftで作られていること</li>
+<li>GitHubでのStar数が多いこと</li>
+<li>タップ箇所を誘導するUIであること</li>
+</ul>
+
+
+<p>です。<br/>
+では早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Geccoのインストール</h3>
+
+<p>CocoaPodsでインストールします。<br/>
+以下のように <code>Podfile</code> を作成して、 <code>pod install</code> を実行してください。</p>
+
+<p>```objective-c</p>
+
+<h1>Podfile</h1>
+
+<p>use_frameworks!
+platform :ios, &lsquo;10.0&rsquo;</p>
+
+<p>target &ldquo;SampleApplication&rdquo; do
+  pod &lsquo;Gecco&rsquo;
+end
+```</p>
+
+<h3>Geccoの使い方</h3>
+
+<p>これまた実にシンプルです。</p>
+
+<h4>スポットライトの表示</h4>
+
+<p>タップを促すときなどに焦点を当てるためのスポットライトを表示させたいことがあると思います。<br/>
+これを実現してみましょう。</p>
+
+<p>```objective-c
+import UIKit
+import Gecco</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<p>  private var spotlightViewController: SpotlightViewController!
+  &hellip;
+  override func viewDidLoad() {</p>
+
+<pre><code>super.viewDidLoad()
+
+// 初期化
+self.spotlightViewController = SpotlightViewController()
+</code></pre>
+
+<p>  }</p>
+
+<p>  override func viewWillAppear() {</p>
+
+<pre><code>super.viewWillAppear()
+
+present(self.spotlightViewController, animated: true) {
+  // スポットライトの表示
+  self.spotlightViewController.spotlightView.appear(Spotlight.Oval(center: CGPoint(x: 100, y: 100), diameter: 50))
+}
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>上記のように初期化をして、<code>present</code>で画面遷移させる要領で表示させることができます。<br/>
+また、上記例では円形のスポットライトが表示されますが、<br/>
+スポットライトの形式には <code>Oval</code>(円) / <code>Rect</code>(長方形) / <code>RoundRect</code>(角丸長方形)の3つがあるため用途にあった形式を選択することができます。</p>
+
+<h4>スポットライトに対するアクションを拾う</h4>
+
+<p>続いて、下図のようにボタンタップを促す形で表示したスポットライトをタップしたことを検知して、次のチュートリアルに進みたいことがあると思います。</p>
+
+<p><img src="/images/gecco_1.png" alt="ボタンの上にスポットライトの表示" /></p>
+
+<p>これは <code>SpotlightViewControllerDelegate</code> を利用することになります。</p>
+
+<p>```objective-c
+import UIKit
+import Gecco</p>
+
+<p>class ViewController: UIViewController, SpotlightViewControllerDelegate {</p>
+
+<p>  @IBOutlet weak var button: UIButton!
+  private var spotlightViewController: SpotlightViewController!
+  &hellip;
+  override func viewDidLoad() {</p>
+
+<pre><code>super.viewDidLoad()
+
+// 初期化
+self.spotlightViewController = SpotlightViewController()
+self.spotlightViewController?.delegate = self
+</code></pre>
+
+<p>  }</p>
+
+<p>  override func viewWillAppear() {</p>
+
+<pre><code>super.viewWillAppear()
+
+present(self.spotlightViewController, animated: true) {
+  self.spotlightViewController.spotlightView.appear(Spotlight.Oval(center: CGPoint(x: 100, y: 100), diameter: 50))
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  // SpotlightViewControllerをタップした場合
+  func spotlightViewControllerTapped(_ viewController: SpotlightViewController, isInsideSpotlight: Bool) {</p>
+
+<pre><code>if isInsideSpotlight {
+  // スポットライトの内側をタップした場合
+  // SpotlightViewControllerを非表示にする
+  self.spotlightViewController.dismiss(animated: true, completion: {
+    self.button.sendActions(for: .touchUpInside)
+  })
+}
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>上記のようにタップの検知は <code>spotlightViewControllerTapped</code> で可能です。<br/>
+また、 <code>isInsideSpotlight</code> を利用することでスポットライトの内側をタップしたかどうかも検知できます。<br/>
+余談ですが、<br/>
+スポットライトをタップしても、そのままではボタンをタップしたことにはなりません。<br/>
+そのため、ボタンへのタップアクションを伝えるために <code>sendActions(for: .touchUpInside)</code> を利用します。</p>
+
+<p><code>spotlightViewControllerTapped</code>以外にも<code>spotlightViewControllerWillPresent</code>や<code>spotlightViewControllerWillDismiss</code>もありますので、状況次第で利用すると良いかと思います。</p>
+
+<p><code>objective-c
+@objc public protocol SpotlightViewControllerDelegate: class {
+  optional func spotlightViewControllerWillPresent(viewController: SpotlightViewController, animated: Bool)
+  optional func spotlightViewControllerWillDismiss(viewController: SpotlightViewController, animated: Bool)
+  optional func spotlightViewControllerTapped(viewController: SpotlightViewController, isInsideSpotlight: Bool)
+}
+</code></p>
+
+<h3>Geccoに機能を追加しよう</h3>
+
+<p>デフォルトで用意されている機能以外に何らかの機能を合わせて使いたいこともあるでしょう。<br/>
+そんなときは自ら実装するのが良いかと思います。</p>
+
+<h4>チュートリアル用の説明を追加</h4>
+
+<p>今回、筆者がGeccoを使った際に必要とした機能の中に <strong>説明表記</strong> がありました。<br/>
+<code>GeccoExample</code> の中に <code>AnnotationViewController</code> が用意されていますので参考にさせて頂きました。</p>
+
+<p>```objective-c
+// AnnotationViewController
+import Foundation
+import UIKit
+import Gecco</p>
+
+<p>class AnnotationViewController: SpotlightViewController {</p>
+
+<p>  @IBOutlet weak var label: UILabel!</p>
+
+<p>  override func viewDidLoad() {</p>
+
+<pre><code>super.viewDidLoad()
+</code></pre>
+
+<p>  }</p>
+
+<p>  override func viewWillAppear(_ animated: Bool) {</p>
+
+<pre><code>super.viewWillAppear(animated)
+</code></pre>
+
+<p>  }</p>
+
+<p>  func updateLabel(_ text: String, blackColor: Bool = false) {</p>
+
+<pre><code>self.label.text = text
+if blackColor {
+  self.label.textColor = UIColor.black
+} else {
+  self.label.textColor = UIColor.white
+}
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>筆者の場合、<code>UILabel</code>の位置は常に同じ場所で十分だったため上記のみの追加になっています。</p>
+
+<h4>長押しジェスチャの追加</h4>
+
+<p>今回、筆者がGeccoを使った際に必要とした機能の中に <strong>長押し検知</strong> がありました。<br/>
+デフォルトで実装されていないため、GitHubからRepositoryをForkして機能追加することにしました。<br/>
+コメントを記載した4箇所の追加のみで実装できます。</p>
+
+<p>```objective-c
+// SpotlightViewController
+import UIKit</p>
+
+<p>@objc public protocol SpotlightViewControllerDelegate: class {
+  @objc optional func spotlightViewControllerWillPresent(<em> viewController: SpotlightViewController, animated: Bool)
+  @objc optional func spotlightViewControllerWillDismiss(</em> viewController: SpotlightViewController, animated: Bool)
+  @objc optional func spotlightViewControllerTapped(<em> viewController: SpotlightViewController, isInsideSpotlight: Bool)
+  // (1)長押し検知
+  @objc optional func spotlightViewControllerLongPressed(</em> viewController: SpotlightViewController, isInsideSpotlight: Bool)
+}</p>
+
+<p>open class SpotlightViewController: UIViewController {
+  open weak var delegate: SpotlightViewControllerDelegate?
+  &hellip;
+  open override func viewDidLoad() {</p>
+
+<pre><code>super.viewDidLoad()
+
+setupSpotlightView(alpha)
+setupContentView()
+setupTapGesture()
+// (2)長押し処理の追加
+setupLongPressGesture()
+
+view.backgroundColor = UIColor.clear
+</code></pre>
+
+<p>  }
+  &hellip;
+  // (3)長押し処理ジェスチャの初期化
+  fileprivate func setupLongPressGesture() {</p>
+
+<pre><code>let gesture = UILongPressGestureRecognizer(target: self, action: #selector(SpotlightViewController.viewLongPressed(_:)));
+view.addGestureRecognizer(gesture)
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>extension SpotlightViewController {
+  &hellip;
+  // (4)長押し時に実行される処理を追加
+  func viewLongPressed(_ gesture: UILongPressGestureRecognizer) {</p>
+
+<pre><code>let pressPoint = gesture.location(in: spotlightView)
+let isInside = spotlightView.spotlight?.frame.contains(pressPoint) ?? false
+delegate?.spotlightViewControllerLongPressed?(self, pressPoint: pressPoint, isInsideSpotlight: isInside)
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+今回はチュートリアル用に利用する <code>Gecco</code> ライブラリについて紹介させて頂きました。<br/>
+チュートリアルにはGoogleがよく使うような初めに説明スライドを数枚用意する方式もあるかと思います。<br/>
+ケースによって使い分けると良いんでしょうね。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Google Maps SDK for iOSを使ってみよう！]]></title>
@@ -717,119 +1016,6 @@ imageView.image = rotatedImage
 基本的な回転の流れは変わりませんね。<br/>
 ただ、Swift3で書いた方が心なしか自然なメソッドで書けている気がするのは筆者だけですかね&hellip;<br/>
 ということで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RealmSwiftでdistinctしよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/06/11/swift3-realm-2/"/>
-    <updated>2017-06-11T00:41:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/06/11/swift3-realm-2</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>今回は<a href="https://github.com/realm/realm-cocoa/tree/master/RealmSwift">RealmSwift</a>に関するメモ書きです。<br/>
-<code>RealmSwift</code>を使って保存したデータを<code>distinct</code>したいときがあったのですが、<code>RealmSwift</code>内で定義されているわけではなさそうなので迷いました。<br/>
-よく考えてみれば、なんてことはなく<code>Swift</code>に標準で用意されたものを使えばよかったのでした。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>distinctする方法</h3>
-
-<p>さて、具体的な方法を見てみましょう。<br/>
-例として<code>RealmSwift</code>で保存するオブジェクトを下記のように定義します。</p>
-
-<p>```objective-c
-// Footprint.swift
-import Foundation
-import RealmSwift</p>
-
-<p>/<em>*
- 足跡
- </em>/
-class Footprint: Object {
-  dynamic var id: Int = 0
-  dynamic var title: String = &ldquo;&rdquo;
-  dynamic var latitude: Double = 0.0
-  dynamic var longitude: Double = 0.0
-  dynamic var speed: Double = 0.0
-  dynamic var direction: Double = 0.0
-  dynamic var created: Double = Date().timeIntervalSince1970</p>
-
-<p>  // プライマリーキーの設定
-  override static func primaryKey() &ndash;> String? {</p>
-
-<pre><code>return "id"
-</code></pre>
-
-<p>  }</p>
-
-<p>  // インデックスの設定
-  override static func indexedProperties() &ndash;> [String] {</p>
-
-<pre><code>return ["title"]
-</code></pre>
-
-<p>  }
-}
-```</p>
-
-<p><code>RealmSwift</code>で保存していくと、下記のような結果になるでしょう。</p>
-
-<p><img src="/images/realmswift_distinct_1.png" alt="RealmSwiftブラウザで結果を見てみる" /></p>
-
-<p>もし、これらのデータから<code>title</code>を<code>distinct</code>して取得したい場合があったとしましょう。<br/>
-その場合は下記のように取得します。</p>
-
-<p>```objective-c
-// FootprintManager.swift
-/**
-  保存した足跡タイトルを取得する処理</p>
-
-<ul>
-<li>returns: [タイトル]の配列
-*/
-func distinctByTitle() &ndash;> [String] {
-let realm = try! Realm()
-let distinctTitles = Set(realm.objects(Footprint.self).value(forKey: &ldquo;title&rdquo;) as! [String])</li>
-</ul>
-
-
-<p>  return distinctTitles
-}
-```</p>
-
-<p>実はSwiftでは<code>Set</code>という重複を許さない集合体を定義するための型が用意されています。<br/>
-なので、<code>RealmSwift</code>から単に取得してきた値を<code>Set</code>型に変換することで<code>distinct</code>と同じ結果が得られるということになります。</p>
-
-<h3>まとめ</h3>
-
-<p>さていかがでしたでしょうか。<br/>
-<code>distinct</code>は決して負荷の軽い処理ではありませんが、様々な場面で求められることでしょう。<br/>
-使い方を知っておいて損はありません。<br/>
-ということで今回はメモ書きでした。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

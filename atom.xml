@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-07-17T01:15:42+09:00</updated>
+  <updated>2017-07-17T22:28:26+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,408 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Geccoを使ったiOSアプリのチュートリアルを実装しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/07/17/gecco/"/>
+    <updated>2017-07-17T21:29:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/07/17/gecco</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日はアプリでのチュートリアル実装について見ていきたいと思います。<br/>
+あまたあるOSSライブラリの中で筆者が注目したのは、<a href="https://github.com/yukiasai/Gecco">Gecco</a>です。<br/>
+理由は</p>
+
+<ul>
+<li>Swiftで作られていること</li>
+<li>GitHubでのStar数が多いこと</li>
+<li>タップ箇所を誘導するUIであること</li>
+</ul>
+
+
+<p>です。<br/>
+では早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Geccoのインストール</h3>
+
+<p>CocoaPodsでインストールします。<br/>
+以下のように <code>Podfile</code> を作成して、 <code>pod install</code> を実行してください。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp"># Podfile</span>
+</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
+</span><span class='line'><span class="n">platform</span> <span class="o">:</span><span class="n">ios</span><span class="p">,</span> <span class="err">&#39;</span><span class="mf">10.0</span><span class="err">&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="s">&quot;SampleApplication&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Gecco</span><span class="err">&#39;</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Geccoの使い方</h3>
+
+<p>これまた実にシンプルです。</p>
+
+<h4>スポットライトの表示</h4>
+
+<p>タップを促すときなどに焦点を当てるためのスポットライトを表示させたいことがあると思います。<br/>
+これを実現してみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Gecco</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">private</span> <span class="n">var</span> <span class="nl">spotlightViewController:</span> <span class="n">SpotlightViewController</span><span class="o">!</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 初期化</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">spotlightViewController</span> <span class="o">=</span> <span class="n">SpotlightViewController</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewWillAppear</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewWillAppear</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">present</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">spotlightViewController</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">true</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// スポットライトの表示</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">spotlightViewController</span><span class="p">.</span><span class="n">spotlightView</span><span class="p">.</span><span class="n">appear</span><span class="p">(</span><span class="n">Spotlight</span><span class="p">.</span><span class="n">Oval</span><span class="p">(</span><span class="nl">center:</span> <span class="n">CGPoint</span><span class="p">(</span><span class="nl">x:</span> <span class="mi">100</span><span class="p">,</span> <span class="nl">y:</span> <span class="mi">100</span><span class="p">),</span> <span class="nl">diameter:</span> <span class="mi">50</span><span class="p">))</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記のように初期化をして、<code>present</code>で画面遷移させる要領で表示させることができます。<br/>
+また、上記例では円形のスポットライトが表示されますが、<br/>
+スポットライトの形式には <code>Oval</code>(円) / <code>Rect</code>(長方形) / <code>RoundRect</code>(角丸長方形)の3つがあるため用途にあった形式を選択することができます。</p>
+
+<h4>スポットライトに対するアクションを拾う</h4>
+
+<p>続いて、下図のようにボタンタップを促す形で表示したスポットライトをタップしたことを検知して、次のチュートリアルに進みたいことがあると思います。</p>
+
+<p><img src="http://grandbig.github.io/images/gecco_1.png" alt="ボタンの上にスポットライトの表示" /></p>
+
+<p>これは <code>SpotlightViewControllerDelegate</code> を利用することになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Gecco</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">SpotlightViewControllerDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">button:</span> <span class="n">UIButton</span><span class="o">!</span>
+</span><span class='line'>  <span class="n">private</span> <span class="n">var</span> <span class="nl">spotlightViewController:</span> <span class="n">SpotlightViewController</span><span class="o">!</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 初期化</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">spotlightViewController</span> <span class="o">=</span> <span class="n">SpotlightViewController</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">spotlightViewController</span><span class="o">?</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewWillAppear</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewWillAppear</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">present</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">spotlightViewController</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">true</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">spotlightViewController</span><span class="p">.</span><span class="n">spotlightView</span><span class="p">.</span><span class="n">appear</span><span class="p">(</span><span class="n">Spotlight</span><span class="p">.</span><span class="n">Oval</span><span class="p">(</span><span class="nl">center:</span> <span class="n">CGPoint</span><span class="p">(</span><span class="nl">x:</span> <span class="mi">100</span><span class="p">,</span> <span class="nl">y:</span> <span class="mi">100</span><span class="p">),</span> <span class="nl">diameter:</span> <span class="mi">50</span><span class="p">))</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// SpotlightViewControllerをタップした場合</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">spotlightViewControllerTapped</span><span class="p">(</span><span class="n">_</span> <span class="nl">viewController:</span> <span class="n">SpotlightViewController</span><span class="p">,</span> <span class="nl">isInsideSpotlight:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">isInsideSpotlight</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// スポットライトの内側をタップした場合</span>
+</span><span class='line'>      <span class="c1">// SpotlightViewControllerを非表示にする</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">spotlightViewController</span><span class="p">.</span><span class="n">dismiss</span><span class="p">(</span><span class="nl">animated:</span> <span class="n">true</span><span class="p">,</span> <span class="nl">completion:</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">button</span><span class="p">.</span><span class="n">sendActions</span><span class="p">(</span><span class="k">for</span><span class="o">:</span> <span class="p">.</span><span class="n">touchUpInside</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">})</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記のようにタップの検知は <code>spotlightViewControllerTapped</code> で可能です。<br/>
+また、 <code>isInsideSpotlight</code> を利用することでスポットライトの内側をタップしたかどうかも検知できます。<br/>
+余談ですが、<br/>
+スポットライトをタップしても、そのままではボタンをタップしたことにはなりません。<br/>
+そのため、ボタンへのタップアクションを伝えるために <code>sendActions(for: .touchUpInside)</code> を利用します。</p>
+
+<p><code>spotlightViewControllerTapped</code>以外にも<code>spotlightViewControllerWillPresent</code>や<code>spotlightViewControllerWillDismiss</code>もありますので、状況次第で利用すると良いかと思います。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="err">@</span><span class="n">objc</span> <span class="n">public</span> <span class="n">protocol</span> <span class="nl">SpotlightViewControllerDelegate:</span> <span class="n">class</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">optional</span> <span class="n">func</span> <span class="n">spotlightViewControllerWillPresent</span><span class="p">(</span><span class="nl">viewController:</span> <span class="n">SpotlightViewController</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">optional</span> <span class="n">func</span> <span class="n">spotlightViewControllerWillDismiss</span><span class="p">(</span><span class="nl">viewController:</span> <span class="n">SpotlightViewController</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">optional</span> <span class="n">func</span> <span class="n">spotlightViewControllerTapped</span><span class="p">(</span><span class="nl">viewController:</span> <span class="n">SpotlightViewController</span><span class="p">,</span> <span class="nl">isInsideSpotlight:</span> <span class="n">Bool</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Geccoに機能を追加しよう</h3>
+
+<p>デフォルトで用意されている機能以外に何らかの機能を合わせて使いたいこともあるでしょう。<br/>
+そんなときは自ら実装するのが良いかと思います。</p>
+
+<h4>チュートリアル用の説明を追加</h4>
+
+<p>今回、筆者がGeccoを使った際に必要とした機能の中に <strong>説明表記</strong> がありました。<br/>
+<code>GeccoExample</code> の中に <code>AnnotationViewController</code> が用意されていますので参考にさせて頂きました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AnnotationViewController</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Gecco</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">AnnotationViewController:</span> <span class="n">SpotlightViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">label:</span> <span class="n">UILabel</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewWillAppear</span><span class="p">(</span><span class="n">_</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewWillAppear</span><span class="p">(</span><span class="n">animated</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">updateLabel</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">,</span> <span class="nl">blackColor:</span> <span class="n">Bool</span> <span class="o">=</span> <span class="n">false</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">text</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">blackColor</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">textColor</span> <span class="o">=</span> <span class="n">UIColor</span><span class="p">.</span><span class="n">black</span>
+</span><span class='line'>    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">textColor</span> <span class="o">=</span> <span class="n">UIColor</span><span class="p">.</span><span class="n">white</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>筆者の場合、<code>UILabel</code>の位置は常に同じ場所で十分だったため上記のみの追加になっています。</p>
+
+<h4>長押しジェスチャの追加</h4>
+
+<p>今回、筆者がGeccoを使った際に必要とした機能の中に <strong>長押し検知</strong> がありました。<br/>
+デフォルトで実装されていないため、GitHubからRepositoryをForkして機能追加することにしました。<br/>
+コメントを記載した4箇所の追加のみで実装できます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SpotlightViewController</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">@</span><span class="n">objc</span> <span class="n">public</span> <span class="n">protocol</span> <span class="nl">SpotlightViewControllerDelegate:</span> <span class="n">class</span> <span class="p">{</span>
+</span><span class='line'>  <span class="err">@</span><span class="n">objc</span> <span class="n">optional</span> <span class="n">func</span> <span class="n">spotlightViewControllerWillPresent</span><span class="p">(</span><span class="n">_</span> <span class="nl">viewController:</span> <span class="n">SpotlightViewController</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span>
+</span><span class='line'>  <span class="err">@</span><span class="n">objc</span> <span class="n">optional</span> <span class="n">func</span> <span class="n">spotlightViewControllerWillDismiss</span><span class="p">(</span><span class="n">_</span> <span class="nl">viewController:</span> <span class="n">SpotlightViewController</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span>
+</span><span class='line'>  <span class="err">@</span><span class="n">objc</span> <span class="n">optional</span> <span class="n">func</span> <span class="n">spotlightViewControllerTapped</span><span class="p">(</span><span class="n">_</span> <span class="nl">viewController:</span> <span class="n">SpotlightViewController</span><span class="p">,</span> <span class="nl">isInsideSpotlight:</span> <span class="n">Bool</span><span class="p">)</span>
+</span><span class='line'>  <span class="c1">// (1)長押し検知</span>
+</span><span class='line'>  <span class="err">@</span><span class="n">objc</span> <span class="n">optional</span> <span class="n">func</span> <span class="n">spotlightViewControllerLongPressed</span><span class="p">(</span><span class="n">_</span> <span class="nl">viewController:</span> <span class="n">SpotlightViewController</span><span class="p">,</span> <span class="nl">isInsideSpotlight:</span> <span class="n">Bool</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">open</span> <span class="n">class</span> <span class="nl">SpotlightViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">open</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">delegate:</span> <span class="n">SpotlightViewControllerDelegate</span><span class="o">?</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="n">open</span> <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">setupSpotlightView</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">setupContentView</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">setupTapGesture</span><span class="p">()</span>
+</span><span class='line'>    <span class="c1">// (2)長押し処理の追加</span>
+</span><span class='line'>    <span class="n">setupLongPressGesture</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">view</span><span class="p">.</span><span class="n">backgroundColor</span> <span class="o">=</span> <span class="n">UIColor</span><span class="p">.</span><span class="n">clear</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="c1">// (3)長押し処理ジェスチャの初期化</span>
+</span><span class='line'>  <span class="n">fileprivate</span> <span class="n">func</span> <span class="n">setupLongPressGesture</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">gesture</span> <span class="o">=</span> <span class="n">UILongPressGestureRecognizer</span><span class="p">(</span><span class="nl">target:</span> <span class="n">self</span><span class="p">,</span> <span class="nl">action:</span> <span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">SpotlightViewController</span><span class="p">.</span><span class="n">viewLongPressed</span><span class="p">(</span><span class="nl">_:</span><span class="p">)));</span>
+</span><span class='line'>    <span class="n">view</span><span class="p">.</span><span class="n">addGestureRecognizer</span><span class="p">(</span><span class="n">gesture</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="n">SpotlightViewController</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="c1">// (4)長押し時に実行される処理を追加</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">viewLongPressed</span><span class="p">(</span><span class="n">_</span> <span class="nl">gesture:</span> <span class="n">UILongPressGestureRecognizer</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">pressPoint</span> <span class="o">=</span> <span class="n">gesture</span><span class="p">.</span><span class="n">location</span><span class="p">(</span><span class="k">in</span><span class="o">:</span> <span class="n">spotlightView</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">isInside</span> <span class="o">=</span> <span class="n">spotlightView</span><span class="p">.</span><span class="n">spotlight</span><span class="o">?</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">contains</span><span class="p">(</span><span class="n">pressPoint</span><span class="p">)</span> <span class="o">??</span> <span class="n">false</span>
+</span><span class='line'>    <span class="n">delegate</span><span class="o">?</span><span class="p">.</span><span class="n">spotlightViewControllerLongPressed</span><span class="o">?</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="nl">pressPoint:</span> <span class="n">pressPoint</span><span class="p">,</span> <span class="nl">isInsideSpotlight:</span> <span class="n">isInside</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+今回はチュートリアル用に利用する <code>Gecco</code> ライブラリについて紹介させて頂きました。<br/>
+チュートリアルにはGoogleがよく使うような初めに説明スライドを数枚用意する方式もあるかと思います。<br/>
+ケースによって使い分けると良いんでしょうね。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Google Maps SDK for iOSを使ってみよう！]]></title>
@@ -7951,284 +8353,6 @@ Ubuntu用のApacheデフォルトページが返却されるはずです。</p>
 <li><a href="https://docs.docker.com/kitematic/userguide/">Kitematic user guide</a></li>
 </ul>
 
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Docker for Macをインストールしよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/02/13/docker-for-mac-1/"/>
-    <updated>2017-02-13T00:06:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/02/13/docker-for-mac-1</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>本日は <strong>Docker for Mac</strong> についてメモ程度に学んだことを書き残しておきたいと思います。<br/>
-<code>Docker for Mac</code>とはMacアプリとしてインストールできるDockerです。<br/>
-今までは、MacでDockerを利用するために<code>Docker Toolbox</code>と<code>Virtual Box</code>をインストールする必要がありましたが、<code>Docker for Mac</code>の登場により、いろいろとやってくれそうな感があります。<br/>
-(筆者もDocker自体にそんなに詳しいわけではないので、1つずつ見ていきたいと思います。)</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>Docker for Macのインストール</h3>
-
-<p>簡単かと思いきや、なぜか詰まることもあるので書きます。<br/>
-インストールは<a href="https://docs.docker.com/docker-for-mac/">Docker公式ページ</a>から可能です。<br/>
-公式ページを見ると、 <strong>Download Docker for Mac</strong> という文字が見つかります。<br/>
-<code>Stable channel</code>と<code>Beta channel</code>の2つがあるのですが、筆者は最終的に<code>Beta channel</code>をインストールしました。<br/>
-なぜなら、<code>Stable channel</code>では<code>docker run hello-world</code>が実行エラーになったためです&hellip;</p>
-
-<p><img src="http://grandbig.github.io/images/docker_1.png" alt="Docker for Mac Betaのダウンロード" /></p>
-
-<p>インストールが完了すると、macのツールバーにDockerのマークが出現します。</p>
-
-<p><img src="http://grandbig.github.io/images/docker_2.png" alt="ツールバーにDockerマーク" /></p>
-
-<p>Dockerが正しくインストールされたので下記コマンドでバージョンを確認してみましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="o">--</span><span class="nx">version</span>
-</span><span class='line'><span class="nx">Docker</span> <span class="nx">version</span> <span class="mf">1.13</span><span class="p">.</span><span class="mi">1</span><span class="p">,</span> <span class="nx">build</span> <span class="mi">092</span><span class="nx">cba3</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">$</span> <span class="nx">docker</span><span class="o">-</span><span class="nx">compose</span> <span class="o">--</span><span class="nx">version</span>
-</span><span class='line'><span class="nx">docker</span><span class="o">-</span><span class="nx">compose</span> <span class="nx">version</span> <span class="mf">1.11</span><span class="p">.</span><span class="mi">1</span><span class="p">,</span> <span class="nx">build</span> <span class="mi">7</span><span class="nx">c5d5e4</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">$</span> <span class="nx">docker</span><span class="o">-</span><span class="nx">machine</span> <span class="o">--</span><span class="nx">version</span>
-</span><span class='line'><span class="nx">docker</span><span class="o">-</span><span class="nx">machine</span> <span class="nx">version</span> <span class="mf">0.9</span><span class="p">.</span><span class="mi">0</span><span class="p">,</span> <span class="nx">build</span> <span class="mi">15</span><span class="nx">fd4c7</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>続いて、Dockerが期待通りに動くことを確認するために下記コマンドを叩いてみましょう。<br/>
-まずはDockerのバージョン確認です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">version</span>
-</span><span class='line'><span class="nx">Client</span><span class="o">:</span>
-</span><span class='line'> <span class="nx">Version</span><span class="o">:</span>      <span class="mf">1.13</span><span class="p">.</span><span class="mi">1</span>
-</span><span class='line'> <span class="nx">API</span> <span class="nx">version</span><span class="o">:</span>  <span class="mf">1.26</span>
-</span><span class='line'> <span class="nx">Go</span> <span class="nx">version</span><span class="o">:</span>   <span class="nx">go1</span><span class="p">.</span><span class="mf">7.5</span>
-</span><span class='line'> <span class="nx">Git</span> <span class="nx">commit</span><span class="o">:</span>   <span class="mi">092</span><span class="nx">cba3</span>
-</span><span class='line'> <span class="nx">Built</span><span class="o">:</span>        <span class="nx">Wed</span> <span class="nx">Feb</span>  <span class="mi">8</span> <span class="mi">08</span><span class="o">:</span><span class="mi">47</span><span class="o">:</span><span class="mi">51</span> <span class="mi">2017</span>
-</span><span class='line'> <span class="nx">OS</span><span class="o">/</span><span class="nx">Arch</span><span class="o">:</span>      <span class="nx">darwin</span><span class="o">/</span><span class="nx">amd64</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">Server</span><span class="o">:</span>
-</span><span class='line'> <span class="nx">Version</span><span class="o">:</span>      <span class="mf">1.13</span><span class="p">.</span><span class="mi">1</span>
-</span><span class='line'> <span class="nx">API</span> <span class="nx">version</span><span class="o">:</span>  <span class="mf">1.26</span> <span class="p">(</span><span class="nx">minimum</span> <span class="nx">version</span> <span class="mf">1.12</span><span class="p">)</span>
-</span><span class='line'> <span class="nx">Go</span> <span class="nx">version</span><span class="o">:</span>   <span class="nx">go1</span><span class="p">.</span><span class="mf">7.5</span>
-</span><span class='line'> <span class="nx">Git</span> <span class="nx">commit</span><span class="o">:</span>   <span class="mi">092</span><span class="nx">cba3</span>
-</span><span class='line'> <span class="nx">Built</span><span class="o">:</span>        <span class="nx">Wed</span> <span class="nx">Feb</span>  <span class="mi">8</span> <span class="mi">08</span><span class="o">:</span><span class="mi">47</span><span class="o">:</span><span class="mi">51</span> <span class="mi">2017</span>
-</span><span class='line'> <span class="nx">OS</span><span class="o">/</span><span class="nx">Arch</span><span class="o">:</span>      <span class="nx">linux</span><span class="o">/</span><span class="nx">amd64</span>
-</span><span class='line'> <span class="nx">Experimental</span><span class="o">:</span> <span class="kc">true</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><code>Client</code>と<code>Server</code>の両方のバージョンが確認できるようです。<br/>
-(中身があまり変わらないように見えるけど&hellip;)</p>
-
-<p>続いて、ローカルに存在するDockerコンテナの確認です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">ps</span>
-</span><span class='line'><span class="nx">CONTAINER</span> <span class="nx">ID</span>        <span class="nx">IMAGE</span>               <span class="nx">COMMAND</span>             <span class="nx">CREATED</span>             <span class="nx">STATUS</span>              <span class="nx">PORTS</span>               <span class="nx">NAMES</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>何もないと当然ですが、上記のように何も表示されません。<br/>
-最も初歩であろう<code>hello-world</code>コマンドです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">run</span> <span class="nx">hello</span><span class="o">-</span><span class="nx">world</span>
-</span><span class='line'><span class="nx">Unable</span> <span class="nx">to</span> <span class="nx">find</span> <span class="nx">image</span> <span class="s1">&#39;hello-world:latest&#39;</span> <span class="nx">locally</span>
-</span><span class='line'><span class="nx">latest</span><span class="o">:</span> <span class="nx">Pulling</span> <span class="nx">from</span> <span class="nx">library</span><span class="o">/</span><span class="nx">hello</span><span class="o">-</span><span class="nx">world</span>
-</span><span class='line'><span class="mi">78445</span><span class="nx">dd45222</span><span class="o">:</span> <span class="nx">Pull</span> <span class="nx">complete</span>
-</span><span class='line'><span class="nx">Digest</span><span class="o">:</span> <span class="nx">sha256</span><span class="o">:</span><span class="nx">c5515758d4c5e1e838e9cd307f6c6a0d620b5e07e6f927b07d05f6d12a1ac8d7</span>
-</span><span class='line'><span class="nx">Status</span><span class="o">:</span> <span class="nx">Downloaded</span> <span class="nx">newer</span> <span class="nx">image</span> <span class="k">for</span> <span class="nx">hello</span><span class="o">-</span><span class="nx">world</span><span class="o">:</span><span class="nx">latest</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">Hello</span> <span class="nx">from</span> <span class="nx">Docker</span><span class="o">!</span>
-</span><span class='line'><span class="nx">This</span> <span class="nx">message</span> <span class="nx">shows</span> <span class="nx">that</span> <span class="nx">your</span> <span class="nx">installation</span> <span class="nx">appears</span> <span class="nx">to</span> <span class="nx">be</span> <span class="nx">working</span> <span class="nx">correctly</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">To</span> <span class="nx">generate</span> <span class="k">this</span> <span class="nx">message</span><span class="p">,</span> <span class="nx">Docker</span> <span class="nx">took</span> <span class="nx">the</span> <span class="nx">following</span> <span class="nx">steps</span><span class="o">:</span>
-</span><span class='line'> <span class="mi">1</span><span class="p">.</span> <span class="nx">The</span> <span class="nx">Docker</span> <span class="nx">client</span> <span class="nx">contacted</span> <span class="nx">the</span> <span class="nx">Docker</span> <span class="nx">daemon</span><span class="p">.</span>
-</span><span class='line'> <span class="mi">2</span><span class="p">.</span> <span class="nx">The</span> <span class="nx">Docker</span> <span class="nx">daemon</span> <span class="nx">pulled</span> <span class="nx">the</span> <span class="s2">&quot;hello-world&quot;</span> <span class="nx">image</span> <span class="nx">from</span> <span class="nx">the</span> <span class="nx">Docker</span> <span class="nx">Hub</span><span class="p">.</span>
-</span><span class='line'> <span class="mi">3</span><span class="p">.</span> <span class="nx">The</span> <span class="nx">Docker</span> <span class="nx">daemon</span> <span class="nx">created</span> <span class="nx">a</span> <span class="k">new</span> <span class="nx">container</span> <span class="nx">from</span> <span class="nx">that</span> <span class="nx">image</span> <span class="nx">which</span> <span class="nx">runs</span> <span class="nx">the</span>
-</span><span class='line'>    <span class="nx">executable</span> <span class="nx">that</span> <span class="nx">produces</span> <span class="nx">the</span> <span class="nx">output</span> <span class="nx">you</span> <span class="nx">are</span> <span class="nx">currently</span> <span class="nx">reading</span><span class="p">.</span>
-</span><span class='line'> <span class="mi">4</span><span class="p">.</span> <span class="nx">The</span> <span class="nx">Docker</span> <span class="nx">daemon</span> <span class="nx">streamed</span> <span class="nx">that</span> <span class="nx">output</span> <span class="nx">to</span> <span class="nx">the</span> <span class="nx">Docker</span> <span class="nx">client</span><span class="p">,</span> <span class="nx">which</span> <span class="nx">sent</span> <span class="nx">it</span>
-</span><span class='line'>    <span class="nx">to</span> <span class="nx">your</span> <span class="nx">terminal</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">To</span> <span class="k">try</span> <span class="nx">something</span> <span class="nx">more</span> <span class="nx">ambitious</span><span class="p">,</span> <span class="nx">you</span> <span class="nx">can</span> <span class="nx">run</span> <span class="nx">an</span> <span class="nx">Ubuntu</span> <span class="nx">container</span> <span class="kd">with</span><span class="o">:</span>
-</span><span class='line'> <span class="nx">$</span> <span class="nx">docker</span> <span class="nx">run</span> <span class="o">-</span><span class="nx">it</span> <span class="nx">ubuntu</span> <span class="nx">bash</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">Share</span> <span class="nx">images</span><span class="p">,</span> <span class="nx">automate</span> <span class="nx">workflows</span><span class="p">,</span> <span class="nx">and</span> <span class="nx">more</span> <span class="kd">with</span> <span class="nx">a</span> <span class="nx">free</span> <span class="nx">Docker</span> <span class="nx">ID</span><span class="o">:</span>
-</span><span class='line'> <span class="nx">https</span><span class="o">:</span><span class="c1">//cloud.docker.com/</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">For</span> <span class="nx">more</span> <span class="nx">examples</span> <span class="nx">and</span> <span class="nx">ideas</span><span class="p">,</span> <span class="nx">visit</span><span class="o">:</span>
-</span><span class='line'> <span class="nx">https</span><span class="o">:</span><span class="c1">//docs.docker.com/engine/userguide/</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ローカルに存在しないとダウンロードを始めます。<br/>
-冒頭に述べた<code>Stable channel</code>では、ここで全くダウンロードができませんでした。<br/>
-何はともあれ、これで <strong>Docker for Mac</strong> のインストール完了です。</p>
-
-<h3>Docker for Macを使ってUbuntuをインストールしてみよう</h3>
-
-<p>先程インストールした<code>hello-world</code>の結果の中に<code>To try something more ambitious, you can run an Ubuntu container with:</code>とありました。<br/>
-興味本位ですが、コマンド叩いてみましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">run</span> <span class="o">-</span><span class="nx">it</span> <span class="nx">ubuntu</span> <span class="nx">bash</span>
-</span><span class='line'><span class="nx">Unable</span> <span class="nx">to</span> <span class="nx">find</span> <span class="nx">image</span> <span class="s1">&#39;ubuntu:latest&#39;</span> <span class="nx">locally</span>
-</span><span class='line'><span class="nx">latest</span><span class="o">:</span> <span class="nx">Pulling</span> <span class="nx">from</span> <span class="nx">library</span><span class="o">/</span><span class="nx">ubuntu</span>
-</span><span class='line'><span class="mi">8</span><span class="nx">aec416115fd</span><span class="o">:</span> <span class="nx">Pull</span> <span class="nx">complete</span>
-</span><span class='line'><span class="mi">695</span><span class="nx">f074e24e3</span><span class="o">:</span> <span class="nx">Pull</span> <span class="nx">complete</span>
-</span><span class='line'><span class="mi">946</span><span class="nx">d6c48c2a7</span><span class="o">:</span> <span class="nx">Pull</span> <span class="nx">complete</span>
-</span><span class='line'><span class="nx">bc7277e579f0</span><span class="o">:</span> <span class="nx">Pull</span> <span class="nx">complete</span>
-</span><span class='line'><span class="mi">2508</span><span class="nx">cbcde94b</span><span class="o">:</span> <span class="nx">Pull</span> <span class="nx">complete</span>
-</span><span class='line'><span class="nx">Digest</span><span class="o">:</span> <span class="nx">sha256</span><span class="o">:</span><span class="mi">71</span><span class="nx">cd81252a3563a03ad8daee81047b62ab5d892ebbfbf71cf53415f29c130950</span>
-</span><span class='line'><span class="nx">Status</span><span class="o">:</span> <span class="nx">Downloaded</span> <span class="nx">newer</span> <span class="nx">image</span> <span class="k">for</span> <span class="nx">ubuntu</span><span class="o">:</span><span class="nx">latest</span>
-</span><span class='line'><span class="nx">root</span><span class="err">@</span><span class="mi">3</span><span class="nx">e95790a60cb</span><span class="o">:</span><span class="err">/#</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これで<code>Ubuntu</code>がインストールできたようです。<br/>
-しかも<code>Ubuntu</code>の中に入れてますね！</p>
-
-<p>本当に<code>Ubuntu</code>インストールできたか確かめるためにもコマンドを叩いてみましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">root</span><span class="err">@</span><span class="mi">3</span><span class="nx">e95790a60cb</span><span class="o">:</span><span class="err">/# cat /etc/lsb-release</span>
-</span><span class='line'><span class="nx">DISTRIB_ID</span><span class="o">=</span><span class="nx">Ubuntu</span>
-</span><span class='line'><span class="nx">DISTRIB_RELEASE</span><span class="o">=</span><span class="mf">16.04</span>
-</span><span class='line'><span class="nx">DISTRIB_CODENAME</span><span class="o">=</span><span class="nx">xenial</span>
-</span><span class='line'><span class="nx">DISTRIB_DESCRIPTION</span><span class="o">=</span><span class="s2">&quot;Ubuntu 16.04.1 LTS&quot;</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">root</span><span class="err">@</span><span class="mi">3</span><span class="nx">e95790a60cb</span><span class="o">:</span><span class="err">/# arch</span>
-</span><span class='line'><span class="nx">x86_64</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">root</span><span class="err">@</span><span class="mi">3</span><span class="nx">e95790a60cb</span><span class="o">:</span><span class="err">/# uname -a</span>
-</span><span class='line'><span class="nx">Linux</span> <span class="mi">3</span><span class="nx">e95790a60cb</span> <span class="mf">4.9</span><span class="p">.</span><span class="mi">8</span><span class="o">-</span><span class="nx">moby</span> <span class="err">#</span><span class="mi">1</span> <span class="nx">SMP</span> <span class="nx">Wed</span> <span class="nx">Feb</span> <span class="mi">8</span> <span class="mi">09</span><span class="o">:</span><span class="mi">59</span><span class="o">:</span><span class="mi">13</span> <span class="nx">UTC</span> <span class="mi">2017</span> <span class="nx">x86_64</span> <span class="nx">x86_64</span> <span class="nx">x86_64</span> <span class="nx">GNU</span><span class="o">/</span><span class="nx">Linux</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>バッチリですね！！<br/>
-(正直な話、<code>uname -a</code>とか数年ぶりに叩いた気がして懐かしい&hellip;笑)</p>
-
-<p>これで後はもう様々な便利なものをインストールして楽しめそうですね。</p>
-
-<h3>Kitematicの紹介</h3>
-
-<p>メニューバーのDockerマークをクリックすると、Docker for Macのメニュー項目が表示されます。<br/>
-その中に<code>Kitematic</code>という聞きなれないものがあると思います。<br/>
-こちらをインストールするとターミナルからコマンドを叩かずとも、GUIからクリック操作で様々なことが可能になります。</p>
-
-<p><img src="http://grandbig.github.io/images/docker_3.png" alt="Dockerのメニュー" /></p>
-
-<p>起動してログインすると(初めはアカウントがないと思うので作成しましょう。)、下記のような画面が表示されます。</p>
-
-<p><img src="http://grandbig.github.io/images/docker_4.png" alt="Kitematic" /></p>
-
-<p>最早、見るだけで心躍りますよね！？<br/>
-様々なものをインストールして楽しめそうな気しかしません！</p>
-
-<p>因みに、下記のようにコンテナの起動などが可能です。</p>
-
-<p><img src="http://grandbig.github.io/images/docker_5.png" alt="KitematicでDockerコンテナ起動" /></p>
-
-<h3>まとめ</h3>
-
-<p>さて、今回は珍しく基盤よりなDockerで遊んでみました。<br/>
-この付近の知識はあって困ることはないですし、Dockerかなり一般的になってきているので引き続きブログの題材として取り上げていきたいと思います。<br/>
-と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
