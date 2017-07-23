@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-07-23T15:27:36+09:00</updated>
+  <updated>2017-07-23T16:19:35+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,274 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[AlamofireImageを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/07/23/alamofireimage/"/>
+    <updated>2017-07-23T15:35:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/07/23/alamofireimage</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日は何気に今まで使ってこなかった<a href="https://github.com/Alamofire/AlamofireImage">AlamofireImage</a>についてメモ書きです。<br/>
+キャッシュコントロールやら同期/非同期での画像取得など考えなくても良いというのはパワー的にかなり楽になりますね。<br/>
+ということで早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>API経由で取得した画像URLを使ってUIImageViewに画像を表示する</h3>
+
+<h4>テストとして利用するAPI</h4>
+
+<p>今回はテスト用APIとして<a href="https://webservice.recruit.co.jp/hotpepper/reference.html">ホットペッパーのグルメサーチAPI</a>を利用しました。</p>
+
+<p>ホットペッパーAPIを利用するには新規登録して<code>API Key</code>をゲットする必要があります。<br/>
+また、前提として取得した<code>API Key</code>は<code>key.plist</code>に書いているとします。</p>
+
+<p><img src="/images/alamofireimage_1.png" alt="API Keyをkey.plistに書き出し" /></p>
+
+<p>上記準備をした上で下記クラスを作成しました。</p>
+
+<p>```objective-c
+// HotpepperAPI.swift
+import Foundation
+import CoreLocation
+import Alamofire
+import SwiftyJSON</p>
+
+<p>/<em>*
+ ホットペッパーAPI
+ </em>/
+class HotpepperAPI {
+  /// API Key
+  private var apiKey: String = String()
+  /// ホットペッパーAPIのベースURL
+  private let baseURL: String = &ldquo;<a href="https://webservice.recruit.co.jp/hotpepper/gourmet/v1/">https://webservice.recruit.co.jp/hotpepper/gourmet/v1/</a>&rdquo;</p>
+
+<p>  /// 初期化処理
+  init() {</p>
+
+<pre><code>if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
+  if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
+    if let apiKey = dic["hotpepperApiKey"] as? String {
+      self.apiKey = apiKey
+    }
+  }
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  /**
+   ホットペッパーグルメサーチAPI</p>
+
+<ul>
+<li> parameter coordinate: 位置</li>
+<li><p> parameter completion: レストラン情報を返却するcallback
+*/
+func searchRestaurant(coordinate: CLLocationCoordinate2D, completion: @escaping ((JSON) &ndash;> Void)) {
+let parameters = [&ldquo;key&rdquo;: self.apiKey, &ldquo;format&rdquo;: &ldquo;json&rdquo;, &ldquo;lat&rdquo;: coordinate.latitude, &ldquo;lng&rdquo;: coordinate.longitude, &ldquo;range&rdquo;: 2] as [String : Any]
+Alamofire.request(baseURL, method: .get, parameters: parameters, encoding: URLEncoding.default, headers: nil).responseJSON { response in
+  let json = JSON(response.result.value as Any)
+  let result = json[&ldquo;results&rdquo;][&ldquo;shop&rdquo;]</p>
+
+<p>  completion(result)
+}
+}
+}
+```</p></li>
+</ul>
+
+
+<h4>テストとして用意するUIImageView</h4>
+
+<p>今回はテストとして <strong>マップにプロットしたマーカをタップしたときに表示するInfoWindow内にUIImageViewを用意する</strong> ようにしました。</p>
+
+<p>【準備事項】<br/>
+&ndash; Google Maps SDK for iOSをマップとして利用<br/>
+&ndash; マーカタップ時に表示されるInfoWindowをカスタム化</p>
+
+<p>表示するViewとしては下図のようになります。<br/>
+<img src="/images/alamofireimage_2.png" alt="MarkerInfoContentsView.xib" /></p>
+
+<h4>AlamofireImageの用意</h4>
+
+<p>では肝心な<code>AlamofireImage</code>の導入を見てみましょう。<br/>
+<code>CocoaPods</code>で簡単に導入が可能です。</p>
+
+<p>```objective-c</p>
+
+<h1>Podfile</h1>
+
+<p>use_frameworks!
+platform :ios, &lsquo;10.0&rsquo;</p>
+
+<p>target &ldquo;SampleApp&rdquo; do
+  # Normal libraries
+  &hellip;
+  pod &lsquo;AlamofireImage&rsquo;, &lsquo;~> 3.1&rsquo;
+end</p>
+
+<p>post_install do |installer|
+  installer.pods_project.targets.each do |target|</p>
+
+<pre><code>target.build_configurations.each do |config|
+  config.build_settings['SWIFT_VERSION'] = '3.0'
+end
+</code></pre>
+
+<p>  end
+end
+```</p>
+
+<h4>マーカタップ時に表示するInfoWindowに画像を表示する</h4>
+
+<p>まずは<code>InfoWindow</code>をカスタム化したクラスである<code>MarkerInfoContentsView.swift</code>のソースコードを書きます。</p>
+
+<p>```objective-c
+// MarkerInfoContentsView.swift
+import Foundation
+import UIKit
+import AlamofireImage</p>
+
+<p>class MarkerInfoContentsView: UIView {</p>
+
+<p>  @IBOutlet weak var shopName: UILabel!
+  @IBOutlet weak var categoryName: UILabel!
+  @IBOutlet weak var shopImage: UIImageView!</p>
+
+<p>  override init(frame: CGRect) {</p>
+
+<pre><code>super.init(frame: frame)
+self.xibViewSet()
+</code></pre>
+
+<p>  }</p>
+
+<p>  required init?(coder aDecoder: NSCoder) {</p>
+
+<pre><code>super.init(coder: aDecoder)!
+self.xibViewSet()
+</code></pre>
+
+<p>  }</p>
+
+<p>  internal func xibViewSet() {</p>
+
+<pre><code>if let view = Bundle.main.loadNibNamed("MarkerInfoContentsView", owner: self, options: nil)?.first as? UIView {
+  view.frame = self.bounds
+  self.addSubview(view)
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  /**</p>
+
+<pre><code>データの設定処理
+
+- parameter shopName: 店舗名
+- parameter categoryName: カテゴリ名
+- parameter shopImageURLString: 画像URL
+</code></pre>
+
+<p>   */
+  func setData(shopName: String?, categoryName: String?, shopImageURLString: String?) {</p>
+
+<pre><code>// 店舗名の設定
+if let shopNameTextCount = shopName?.characters.count, shopNameTextCount &gt; 0 {
+  self.shopName.text = shopName
+} else {
+  self.shopName.text = "店舗名不明"
+  self.shopName.textColor = UIColor.gray
+}
+// 詳細説明の設定
+if let categoryNameTextCount = categoryName?.characters.count, categoryNameTextCount &gt; 0 {
+  self.categoryName.text = categoryName
+} else {
+  self.categoryName.text = "カテゴリ不明"
+  self.categoryName.textColor = UIColor.gray
+}
+// 画像の設定
+if let shopImageURLStringTextCount = shopImageURLString?.characters.count, shopImageURLStringTextCount &gt; 0 {
+  if let shopImageURL = URL(string: shopImageURLString!) {
+    self.shopImage.af_setImage(withURL: shopImageURL, placeholderImage: UIImage(named: "NoImageIcon"))
+  } else {
+    self.shopImage.image = UIImage(named: "NoImageIcon")
+  }
+} else {
+  self.shopImage.image = UIImage(named: "NoImageIcon")
+}    
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>実際に<code>AlamofireImage</code>を利用して画像URLから取得した画像データを格納している箇所は、</p>
+
+<p><code>objective-c
+self.shopImage.af_setImage(withURL: shopImageURL, placeholderImage: UIImage(named: "NoImageIcon"))
+</code></p>
+
+<p>になります。<br/>
+続いて、<code>ViewController.swift</code>での<code>GMSMapViewDelegate</code>部分の処理を抜粋して書きます。</p>
+
+<p>```objective-c
+// ViewController.swift
+extension ViewController: GMSMapViewDelegate {
+  func mapView(_ mapView: GMSMapView, markerInfoWindow marker: GMSMarker) &ndash;> UIView? {</p>
+
+<pre><code>guard let cMarker = marker as? CustomGMSMarker else {
+  return nil
+}
+cMarker.tracksInfoWindowChanges = true
+let view = MarkerInfoContentsView(frame: CGRect(x: 0, y: 0, width: 250, height: 265))
+view.setData(shopName: cMarker.shopName, categoryName: cMarker.categoryName, shopImageURLString: cMarker.imageURL)
+return view
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>重要なのは、 <strong><code>cMarker.tracksInfoWindowChanges = true</code></strong> です。<br/>
+これを書かないと <strong>画像URLから画像データを取得したタイミングで<code>InfoWindow</code>の画像を更新する</strong>ということができなくなります。<br/>
+(<code>placeholderImage</code>として用意した画像がずっと表示されてしまいます。)</p>
+
+<p>筆者はここでドハマリして試行錯誤してしまいました。<br/>
+非同期で画像データを取得しに行っているので、データ取得前に<code>InfoWindow</code>の描画処理に進んでしまうということはわかるのですが、どうすれば想定した挙動が実現できるのか悩みました。<br/>
+ですが、蓋を開けてみれば何ということもなかったんですよね。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか？<br/>
+画像取得/キャッシュ関連のOSSライブラリは多種多様なものが出ており、好き嫌いもあるかもしれませんが、筆者は通信ライブラリに<code>Alamofire</code>を使うことが多いため、<code>AlamofireImage</code>も嫌いではないんですよね。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Geocoding APIとDirections APIを使ってみよう！]]></title>
@@ -912,163 +1180,6 @@ self.placesClient = GMSPlacesClient.shared()
 
 <p>さて如何でしたでしょうか？<br/>
 これから<code>Google Maps SDK for iOS</code>をバシバシ使っていきたいと思っているので理解が進み次第、続きを書いていきたいと思います。<br/>
-と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOSでヘッダーを設定する3つの方法]]></title>
-    <link href="http://grandbig.github.io/blog/2017/06/17/ios-header/"/>
-    <updated>2017-06-17T14:27:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/06/17/ios-header</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>今回は今更ではありますが、iOSでヘッダーを作るための方法について書いていきたいと思います。</p>
-
-<ul>
-<li>代表的な方法
-
-<ul>
-<li><code>NavigationController</code>を利用する方法</li>
-<li><code>UIView</code> + <code>UINavigationBar</code>を利用する方法</li>
-<li><code>UINavigationBar</code>の高さをカスタマイズする方法</li>
-</ul>
-</li>
-</ul>
-
-
-<p>1つずつ見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>NavigationControllerを利用する方法</h3>
-
-<p>最も少ない手間でヘッダーを作るなら<code>NavigationController</code>ではないでしょうか。<br/>
-幾つかメリット/デメリットを上げてみます。</p>
-
-<ul>
-<li>メリット
-
-<ul>
-<li>最も簡単にヘッダーを作成できる(Editor > Embed In > Navigation Controller)</li>
-<li>画面遷移の設定が簡単(戻るも自動で設定される)</li>
-<li>ステータスバー(最上部の縦20pxの領域)を考慮する必要なし</li>
-</ul>
-</li>
-<li>デメリット
-
-<ul>
-<li>ヘッダーの不要な画面に遷移するときにヘッダーの非表示をコードで書く必要がある</li>
-<li>画面遷移時のアニメーション変更に手間がかかる</li>
-</ul>
-</li>
-</ul>
-
-
-<h3>UIView + UINavigationBarを利用する方法</h3>
-
-<p>Storyboardを利用するなら初めに上げた「<code>NavigationController</code>を利用する方法」か「<code>UIView</code> + <code>UINavigationBar</code>を利用する方法」を使うと良いでしょう。<br/>
-わざわざ<code>UIView</code>を利用する理由は、ただ単に<code>UINavigationBar</code>のみを配置すると、ステータスバー領域に邪魔されて表示が崩れてしまうためです。<br/>
-これを回避するためだけに<code>UIView</code>を配置するという方法です。</p>
-
-<p>具体的には下図のような配置になります。</p>
-
-<p><img src="/images/ios_header_1.png" alt="UIView + UINavigationBarの例" /></p>
-
-<ul>
-<li>メリット
-
-<ul>
-<li>Storyboard上でキレイに見える方法でヘッダーを作成できる</li>
-<li>画面遷移先でヘッダーが不要であれば配置しなければOK</li>
-<li>画面遷移時のアニメーションのデフォルト選択肢が多い</li>
-</ul>
-</li>
-<li>デメリット
-
-<ul>
-<li>画面遷移先でヘッダーが必要な場合は毎回<code>UIView</code>を配置する必要がある(色の透過の考慮など面倒な側面あり)</li>
-</ul>
-</li>
-</ul>
-
-
-<h3>UINavigationBarの高さをカスタマイズする方法</h3>
-
-<p>割りと昔からある方法です。<br/>
-ただし、昔(iOS6以前)は純粋の<code>UINavigationBar</code>の高さを変更したいという用途で使われていました。<br/>
-今回は通常の<code>UINavigationBar</code>ではステータスバーと被ってしまうため、ステータスバー分の高さを拡張したいという用途で利用します。</p>
-
-<p>高さをステータスバー分、拡張した<code>CustomNavigationBar</code>は下記のように作成できます。</p>
-
-<p>```objective-c
-// CustomNavigationBar.swift
-import Foundation
-import UIKit</p>
-
-<p>class CustomNavigationBar: UINavigationBar {
-  override func layoutSubviews() {</p>
-
-<pre><code>super.layoutSubviews()
-super.frame = CGRect(x: 0, y: 0, width: super.frame.size.width, height: 64)
-</code></pre>
-
-<p>  }
-}
-```</p>
-
-<p>これをStoryboardで利用するのをオススメしないのは他のパーツと組み合わせて利用する際に、<code>AutoLayout</code>を利用して(客観的に見たら謎の)マージンを設定しないとならないためです。</p>
-
-<p><img src="/images/ios_header_2.png" alt="CustomeNavigationBarをStoryboardで設定" /><br/>
-<img src="/images/ios_header_3.png" alt="20のマージンを設定しないといけない" /></p>
-
-<p>一応、メリット/デメリットも書いておきます。</p>
-
-<ul>
-<li>メリット
-
-<ul>
-<li>「<code>UIView</code> + <code>UINavigationBar</code>を利用する方法」よりもソースコードがスマート(機能拡張して利用しているという意味で。)</li>
-<li>(ソースコードで書いて実装することを前提にするなら)自由度が最も大きい</li>
-</ul>
-</li>
-<li>デメリット
-
-<ul>
-<li>Storyboardで利用するとキレイではない(画面ごとに謎マージンを設定しなくてはならない)</li>
-</ul>
-</li>
-</ul>
-
-
-<h3>まとめ</h3>
-
-<p>さて如何でしたでしょうか？<br/>
-たまに必要性を感じる内容であることもあって、一度まとめてみようと思い、書いてみました。<br/>
-今の世の中なら、用途にあったOSSライブラリもたくさんあると思うので手法は3つには限らないでしょうね。<br/>
 と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
