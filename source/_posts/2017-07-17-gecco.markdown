@@ -1,0 +1,241 @@
+---
+layout: post
+title: "Geccoを使ったiOSアプリのチュートリアルを実装しよう！"
+date: 2017-07-17 21:29
+comments: true
+categories: ios swift
+---
+
+### はじめに
+本日はアプリでのチュートリアル実装について見ていきたいと思います。  
+あまたあるOSSライブラリの中で筆者が注目したのは、[Gecco](https://github.com/yukiasai/Gecco)です。  
+理由は  
+
+- Swiftで作られていること  
+- GitHubでのStar数が多いこと  
+- タップ箇所を誘導するUIであること  
+
+です。  
+では早速見ていきましょう。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### Geccoのインストール
+CocoaPodsでインストールします。  
+以下のように `Podfile` を作成して、 `pod install` を実行してください。  
+
+```objective-c
+# Podfile
+use_frameworks!
+platform :ios, '10.0'
+
+target "SampleApplication" do
+  pod 'Gecco'
+end
+```
+
+### Geccoの使い方
+これまた実にシンプルです。  
+
+#### スポットライトの表示
+タップを促すときなどに焦点を当てるためのスポットライトを表示させたいことがあると思います。  
+これを実現してみましょう。  
+
+```objective-c
+import UIKit
+import Gecco
+
+class ViewController: UIViewController {
+
+  private var spotlightViewController: SpotlightViewController!
+  ...
+  override func viewDidLoad() {
+    super.viewDidLoad()
+
+    // 初期化
+    self.spotlightViewController = SpotlightViewController()
+  }
+
+  override func viewWillAppear() {
+    super.viewWillAppear()
+
+    present(self.spotlightViewController, animated: true) {
+      // スポットライトの表示
+      self.spotlightViewController.spotlightView.appear(Spotlight.Oval(center: CGPoint(x: 100, y: 100), diameter: 50))
+    }
+  }
+}
+```
+
+上記のように初期化をして、`present`で画面遷移させる要領で表示させることができます。  
+また、上記例では円形のスポットライトが表示されますが、  
+スポットライトの形式には `Oval`(円) / `Rect`(長方形) / `RoundRect`(角丸長方形)の3つがあるため用途にあった形式を選択することができます。   
+
+#### スポットライトに対するアクションを拾う
+続いて、下図のようにボタンタップを促す形で表示したスポットライトをタップしたことを検知して、次のチュートリアルに進みたいことがあると思います。  
+
+![ボタンの上にスポットライトの表示](/images/gecco_1.png)  
+
+これは `SpotlightViewControllerDelegate` を利用することになります。   
+
+```objective-c
+import UIKit
+import Gecco
+
+class ViewController: UIViewController, SpotlightViewControllerDelegate {
+
+  @IBOutlet weak var button: UIButton!
+  private var spotlightViewController: SpotlightViewController!
+  ...
+  override func viewDidLoad() {
+    super.viewDidLoad()
+
+    // 初期化
+    self.spotlightViewController = SpotlightViewController()
+    self.spotlightViewController?.delegate = self
+  }
+
+  override func viewWillAppear() {
+    super.viewWillAppear()
+
+    present(self.spotlightViewController, animated: true) {
+      self.spotlightViewController.spotlightView.appear(Spotlight.Oval(center: CGPoint(x: 100, y: 100), diameter: 50))
+    }
+  }
+
+  // SpotlightViewControllerをタップした場合
+  func spotlightViewControllerTapped(_ viewController: SpotlightViewController, isInsideSpotlight: Bool) {
+    if isInsideSpotlight {
+      // スポットライトの内側をタップした場合
+      // SpotlightViewControllerを非表示にする
+      self.spotlightViewController.dismiss(animated: true, completion: {
+        self.button.sendActions(for: .touchUpInside)
+      })
+    }
+  }
+}
+```
+
+上記のようにタップの検知は `spotlightViewControllerTapped` で可能です。  
+また、 `isInsideSpotlight` を利用することでスポットライトの内側をタップしたかどうかも検知できます。  
+余談ですが、  
+スポットライトをタップしても、そのままではボタンをタップしたことにはなりません。  
+そのため、ボタンへのタップアクションを伝えるために `sendActions(for: .touchUpInside)` を利用します。  
+
+`spotlightViewControllerTapped`以外にも`spotlightViewControllerWillPresent`や`spotlightViewControllerWillDismiss`もありますので、状況次第で利用すると良いかと思います。  
+
+```objective-c
+@objc public protocol SpotlightViewControllerDelegate: class {
+  optional func spotlightViewControllerWillPresent(viewController: SpotlightViewController, animated: Bool)
+  optional func spotlightViewControllerWillDismiss(viewController: SpotlightViewController, animated: Bool)
+  optional func spotlightViewControllerTapped(viewController: SpotlightViewController, isInsideSpotlight: Bool)
+}
+```
+
+### Geccoに機能を追加しよう
+デフォルトで用意されている機能以外に何らかの機能を合わせて使いたいこともあるでしょう。  
+そんなときは自ら実装するのが良いかと思います。  
+
+#### チュートリアル用の説明を追加
+今回、筆者がGeccoを使った際に必要とした機能の中に **説明表記** がありました。  
+`GeccoExample` の中に `AnnotationViewController` が用意されていますので参考にさせて頂きました。  
+
+```objective-c
+// AnnotationViewController
+import Foundation
+import UIKit
+import Gecco
+
+class AnnotationViewController: SpotlightViewController {
+
+  @IBOutlet weak var label: UILabel!
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+  }
+
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+  }
+
+  func updateLabel(_ text: String, blackColor: Bool = false) {
+    self.label.text = text
+    if blackColor {
+      self.label.textColor = UIColor.black
+    } else {
+      self.label.textColor = UIColor.white
+    }
+  }
+}
+```
+
+筆者の場合、`UILabel`の位置は常に同じ場所で十分だったため上記のみの追加になっています。  
+
+#### 長押しジェスチャの追加
+今回、筆者がGeccoを使った際に必要とした機能の中に **長押し検知** がありました。  
+デフォルトで実装されていないため、GitHubからRepositoryをForkして機能追加することにしました。  
+コメントを記載した4箇所の追加のみで実装できます。  
+
+```objective-c
+// SpotlightViewController
+import UIKit
+
+@objc public protocol SpotlightViewControllerDelegate: class {
+  @objc optional func spotlightViewControllerWillPresent(_ viewController: SpotlightViewController, animated: Bool)
+  @objc optional func spotlightViewControllerWillDismiss(_ viewController: SpotlightViewController, animated: Bool)
+  @objc optional func spotlightViewControllerTapped(_ viewController: SpotlightViewController, isInsideSpotlight: Bool)
+  // (1)長押し検知
+  @objc optional func spotlightViewControllerLongPressed(_ viewController: SpotlightViewController, isInsideSpotlight: Bool)
+}
+
+open class SpotlightViewController: UIViewController {
+  open weak var delegate: SpotlightViewControllerDelegate?
+  ...
+  open override func viewDidLoad() {
+    super.viewDidLoad()
+
+    setupSpotlightView(alpha)
+    setupContentView()
+    setupTapGesture()
+    // (2)長押し処理の追加
+    setupLongPressGesture()
+
+    view.backgroundColor = UIColor.clear
+  }
+  ...
+  // (3)長押し処理ジェスチャの初期化
+  fileprivate func setupLongPressGesture() {
+    let gesture = UILongPressGestureRecognizer(target: self, action: #selector(SpotlightViewController.viewLongPressed(_:)));
+    view.addGestureRecognizer(gesture)
+  }
+}
+
+extension SpotlightViewController {
+  ...
+  // (4)長押し時に実行される処理を追加
+  func viewLongPressed(_ gesture: UILongPressGestureRecognizer) {
+    let pressPoint = gesture.location(in: spotlightView)
+    let isInside = spotlightView.spotlight?.frame.contains(pressPoint) ?? false
+    delegate?.spotlightViewControllerLongPressed?(self, pressPoint: pressPoint, isInsideSpotlight: isInside)
+  }
+}
+```
+
+### まとめ
+さて如何でしたでしょうか？  
+今回はチュートリアル用に利用する `Gecco` ライブラリについて紹介させて頂きました。  
+チュートリアルにはGoogleがよく使うような初めに説明スライドを数枚用意する方式もあるかと思います。  
+ケースによって使い分けると良いんでしょうね。  
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
