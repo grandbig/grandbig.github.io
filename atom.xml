@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-07-23T16:18:52+09:00</updated>
+  <updated>2017-07-31T23:58:18+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,483 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Bond, SwiftBondを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/07/31/swiftbond-1/"/>
+    <updated>2017-07-31T20:17:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/07/31/swiftbond-1</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、今回はiOSで <code>MVVM</code> アーキテクチャで重宝されている<a href="https://github.com/ReactiveKit/Bond">ReactiveKit/Bond</a>(SwiftBond)について勉強したいと思います。<br/>
+趣味で個人iOSアプリを作成する分にはそこまで大規模アプリになることも少ないとは思うものの、仕事で大人数で1つのアプリを開発することは当然あることでしょう。<br/>
+そんなときに備えて知識を向上させたいと思います。<br/>
+(今まで <code>MVC</code> で済んできたこともあり、良い機会なので <code>MVVM</code> を勉強したいと思っています。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>MVVMとは</h3>
+
+<p>まず、 <code>MVVM</code> とはそもそも何なのでしょうか？<br/>
+<code>MVVM</code> とは <code>Model View ViewModel</code> の略です。</p>
+
+<p><a href="https://ja.wikipedia.org/wiki/Model_View_ViewModel">Wikipedia</a>を見ると、それぞれ</p>
+
+<ul>
+<li><code>Model</code>
+
+<ul>
+<li>そのアプリケーションが扱う領域のデータと手続き (ビジネスロジック)を表現する要素</li>
+<li>データの格納に永続的な記憶の仕組み(データベース)やサーバ側との通信ロジックなど</li>
+</ul>
+</li>
+<li><code>View</code>
+
+<ul>
+<li>ユーザに見せるためのアウトプット描画およびユーザ入力を受け取る(UIへの入力とUIからの出力を担当する)要素</li>
+<li>データバインディング機構を通して自動的に描画</li>
+<li><code>View</code> そのものに複雑なロジックや状態を持たない</li>
+</ul>
+</li>
+<li><code>ViewModel</code>
+
+<ul>
+<li>Viewを描画するための状態の保持と、Viewから受け取った入力を適切な形に変換してModelに伝達する役目を持つ</li>
+</ul>
+</li>
+</ul>
+
+
+<p>と書かれています。<br/>
+他の方のブログ記事を見ても、上記からそう遠くはない印象です。</p>
+
+<h3>Bond, SwiftBondとは</h3>
+
+<p><code>Bond</code> は昔は <code>SwiftBond</code> と呼ばれていたようですが、今はGitHub上でも <code>ReactiveKit</code> の一部として提供されているようです。<br/>
+元々、 <code>SwiftBond</code> も <code>ReactiveKit</code> も開発者は同じなので、どこかのタイミングで取り込まれたんですかね&hellip;。<br/>
+この <code>Bond</code> を <code>MVVM</code> で言うところのデータバインディング機構を実現するために利用します。</p>
+
+<h3>サンプルを作ってみよう</h3>
+
+<p>今回のサンプルで扱う機能は下記です。</p>
+
+<ul>
+<li>Google　Mapに現在地周辺のレストランをマッピングする</li>
+<li>レストラン情報はホットペッパーAPIの周辺レストラン検索APIから取得する</li>
+</ul>
+
+
+<p>続いてXcode上のフォルダ構成は下記にします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">SampleApp</span>
+</span><span class='line'><span class="err">├──</span> <span class="n">Model</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="n">HotpepperAPI</span><span class="p">.</span><span class="n">swift</span>
+</span><span class='line'><span class="err">├──</span> <span class="n">ViewModel</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="n">HotpepperAPIViewModel</span><span class="p">.</span><span class="n">swift</span>
+</span><span class='line'><span class="err">├──</span> <span class="n">View</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="n">ViewController</span><span class="p">.</span><span class="n">swift</span>
+</span><span class='line'><span class="err">├──</span> <span class="n">AppDelegate</span><span class="p">.</span><span class="n">swift</span>
+</span><span class='line'><span class="err">└──</span> <span class="n">Main</span><span class="p">.</span><span class="n">storyboard</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>また、今回は <code>Google Maps SDK for iOS</code> と ホットペッパーのAPIを利用します。<br/>
+これらのAPIキーを公式案内を元に取得して、 <code>Info.plist</code> と同じ階層に作成した <code>key.plist</code> に追加します。</p>
+
+<p><img src="http://grandbig.github.io/images/swiftbond_1.png" alt="ホットペッパーAPIキー" /></p>
+
+<p>さて下準備は済んだので、各ファイルの実装を見ていきましょう。</p>
+
+<h4>AppDelegate.swift</h4>
+
+<p><code>Google Maps SDK for iOS</code> を利用するために <code>AppDelegate.swift</code> に下記処理を実装します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">GoogleMaps</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">window:</span> <span class="n">UIWindow</span><span class="o">?</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span> <span class="n">didFinishLaunchingWithOptions</span> <span class="nl">launchOptions:</span> <span class="p">[</span><span class="nl">UIApplicationLaunchOptionsKey:</span> <span class="n">Any</span><span class="p">]</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// Override point for customization after application launch.</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="s">&quot;key&quot;</span><span class="p">,</span> <span class="nl">ofType:</span> <span class="s">&quot;plist&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s">&quot;googleMapsApiKey&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">GMSServices</span><span class="p">.</span><span class="n">provideAPIKey</span><span class="p">(</span><span class="n">apiKey</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>HotpepperAPI.swift</h4>
+
+<p>ホットペッパーのグルメサーチAPIを利用する <code>Model</code> ファイルです。<br/>
+今回はサンプルということもあって、ほとんど複雑な処理はありません。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// HotpepperAPI.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Alamofire</span>
+</span><span class='line'><span class="n">import</span> <span class="n">SwiftyJSON</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> ホットペッパーAPI</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="n">class</span> <span class="n">HotpepperAPI</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">/// API Key</span>
+</span><span class='line'>  <span class="n">private</span> <span class="n">var</span> <span class="nl">apiKey:</span> <span class="n">String</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+</span><span class='line'>  <span class="c1">/// ホットペッパーAPIのベースURL</span>
+</span><span class='line'>  <span class="n">private</span> <span class="n">let</span> <span class="nl">baseURL:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;https://webservice.recruit.co.jp/hotpepper/gourmet/v1/&quot;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">/// 初期化処理</span>
+</span><span class='line'>  <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="s">&quot;key&quot;</span><span class="p">,</span> <span class="nl">ofType:</span> <span class="s">&quot;plist&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s">&quot;hotpepperApiKey&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">apiKey</span> <span class="o">=</span> <span class="n">apiKey</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="cm">/**</span>
+</span><span class='line'><span class="cm">   ホットペッパーグルメサーチAPI</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">   - parameter coordinate: 位置</span>
+</span><span class='line'><span class="cm">   - parameter completion: レストラン情報を返却するcallback</span>
+</span><span class='line'><span class="cm">   */</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">,</span> <span class="nl">completion:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">((</span><span class="n">JSON</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">parameters</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;key&quot;</span><span class="o">:</span> <span class="n">self</span><span class="p">.</span><span class="n">apiKey</span><span class="p">,</span> <span class="s">&quot;format&quot;</span><span class="o">:</span> <span class="s">&quot;json&quot;</span><span class="p">,</span> <span class="s">&quot;lat&quot;</span><span class="o">:</span> <span class="n">coordinate</span><span class="p">.</span><span class="n">latitude</span><span class="p">,</span> <span class="s">&quot;lng&quot;</span><span class="o">:</span> <span class="n">coordinate</span><span class="p">.</span><span class="n">longitude</span><span class="p">,</span> <span class="s">&quot;range&quot;</span><span class="o">:</span> <span class="mi">2</span><span class="p">]</span> <span class="n">as</span> <span class="p">[</span><span class="n">String</span> <span class="o">:</span> <span class="n">Any</span><span class="p">]</span>
+</span><span class='line'>    <span class="n">Alamofire</span><span class="p">.</span><span class="n">request</span><span class="p">(</span><span class="n">baseURL</span><span class="p">,</span> <span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">parameters:</span> <span class="n">parameters</span><span class="p">,</span> <span class="nl">encoding:</span> <span class="n">URLEncoding</span><span class="p">.</span><span class="k">default</span><span class="p">,</span> <span class="nl">headers:</span> <span class="nb">nil</span><span class="p">).</span><span class="n">responseJSON</span> <span class="p">{</span> <span class="n">response</span> <span class="k">in</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">json</span> <span class="o">=</span> <span class="n">JSON</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">value</span> <span class="n">as</span> <span class="n">Any</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">result</span> <span class="o">=</span> <span class="n">json</span><span class="p">[</span><span class="s">&quot;results&quot;</span><span class="p">][</span><span class="s">&quot;shop&quot;</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">completion</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>HotpepperAPIViewModel.swift</h4>
+
+<p><code>Model</code>である<code>HotpepperAPI.swift</code>と<code>View</code>である<code>ViewController.swift</code>を繋ぐ<code>ViewModel</code>ファイルです。<br/>
+<code>View</code>からの入力受付を想定して<code>searchRestaurant</code>メソッドを用意しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// HotpepperAPIViewModel.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">ReactiveKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Bond</span>
+</span><span class='line'><span class="n">import</span> <span class="n">SwiftyJSON</span>
+</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// 通信の各状態をEnumで表現</span>
+</span><span class='line'><span class="k">enum</span> <span class="n">RequestState</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">case</span> <span class="n">none</span>
+</span><span class='line'>  <span class="k">case</span> <span class="n">requesting</span>
+</span><span class='line'>  <span class="k">case</span> <span class="n">finish</span>
+</span><span class='line'>  <span class="k">case</span> <span class="n">error</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// HotpepperAPIのViewModelクラス</span>
+</span><span class='line'><span class="n">final</span> <span class="n">class</span> <span class="n">HotpepperAPIViewModel</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">items:</span> <span class="n">ObservableArray</span><span class="o">&lt;</span><span class="n">JSON</span><span class="o">&gt;</span> <span class="o">=</span> <span class="n">ObservableArray</span><span class="p">([])</span>
+</span><span class='line'>  <span class="n">let</span> <span class="n">requestState</span> <span class="o">=</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">RequestState</span><span class="o">&gt;</span><span class="p">(.</span><span class="n">none</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">let</span> <span class="n">hotpepperAPI</span> <span class="o">=</span> <span class="n">HotpepperAPI</span><span class="p">.</span><span class="n">init</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">finishSearchRestaurant:</span> <span class="n">Signal</span><span class="o">&lt;</span><span class="p">[</span><span class="n">JSON</span><span class="p">]</span><span class="o">?</span><span class="p">,</span> <span class="n">NoError</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">requestState</span><span class="p">.</span><span class="n">map</span><span class="p">({</span> <span class="p">(</span><span class="n">requestState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">JSON</span><span class="p">]</span><span class="o">?</span> <span class="k">in</span>
+</span><span class='line'>      <span class="k">if</span> <span class="n">requestState</span> <span class="o">==</span> <span class="p">.</span><span class="n">finish</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">array</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nb">nil</span>
+</span><span class='line'>    <span class="p">})</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">requestState</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="n">RequestState</span><span class="p">.</span><span class="n">requesting</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">hotpepperAPI</span><span class="p">.</span><span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">coordinate</span><span class="p">,</span> <span class="nl">completion:</span> <span class="p">{</span> <span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="k">in</span>
+</span><span class='line'>      <span class="n">guard</span> <span class="n">let</span> <span class="n">resultArray</span> <span class="o">=</span> <span class="n">result</span><span class="p">.</span><span class="n">array</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">ObservableArray</span><span class="p">(</span><span class="n">resultArray</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">requestState</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="n">RequestState</span><span class="p">.</span><span class="n">finish</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">})</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記では、<code>searchRestaurant</code>の中で先程紹介した<code>Model</code>の<code>HotpepperAPI</code>クラスにアクセスしてサーバ通信を委託しています。<br/>
+また、返却された値を受け取って<code>requestState</code>の状態を変えることが、<code>finishSearchRestaurant</code>の処理のトリガーになっています。<br/>
+<code>finishSearchRestaurant</code>では、<code>RequestState</code>の状態が<code>finish</code>になったときのみ正しい値を返却し、それ以外は<code>nil</code>を返却しています。</p>
+
+<h4>ViewController.swift</h4>
+
+<p>最後に <code>View</code> に当たる <code>ViewController.swift</code> について見ていきます。<br/>
+iOSでファットになりがちな <code>ViewController</code> を <code>View</code> の定義に則って実装していくというのがキーになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">GoogleMaps</span>
+</span><span class='line'><span class="n">import</span> <span class="n">SwiftyJSON</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">/// マップビュー</span>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">mapView:</span> <span class="n">GMSMapView</span><span class="o">!</span>
+</span><span class='line'>  <span class="c1">/// 検索ボタン</span>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">searchButton:</span> <span class="n">UIButton</span><span class="o">!</span>
+</span><span class='line'>  <span class="c1">/// 現在地</span>
+</span><span class='line'>  <span class="n">internal</span> <span class="n">var</span> <span class="nl">currentLocation:</span> <span class="n">CLLocationCoordinate2D</span><span class="o">?</span>
+</span><span class='line'>  <span class="c1">/// ViewModel</span>
+</span><span class='line'>  <span class="n">internal</span> <span class="n">var</span> <span class="n">hotpepperAPIVM</span> <span class="o">=</span> <span class="n">HotpepperAPIViewModel</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// データバインディング機構の設定処理</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">setUpBind</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">private</span> <span class="n">func</span> <span class="n">setUpBond</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// 検索ボタンをタップ(.touchUpInside)したときに呼び出される処理</span>
+</span><span class='line'>    <span class="n">_</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">searchButton</span><span class="p">.</span><span class="n">reactive</span><span class="p">.</span><span class="n">tap</span><span class="p">.</span><span class="n">observeNext</span> <span class="p">{</span> <span class="n">_</span> <span class="k">in</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">hotpepperAPIVM</span><span class="p">.</span><span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">self</span><span class="p">.</span><span class="n">currentLocation</span><span class="o">!</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="c1">// finishSearchRestaurantから値が返却されるときに呼び出される処理</span>
+</span><span class='line'>    <span class="n">_</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">hotpepperAPIVM</span><span class="p">.</span><span class="n">finishSearchRestaurant</span><span class="p">.</span><span class="n">ignoreNil</span><span class="p">().</span><span class="n">observeNext</span><span class="p">(</span><span class="nl">with:</span> <span class="p">{</span> <span class="p">(</span><span class="n">searchShops</span><span class="p">)</span> <span class="k">in</span>
+</span><span class='line'>      <span class="k">for</span> <span class="n">searchShop</span> <span class="k">in</span> <span class="n">searchShops</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// Google Mapへのマッピング処理</span>
+</span><span class='line'>        <span class="c1">// 省略</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">})</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記のように実装することで、データバインディング機構を <code>View</code> に実装することができます。<br/>
+ポイントは上記ソース内コメントに書いた通りですが、筆者が苦戦したのは、</p>
+
+<ul>
+<li><code>_ =</code> から始めなかったためSwift3の静的解析で怒られた</li>
+<li><code>observeNext</code> 内で <code>nil</code> 判定してしまっていたが、 <code>ignoreNil</code> という便利なものがある</li>
+</ul>
+
+
+<p>の2点です。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+筆者的にもまだまだ理解しきれていないところがあり、引き続き勉強する必要があると感じています。<br/>
+特にエラーハンドリング周りでは <code>ReactiveKit</code> を利用することで、<br/>
+うまく書けるようになるのではという期待感があるのでもう少し見ていきたいと思っています。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考</p>
+
+<ul>
+<li><a href="http://qiita.com/hachinobu/items/27a92d480db24511559a">SwiftBondの魅力 ~実用サンプル編~</a></li>
+<li><a href="http://qiita.com/susieyy/items/2af5321b287b8d2f49f6">MVVMをベースに複雑な振る舞いをしっかり把握できるアプリ開発</a></li>
+<li><a href="http://qiita.com/ko2ic/items/44c18b07c7f337dfb06b">SwiftBondをSwift3対応するためにv5にマイグレーションする</a></li>
+<li><a href="https://www.raywenderlich.com/149753/bond-tutorial-bindings-swift">Bond Tutorial: Bindings in Swift</a></li>
+<li><a href="https://github.com/ReactiveKit/ReactiveKit">ReactiveKit/ReactiveKit</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AlamofireImageを使ってみよう！]]></title>
@@ -5499,925 +5976,6 @@ CentOS7.3のDockerイメージをダウンロードして、Dockerコンテナ�
 <p>今回は<code>Docker</code>コマンドについて少々触れました。<br/>
 <code>Kitematic</code>が便利だからと言っても、いざという時にコマンドが使えるようになっていると解決の幅が広がりますね。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuでMariaDBを使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/02/26/docker-for-mac-5/"/>
-    <updated>2017-02-26T22:38:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/02/26/docker-for-mac-5</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>さて、Redisに引き続き<a href="https://mariadb.org/">MariaDB</a>をDockerコンテナ内のUbuntuにインストールしてみたいと思います。<br/>
-今回扱う環境は以下です。</p>
-
-<ul>
-<li>Ubuntu: 16.04.2 LTS</li>
-<li>MariaDB: Ver 15.1 Distrib 10.0.29-MariaDB, for debian-linux-gnu (x86_64) using readline 5.2</li>
-</ul>
-
-
-<p>では早速インストール方法から見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>MariaDBのインストール</h3>
-
-<p>これまで通りで非常に簡単です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// 念のためapt-getをupdate &amp;&amp; upgrade</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">update</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">upgrade</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// MariaDBのインストール</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">mariadb</span><span class="o">-</span><span class="nx">server</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// MariaDBがインストールされたことの確認</span>
-</span><span class='line'><span class="c1">// /etc配下にmysqlフォルダがある</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">cd</span> <span class="o">/</span><span class="nx">etc</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">cd</span> <span class="nx">ls</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>MariaDBの初期設定</h3>
-
-<p>インストール後の初期設定手順を書きます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">mysql_secure_installation</span>
-</span><span class='line'><span class="nx">NOTE</span><span class="o">:</span> <span class="nx">RUNNING</span> <span class="nx">ALL</span> <span class="nx">PARTS</span> <span class="nx">OF</span> <span class="nx">THIS</span> <span class="nx">SCRIPT</span> <span class="nx">IS</span> <span class="nx">RECOMMENDED</span> <span class="nx">FOR</span> <span class="nx">ALL</span> <span class="nx">MariaDB</span>
-</span><span class='line'>      <span class="nx">SERVERS</span> <span class="nx">IN</span> <span class="nx">PRODUCTION</span> <span class="nx">USE</span><span class="o">!</span>  <span class="nx">PLEASE</span> <span class="nx">READ</span> <span class="nx">EACH</span> <span class="nx">STEP</span> <span class="nx">CAREFULLY</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">In</span> <span class="nx">order</span> <span class="nx">to</span> <span class="nx">log</span> <span class="nx">into</span> <span class="nx">MariaDB</span> <span class="nx">to</span> <span class="nx">secure</span> <span class="nx">it</span><span class="p">,</span> <span class="nx">we</span><span class="err">‘</span><span class="nx">ll</span> <span class="nx">need</span> <span class="nx">the</span> <span class="nx">current</span>
-</span><span class='line'><span class="nx">password</span> <span class="k">for</span> <span class="nx">the</span> <span class="nx">root</span> <span class="nx">user</span><span class="p">.</span>  <span class="nx">If</span> <span class="nx">you</span><span class="err">‘</span><span class="nx">ve</span> <span class="nx">just</span> <span class="nx">installed</span> <span class="nx">MariaDB</span><span class="p">,</span> <span class="nx">and</span>
-</span><span class='line'><span class="nx">you</span> <span class="nx">haven</span><span class="err">‘</span><span class="nx">t</span> <span class="nx">set</span> <span class="nx">the</span> <span class="nx">root</span> <span class="nx">password</span> <span class="nx">yet</span><span class="p">,</span> <span class="nx">the</span> <span class="nx">password</span> <span class="nx">will</span> <span class="nx">be</span> <span class="nx">blank</span><span class="p">,</span>
-</span><span class='line'><span class="nx">so</span> <span class="nx">you</span> <span class="nx">should</span> <span class="nx">just</span> <span class="nx">press</span> <span class="nx">enter</span> <span class="nx">here</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// rootユーザのパスワードを設定しましょう！</span>
-</span><span class='line'><span class="nx">Enter</span> <span class="nx">current</span> <span class="nx">password</span> <span class="k">for</span> <span class="nx">root</span> <span class="p">(</span><span class="nx">enter</span> <span class="k">for</span> <span class="nx">none</span><span class="p">)</span><span class="o">:</span>
-</span><span class='line'><span class="nx">OK</span><span class="p">,</span> <span class="nx">successfully</span> <span class="nx">used</span> <span class="nx">password</span><span class="p">,</span> <span class="nx">moving</span> <span class="nx">on</span><span class="p">...</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">Setting</span> <span class="nx">the</span> <span class="nx">root</span> <span class="nx">password</span> <span class="nx">ensures</span> <span class="nx">that</span> <span class="nx">nobody</span> <span class="nx">can</span> <span class="nx">log</span> <span class="nx">into</span> <span class="nx">the</span> <span class="nx">MariaDB</span>
-</span><span class='line'><span class="nx">root</span> <span class="nx">user</span> <span class="nx">without</span> <span class="nx">the</span> <span class="nx">proper</span> <span class="nx">authorisation</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">You</span> <span class="nx">already</span> <span class="nx">have</span> <span class="nx">a</span> <span class="nx">root</span> <span class="nx">password</span> <span class="nx">set</span><span class="p">,</span> <span class="nx">so</span> <span class="nx">you</span> <span class="nx">can</span> <span class="nx">safely</span> <span class="nx">answer</span> <span class="s1">&#39;n&#39;</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// rootユーザのパスワードを変更しますか？(既に設定したので &quot;n&quot; を入力)</span>
-</span><span class='line'><span class="nx">Change</span> <span class="nx">the</span> <span class="nx">root</span> <span class="nx">password</span><span class="o">?</span> <span class="p">[</span><span class="nx">Y</span><span class="o">/</span><span class="nx">n</span><span class="p">]</span> <span class="nx">n</span>
-</span><span class='line'> <span class="p">...</span> <span class="nx">skipping</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">By</span> <span class="k">default</span><span class="p">,</span> <span class="nx">a</span> <span class="nx">MariaDB</span> <span class="nx">installation</span> <span class="nx">has</span> <span class="nx">an</span> <span class="nx">anonymous</span> <span class="nx">user</span><span class="p">,</span> <span class="nx">allowing</span> <span class="nx">anyone</span>
-</span><span class='line'><span class="nx">to</span> <span class="nx">log</span> <span class="nx">into</span> <span class="nx">MariaDB</span> <span class="nx">without</span> <span class="nx">having</span> <span class="nx">to</span> <span class="nx">have</span> <span class="nx">a</span> <span class="nx">user</span> <span class="nx">account</span> <span class="nx">created</span> <span class="k">for</span>
-</span><span class='line'><span class="nx">them</span><span class="p">.</span>  <span class="nx">This</span> <span class="nx">is</span> <span class="nx">intended</span> <span class="nx">only</span> <span class="k">for</span> <span class="nx">testing</span><span class="p">,</span> <span class="nx">and</span> <span class="nx">to</span> <span class="nx">make</span> <span class="nx">the</span> <span class="nx">installation</span>
-</span><span class='line'><span class="nx">go</span> <span class="nx">a</span> <span class="nx">bit</span> <span class="nx">smoother</span><span class="p">.</span>  <span class="nx">You</span> <span class="nx">should</span> <span class="nx">remove</span> <span class="nx">them</span> <span class="nx">before</span> <span class="nx">moving</span> <span class="nx">into</span> <span class="nx">a</span>
-</span><span class='line'><span class="nx">production</span> <span class="nx">environment</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// 匿名ユーザを削除しますか？</span>
-</span><span class='line'><span class="nx">Remove</span> <span class="nx">anonymous</span> <span class="nx">users</span><span class="o">?</span> <span class="p">[</span><span class="nx">Y</span><span class="o">/</span><span class="nx">n</span><span class="p">]</span> <span class="nx">y</span>
-</span><span class='line'> <span class="p">...</span> <span class="nx">Success</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">Normally</span><span class="p">,</span> <span class="nx">root</span> <span class="nx">should</span> <span class="nx">only</span> <span class="nx">be</span> <span class="nx">allowed</span> <span class="nx">to</span> <span class="nx">connect</span> <span class="nx">from</span> <span class="s1">&#39;localhost&#39;</span><span class="p">.</span>  <span class="nx">This</span>
-</span><span class='line'><span class="nx">ensures</span> <span class="nx">that</span> <span class="nx">someone</span> <span class="nx">cannot</span> <span class="nx">guess</span> <span class="nx">at</span> <span class="nx">the</span> <span class="nx">root</span> <span class="nx">password</span> <span class="nx">from</span> <span class="nx">the</span> <span class="nx">network</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// リモートでrootによるログインを許可しますか？</span>
-</span><span class='line'><span class="nx">Disallow</span> <span class="nx">root</span> <span class="nx">login</span> <span class="nx">remotely</span><span class="o">?</span> <span class="p">[</span><span class="nx">Y</span><span class="o">/</span><span class="nx">n</span><span class="p">]</span> <span class="nx">y</span>
-</span><span class='line'> <span class="p">...</span> <span class="nx">Success</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">By</span> <span class="k">default</span><span class="p">,</span> <span class="nx">MariaDB</span> <span class="nx">comes</span> <span class="kd">with</span> <span class="nx">a</span> <span class="nx">database</span> <span class="nx">named</span> <span class="s1">&#39;test&#39;</span> <span class="nx">that</span> <span class="nx">anyone</span> <span class="nx">can</span>
-</span><span class='line'><span class="nx">access</span><span class="p">.</span>  <span class="nx">This</span> <span class="nx">is</span> <span class="nx">also</span> <span class="nx">intended</span> <span class="nx">only</span> <span class="k">for</span> <span class="nx">testing</span><span class="p">,</span> <span class="nx">and</span> <span class="nx">should</span> <span class="nx">be</span> <span class="nx">removed</span>
-</span><span class='line'><span class="nx">before</span> <span class="nx">moving</span> <span class="nx">into</span> <span class="nx">a</span> <span class="nx">production</span> <span class="nx">environment</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// test用のデータベースを削除しますか？</span>
-</span><span class='line'><span class="nx">Remove</span> <span class="nx">test</span> <span class="nx">database</span> <span class="nx">and</span> <span class="nx">access</span> <span class="nx">to</span> <span class="nx">it</span><span class="o">?</span> <span class="p">[</span><span class="nx">Y</span><span class="o">/</span><span class="nx">n</span><span class="p">]</span> <span class="nx">y</span>
-</span><span class='line'> <span class="o">-</span> <span class="nx">Dropping</span> <span class="nx">test</span> <span class="nx">database</span><span class="p">...</span>
-</span><span class='line'> <span class="p">...</span> <span class="nx">Success</span><span class="o">!</span>
-</span><span class='line'> <span class="o">-</span> <span class="nx">Removing</span> <span class="nx">privileges</span> <span class="nx">on</span> <span class="nx">test</span> <span class="nx">database</span><span class="p">...</span>
-</span><span class='line'> <span class="p">...</span> <span class="nx">Success</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">Reloading</span> <span class="nx">the</span> <span class="nx">privilege</span> <span class="nx">tables</span> <span class="nx">will</span> <span class="nx">ensure</span> <span class="nx">that</span> <span class="nx">all</span> <span class="nx">changes</span> <span class="nx">made</span> <span class="nx">so</span> <span class="nx">far</span>
-</span><span class='line'><span class="nx">will</span> <span class="nx">take</span> <span class="nx">effect</span> <span class="nx">immediately</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// テーブルへの特権情報をリロードしますか？(上記までの変更を即時反映させるため &quot;y&quot; を選択)</span>
-</span><span class='line'><span class="nx">Reload</span> <span class="nx">privilege</span> <span class="nx">tables</span> <span class="nx">now</span><span class="o">?</span> <span class="p">[</span><span class="nx">Y</span><span class="o">/</span><span class="nx">n</span><span class="p">]</span> <span class="nx">y</span>
-</span><span class='line'> <span class="p">...</span> <span class="nx">Success</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">Cleaning</span> <span class="nx">up</span><span class="p">...</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">All</span> <span class="nx">done</span><span class="o">!</span>  <span class="nx">If</span> <span class="nx">you</span><span class="err">‘</span><span class="nx">ve</span> <span class="nx">completed</span> <span class="nx">all</span> <span class="nx">of</span> <span class="nx">the</span> <span class="nx">above</span> <span class="nx">steps</span><span class="p">,</span> <span class="nx">your</span> <span class="nx">MariaDB</span>
-</span><span class='line'><span class="nx">installation</span> <span class="nx">should</span> <span class="nx">now</span> <span class="nx">be</span> <span class="nx">secure</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="nx">Thanks</span> <span class="k">for</span> <span class="nx">using</span> <span class="nx">MariaDB</span><span class="o">!</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>MariaDBにユーザを追加</h3>
-
-<p>流石にrootユーザだけだと何なので、メインで利用するユーザを作成しましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// MariaDBにログイン</span>
-</span><span class='line'><span class="nx">$</span> <span class="nx">mysql</span> <span class="o">-</span><span class="nx">u</span> <span class="nx">root</span> <span class="o">-</span><span class="nx">p</span>
-</span><span class='line'><span class="c1">// ユーザを作成</span>
-</span><span class='line'><span class="nx">MariaDB</span> <span class="p">[(</span><span class="nx">none</span><span class="p">)]</span><span class="o">&gt;</span> <span class="nx">create</span> <span class="nx">user</span> <span class="s1">&#39;takahiro&#39;</span><span class="err">@</span><span class="s1">&#39;localhost&#39;</span> <span class="nx">identified</span> <span class="nx">by</span> <span class="s1">&#39;password&#39;</span><span class="p">;</span>
-</span><span class='line'><span class="c1">// ユーザの一覧を確認</span>
-</span><span class='line'><span class="nx">MariaDB</span> <span class="p">[(</span><span class="nx">none</span><span class="p">)]</span><span class="o">&gt;</span> <span class="nx">select</span> <span class="nx">Host</span><span class="p">,</span> <span class="nx">User</span><span class="p">,</span> <span class="nx">Password</span> <span class="nx">from</span> <span class="nx">mysql</span><span class="p">.</span><span class="nx">user</span><span class="p">;</span>
-</span><span class='line'><span class="o">+-----------+----------+-------------------------------------------+</span>
-</span><span class='line'><span class="o">|</span> <span class="nx">Host</span>      <span class="o">|</span> <span class="nx">User</span>     <span class="o">|</span> <span class="nx">Password</span>                                  <span class="o">|</span>
-</span><span class='line'><span class="o">+-----------+----------+-------------------------------------------+</span>
-</span><span class='line'><span class="o">|</span> <span class="nx">localhost</span> <span class="o">|</span> <span class="nx">root</span>     <span class="o">|</span>                                           <span class="o">|</span>
-</span><span class='line'><span class="o">|</span> <span class="nx">localhost</span> <span class="o">|</span> <span class="nx">takahiro</span> <span class="o">|</span> <span class="o">*****************************************</span> <span class="o">|</span>
-</span><span class='line'><span class="o">+-----------+----------+-------------------------------------------+</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>MariaDBの設定ファイル</h3>
-
-<p>さてさて、続いてMariaDBのデフォルトの設定ファイルを見ていきます。</p>
-
-<p>設定ファイルがたくさんあることで混乱しそうになりますが、1つ1つはあまり何も書いていません。<br/>
-構造を見てみると&hellip;</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">mysql</span>
-</span><span class='line'><span class="err">├──</span> <span class="nx">conf</span><span class="p">.</span><span class="nx">d</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="nx">mysql</span><span class="p">.</span><span class="nx">cnf</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">mysqldump</span><span class="p">.</span><span class="nx">cnf</span>
-</span><span class='line'><span class="err">├──</span> <span class="nx">debian</span><span class="o">-</span><span class="nx">start</span>
-</span><span class='line'><span class="err">├──</span> <span class="nx">debian</span><span class="p">.</span><span class="nx">cnf</span>
-</span><span class='line'><span class="err">├──</span> <span class="nx">mariadb</span><span class="p">.</span><span class="nx">cnf</span>
-</span><span class='line'><span class="err">├──</span> <span class="nx">mariadb</span><span class="p">.</span><span class="nx">conf</span><span class="p">.</span><span class="nx">d</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="mi">50</span><span class="o">-</span><span class="nx">client</span><span class="p">.</span><span class="nx">cnf</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="mi">50</span><span class="o">-</span><span class="nx">mysql</span><span class="o">-</span><span class="nx">clients</span><span class="p">.</span><span class="nx">cnf</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="mi">50</span><span class="o">-</span><span class="nx">mysqld_safe</span><span class="p">.</span><span class="nx">cnf</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="mi">50</span><span class="o">-</span><span class="nx">server</span><span class="p">.</span><span class="nx">cnf</span>
-</span><span class='line'><span class="err">├──</span> <span class="nx">my</span><span class="p">.</span><span class="nx">cnf</span>
-</span><span class='line'><span class="err">└──</span> <span class="nx">my</span><span class="p">.</span><span class="nx">cnf</span><span class="p">.</span><span class="nx">fallback</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>となっています。<br/>
-それぞれの大まかな意図は<code>mariadb.cnf</code>に書かれています。</p>
-
-<h5>mariadb.cnf</h5>
-
-<p>このファイルには下記のように書かれています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">The</span> <span class="nx">MariaDB</span> <span class="nx">configuration</span> <span class="nx">file</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">The</span> <span class="nx">MariaDB</span><span class="o">/</span><span class="nx">MySQL</span> <span class="nx">tools</span> <span class="nx">read</span> <span class="nx">configuration</span> <span class="nx">files</span> <span class="k">in</span> <span class="nx">the</span> <span class="nx">following</span> <span class="nx">order</span><span class="o">:</span>
-</span><span class='line'><span class="err">#</span> <span class="mi">1</span><span class="p">.</span> <span class="s2">&quot;/etc/mysql/mariadb.cnf&quot;</span> <span class="p">(</span><span class="k">this</span> <span class="nx">file</span><span class="p">)</span> <span class="nx">to</span> <span class="nx">set</span> <span class="nx">global</span> <span class="nx">defaults</span><span class="p">,</span>
-</span><span class='line'><span class="err">#</span> <span class="mi">2</span><span class="p">.</span> <span class="s2">&quot;/etc/mysql/conf.d/*.cnf&quot;</span> <span class="nx">to</span> <span class="nx">set</span> <span class="nx">global</span> <span class="nx">options</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="mi">3</span><span class="p">.</span> <span class="s2">&quot;/etc/mysql/mariadb.conf.d/*.cnf&quot;</span> <span class="nx">to</span> <span class="nx">set</span> <span class="nx">MariaDB</span><span class="o">-</span><span class="nx">only</span> <span class="nx">options</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="mi">4</span><span class="p">.</span> <span class="s2">&quot;~/.my.cnf&quot;</span> <span class="nx">to</span> <span class="nx">set</span> <span class="nx">user</span><span class="o">-</span><span class="nx">specific</span> <span class="nx">options</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">If</span> <span class="nx">the</span> <span class="nx">same</span> <span class="nx">option</span> <span class="nx">is</span> <span class="nx">defined</span> <span class="nx">multiple</span> <span class="nx">times</span><span class="p">,</span> <span class="nx">the</span> <span class="nx">last</span> <span class="nx">one</span> <span class="nx">will</span> <span class="nx">apply</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">One</span> <span class="nx">can</span> <span class="nx">use</span> <span class="nx">all</span> <span class="kr">long</span> <span class="nx">options</span> <span class="nx">that</span> <span class="nx">the</span> <span class="nx">program</span> <span class="nx">supports</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Run</span> <span class="nx">program</span> <span class="kd">with</span> <span class="o">--</span><span class="nx">help</span> <span class="nx">to</span> <span class="nx">get</span> <span class="nx">a</span> <span class="nx">list</span> <span class="nx">of</span> <span class="nx">available</span> <span class="nx">options</span> <span class="nx">and</span> <span class="kd">with</span>
-</span><span class='line'><span class="err">#</span> <span class="o">--</span><span class="nx">print</span><span class="o">-</span><span class="nx">defaults</span> <span class="nx">to</span> <span class="nx">see</span> <span class="nx">which</span> <span class="nx">it</span> <span class="nx">would</span> <span class="nx">actually</span> <span class="nx">understand</span> <span class="nx">and</span> <span class="nx">use</span><span class="p">.</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">This</span> <span class="nx">group</span> <span class="nx">is</span> <span class="nx">read</span> <span class="nx">both</span> <span class="nx">both</span> <span class="nx">by</span> <span class="nx">the</span> <span class="nx">client</span> <span class="nx">and</span> <span class="nx">the</span> <span class="nx">server</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">use</span> <span class="nx">it</span> <span class="k">for</span> <span class="nx">options</span> <span class="nx">that</span> <span class="nx">affect</span> <span class="nx">everything</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="p">[</span><span class="nx">client</span><span class="o">-</span><span class="nx">server</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span> <span class="nx">Import</span> <span class="nx">all</span> <span class="p">.</span><span class="nx">cnf</span> <span class="nx">files</span> <span class="nx">from</span> <span class="nx">configuration</span> <span class="nx">directory</span>
-</span><span class='line'><span class="o">!</span><span class="nx">includedir</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">mysql</span><span class="o">/</span><span class="nx">conf</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span>
-</span><span class='line'><span class="o">!</span><span class="nx">includedir</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">mysql</span><span class="o">/</span><span class="nx">mariadb</span><span class="p">.</span><span class="nx">conf</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ここに書かれている通り、</p>
-
-<ol>
-<li><code>/etc/mysql/mariadb.cnf</code>: グローバル設定を書く</li>
-<li><code>/etc/mysql/conf.d/*.cnf</code>: グローバルオプション設定を書く</li>
-<li><code>/etc/mysql/mariadb.conf.d/*.cnf</code>: MariaDBにのみ有効なオプション設定を書く</li>
-<li><code>~/.my.cnf</code>: ユーザ固有のオプション設定を書く</li>
-</ol>
-
-
-<p>というフォルダ構成になっているようです。</p>
-
-<p>また、<code>[client-server]</code>を設定することでMariaDBクライアントとMariaDBサーバの両方から読み込まれる設定ファイルとして定義しています。<br/>
-筆者が少し引っかかったのは<code>!includedir</code>構文です。<br/>
-これは指定したファイルのインクルードを実行する構文です。<br/>
-(<code>!</code>がついているのでインクルードしないのかと思いきや、これでインクルートなんですね&hellip;)</p>
-
-<h5>conf.d/mysql.cnf</h5>
-
-<p>下記しか書かれていません&hellip;<br/>
-MySQLクライアントに有効な設定を書くことを想定している書き方に見えますね。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="p">[</span><span class="nx">mysql</span><span class="p">]</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>conf.d/mysqldump.cnf</h5>
-
-<p>名前からして<code>mysqldump</code>に関する設定ですね。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="p">[</span><span class="nx">mysqldump</span><span class="p">]</span>
-</span><span class='line'><span class="nx">quick</span>
-</span><span class='line'><span class="nx">quote</span><span class="o">-</span><span class="nx">names</span>
-</span><span class='line'><span class="nx">max_allowed_packet</span>      <span class="o">=</span> <span class="mi">16</span><span class="nx">M</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>quick</code>: テーブルを1行ずつDumpする設定</li>
-<li><code>quote-names</code>: 識別子を逆引用符文字で囲む</li>
-<li><code>max_allowed_packet</code>: サーバーとの間で送受信するパケットの最大長</li>
-</ul>
-
-
-<h5>mariadb.conf.d/50-client.cnf</h5>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">This</span> <span class="nx">group</span> <span class="nx">is</span> <span class="nx">read</span> <span class="nx">by</span> <span class="nx">the</span> <span class="nx">client</span> <span class="nx">library</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Use</span> <span class="nx">it</span> <span class="k">for</span> <span class="nx">options</span> <span class="nx">that</span> <span class="nx">affect</span> <span class="nx">all</span> <span class="nx">clients</span><span class="p">,</span> <span class="nx">but</span> <span class="nx">not</span> <span class="nx">the</span> <span class="nx">server</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">[</span><span class="nx">client</span><span class="p">]</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Default</span> <span class="nx">is</span> <span class="nx">Latin1</span><span class="p">,</span> <span class="k">if</span> <span class="nx">you</span> <span class="nx">need</span> <span class="nx">UTF</span><span class="o">-</span><span class="mi">8</span> <span class="nx">set</span> <span class="k">this</span> <span class="p">(</span><span class="nx">also</span> <span class="k">in</span> <span class="nx">server</span> <span class="nx">section</span><span class="p">)</span>
-</span><span class='line'><span class="k">default</span><span class="o">-</span><span class="nx">character</span><span class="o">-</span><span class="nx">set</span> <span class="o">=</span> <span class="nx">utf8mb4</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span> <span class="nx">This</span> <span class="nx">group</span> <span class="nx">is</span> <span class="o">*</span><span class="nx">never</span><span class="o">*</span> <span class="nx">read</span> <span class="nx">by</span> <span class="nx">mysql</span> <span class="nx">client</span> <span class="nx">library</span><span class="p">,</span> <span class="nx">though</span> <span class="k">this</span>
-</span><span class='line'><span class="err">#</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">mysql</span><span class="o">/</span><span class="nx">mariadb</span><span class="p">.</span><span class="nx">cnf</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">client</span><span class="p">.</span><span class="nx">cnf</span> <span class="nx">file</span> <span class="nx">is</span> <span class="nx">not</span> <span class="nx">read</span> <span class="nx">by</span> <span class="nx">Oracle</span> <span class="nx">MySQL</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">client</span> <span class="nx">anyway</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">If</span> <span class="nx">you</span> <span class="nx">use</span> <span class="nx">the</span> <span class="nx">same</span> <span class="p">.</span><span class="nx">cnf</span> <span class="nx">file</span> <span class="k">for</span> <span class="nx">MySQL</span> <span class="nx">and</span> <span class="nx">MariaDB</span><span class="p">,</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">use</span> <span class="nx">it</span> <span class="k">for</span> <span class="nx">MariaDB</span><span class="o">-</span><span class="nx">only</span> <span class="nx">client</span> <span class="nx">options</span>
-</span><span class='line'><span class="p">[</span><span class="nx">client</span><span class="o">-</span><span class="nx">mariadb</span><span class="p">]</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>MySQL / MariaDBクライアント側のデフォルトの文字コードが<code>utf8mb4</code>と設定されています。<br/>
-また、MariaDBクライアントのみ設定を追加したい場合は<code>[client-mariadb]</code>より下の行にオプション設定を書きましょう。</p>
-
-<h5>mariadb.conf.d/50-mysql-clients.cnf</h5>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">These</span> <span class="nx">groups</span> <span class="nx">are</span> <span class="nx">read</span> <span class="nx">by</span> <span class="nx">MariaDB</span> <span class="nx">command</span><span class="o">-</span><span class="nx">line</span> <span class="nx">tools</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Use</span> <span class="nx">it</span> <span class="k">for</span> <span class="nx">options</span> <span class="nx">that</span> <span class="nx">affect</span> <span class="nx">only</span> <span class="nx">one</span> <span class="nx">utility</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">[</span><span class="nx">mysql</span><span class="p">]</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Default</span> <span class="nx">is</span> <span class="nx">Latin1</span><span class="p">,</span> <span class="k">if</span> <span class="nx">you</span> <span class="nx">need</span> <span class="nx">UTF</span><span class="o">-</span><span class="mi">8</span> <span class="nx">set</span> <span class="k">this</span> <span class="p">(</span><span class="nx">also</span> <span class="k">in</span> <span class="nx">server</span> <span class="nx">section</span><span class="p">)</span>
-</span><span class='line'><span class="k">default</span><span class="o">-</span><span class="nx">character</span><span class="o">-</span><span class="nx">set</span> <span class="o">=</span> <span class="nx">utf8mb4</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">[</span><span class="nx">mysql_upgrade</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">[</span><span class="nx">mysqladmin</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">[</span><span class="nx">mysqlbinlog</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">[</span><span class="nx">mysqlcheck</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">[</span><span class="nx">mysqldump</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">[</span><span class="nx">mysqlimport</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">[</span><span class="nx">mysqlshow</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">[</span><span class="nx">mysqlslap</span><span class="p">]</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>MySQLクライアント側のデフォルト文字コードは<code>utf8mb4</code>で設定されています。<br/>
-他にもMySQL関連の設定を追加できるようですが、デフォルトでは何も書かれていませんでした。<br/>
-一応、それぞれについて簡単に説明しておきます。</p>
-
-<ul>
-<li><code>mysqladmin</code>
-
-<ul>
-<li>MySQLサーバの管理を行うクライアント</li>
-<li>サーバーの構成や現在のステータスの確認、データベースの作成および削除、およびその他の用途に使用</li>
-</ul>
-</li>
-<li><code>mysqlbinlog</code>
-
-<ul>
-<li>MySQLのバイナリログの内容を確認</li>
-</ul>
-</li>
-<li><code>mysqlcheck</code>
-
-<ul>
-<li>テーブルの保守 (テーブルの検査、修復、最適化、分析) を実行</li>
-</ul>
-</li>
-<li><code>mysqldump</code>
-
-<ul>
-<li>MySQLデータのバックアップを実行</li>
-</ul>
-</li>
-<li><code>mysqlimport</code>
-
-<ul>
-<li>LOAD DATA INFILE SQL ステートメントにコマンド行インタフェースを提供</li>
-<li>ファイルをテーブルにインポート</li>
-</ul>
-</li>
-<li><code>mysqlshow</code>
-
-<ul>
-<li>データベース / テーブル / テーブルのカラム / インデックスの存在迅速に確認するために使用</li>
-</ul>
-</li>
-<li><code>mysqlslap</code>
-
-<ul>
-<li>MySQL サーバーのクライアント負荷をエミュレートし、各段階のタイミングをレポートする</li>
-</ul>
-</li>
-</ul>
-
-
-<h5>mariadb.conf.d/50-mysqld_safe.cnf</h5>
-
-<p>エラー発生時の再起動やランタイム情報のエラーログファイルへのロギングなど、いくつかの安全機能を追加するために設定します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="p">[</span><span class="nx">mysqld_safe</span><span class="p">]</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">This</span> <span class="nx">will</span> <span class="nx">be</span> <span class="nx">passed</span> <span class="nx">to</span> <span class="nx">all</span> <span class="nx">mysql</span> <span class="nx">clients</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">It</span> <span class="nx">has</span> <span class="nx">been</span> <span class="nx">reported</span> <span class="nx">that</span> <span class="nx">passwords</span> <span class="nx">should</span> <span class="nx">be</span> <span class="nx">enclosed</span> <span class="kd">with</span> <span class="nx">ticks</span><span class="o">/</span><span class="nx">quotes</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">escpecially</span> <span class="k">if</span> <span class="nx">they</span> <span class="nx">contain</span> <span class="s2">&quot;#&quot;</span> <span class="nx">chars</span><span class="p">...</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Remember</span> <span class="nx">to</span> <span class="nx">edit</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">mysql</span><span class="o">/</span><span class="nx">debian</span><span class="p">.</span><span class="nx">cnf</span> <span class="nx">when</span> <span class="nx">changing</span> <span class="nx">the</span> <span class="nx">socket</span> <span class="nx">location</span><span class="p">.</span>
-</span><span class='line'><span class="nx">socket</span>          <span class="o">=</span> <span class="err">/var/run/mysqld/mysqld.sock</span>
-</span><span class='line'><span class="nx">nice</span>            <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'><span class="nx">skip_log_error</span>
-</span><span class='line'><span class="nx">syslog</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>socket</code>: Unixドメインソケット接続を待機するソケットファイル</li>
-<li><code>nice</code>: サーバのスケジュール設定の優先順位を設定するために利用します</li>
-<li><code>skip_log_error</code>: エラーログの出力をスキップする設定</li>
-<li><code>syslog</code>: エラーメッセージをsyslogに書き込むための設定</li>
-</ul>
-
-
-<h5>mariadb.conf.d/50-server.cnf</h5>
-
-<p>文章の長さからしてMariaDB設定のベースとなります。<br/>
-分割して見ていきます。<br/>
-まずは基本設定です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">These</span> <span class="nx">groups</span> <span class="nx">are</span> <span class="nx">read</span> <span class="nx">by</span> <span class="nx">MariaDB</span> <span class="nx">server</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Use</span> <span class="nx">it</span> <span class="k">for</span> <span class="nx">options</span> <span class="nx">that</span> <span class="nx">only</span> <span class="nx">the</span> <span class="nx">server</span> <span class="p">(</span><span class="nx">but</span> <span class="nx">not</span> <span class="nx">clients</span><span class="p">)</span> <span class="nx">should</span> <span class="nx">see</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">See</span> <span class="nx">the</span> <span class="nx">examples</span> <span class="nx">of</span> <span class="nx">server</span> <span class="nx">my</span><span class="p">.</span><span class="nx">cnf</span> <span class="nx">files</span> <span class="k">in</span> <span class="err">/usr/share/mysql/</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span> <span class="k">this</span> <span class="nx">is</span> <span class="nx">read</span> <span class="nx">by</span> <span class="nx">the</span> <span class="nx">standalone</span> <span class="nx">daemon</span> <span class="nx">and</span> <span class="nx">embedded</span> <span class="nx">servers</span>
-</span><span class='line'><span class="p">[</span><span class="nx">server</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span> <span class="k">this</span> <span class="nx">is</span> <span class="nx">only</span> <span class="k">for</span> <span class="nx">the</span> <span class="nx">mysqld</span> <span class="nx">standalone</span> <span class="nx">daemon</span>
-</span><span class='line'><span class="p">[</span><span class="nx">mysqld</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="o">*</span> <span class="nx">Basic</span> <span class="nx">Settings</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="nx">user</span>            <span class="o">=</span> <span class="nx">mysql</span>
-</span><span class='line'><span class="nx">pid</span><span class="o">-</span><span class="nx">file</span>        <span class="o">=</span> <span class="err">/var/run/mysqld/mysqld.pid</span>
-</span><span class='line'><span class="nx">socket</span>          <span class="o">=</span> <span class="err">/var/run/mysqld/mysqld.sock</span>
-</span><span class='line'><span class="nx">port</span>            <span class="o">=</span> <span class="mi">3306</span>
-</span><span class='line'><span class="nx">basedir</span>         <span class="o">=</span> <span class="err">/usr</span>
-</span><span class='line'><span class="nx">datadir</span>         <span class="o">=</span> <span class="err">/var/lib/mysql</span>
-</span><span class='line'><span class="nx">tmpdir</span>          <span class="o">=</span> <span class="err">/tmp</span>
-</span><span class='line'><span class="nx">lc</span><span class="o">-</span><span class="nx">messages</span><span class="o">-</span><span class="nx">dir</span> <span class="o">=</span> <span class="err">/usr/share/mysql</span>
-</span><span class='line'><span class="nx">skip</span><span class="o">-</span><span class="nx">external</span><span class="o">-</span><span class="nx">locking</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span> <span class="nx">Instead</span> <span class="nx">of</span> <span class="nx">skip</span><span class="o">-</span><span class="nx">networking</span> <span class="nx">the</span> <span class="k">default</span> <span class="nx">is</span> <span class="nx">now</span> <span class="nx">to</span> <span class="nx">listen</span> <span class="nx">only</span> <span class="nx">on</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">localhost</span> <span class="nx">which</span> <span class="nx">is</span> <span class="nx">more</span> <span class="nx">compatible</span> <span class="nx">and</span> <span class="nx">is</span> <span class="nx">not</span> <span class="nx">less</span> <span class="nx">secure</span><span class="p">.</span>
-</span><span class='line'><span class="nx">bind</span><span class="o">-</span><span class="nx">address</span>            <span class="o">=</span> <span class="mf">127.0</span><span class="p">.</span><span class="mf">0.1</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>user</code>: MariaDBに関連する操作を実行するためのユーザを設定します</li>
-<li><code>pid-file</code>: PIDファイルの指定先です</li>
-<li><code>socket</code>: Unixドメインソケット接続を待機するソケットファイル</li>
-<li><code>port</code>: 接続するためのポート番号です</li>
-<li><code>basedir</code>: MariaDBのインストールディレクトリ</li>
-<li><code>datadir</code>: MariaDBのデータベースに関するファイルが格納されるディレクトリ</li>
-<li><code>tmpdir</code>: ファイルシステムのディレクトリ</li>
-<li><code>lc-messages-dir</code>: エラーメッセージの配置ディレクトリ</li>
-<li><code>skip-external-locking</code>: 外部ロックを無効にする設定</li>
-<li><code>bind-address</code>: MariaDBへの接続を許可するIPアドレスの設定</li>
-</ul>
-
-
-<p>続いて、チューニング周りです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="o">*</span> <span class="nx">Fine</span> <span class="nx">Tuning</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="nx">key_buffer_size</span>         <span class="o">=</span> <span class="mi">16</span><span class="nx">M</span>
-</span><span class='line'><span class="nx">max_allowed_packet</span>      <span class="o">=</span> <span class="mi">16</span><span class="nx">M</span>
-</span><span class='line'><span class="nx">thread_stack</span>            <span class="o">=</span> <span class="mi">192</span><span class="nx">K</span>
-</span><span class='line'><span class="nx">thread_cache_size</span>       <span class="o">=</span> <span class="mi">8</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">This</span> <span class="nx">replaces</span> <span class="nx">the</span> <span class="nx">startup</span> <span class="nx">script</span> <span class="nx">and</span> <span class="nx">checks</span> <span class="nx">MyISAM</span> <span class="nx">tables</span> <span class="k">if</span> <span class="nx">needed</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">the</span> <span class="nx">first</span> <span class="nx">time</span> <span class="nx">they</span> <span class="nx">are</span> <span class="nx">touched</span>
-</span><span class='line'><span class="nx">myisam</span><span class="o">-</span><span class="nx">recover</span>         <span class="o">=</span> <span class="nx">BACKUP</span>
-</span><span class='line'><span class="err">#</span><span class="nx">max_connections</span>        <span class="o">=</span> <span class="mi">100</span>
-</span><span class='line'><span class="err">#</span><span class="nx">table_cache</span>            <span class="o">=</span> <span class="mi">64</span>
-</span><span class='line'><span class="err">#</span><span class="nx">thread_concurrency</span>     <span class="o">=</span> <span class="mi">10</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>key_buffer_size</code>: インデックスをメモリ上で確保するために使う物理メモリの許容量</li>
-<li><code>max_allowed_packet</code>: クライアントからMySQLサーバに転送可能な最大パケット数</li>
-<li><code>thread_stack</code>: スレッドに割り当てるスタック領域のサイズ</li>
-<li><code>thread_cache_size</code>: キャッシュに保持するスレッドの最大数</li>
-<li><code>myisam-recover</code>:MyISAMテーブルがクラッシュしたときに自動でリカバリーする設定</li>
-<li><code>max_connections</code>: 許容同時接続数</li>
-<li><code>table_cache</code>: メモリ上にキャッシュとして保持しておくテーブルの最大数</li>
-<li><code>thread_concurrency</code>: 同時実行スレッド数</li>
-</ul>
-
-
-<p>クエリキャッシュの設定です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="o">*</span> <span class="nx">Query</span> <span class="nx">Cache</span> <span class="nx">Configuration</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="nx">query_cache_limit</span>       <span class="o">=</span> <span class="mi">1</span><span class="nx">M</span>
-</span><span class='line'><span class="nx">query_cache_size</span>        <span class="o">=</span> <span class="mi">16</span><span class="nx">M</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>query_cache_limit</code>: キャッシュするクエリ結果の最大値</li>
-<li><code>query_cache_size</code>: クエリキャッシュのサイズ設定</li>
-</ul>
-
-
-<p>ロギングとレプリケーションに関する設定です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="o">*</span> <span class="nx">Logging</span> <span class="nx">and</span> <span class="nx">Replication</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Both</span> <span class="nx">location</span> <span class="nx">gets</span> <span class="nx">rotated</span> <span class="nx">by</span> <span class="nx">the</span> <span class="nx">cronjob</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Be</span> <span class="nx">aware</span> <span class="nx">that</span> <span class="k">this</span> <span class="nx">log</span> <span class="nx">type</span> <span class="nx">is</span> <span class="nx">a</span> <span class="nx">performance</span> <span class="nx">killer</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">As</span> <span class="nx">of</span> <span class="mf">5.1</span> <span class="nx">you</span> <span class="nx">can</span> <span class="nx">enable</span> <span class="nx">the</span> <span class="nx">log</span> <span class="nx">at</span> <span class="nx">runtime</span><span class="o">!</span>
-</span><span class='line'><span class="err">#</span><span class="nx">general_log_file</span>        <span class="o">=</span> <span class="err">/var/log/mysql/mysql.log</span>
-</span><span class='line'><span class="err">#</span><span class="nx">general_log</span>             <span class="o">=</span> <span class="mi">1</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nb">Error</span> <span class="nx">log</span> <span class="o">-</span> <span class="nx">should</span> <span class="nx">be</span> <span class="nx">very</span> <span class="nx">few</span> <span class="nx">entries</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="nx">log_error</span> <span class="o">=</span> <span class="err">/var/log/mysql/error.log</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Enable</span> <span class="nx">the</span> <span class="nx">slow</span> <span class="nx">query</span> <span class="nx">log</span> <span class="nx">to</span> <span class="nx">see</span> <span class="nx">queries</span> <span class="kd">with</span> <span class="nx">especially</span> <span class="kr">long</span> <span class="nx">duration</span>
-</span><span class='line'><span class="err">#</span><span class="nx">slow_query_log_file</span>    <span class="o">=</span> <span class="err">/var/log/mysql/mariadb-slow.log</span>
-</span><span class='line'><span class="err">#</span><span class="nx">long_query_time</span> <span class="o">=</span> <span class="mi">10</span>
-</span><span class='line'><span class="err">#</span><span class="nx">log_slow_rate_limit</span>    <span class="o">=</span> <span class="mi">1000</span>
-</span><span class='line'><span class="err">#</span><span class="nx">log_slow_verbosity</span>     <span class="o">=</span> <span class="nx">query_plan</span>
-</span><span class='line'><span class="err">#</span><span class="nx">log</span><span class="o">-</span><span class="nx">queries</span><span class="o">-</span><span class="nx">not</span><span class="o">-</span><span class="nx">using</span><span class="o">-</span><span class="nx">indexes</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">The</span> <span class="nx">following</span> <span class="nx">can</span> <span class="nx">be</span> <span class="nx">used</span> <span class="nx">as</span> <span class="nx">easy</span> <span class="nx">to</span> <span class="nx">replay</span> <span class="nx">backup</span> <span class="nx">logs</span> <span class="nx">or</span> <span class="k">for</span> <span class="nx">replication</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">note</span><span class="o">:</span> <span class="k">if</span> <span class="nx">you</span> <span class="nx">are</span> <span class="nx">setting</span> <span class="nx">up</span> <span class="nx">a</span> <span class="nx">replication</span> <span class="nx">slave</span><span class="p">,</span> <span class="nx">see</span> <span class="nx">README</span><span class="p">.</span><span class="nx">Debian</span> <span class="nx">about</span>
-</span><span class='line'><span class="err">#</span>       <span class="nx">other</span> <span class="nx">settings</span> <span class="nx">you</span> <span class="nx">may</span> <span class="nx">need</span> <span class="nx">to</span> <span class="nx">change</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span><span class="nx">server</span><span class="o">-</span><span class="nx">id</span>              <span class="o">=</span> <span class="mi">1</span>
-</span><span class='line'><span class="err">#</span><span class="nx">log_bin</span>                        <span class="o">=</span> <span class="err">/var/log/mysql/mysql-bin.log</span>
-</span><span class='line'><span class="nx">expire_logs_days</span>        <span class="o">=</span> <span class="mi">10</span>
-</span><span class='line'><span class="nx">max_binlog_size</span>   <span class="o">=</span> <span class="mi">100</span><span class="nx">M</span>
-</span><span class='line'><span class="err">#</span><span class="nx">binlog_do_db</span>           <span class="o">=</span> <span class="nx">include_database_name</span>
-</span><span class='line'><span class="err">#</span><span class="nx">binlog_ignore_db</span>       <span class="o">=</span> <span class="nx">include_database_name</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>general_log_file</code>: 一般クエリーログの保存ファイルを指定</li>
-<li><code>general_log</code>: 1を指定で一般クエリーログの取得が有効になる</li>
-<li><code>log_error</code>: エラーログの保存ファイルを指定</li>
-<li><code>slow_query_log_file</code>: スロークエリーログの保存ファイルを指定</li>
-<li><code>long_query_time</code>: スロークエリーと判断するための時間(秒)</li>
-<li><code>log_slow_rate_limit</code>: スロークエリーを判断するタイミングを設定 (1なら毎クエリごとに調査)</li>
-<li><code>log_slow_verbosity</code>: どの程度の詳細レベルでログを出すか決める</li>
-<li><code>log-queries-not-using-indexes</code>: Indexを使わない, 使っても全件スキャンになっているクエリはスロークエリとして出力する</li>
-<li><code>server-id</code>: 一意なサーバを識別するために設定(レプリケーション組む時に使える)</li>
-<li><code>log_bin</code>: バイナリログファイルを保存するファイルの指定</li>
-<li><code>expire_logs_day</code>: バイナリログの保存期限日</li>
-<li><code>max_binlog_size</code>: バイナリログろログローテーションし始める基準の値</li>
-<li><code>binlog_do_db</code>: バイナリログに書き込むデータベースを指定</li>
-<li><code>binlog_ignore_db</code>: バイナリログに書き込まないデータベースを指定</li>
-</ul>
-
-
-<p>以下はInnoDB特有の設定のようです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="o">*</span> <span class="nx">InnoDB</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">InnoDB</span> <span class="nx">is</span> <span class="nx">enabled</span> <span class="nx">by</span> <span class="k">default</span> <span class="kd">with</span> <span class="nx">a</span> <span class="mi">10</span><span class="nx">MB</span> <span class="nx">datafile</span> <span class="k">in</span> <span class="err">/var/lib/mysql/.</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Read</span> <span class="nx">the</span> <span class="nx">manual</span> <span class="k">for</span> <span class="nx">more</span> <span class="nx">InnoDB</span> <span class="nx">related</span> <span class="nx">options</span><span class="p">.</span> <span class="nx">There</span> <span class="nx">are</span> <span class="nx">many</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="o">*</span> <span class="nx">Security</span> <span class="nx">Features</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Read</span> <span class="nx">the</span> <span class="nx">manual</span><span class="p">,</span> <span class="nx">too</span><span class="p">,</span> <span class="k">if</span> <span class="nx">you</span> <span class="nx">want</span> <span class="nx">chroot</span><span class="o">!</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">chroot</span> <span class="o">=</span> <span class="err">/var/lib/mysql/</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">For</span> <span class="nx">generating</span> <span class="nx">SSL</span> <span class="nx">certificates</span> <span class="nx">I</span> <span class="nx">recommend</span> <span class="nx">the</span> <span class="nx">OpenSSL</span> <span class="nx">GUI</span> <span class="s2">&quot;tinyca&quot;</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">ssl</span><span class="o">-</span><span class="nx">ca</span><span class="o">=</span><span class="err">/etc/mysql/cacert.pem</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">ssl</span><span class="o">-</span><span class="nx">cert</span><span class="o">=</span><span class="err">/etc/mysql/server-cert.pem</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">ssl</span><span class="o">-</span><span class="nx">key</span><span class="o">=</span><span class="err">/etc/mysql/server-key.pem</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>ssl-ca</code>: SSL接続のためのCA証明書の指定</li>
-<li><code>ssl-cert</code>: SSL接続のためのサーバ証明書の指定</li>
-<li><code>ssl-key</code>: SSL接続のための秘密鍵の指定</li>
-</ul>
-
-
-<p>エンコードの設定です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="o">*</span> <span class="nx">Character</span> <span class="nx">sets</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">MySQL</span><span class="o">/</span><span class="nx">MariaDB</span> <span class="k">default</span> <span class="nx">is</span> <span class="nx">Latin1</span><span class="p">,</span> <span class="nx">but</span> <span class="k">in</span> <span class="nx">Debian</span> <span class="nx">we</span> <span class="nx">rather</span> <span class="k">default</span> <span class="nx">to</span> <span class="nx">the</span> <span class="nx">full</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">utf8</span> <span class="mi">4</span><span class="o">-</span><span class="kr">byte</span> <span class="nx">character</span> <span class="nx">set</span><span class="p">.</span> <span class="nx">See</span> <span class="nx">also</span> <span class="nx">client</span><span class="p">.</span><span class="nx">cnf</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="nx">character</span><span class="o">-</span><span class="nx">set</span><span class="o">-</span><span class="nx">server</span>  <span class="o">=</span> <span class="nx">utf8mb4</span>
-</span><span class='line'><span class="nx">collation</span><span class="o">-</span><span class="nx">server</span>      <span class="o">=</span> <span class="nx">utf8mb4_general_ci</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><code>character-set-server</code>: MySQLサーバの文字コード設定</li>
-<li><code>collation-server</code>: MySQLサーバのソート順設定</li>
-</ul>
-
-
-<p>その他にオプションを設定する場合は下記に続けて書くように用意されています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="o">*</span> <span class="nx">Unix</span> <span class="nx">socket</span> <span class="nx">authentication</span> <span class="nx">plugin</span> <span class="nx">is</span> <span class="nx">built</span><span class="o">-</span><span class="k">in</span> <span class="nx">since</span> <span class="mf">10.0</span><span class="p">.</span><span class="mi">22</span><span class="o">-</span><span class="mi">6</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Needed</span> <span class="nx">so</span> <span class="nx">the</span> <span class="nx">root</span> <span class="nx">database</span> <span class="nx">user</span> <span class="nx">can</span> <span class="nx">authenticate</span> <span class="nx">without</span> <span class="nx">a</span> <span class="nx">password</span> <span class="nx">but</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">only</span> <span class="nx">when</span> <span class="nx">running</span> <span class="nx">as</span> <span class="nx">the</span> <span class="nx">unix</span> <span class="nx">root</span> <span class="nx">user</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">Also</span> <span class="nx">available</span> <span class="k">for</span> <span class="nx">other</span> <span class="nx">users</span> <span class="k">if</span> <span class="nx">required</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">See</span> <span class="nx">https</span><span class="o">:</span><span class="c1">//mariadb.com/kb/en/unix_socket-authentication-plugin/</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span> <span class="k">this</span> <span class="nx">is</span> <span class="nx">only</span> <span class="k">for</span> <span class="nx">embedded</span> <span class="nx">server</span>
-</span><span class='line'><span class="p">[</span><span class="nx">embedded</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span> <span class="nx">This</span> <span class="nx">group</span> <span class="nx">is</span> <span class="nx">only</span> <span class="nx">read</span> <span class="nx">by</span> <span class="nx">MariaDB</span> <span class="nx">servers</span><span class="p">,</span> <span class="nx">not</span> <span class="nx">by</span> <span class="nx">MySQL</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">If</span> <span class="nx">you</span> <span class="nx">use</span> <span class="nx">the</span> <span class="nx">same</span> <span class="p">.</span><span class="nx">cnf</span> <span class="nx">file</span> <span class="k">for</span> <span class="nx">MySQL</span> <span class="nx">and</span> <span class="nx">MariaDB</span><span class="p">,</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">you</span> <span class="nx">can</span> <span class="nx">put</span> <span class="nx">MariaDB</span><span class="o">-</span><span class="nx">only</span> <span class="nx">options</span> <span class="nx">here</span>
-</span><span class='line'><span class="p">[</span><span class="nx">mariadb</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">#</span> <span class="nx">This</span> <span class="nx">group</span> <span class="nx">is</span> <span class="nx">only</span> <span class="nx">read</span> <span class="nx">by</span> <span class="nx">MariaDB</span><span class="o">-</span><span class="mf">10.0</span> <span class="nx">servers</span><span class="p">.</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">If</span> <span class="nx">you</span> <span class="nx">use</span> <span class="nx">the</span> <span class="nx">same</span> <span class="p">.</span><span class="nx">cnf</span> <span class="nx">file</span> <span class="k">for</span> <span class="nx">MariaDB</span> <span class="nx">of</span> <span class="nx">different</span> <span class="nx">versions</span><span class="p">,</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">use</span> <span class="k">this</span> <span class="nx">group</span> <span class="k">for</span> <span class="nx">options</span> <span class="nx">that</span> <span class="nx">older</span> <span class="nx">servers</span> <span class="nx">don</span><span class="err">‘</span><span class="nx">t</span> <span class="nx">understand</span>
-</span><span class='line'><span class="p">[</span><span class="nx">mariadb</span><span class="o">-</span><span class="mf">10.0</span><span class="p">]</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>まとめ</h3>
-
-<p>今回はインストールと初期設定、デフォルトで生成される設定ファイルの意味について見ていきました。<br/>
-今後は理解を深めるためにMariaDBならではのアーキテクチャを組んで試していければと思います。<br/>
-と言ったところで本日はここまで。</p>
-
-<h3>参考</h3>
-
-<ul>
-<li><a href="https://dev.mysql.com/doc/refman/5.6/ja/mysqldump.html">4.5.4 mysqldump — データベースバックアッププログラム</a></li>
-<li><a href="https://dev.mysql.com/doc/refman/5.6/ja/option-files.html">4.2.6 オプションファイルの使用</a></li>
-<li><a href="https://mariadb.com/kb/en/mariadb/mysqld_safe/">mysqld_safe Options</a></li>
-<li><a href="https://mariadb.com/kb/en/mariadb/server-system-variables/#log_queries_not_using_indexes">MariaDB System Variable</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

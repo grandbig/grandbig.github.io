@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-07-23T16:19:35+09:00</updated>
+  <updated>2017-07-31T23:59:15+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,349 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Bond, SwiftBondを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/07/31/swiftbond-1/"/>
+    <updated>2017-07-31T20:17:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/07/31/swiftbond-1</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、今回はiOSで <code>MVVM</code> アーキテクチャで重宝されている<a href="https://github.com/ReactiveKit/Bond">ReactiveKit/Bond</a>(SwiftBond)について勉強したいと思います。<br/>
+趣味で個人iOSアプリを作成する分にはそこまで大規模アプリになることも少ないとは思うものの、仕事で大人数で1つのアプリを開発することは当然あることでしょう。<br/>
+そんなときに備えて知識を向上させたいと思います。<br/>
+(今まで <code>MVC</code> で済んできたこともあり、良い機会なので <code>MVVM</code> を勉強したいと思っています。)</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>MVVMとは</h3>
+
+<p>まず、 <code>MVVM</code> とはそもそも何なのでしょうか？<br/>
+<code>MVVM</code> とは <code>Model View ViewModel</code> の略です。</p>
+
+<p><a href="https://ja.wikipedia.org/wiki/Model_View_ViewModel">Wikipedia</a>を見ると、それぞれ</p>
+
+<ul>
+<li><code>Model</code>
+
+<ul>
+<li>そのアプリケーションが扱う領域のデータと手続き (ビジネスロジック)を表現する要素</li>
+<li>データの格納に永続的な記憶の仕組み(データベース)やサーバ側との通信ロジックなど</li>
+</ul>
+</li>
+<li><code>View</code>
+
+<ul>
+<li>ユーザに見せるためのアウトプット描画およびユーザ入力を受け取る(UIへの入力とUIからの出力を担当する)要素</li>
+<li>データバインディング機構を通して自動的に描画</li>
+<li><code>View</code> そのものに複雑なロジックや状態を持たない</li>
+</ul>
+</li>
+<li><code>ViewModel</code>
+
+<ul>
+<li>Viewを描画するための状態の保持と、Viewから受け取った入力を適切な形に変換してModelに伝達する役目を持つ</li>
+</ul>
+</li>
+</ul>
+
+
+<p>と書かれています。<br/>
+他の方のブログ記事を見ても、上記からそう遠くはない印象です。</p>
+
+<h3>Bond, SwiftBondとは</h3>
+
+<p><code>Bond</code> は昔は <code>SwiftBond</code> と呼ばれていたようですが、今はGitHub上でも <code>ReactiveKit</code> の一部として提供されているようです。<br/>
+元々、 <code>SwiftBond</code> も <code>ReactiveKit</code> も開発者は同じなので、どこかのタイミングで取り込まれたんですかね&hellip;。<br/>
+この <code>Bond</code> を <code>MVVM</code> で言うところのデータバインディング機構を実現するために利用します。</p>
+
+<h3>サンプルを作ってみよう</h3>
+
+<p>今回のサンプルで扱う機能は下記です。</p>
+
+<ul>
+<li>Google　Mapに現在地周辺のレストランをマッピングする</li>
+<li>レストラン情報はホットペッパーAPIの周辺レストラン検索APIから取得する</li>
+</ul>
+
+
+<p>続いてXcode上のフォルダ構成は下記にします。</p>
+
+<p><code>objective-c
+SampleApp
+├── Model
+│    └── HotpepperAPI.swift
+├── ViewModel
+│    └── HotpepperAPIViewModel.swift
+├── View
+│    └── ViewController.swift
+├── AppDelegate.swift
+└── Main.storyboard
+</code></p>
+
+<p>また、今回は <code>Google Maps SDK for iOS</code> と ホットペッパーのAPIを利用します。<br/>
+これらのAPIキーを公式案内を元に取得して、 <code>Info.plist</code> と同じ階層に作成した <code>key.plist</code> に追加します。</p>
+
+<p><img src="/images/swiftbond_1.png" alt="ホットペッパーAPIキー" /></p>
+
+<p>さて下準備は済んだので、各ファイルの実装を見ていきましょう。</p>
+
+<h4>AppDelegate.swift</h4>
+
+<p><code>Google Maps SDK for iOS</code> を利用するために <code>AppDelegate.swift</code> に下記処理を実装します。</p>
+
+<p>```objective-c
+import UIKit
+import GoogleMaps</p>
+
+<p>@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {</p>
+
+<p>  var window: UIWindow?</p>
+
+<p>  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) &ndash;> Bool {</p>
+
+<pre><code>// Override point for customization after application launch.
+
+if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
+  if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
+    if let apiKey = dic["googleMapsApiKey"] as? String {
+      GMSServices.provideAPIKey(apiKey)
+    }
+  }
+}
+
+return true
+</code></pre>
+
+<p>  }
+  &hellip;
+}
+```</p>
+
+<h4>HotpepperAPI.swift</h4>
+
+<p>ホットペッパーのグルメサーチAPIを利用する <code>Model</code> ファイルです。<br/>
+今回はサンプルということもあって、ほとんど複雑な処理はありません。</p>
+
+<p>```objective-c
+// HotpepperAPI.swift
+import Foundation
+import CoreLocation
+import Alamofire
+import SwiftyJSON</p>
+
+<p>/<em>*
+ ホットペッパーAPI
+ </em>/
+class HotpepperAPI {
+  /// API Key
+  private var apiKey: String = String()
+  /// ホットペッパーAPIのベースURL
+  private let baseURL: String = &ldquo;<a href="https://webservice.recruit.co.jp/hotpepper/gourmet/v1/">https://webservice.recruit.co.jp/hotpepper/gourmet/v1/</a>&rdquo;</p>
+
+<p>  /// 初期化処理
+  init() {</p>
+
+<pre><code>if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
+  if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
+    if let apiKey = dic["hotpepperApiKey"] as? String {
+      self.apiKey = apiKey
+    }
+  }
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  /**
+   ホットペッパーグルメサーチAPI</p>
+
+<ul>
+<li> parameter coordinate: 位置</li>
+<li><p> parameter completion: レストラン情報を返却するcallback
+*/
+func searchRestaurant(coordinate: CLLocationCoordinate2D, completion: @escaping ((JSON) &ndash;> Void)) {
+let parameters = [&ldquo;key&rdquo;: self.apiKey, &ldquo;format&rdquo;: &ldquo;json&rdquo;, &ldquo;lat&rdquo;: coordinate.latitude, &ldquo;lng&rdquo;: coordinate.longitude, &ldquo;range&rdquo;: 2] as [String : Any]
+Alamofire.request(baseURL, method: .get, parameters: parameters, encoding: URLEncoding.default, headers: nil).responseJSON { response in
+  let json = JSON(response.result.value as Any)
+  let result = json[&ldquo;results&rdquo;][&ldquo;shop&rdquo;]</p>
+
+<p>  completion(result)
+}
+}
+}
+```</p></li>
+</ul>
+
+
+<h4>HotpepperAPIViewModel.swift</h4>
+
+<p><code>Model</code>である<code>HotpepperAPI.swift</code>と<code>View</code>である<code>ViewController.swift</code>を繋ぐ<code>ViewModel</code>ファイルです。<br/>
+<code>View</code>からの入力受付を想定して<code>searchRestaurant</code>メソッドを用意しています。</p>
+
+<p>```objective-c
+// HotpepperAPIViewModel.swift
+import Foundation
+import ReactiveKit
+import Bond
+import SwiftyJSON
+import CoreLocation</p>
+
+<p>/// 通信の各状態をEnumで表現
+enum RequestState {
+  case none
+  case requesting
+  case finish
+  case error
+}</p>
+
+<p>/// HotpepperAPIのViewModelクラス
+final class HotpepperAPIViewModel {</p>
+
+<p>  var items: ObservableArray<JSON> = ObservableArray([])
+  let requestState = Observable<RequestState>(.none)
+  let hotpepperAPI = HotpepperAPI.init()</p>
+
+<p>  var finishSearchRestaurant: Signal&lt;[JSON]?, NoError> {</p>
+
+<pre><code>return self.requestState.map({ (requestState) -&gt; [JSON]? in
+  if requestState == .finish {
+    return self.items.array
+  }
+  return nil
+})
+</code></pre>
+
+<p>  }</p>
+
+<p>  func searchRestaurant(coordinate: CLLocationCoordinate2D) {</p>
+
+<pre><code>self.requestState.next(RequestState.requesting)
+hotpepperAPI.searchRestaurant(coordinate: coordinate, completion: { (result) in
+  guard let resultArray = result.array else {
+    return
+  }
+  self.items = ObservableArray(resultArray)
+  self.requestState.next(RequestState.finish)
+})
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>上記では、<code>searchRestaurant</code>の中で先程紹介した<code>Model</code>の<code>HotpepperAPI</code>クラスにアクセスしてサーバ通信を委託しています。<br/>
+また、返却された値を受け取って<code>requestState</code>の状態を変えることが、<code>finishSearchRestaurant</code>の処理のトリガーになっています。<br/>
+<code>finishSearchRestaurant</code>では、<code>RequestState</code>の状態が<code>finish</code>になったときのみ正しい値を返却し、それ以外は<code>nil</code>を返却しています。</p>
+
+<h4>ViewController.swift</h4>
+
+<p>最後に <code>View</code> に当たる <code>ViewController.swift</code> について見ていきます。<br/>
+iOSでファットになりがちな <code>ViewController</code> を <code>View</code> の定義に則って実装していくというのがキーになります。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import GoogleMaps
+import SwiftyJSON
+import RealmSwift</p>
+
+<p>class ViewController: UIViewController {
+  /// マップビュー
+  @IBOutlet weak var mapView: GMSMapView!
+  /// 検索ボタン
+  @IBOutlet weak var searchButton: UIButton!
+  /// 現在地
+  internal var currentLocation: CLLocationCoordinate2D?
+  /// ViewModel
+  internal var hotpepperAPIVM = HotpepperAPIViewModel()</p>
+
+<p>  override func viewDidLoad() {</p>
+
+<pre><code>super.viewDidLoad()
+
+// データバインディング機構の設定処理
+self.setUpBind()
+</code></pre>
+
+<p>  }</p>
+
+<p>  &hellip;</p>
+
+<p>  private func setUpBond() {</p>
+
+<pre><code>// 検索ボタンをタップ(.touchUpInside)したときに呼び出される処理
+_ = self.searchButton.reactive.tap.observeNext { _ in
+  self.hotpepperAPIVM.searchRestaurant(coordinate: self.currentLocation!)
+}
+// finishSearchRestaurantから値が返却されるときに呼び出される処理
+_ = self.hotpepperAPIVM.finishSearchRestaurant.ignoreNil().observeNext(with: { (searchShops) in
+  for searchShop in searchShops {
+    // Google Mapへのマッピング処理
+    // 省略
+  }
+})
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>上記のように実装することで、データバインディング機構を <code>View</code> に実装することができます。<br/>
+ポイントは上記ソース内コメントに書いた通りですが、筆者が苦戦したのは、</p>
+
+<ul>
+<li><code>_ =</code> から始めなかったためSwift3の静的解析で怒られた</li>
+<li><code>observeNext</code> 内で <code>nil</code> 判定してしまっていたが、 <code>ignoreNil</code> という便利なものがある</li>
+</ul>
+
+
+<p>の2点です。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+筆者的にもまだまだ理解しきれていないところがあり、引き続き勉強する必要があると感じています。<br/>
+特にエラーハンドリング周りでは <code>ReactiveKit</code> を利用することで、<br/>
+うまく書けるようになるのではという期待感があるのでもう少し見ていきたいと思っています。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考</p>
+
+<ul>
+<li><a href="http://qiita.com/hachinobu/items/27a92d480db24511559a">SwiftBondの魅力 ~実用サンプル編~</a></li>
+<li><a href="http://qiita.com/susieyy/items/2af5321b287b8d2f49f6">MVVMをベースに複雑な振る舞いをしっかり把握できるアプリ開発</a></li>
+<li><a href="http://qiita.com/ko2ic/items/44c18b07c7f337dfb06b">SwiftBondをSwift3対応するためにv5にマイグレーションする</a></li>
+<li><a href="https://www.raywenderlich.com/149753/bond-tutorial-bindings-swift">Bond Tutorial: Bindings in Swift</a></li>
+<li><a href="https://github.com/ReactiveKit/ReactiveKit">ReactiveKit/ReactiveKit</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AlamofireImageを使ってみよう！]]></title>
@@ -939,248 +1282,6 @@ JavaScriptでGoogle Maps APIを利用していた方々も臆することなく�
 次回はGeocoding APIやDirection APIを見ていきたいと思います。</p>
 
 <p>と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Google Maps SDK for iOSを導入してみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/06/18/google-maps-sdk/"/>
-    <updated>2017-06-18T19:47:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/06/18/google-maps-sdk</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>本日は<a href="https://developers.google.com/maps/documentation/ios-sdk/?hl=ja">Google Maps SDK for iOS</a>の導入の仕方を書きたいと思います。<br/>
-(<a href="https://grandbig.github.io/blog/2014/01/27/googlemapssdk2/">3年以上前</a>に遊んでいたようですが、全く記憶にない&hellip;)</p>
-
-<p>基本的には、<a href="https://developers.google.com/maps/documentation/ios-sdk/start?hl=ja">本家のスタートガイド</a>に従って進めるだけで特に問題なく<code>Google Map</code>を実装できるでしょう。<br/>
-筆者の場合は<code>Storyboard</code>を使いたかったので少し気をつける必要がありました。<br/>
-では早速見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>Google Maps SDK for iOSの導入</h3>
-
-<p>実際に手順を書いていきます。</p>
-
-<p><strong>１．Xcodeでプロジェクトを作成します。</strong><br/>
-<strong>２．<code>Podfile</code>を作成します。</strong></p>
-
-<p>```objective-c</p>
-
-<h1>Podfile</h1>
-
-<p>use_frameworks!</p>
-
-<p>target &ldquo;GoogleMapsSample&rdquo; do
-  # Normal libraries
-  pod &lsquo;GoogleMaps&rsquo;
-  pod &lsquo;GooglePlaces&rsquo;</p>
-
-<p>  abstract_target &lsquo;Tests&rsquo; do</p>
-
-<pre><code>inherit! :search_paths
-target "GoogleMapsSampleTests"
-target "GoogleMapsSampleUITests"
-
-pod 'Quick'
-pod 'Nimble'
-</code></pre>
-
-<p>  end
-end</p>
-
-<p>post_install do |installer|
-  installer.pods_project.targets.each do |target|</p>
-
-<pre><code>target.build_configurations.each do |config|
-  config.build_settings['SWIFT_VERSION'] = '3.0'
-end
-</code></pre>
-
-<p>  end
-end
-```</p>
-
-<p><strong>３．<code>pod install</code>で必要な<code>Framework</code>をインストールします。</strong><br/>
-<strong>４．APIキーを取得します。</strong><br/>
-スタートガイドに従って下記ボタンをクリックすればAPIキーを取得することができます。</p>
-
-<p><img src="/images/google-maps-sdk-1.png" alt="APIキーの取得" /></p>
-
-<p><strong>５．アプリのAPIキーを読み取らせる処理を導入します。</strong><br/>
-筆者の場合、基本的なソースコードは<code>GitHub</code>に公開したかったため、そのままAPIキーをべた書きするわけにいきませんでした。<br/>
-なので、<code>key.plist</code>ファイルを作成し、このファイルを<code>GitHub</code>にアップしないという手法を取ることにしました。</p>
-
-<p>下図のように<code>key.plist</code>ファイルを作成</p>
-
-<p><img src="/images/google-maps-sdk-2.png" alt="key.plistの作成" /></p>
-
-<p>また下図のようなフォルダ構成で<code>Info.plist</code>と同じ階層に<code>key.plist</code>を配置しています。<br/>
-<img src="/images/google-maps-sdk-6.png" alt="フォルダ構成" /></p>
-
-<p><code>AppDelegate.swift</code>で<code>key.plist</code>からAPIキーを読み込みます。</p>
-
-<p>```objective-c
-// AppDelegate.swift
-import UIKit
-import GoogleMaps
-import GooglePlaces</p>
-
-<p>@UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {</p>
-
-<p>  var window: UIWindow?</p>
-
-<p>  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) &ndash;> Bool {</p>
-
-<pre><code>// Override point for customization after application launch.
-
-if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
-  if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
-    if let apiKey = dic["googleMapsApiKey"] as? String {
-      GMSServices.provideAPIKey(apiKey)
-      GMSPlacesClient.provideAPIKey(apiKey)
-    }
-  }
-}
-
-return true
-</code></pre>
-
-<p>  }</p>
-
-<pre><code>...
-</code></pre>
-
-<p>}
-```</p>
-
-<p><strong>６．<code>Storyboard</code>に<code>Google Map</code>を追加します。</strong><br/>
-本家スタートガイドだと<code>Storyboard</code>を利用しない方式での説明が書かれていましたが、筆者は<code>Storyboard</code>を利用しました。</p>
-
-<p><img src="/images/google-maps-sdk-3.png" alt="StoryboardにGoogle Mapを配置" /></p>
-
-<p>これで導入が完了です。</p>
-
-<h3>Google Cloud PlatformのAPI Managerで詳細設定</h3>
-
-<p>先程、本家のスタートガイドからAPIキーを取得していましたが、<a href="https://console.cloud.google.com/home">Google Cloud Platform</a>内の<code>API Manager</code>からAPIキーに対して詳細設定をすることができます。<br/>
-例えば、スタートガイドから取得しただけでは、APIキーの用途が無制限になっています。<br/>
-この状態では意図しない大量利用に繋がる可能性もあるため、iOSアプリでのみ利用するなど詳細を設定した方が良いでしょう。</p>
-
-<p><code>API Manager</code>ページには下記のように遷移できます。<br/>
-<img src="/images/google-maps-sdk-4.png" alt="Google Cloud Platform" /></p>
-
-<p>APIキーの詳細設定は下記の通りです。<br/>
-<img src="/images/google-maps-sdk-5.png" alt="APIキーの詳細設定" /></p>
-
-<h3>Google Mapで初期描画時の中心位置を現在地にしてみる</h3>
-
-<p>Apple標準で用意されている<code>MapKit</code>であれば、</p>
-
-<p><code>objective-c
-self.mapView.setUserTrackingMode(MKUserTrackingMode.follow, animated: true)
-</code></p>
-
-<p>とすれば良いだけでした。<br/>
-しかし、<code>Google Map</code>では同様の手立てがなさそうなので、下記のように対応しました。</p>
-
-<p>```objective-c
-// ViewController.swift
-import UIKit
-import GoogleMaps
-import GooglePlaces</p>
-
-<p>class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDelegate {</p>
-
-<p>  @IBOutlet weak var mapView: GMSMapView!
-  private var locationManager: CLLocationManager?
-  private var currentLocation: CLLocation?
-  private var placesClient: GMSPlacesClient!
-  private var zoomLevel: Float = 15.0
-  /// 初期描画の判断に利用
-  private var initView: Bool = false</p>
-
-<p>  override func viewDidLoad() {</p>
-
-<pre><code>super.viewDidLoad()
-// Do any additional setup after loading the view, typically from a nib.
-
-// GoogleMapの初期化
-self.mapView.isMyLocationEnabled = true
-self.mapView.mapType = GMSMapViewType.normal
-self.mapView.settings.compassButton = true
-self.mapView.settings.myLocationButton = true
-self.mapView.delegate = self
-
-// 位置情報関連の初期化
-self.locationManager = CLLocationManager()
-self.locationManager?.desiredAccuracy = kCLLocationAccuracyBest
-self.locationManager?.requestAlwaysAuthorization()
-self.locationManager?.distanceFilter = 50
-self.locationManager?.startUpdatingLocation()
-self.locationManager?.delegate = self
-
-self.placesClient = GMSPlacesClient.shared()
-</code></pre>
-
-<p>  }</p>
-
-<p>  override func didReceiveMemoryWarning() {</p>
-
-<pre><code>super.didReceiveMemoryWarning()
-// Dispose of any resources that can be recreated.
-</code></pre>
-
-<p>  }</p>
-
-<p>  // MARK: CLLocationManagerDelegate
-  func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {</p>
-
-<pre><code>if !self.initView {
-  // 初期描画時のマップ中心位置の移動
-  let camera = GMSCameraPosition.camera(withTarget: (locations.last?.coordinate)!, zoom: self.zoomLevel)
-  self.mapView.camera = camera
-  self.locationManager?.stopUpdatingLocation()
-  self.initView = true
-}
-</code></pre>
-
-<p>  }
-}
-```</p>
-
-<p>これは<code>viewDidLoad</code>時に<code>startUpdatingLocation()</code>で位置情報の取得を開始し、取得したタイミングである<code>didUpdateLocations</code>内で位置情報を<code>camera</code>に設定しています。<br/>
-(もっと良い方法がありそうな気もしますが、一旦これで様子見&hellip;)</p>
-
-<h3>まとめ</h3>
-
-<p>さて如何でしたでしょうか？<br/>
-これから<code>Google Maps SDK for iOS</code>をバシバシ使っていきたいと思っているので理解が進み次第、続きを書いていきたいと思います。<br/>
-と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
