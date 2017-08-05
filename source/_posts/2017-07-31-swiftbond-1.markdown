@@ -1,0 +1,278 @@
+---
+layout: post
+title: "Bond, SwiftBondを使ってみよう！"
+date: 2017-07-31 20:17
+comments: true
+categories: ios swift mvvm
+---
+
+### はじめに
+さて、今回はiOSで `MVVM` アーキテクチャで重宝されている[ReactiveKit/Bond](https://github.com/ReactiveKit/Bond)(SwiftBond)について勉強したいと思います。  
+趣味で個人iOSアプリを作成する分にはそこまで大規模アプリになることも少ないとは思うものの、仕事で大人数で1つのアプリを開発することは当然あることでしょう。  
+そんなときに備えて知識を向上させたいと思います。  
+(今まで `MVC` で済んできたこともあり、良い機会なので `MVVM` を勉強したいと思っています。)  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### MVVMとは
+まず、 `MVVM` とはそもそも何なのでしょうか？  
+`MVVM` とは `Model View ViewModel` の略です。  
+
+[Wikipedia](https://ja.wikipedia.org/wiki/Model_View_ViewModel)を見ると、それぞれ  
+
+* `Model`  
+  * そのアプリケーションが扱う領域のデータと手続き (ビジネスロジック)を表現する要素  
+  * データの格納に永続的な記憶の仕組み(データベース)やサーバ側との通信ロジックなど  
+* `View`  
+  * ユーザに見せるためのアウトプット描画およびユーザ入力を受け取る(UIへの入力とUIからの出力を担当する)要素  
+  * データバインディング機構を通して自動的に描画  
+  * `View` そのものに複雑なロジックや状態を持たない  
+* `ViewModel`  
+  * Viewを描画するための状態の保持と、Viewから受け取った入力を適切な形に変換してModelに伝達する役目を持つ  
+
+と書かれています。  
+他の方のブログ記事を見ても、上記からそう遠くはない印象です。  
+
+### Bond, SwiftBondとは
+`Bond` は昔は `SwiftBond` と呼ばれていたようですが、今はGitHub上でも `ReactiveKit` の一部として提供されているようです。  
+元々、 `SwiftBond` も `ReactiveKit` も開発者は同じなので、どこかのタイミングで取り込まれたんですかね...。  
+この `Bond` を `MVVM` で言うところのデータバインディング機構を実現するために利用します。  
+
+### サンプルを作ってみよう
+今回のサンプルで扱う機能は下記です。  
+
+* Google　Mapに現在地周辺のレストランをマッピングする  
+* レストラン情報はホットペッパーAPIの周辺レストラン検索APIから取得する  
+
+続いてXcode上のフォルダ構成は下記にします。  
+
+```objective-c
+SampleApp
+├── Model
+│    └── HotpepperAPI.swift
+├── ViewModel
+│    └── HotpepperAPIViewModel.swift
+├── View
+│    └── ViewController.swift
+├── AppDelegate.swift
+└── Main.storyboard
+```
+
+また、今回は `Google Maps SDK for iOS` と ホットペッパーのAPIを利用します。  
+これらのAPIキーを公式案内を元に取得して、 `Info.plist` と同じ階層に作成した `key.plist` に追加します。  
+
+![ホットペッパーAPIキー](/images/swiftbond_1.png)  
+
+さて下準備は済んだので、各ファイルの実装を見ていきましょう。  
+
+#### AppDelegate.swift
+`Google Maps SDK for iOS` を利用するために `AppDelegate.swift` に下記処理を実装します。  
+
+```objective-c
+import UIKit
+import GoogleMaps
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+
+  var window: UIWindow?
+
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
+    // Override point for customization after application launch.
+
+    if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
+      if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
+        if let apiKey = dic["googleMapsApiKey"] as? String {
+          GMSServices.provideAPIKey(apiKey)
+        }
+      }
+    }
+
+    return true
+  }
+  ...
+}
+```
+
+#### HotpepperAPI.swift
+ホットペッパーのグルメサーチAPIを利用する `Model` ファイルです。  
+今回はサンプルということもあって、ほとんど複雑な処理はありません。  
+
+```objective-c
+// HotpepperAPI.swift
+import Foundation
+import CoreLocation
+import Alamofire
+import SwiftyJSON
+
+/**
+ ホットペッパーAPI
+ */
+class HotpepperAPI {
+  /// API Key
+  private var apiKey: String = String()
+  /// ホットペッパーAPIのベースURL
+  private let baseURL: String = "https://webservice.recruit.co.jp/hotpepper/gourmet/v1/"
+
+  /// 初期化処理
+  init() {
+    if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
+      if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
+        if let apiKey = dic["hotpepperApiKey"] as? String {
+          self.apiKey = apiKey
+        }
+      }
+    }
+  }
+
+  /**
+   ホットペッパーグルメサーチAPI
+
+   - parameter coordinate: 位置
+   - parameter completion: レストラン情報を返却するcallback
+   */
+  func searchRestaurant(coordinate: CLLocationCoordinate2D, completion: @escaping ((JSON) -> Void)) {
+    let parameters = ["key": self.apiKey, "format": "json", "lat": coordinate.latitude, "lng": coordinate.longitude, "range": 2] as [String : Any]
+    Alamofire.request(baseURL, method: .get, parameters: parameters, encoding: URLEncoding.default, headers: nil).responseJSON { response in
+      let json = JSON(response.result.value as Any)
+      let result = json["results"]["shop"]
+
+      completion(result)
+    }
+  }
+}
+```
+
+#### HotpepperAPIViewModel.swift
+`Model`である`HotpepperAPI.swift`と`View`である`ViewController.swift`を繋ぐ`ViewModel`ファイルです。  
+`View`からの入力受付を想定して`searchRestaurant`メソッドを用意しています。  
+
+```objective-c
+// HotpepperAPIViewModel.swift
+import Foundation
+import ReactiveKit
+import Bond
+import SwiftyJSON
+import CoreLocation
+
+/// 通信の各状態をEnumで表現
+enum RequestState {
+  case none
+  case requesting
+  case finish
+  case error
+}
+
+/// HotpepperAPIのViewModelクラス
+final class HotpepperAPIViewModel {
+
+  var items: ObservableArray<JSON> = ObservableArray([])
+  let requestState = Observable<RequestState>(.none)
+  let hotpepperAPI = HotpepperAPI.init()
+
+  var finishSearchRestaurant: Signal<[JSON]?, NoError> {
+    return self.requestState.map({ (requestState) -> [JSON]? in
+      if requestState == .finish {
+        return self.items.array
+      }
+      return nil
+    })
+  }
+
+  func searchRestaurant(coordinate: CLLocationCoordinate2D) {
+    self.requestState.next(RequestState.requesting)
+    hotpepperAPI.searchRestaurant(coordinate: coordinate, completion: { (result) in
+      guard let resultArray = result.array else {
+        return
+      }
+      self.items = ObservableArray(resultArray)
+      self.requestState.next(RequestState.finish)
+    })
+  }
+}
+```
+
+上記では、`searchRestaurant`の中で先程紹介した`Model`の`HotpepperAPI`クラスにアクセスしてサーバ通信を委託しています。  
+また、返却された値を受け取って`requestState`の状態を変えることが、`finishSearchRestaurant`の処理のトリガーになっています。  
+`finishSearchRestaurant`では、`RequestState`の状態が`finish`になったときのみ正しい値を返却し、それ以外は`nil`を返却しています。  
+
+#### ViewController.swift
+最後に `View` に当たる `ViewController.swift` について見ていきます。  
+iOSでファットになりがちな `ViewController` を `View` の定義に則って実装していくというのがキーになります。  
+
+```objective-c
+// ViewController.swift
+import UIKit
+import GoogleMaps
+import SwiftyJSON
+import RealmSwift
+
+class ViewController: UIViewController {
+  /// マップビュー
+  @IBOutlet weak var mapView: GMSMapView!
+  /// 検索ボタン
+  @IBOutlet weak var searchButton: UIButton!
+  /// 現在地
+  internal var currentLocation: CLLocationCoordinate2D?
+  /// ViewModel
+  internal var hotpepperAPIVM = HotpepperAPIViewModel()
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+
+    // データバインディング機構の設定処理
+    self.setUpBind()
+  }
+
+  ...
+
+  private func setUpBond() {
+    // 検索ボタンをタップ(.touchUpInside)したときに呼び出される処理
+    _ = self.searchButton.reactive.tap.observeNext { _ in
+      self.hotpepperAPIVM.searchRestaurant(coordinate: self.currentLocation!)
+    }
+    // finishSearchRestaurantから値が返却されるときに呼び出される処理
+    _ = self.hotpepperAPIVM.finishSearchRestaurant.ignoreNil().observeNext(with: { (searchShops) in
+      for searchShop in searchShops {
+        // Google Mapへのマッピング処理
+        // 省略
+      }
+    })
+  }
+}
+```
+
+上記のように実装することで、データバインディング機構を `View` に実装することができます。  
+ポイントは上記ソース内コメントに書いた通りですが、筆者が苦戦したのは、  
+
+* `_ =` から始めなかったためSwift3の静的解析で怒られた  
+* `observeNext` 内で `nil` 判定してしまっていたが、 `ignoreNil` という便利なものがある  
+
+の2点です。  
+
+### まとめ
+さて如何でしたでしょうか？  
+筆者的にもまだまだ理解しきれていないところがあり、引き続き勉強する必要があると感じています。  
+特にエラーハンドリング周りでは `ReactiveKit` を利用することで、  
+うまく書けるようになるのではという期待感があるのでもう少し見ていきたいと思っています。  
+と言ったところで本日はここまで。  
+
+参考  
+
+* [SwiftBondの魅力 ~実用サンプル編~](http://qiita.com/hachinobu/items/27a92d480db24511559a)  
+* [MVVMをベースに複雑な振る舞いをしっかり把握できるアプリ開発](http://qiita.com/susieyy/items/2af5321b287b8d2f49f6)  
+* [SwiftBondをSwift3対応するためにv5にマイグレーションする](http://qiita.com/ko2ic/items/44c18b07c7f337dfb06b)  
+* [Bond Tutorial: Bindings in Swift](https://www.raywenderlich.com/149753/bond-tutorial-bindings-swift)  
+* [ReactiveKit/ReactiveKit](https://github.com/ReactiveKit/ReactiveKit)  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
