@@ -114,6 +114,21 @@ class CreateShopMemoViewController: UIViewController, UICollectionViewDataSource
 
 ![CustomCollectionViewCellの表示](/images/custom-collection-view-6.png)  
 
+因みに、今回のように、Viewを1枚ペタッと貼るだけであれば、  
+
+```objective-c
+// MARK: - UICollectionViewDataSource
+func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+  let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CustomCell", for: indexPath)   
+  // 画像を設定 (今回はサンプルのためNoImageIconというものがあることを想定しています)
+  cell.backgroundView = UIImageView(image: UIImage(named: "NoImageIcon"))
+
+  return cell
+}
+```
+
+とすれば良いだけです。  
+
 ### まとめ
 今回は完全なるメモ書きでしたが、カスタム化の基礎なので、十二分に慣れておかないとですね。  
 と言ったところで本日はここまで。  
