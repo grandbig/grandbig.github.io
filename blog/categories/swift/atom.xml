@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-08-27T14:44:23+09:00</updated>
+  <updated>2017-09-18T02:10:09+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,218 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Firebase NotificationをiOSで使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/09/18/firebase-notification/"/>
+    <updated>2017-09-18T00:45:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/09/18/firebase-notification</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回はFirebase Notificationについて見ていきたいと思います。<br/>
+一昔前であれば、プロダクトごとにNotificationの仕組みを作り込んだり、共通基盤としてNotificationプロジェクトを推進していたりといった会社が多かった気がします。<br/>
+また、未だにリッチなNotificationのプロダクトを生業として利益を上げている会社もあるので、それだけNotificationの仕組みは自作ではなくあるものを使いたいという需要が大きいのでしょう。<br/>
+しかしながら、Firebaseの登場により、Notificationプロダクト市場もより加熱化しているのではないでしょうか。</p>
+
+<p>筆者的にはGoogleが出す、それも無料のプロダクトであるわけなので、使わない手はないと思うわけです。<br/>
+なんて偉そうなことを言いつつ、FireabseによるNotificationの仕組みを利用したことがなかったので、今回試しに使ってみることにしました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Firebaseの導入</h3>
+
+<p>こちらの内容は<a href="https://grandbig.github.io/blog/2017/05/14/firebase-ios/">以前書いた記事</a>に任せたいと思います。</p>
+
+<h3>APNs証明書の作成</h3>
+
+<p>こちらに関しては、様々なサイトにて説明がされているので、そちらを見るなどした方が早いので省きます。<br/>
+例えば <a href="http://qiita.com/natsumo/items/d5cc1d0be427ca3af1cb#6-apns%E7%94%A8%E8%A8%BC%E6%98%8E%E6%9B%B8cer%E3%81%AE%E4%BD%9C%E6%88%90">プッシュ通知に必要な証明書の作り方2017</a>など参考にすると良いでしょう。</p>
+
+<h3>Firebase Notificationの利用</h3>
+
+<p>さて、本題です。<br/>
+Firebase Notificationを利用するための手順について説明します。</p>
+
+<p>① 作成したAPNs証明書をダウンロードする<br/>
+先程作成したAPNs証明書はキーチェーンに登録していると思います。<br/>
+(Apple Developer Programで作成したAPNs証明書は必ずDLしてキーチェーンに登録しましょう。)<br/>
+キーチェーンを開いて、該当の証明書をダウンロードします。</p>
+
+<p>該当のAPNs証明書は <code>Apple Development IOS Push Services: xxxxx</code> のようになっているものです。<br/>
+<img src="/images/firebase_notificcation_ios_1.png" alt="キーチェーンを開く" /></p>
+
+<p>右クリックして書き出すを選択します。<br/>
+<img src="/images/firebase_notificcation_ios_2.png" alt="証明書を書き出す" /></p>
+
+<p>ファイル名とパスワードをつけて保存します。<br/>
+<img src="/images/firebase_notificcation_ios_3.png" alt="ファイル名とパスワードの付け方" /></p>
+
+<p>② ダウンロードしたAPNs証明書をFirebaseに登録する</p>
+
+<p>FirebaseのConsoleを開き、設定画面に遷移します。<br/>
+<img src="/images/firebase_notificcation_ios_4.png" alt="Firebase Consoleの設定画面" /></p>
+
+<p>クラウドメッセージングタブを開き、APNs証明書をアップロードします。<br/>
+<img src="/images/firebase_notificcation_ios_5.png" alt="Firebase Console クラウドメッセージングタブ" /></p>
+
+<p>③ Firebaseの必要ライブラリを導入する<br/>
+Firebaseの導入で<code>Core</code>ライブラリはインストールできているかもしれませんが、Notificationでは<code>Messaging</code>が必要になります。<br/>
+よって、<code>Podfile</code>を下記のように修正して、<code>pod update</code>をする必要があります。</p>
+
+<p>```objective-c</p>
+
+<h1>Podfile</h1>
+
+<p>use_frameworks!</p>
+
+<p>target &ldquo;NotificationSample&rdquo; do
+  # Normal libraries
+  pod &lsquo;Firebase/Core&rsquo;
+  pod &lsquo;Firebase/Messaging&rsquo;</p>
+
+<p>  abstract_target &lsquo;Tests&rsquo; do</p>
+
+<pre><code>inherit! :search_paths
+target "NotificationSampleTests"
+target "NotificationSampleUITests"
+</code></pre>
+
+<p>  end
+end
+```</p>
+
+<p>④ ソースコードにFirebase Notificationが利用できるように実装する<br/>
+続いて、ソースコードの設定です。</p>
+
+<p>```objective-c
+// AppDelegate.swift
+import UIKit
+import Firebase
+import UserNotifications</p>
+
+<p>@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
+  var window: UIWindow?
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) &ndash;> Bool {</p>
+
+<pre><code>// リモート通知 (iOS10に対応)
+let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+UNUserNotificationCenter.current().requestAuthorization(
+  options: authOptions,
+  completionHandler: {_, _ in })
+
+// UNUserNotificationCenterDelegateの設定
+UNUserNotificationCenter.current().delegate = self
+// FCMのMessagingDelegateの設定
+Messaging.messaging().delegate = self
+
+// リモートプッシュの設定
+application.registerForRemoteNotifications()
+// Firebase初期設定
+FirebaseApp.configure()
+
+// アプリ起動時にFCMのトークンを取得し、表示する
+let token = Messaging.messaging().fcmToken
+print("FCM token: \(token ?? "")")
+
+return true
+</code></pre>
+
+<p>  }</p>
+
+<p>  // 省略</p>
+
+<p>  func userNotificationCenter(_ center: UNUserNotificationCenter,</p>
+
+<pre><code>                            willPresent notification: UNNotification,
+                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -&gt; Void) {
+print("フロントでプッシュ通知受け取ったよ")
+</code></pre>
+
+<p>  }</p>
+
+<p>  func messaging(_ messaging: Messaging, didRefreshRegistrationToken fcmToken: String) {</p>
+
+<pre><code>print("Firebase registration token: \(fcmToken)")
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>たったのこれだけでプッシュ通知の受信ができるようになります。</p>
+
+<h3>Firebase Notificationを利用する</h3>
+
+<p>設定が完了したため、Firebaseからプッシュ通知を送ってみましょう。</p>
+
+<p>方法は簡単です。</p>
+
+<p>① 左メニューから <code>Notification</code> を選択する<br/>
+② 「新しいメッセージ」を選択する<br/>
+③ 必要項目を入力して「メッセージを送る」を選択する</p>
+
+<p><img src="/images/firebase_notificcation_ios_6.png" alt="Firebase Consoleからプッシュ通知を送る" /></p>
+
+<p>これにより、下図のようにプッシュが届くことを確認できます。<br/>
+<img src="/images/firebase_notificcation_ios_7.png" alt="端末にプッシュ通知が届く" /></p>
+
+<h3>FirebaseにAPNs Keyを登録する方法</h3>
+
+<p>さて、上記まででは、APNs証明書を作成して、Firebaseに登録する方法を説明しましたが、実はAPNs証明書よりも <code>APNs Key</code> というものの利用を推奨されています。<br/>
+なので、こちらの方法も説明しておきます。</p>
+
+<p>作成方法はいたって簡単です。</p>
+
+<p>① Apple Developer Programの左メニューから<code>Keys &gt; All</code>を選択する<br/>
+② 「＋」ボタンで新規作成する<br/>
+③ Keyの名称を設定する<br/>
+④ Service種別として<code>APNs</code>を選択する<br/>
+⑤ Continueボタンを選択して作成する</p>
+
+<p><img src="/images/firebase_notificcation_ios_8.png" alt="APNs Keyの作成方法" /></p>
+
+<p>上記で作成した<code>APNs Key</code>をFirebase Console上で設定します。</p>
+
+<p>Firebase Console > 設定 > クラウドメッセージング > iOSアプリの設定から<code>APNs認証キー</code>に設定します。</p>
+
+<p><img src="/images/firebase_notificcation_ios_9.png" alt="APNs認証キーを設定" /></p>
+
+<p>因みに、設定時に利用するIDはそれぞれ下記から取得します。</p>
+
+<p><img src="/images/firebase_notificcation_ios_10.png" alt="キーID" /><br/>
+<img src="/images/firebase_notificcation_ios_11.png" alt="App ID Prefix" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+まだまだFirebase Console上からプッシュできるNotificationにも制限があるようですが、複雑なことをしない例えば「一斉お知らせ機能」のような形で利用するのであれば非常に良いのではないでしょうか？<br/>
+今後もバージョンアップして使いやすくなることを期待しつつ、本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[UICollectionViewCellをカスタム化しよう！]]></title>
@@ -958,305 +1170,6 @@ Alamofire.request(requestURL, method: .get, parameters: parameters, encoding: UR
 Google Mapを利用するサービスを考えると案外必要となる場面が多いんですよね。<br/>
 知っておいて損はないかと思います。<br/>
 本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Geccoを使ったiOSアプリのチュートリアルを実装しよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/07/17/gecco/"/>
-    <updated>2017-07-17T21:29:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/07/17/gecco</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>本日はアプリでのチュートリアル実装について見ていきたいと思います。<br/>
-あまたあるOSSライブラリの中で筆者が注目したのは、<a href="https://github.com/yukiasai/Gecco">Gecco</a>です。<br/>
-理由は</p>
-
-<ul>
-<li>Swiftで作られていること</li>
-<li>GitHubでのStar数が多いこと</li>
-<li>タップ箇所を誘導するUIであること</li>
-</ul>
-
-
-<p>です。<br/>
-では早速見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>Geccoのインストール</h3>
-
-<p>CocoaPodsでインストールします。<br/>
-以下のように <code>Podfile</code> を作成して、 <code>pod install</code> を実行してください。</p>
-
-<p>```objective-c</p>
-
-<h1>Podfile</h1>
-
-<p>use_frameworks!
-platform :ios, &lsquo;10.0&rsquo;</p>
-
-<p>target &ldquo;SampleApplication&rdquo; do
-  pod &lsquo;Gecco&rsquo;
-end
-```</p>
-
-<h3>Geccoの使い方</h3>
-
-<p>これまた実にシンプルです。</p>
-
-<h4>スポットライトの表示</h4>
-
-<p>タップを促すときなどに焦点を当てるためのスポットライトを表示させたいことがあると思います。<br/>
-これを実現してみましょう。</p>
-
-<p>```objective-c
-import UIKit
-import Gecco</p>
-
-<p>class ViewController: UIViewController {</p>
-
-<p>  private var spotlightViewController: SpotlightViewController!
-  &hellip;
-  override func viewDidLoad() {</p>
-
-<pre><code>super.viewDidLoad()
-
-// 初期化
-self.spotlightViewController = SpotlightViewController()
-</code></pre>
-
-<p>  }</p>
-
-<p>  override func viewWillAppear() {</p>
-
-<pre><code>super.viewWillAppear()
-
-present(self.spotlightViewController, animated: true) {
-  // スポットライトの表示
-  self.spotlightViewController.spotlightView.appear(Spotlight.Oval(center: CGPoint(x: 100, y: 100), diameter: 50))
-}
-</code></pre>
-
-<p>  }
-}
-```</p>
-
-<p>上記のように初期化をして、<code>present</code>で画面遷移させる要領で表示させることができます。<br/>
-また、上記例では円形のスポットライトが表示されますが、<br/>
-スポットライトの形式には <code>Oval</code>(円) / <code>Rect</code>(長方形) / <code>RoundRect</code>(角丸長方形)の3つがあるため用途にあった形式を選択することができます。</p>
-
-<h4>スポットライトに対するアクションを拾う</h4>
-
-<p>続いて、下図のようにボタンタップを促す形で表示したスポットライトをタップしたことを検知して、次のチュートリアルに進みたいことがあると思います。</p>
-
-<p><img src="/images/gecco_1.png" alt="ボタンの上にスポットライトの表示" /></p>
-
-<p>これは <code>SpotlightViewControllerDelegate</code> を利用することになります。</p>
-
-<p>```objective-c
-import UIKit
-import Gecco</p>
-
-<p>class ViewController: UIViewController, SpotlightViewControllerDelegate {</p>
-
-<p>  @IBOutlet weak var button: UIButton!
-  private var spotlightViewController: SpotlightViewController!
-  &hellip;
-  override func viewDidLoad() {</p>
-
-<pre><code>super.viewDidLoad()
-
-// 初期化
-self.spotlightViewController = SpotlightViewController()
-self.spotlightViewController?.delegate = self
-</code></pre>
-
-<p>  }</p>
-
-<p>  override func viewWillAppear() {</p>
-
-<pre><code>super.viewWillAppear()
-
-present(self.spotlightViewController, animated: true) {
-  self.spotlightViewController.spotlightView.appear(Spotlight.Oval(center: CGPoint(x: 100, y: 100), diameter: 50))
-}
-</code></pre>
-
-<p>  }</p>
-
-<p>  // SpotlightViewControllerをタップした場合
-  func spotlightViewControllerTapped(_ viewController: SpotlightViewController, isInsideSpotlight: Bool) {</p>
-
-<pre><code>if isInsideSpotlight {
-  // スポットライトの内側をタップした場合
-  // SpotlightViewControllerを非表示にする
-  self.spotlightViewController.dismiss(animated: true, completion: {
-    self.button.sendActions(for: .touchUpInside)
-  })
-}
-</code></pre>
-
-<p>  }
-}
-```</p>
-
-<p>上記のようにタップの検知は <code>spotlightViewControllerTapped</code> で可能です。<br/>
-また、 <code>isInsideSpotlight</code> を利用することでスポットライトの内側をタップしたかどうかも検知できます。<br/>
-余談ですが、<br/>
-スポットライトをタップしても、そのままではボタンをタップしたことにはなりません。<br/>
-そのため、ボタンへのタップアクションを伝えるために <code>sendActions(for: .touchUpInside)</code> を利用します。</p>
-
-<p><code>spotlightViewControllerTapped</code>以外にも<code>spotlightViewControllerWillPresent</code>や<code>spotlightViewControllerWillDismiss</code>もありますので、状況次第で利用すると良いかと思います。</p>
-
-<p><code>objective-c
-@objc public protocol SpotlightViewControllerDelegate: class {
-  optional func spotlightViewControllerWillPresent(viewController: SpotlightViewController, animated: Bool)
-  optional func spotlightViewControllerWillDismiss(viewController: SpotlightViewController, animated: Bool)
-  optional func spotlightViewControllerTapped(viewController: SpotlightViewController, isInsideSpotlight: Bool)
-}
-</code></p>
-
-<h3>Geccoに機能を追加しよう</h3>
-
-<p>デフォルトで用意されている機能以外に何らかの機能を合わせて使いたいこともあるでしょう。<br/>
-そんなときは自ら実装するのが良いかと思います。</p>
-
-<h4>チュートリアル用の説明を追加</h4>
-
-<p>今回、筆者がGeccoを使った際に必要とした機能の中に <strong>説明表記</strong> がありました。<br/>
-<code>GeccoExample</code> の中に <code>AnnotationViewController</code> が用意されていますので参考にさせて頂きました。</p>
-
-<p>```objective-c
-// AnnotationViewController
-import Foundation
-import UIKit
-import Gecco</p>
-
-<p>class AnnotationViewController: SpotlightViewController {</p>
-
-<p>  @IBOutlet weak var label: UILabel!</p>
-
-<p>  override func viewDidLoad() {</p>
-
-<pre><code>super.viewDidLoad()
-</code></pre>
-
-<p>  }</p>
-
-<p>  override func viewWillAppear(_ animated: Bool) {</p>
-
-<pre><code>super.viewWillAppear(animated)
-</code></pre>
-
-<p>  }</p>
-
-<p>  func updateLabel(_ text: String, blackColor: Bool = false) {</p>
-
-<pre><code>self.label.text = text
-if blackColor {
-  self.label.textColor = UIColor.black
-} else {
-  self.label.textColor = UIColor.white
-}
-</code></pre>
-
-<p>  }
-}
-```</p>
-
-<p>筆者の場合、<code>UILabel</code>の位置は常に同じ場所で十分だったため上記のみの追加になっています。</p>
-
-<h4>長押しジェスチャの追加</h4>
-
-<p>今回、筆者がGeccoを使った際に必要とした機能の中に <strong>長押し検知</strong> がありました。<br/>
-デフォルトで実装されていないため、GitHubからRepositoryをForkして機能追加することにしました。<br/>
-コメントを記載した4箇所の追加のみで実装できます。</p>
-
-<p>```objective-c
-// SpotlightViewController
-import UIKit</p>
-
-<p>@objc public protocol SpotlightViewControllerDelegate: class {
-  @objc optional func spotlightViewControllerWillPresent(<em> viewController: SpotlightViewController, animated: Bool)
-  @objc optional func spotlightViewControllerWillDismiss(</em> viewController: SpotlightViewController, animated: Bool)
-  @objc optional func spotlightViewControllerTapped(<em> viewController: SpotlightViewController, isInsideSpotlight: Bool)
-  // (1)長押し検知
-  @objc optional func spotlightViewControllerLongPressed(</em> viewController: SpotlightViewController, isInsideSpotlight: Bool)
-}</p>
-
-<p>open class SpotlightViewController: UIViewController {
-  open weak var delegate: SpotlightViewControllerDelegate?
-  &hellip;
-  open override func viewDidLoad() {</p>
-
-<pre><code>super.viewDidLoad()
-
-setupSpotlightView(alpha)
-setupContentView()
-setupTapGesture()
-// (2)長押し処理の追加
-setupLongPressGesture()
-
-view.backgroundColor = UIColor.clear
-</code></pre>
-
-<p>  }
-  &hellip;
-  // (3)長押し処理ジェスチャの初期化
-  fileprivate func setupLongPressGesture() {</p>
-
-<pre><code>let gesture = UILongPressGestureRecognizer(target: self, action: #selector(SpotlightViewController.viewLongPressed(_:)));
-view.addGestureRecognizer(gesture)
-</code></pre>
-
-<p>  }
-}</p>
-
-<p>extension SpotlightViewController {
-  &hellip;
-  // (4)長押し時に実行される処理を追加
-  func viewLongPressed(_ gesture: UILongPressGestureRecognizer) {</p>
-
-<pre><code>let pressPoint = gesture.location(in: spotlightView)
-let isInside = spotlightView.spotlight?.frame.contains(pressPoint) ?? false
-delegate?.spotlightViewControllerLongPressed?(self, pressPoint: pressPoint, isInsideSpotlight: isInside)
-</code></pre>
-
-<p>  }
-}
-```</p>
-
-<h3>まとめ</h3>
-
-<p>さて如何でしたでしょうか？<br/>
-今回はチュートリアル用に利用する <code>Gecco</code> ライブラリについて紹介させて頂きました。<br/>
-チュートリアルにはGoogleがよく使うような初めに説明スライドを数枚用意する方式もあるかと思います。<br/>
-ケースによって使い分けると良いんでしょうね。<br/>
-と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

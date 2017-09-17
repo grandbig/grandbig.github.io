@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-08-27T14:43:31+09:00</updated>
+  <updated>2017-09-18T02:09:27+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,262 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Firebase NotificationをiOSで使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/09/18/firebase-notification/"/>
+    <updated>2017-09-18T00:45:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/09/18/firebase-notification</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回はFirebase Notificationについて見ていきたいと思います。<br/>
+一昔前であれば、プロダクトごとにNotificationの仕組みを作り込んだり、共通基盤としてNotificationプロジェクトを推進していたりといった会社が多かった気がします。<br/>
+また、未だにリッチなNotificationのプロダクトを生業として利益を上げている会社もあるので、それだけNotificationの仕組みは自作ではなくあるものを使いたいという需要が大きいのでしょう。<br/>
+しかしながら、Firebaseの登場により、Notificationプロダクト市場もより加熱化しているのではないでしょうか。</p>
+
+<p>筆者的にはGoogleが出す、それも無料のプロダクトであるわけなので、使わない手はないと思うわけです。<br/>
+なんて偉そうなことを言いつつ、FireabseによるNotificationの仕組みを利用したことがなかったので、今回試しに使ってみることにしました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Firebaseの導入</h3>
+
+<p>こちらの内容は<a href="https://grandbig.github.io/blog/2017/05/14/firebase-ios/">以前書いた記事</a>に任せたいと思います。</p>
+
+<h3>APNs証明書の作成</h3>
+
+<p>こちらに関しては、様々なサイトにて説明がされているので、そちらを見るなどした方が早いので省きます。<br/>
+例えば <a href="http://qiita.com/natsumo/items/d5cc1d0be427ca3af1cb#6-apns%E7%94%A8%E8%A8%BC%E6%98%8E%E6%9B%B8cer%E3%81%AE%E4%BD%9C%E6%88%90">プッシュ通知に必要な証明書の作り方2017</a>など参考にすると良いでしょう。</p>
+
+<h3>Firebase Notificationの利用</h3>
+
+<p>さて、本題です。<br/>
+Firebase Notificationを利用するための手順について説明します。</p>
+
+<p>① 作成したAPNs証明書をダウンロードする<br/>
+先程作成したAPNs証明書はキーチェーンに登録していると思います。<br/>
+(Apple Developer Programで作成したAPNs証明書は必ずDLしてキーチェーンに登録しましょう。)<br/>
+キーチェーンを開いて、該当の証明書をダウンロードします。</p>
+
+<p>該当のAPNs証明書は <code>Apple Development IOS Push Services: xxxxx</code> のようになっているものです。<br/>
+<img src="http://grandbig.github.io/images/firebase_notificcation_ios_1.png" alt="キーチェーンを開く" /></p>
+
+<p>右クリックして書き出すを選択します。<br/>
+<img src="http://grandbig.github.io/images/firebase_notificcation_ios_2.png" alt="証明書を書き出す" /></p>
+
+<p>ファイル名とパスワードをつけて保存します。<br/>
+<img src="http://grandbig.github.io/images/firebase_notificcation_ios_3.png" alt="ファイル名とパスワードの付け方" /></p>
+
+<p>② ダウンロードしたAPNs証明書をFirebaseに登録する</p>
+
+<p>FirebaseのConsoleを開き、設定画面に遷移します。<br/>
+<img src="http://grandbig.github.io/images/firebase_notificcation_ios_4.png" alt="Firebase Consoleの設定画面" /></p>
+
+<p>クラウドメッセージングタブを開き、APNs証明書をアップロードします。<br/>
+<img src="http://grandbig.github.io/images/firebase_notificcation_ios_5.png" alt="Firebase Console クラウドメッセージングタブ" /></p>
+
+<p>③ Firebaseの必要ライブラリを導入する<br/>
+Firebaseの導入で<code>Core</code>ライブラリはインストールできているかもしれませんが、Notificationでは<code>Messaging</code>が必要になります。<br/>
+よって、<code>Podfile</code>を下記のように修正して、<code>pod update</code>をする必要があります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp"># Podfile</span>
+</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="s">&quot;NotificationSample&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="err">#</span> <span class="n">Normal</span> <span class="n">libraries</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Firebase</span><span class="o">/</span><span class="n">Core</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Firebase</span><span class="o">/</span><span class="n">Messaging</span><span class="err">&#39;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">abstract_target</span> <span class="err">&#39;</span><span class="n">Tests</span><span class="err">&#39;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">inherit</span><span class="o">!</span> <span class="o">:</span><span class="n">search_paths</span>
+</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;NotificationSampleTests&quot;</span>
+</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;NotificationSampleUITests&quot;</span>
+</span><span class='line'>  <span class="n">end</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>④ ソースコードにFirebase Notificationが利用できるように実装する<br/>
+続いて、ソースコードの設定です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Firebase</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UserNotifications</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span><span class="p">,</span> <span class="n">UNUserNotificationCenterDelegate</span><span class="p">,</span> <span class="n">MessagingDelegate</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">window:</span> <span class="n">UIWindow</span><span class="o">?</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span> <span class="n">didFinishLaunchingWithOptions</span> <span class="nl">launchOptions:</span> <span class="p">[</span><span class="nl">UIApplicationLaunchOptionsKey:</span> <span class="n">Any</span><span class="p">]</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// リモート通知 (iOS10に対応)</span>
+</span><span class='line'>    <span class="n">let</span> <span class="nl">authOptions:</span> <span class="n">UNAuthorizationOptions</span> <span class="o">=</span> <span class="p">[.</span><span class="n">alert</span><span class="p">,</span> <span class="p">.</span><span class="n">badge</span><span class="p">,</span> <span class="p">.</span><span class="n">sound</span><span class="p">]</span>
+</span><span class='line'>    <span class="n">UNUserNotificationCenter</span><span class="p">.</span><span class="n">current</span><span class="p">().</span><span class="n">requestAuthorization</span><span class="p">(</span>
+</span><span class='line'>      <span class="nl">options:</span> <span class="n">authOptions</span><span class="p">,</span>
+</span><span class='line'>      <span class="nl">completionHandler:</span> <span class="p">{</span><span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="k">in</span> <span class="p">})</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// UNUserNotificationCenterDelegateの設定</span>
+</span><span class='line'>    <span class="n">UNUserNotificationCenter</span><span class="p">.</span><span class="n">current</span><span class="p">().</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>    <span class="c1">// FCMのMessagingDelegateの設定</span>
+</span><span class='line'>    <span class="n">Messaging</span><span class="p">.</span><span class="n">messaging</span><span class="p">().</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// リモートプッシュの設定</span>
+</span><span class='line'>    <span class="n">application</span><span class="p">.</span><span class="n">registerForRemoteNotifications</span><span class="p">()</span>
+</span><span class='line'>    <span class="c1">// Firebase初期設定</span>
+</span><span class='line'>    <span class="n">FirebaseApp</span><span class="p">.</span><span class="n">configure</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// アプリ起動時にFCMのトークンを取得し、表示する</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">token</span> <span class="o">=</span> <span class="n">Messaging</span><span class="p">.</span><span class="n">messaging</span><span class="p">().</span><span class="n">fcmToken</span>
+</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="s">&quot;FCM token: \(token ?? &quot;&quot;)&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 省略</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">userNotificationCenter</span><span class="p">(</span><span class="n">_</span> <span class="nl">center:</span> <span class="n">UNUserNotificationCenter</span><span class="p">,</span>
+</span><span class='line'>                                <span class="n">willPresent</span> <span class="nl">notification:</span> <span class="n">UNNotification</span><span class="p">,</span>
+</span><span class='line'>                                <span class="n">withCompletionHandler</span> <span class="nl">completionHandler:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">(</span><span class="n">UNNotificationPresentationOptions</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="s">&quot;フロントでプッシュ通知受け取ったよ&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">messaging</span><span class="p">(</span><span class="n">_</span> <span class="nl">messaging:</span> <span class="n">Messaging</span><span class="p">,</span> <span class="n">didRefreshRegistrationToken</span> <span class="nl">fcmToken:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="s">&quot;Firebase registration token: \(fcmToken)&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>たったのこれだけでプッシュ通知の受信ができるようになります。</p>
+
+<h3>Firebase Notificationを利用する</h3>
+
+<p>設定が完了したため、Firebaseからプッシュ通知を送ってみましょう。</p>
+
+<p>方法は簡単です。</p>
+
+<p>① 左メニューから <code>Notification</code> を選択する<br/>
+② 「新しいメッセージ」を選択する<br/>
+③ 必要項目を入力して「メッセージを送る」を選択する</p>
+
+<p><img src="http://grandbig.github.io/images/firebase_notificcation_ios_6.png" alt="Firebase Consoleからプッシュ通知を送る" /></p>
+
+<p>これにより、下図のようにプッシュが届くことを確認できます。<br/>
+<img src="http://grandbig.github.io/images/firebase_notificcation_ios_7.png" alt="端末にプッシュ通知が届く" /></p>
+
+<h3>FirebaseにAPNs Keyを登録する方法</h3>
+
+<p>さて、上記まででは、APNs証明書を作成して、Firebaseに登録する方法を説明しましたが、実はAPNs証明書よりも <code>APNs Key</code> というものの利用を推奨されています。<br/>
+なので、こちらの方法も説明しておきます。</p>
+
+<p>作成方法はいたって簡単です。</p>
+
+<p>① Apple Developer Programの左メニューから<code>Keys &gt; All</code>を選択する<br/>
+② 「＋」ボタンで新規作成する<br/>
+③ Keyの名称を設定する<br/>
+④ Service種別として<code>APNs</code>を選択する<br/>
+⑤ Continueボタンを選択して作成する</p>
+
+<p><img src="http://grandbig.github.io/images/firebase_notificcation_ios_8.png" alt="APNs Keyの作成方法" /></p>
+
+<p>上記で作成した<code>APNs Key</code>をFirebase Console上で設定します。</p>
+
+<p>Firebase Console > 設定 > クラウドメッセージング > iOSアプリの設定から<code>APNs認証キー</code>に設定します。</p>
+
+<p><img src="http://grandbig.github.io/images/firebase_notificcation_ios_9.png" alt="APNs認証キーを設定" /></p>
+
+<p>因みに、設定時に利用するIDはそれぞれ下記から取得します。</p>
+
+<p><img src="http://grandbig.github.io/images/firebase_notificcation_ios_10.png" alt="キーID" /><br/>
+<img src="http://grandbig.github.io/images/firebase_notificcation_ios_11.png" alt="App ID Prefix" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+まだまだFirebase Console上からプッシュできるNotificationにも制限があるようですが、複雑なことをしない例えば「一斉お知らせ機能」のような形で利用するのであれば非常に良いのではないでしょうか？<br/>
+今後もバージョンアップして使いやすくなることを期待しつつ、本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[技術ブログのアクセスと収入の推移(4周年)]]></title>
@@ -5517,371 +5773,6 @@ JavaScriptなら <code>charAt</code> を利用するだけで任意の場所の�
 
 <p>今回は本当に簡易的な部分しか書けませんでした<br/>
 本当は<code>Spring Social</code>を使いこなして、もっといろいろと書こうかと思ったのですが、また次の機会ということで&hellip;</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuにSwiftサーバを立てよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/04/11/docker-for-mac-7/"/>
-    <updated>2017-04-11T19:13:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/04/11/docker-for-mac-7</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>さて本日はDockerつながりで『UbuntuにSwiftサーバを立ててみたい』と思います。<br/>
-今後、ますます加熱する <strong>Server Side Swift</strong> を誰でも簡単に使えるように、きっとDockerを使う場面も増えてくることでしょう。<br/>
-ということで早速見ていきたいと思います。</p>
-
-<h3>Swiftのインストール方法</h3>
-
-<p>次の手順に従って<code>swift</code>コマンドが叩けるところまで進めてみましょう。</p>
-
-<p>１．KitematicでUbuntuを検索してDLする</p>
-
-<p>まずはDockerコンテナを作ります。</p>
-
-<p><img src="http://grandbig.github.io/images/docker_swift_1.png" alt="KitematicでUbuntuをダウンロード" /></p>
-
-<p>※Ubuntuのバージョンは<code>Ubuntu 16.04.2 LTS</code>です。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>２．<code>Privileged mode</code>をONにする</p>
-
-<p>Dockerコンテナのあるある話ですが、<code>Privileged mode</code>をONにしないとコマンド利用制限かかったりするので、忘れずにしておきましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/docker_swift_2.png" alt="Privileged modeをONにする" /></p>
-
-<p>３．<code>PortFoward</code>を設定する</p>
-
-<p>後々、Swiftサーバを立てた時にアクセスしたいので、Dockerにポートフォワード設定をしておきましょう。<br/>
-後ほどSwiftサーバを起動したときに<code>8080</code>にアクセスすることになるので、</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="mf">0.0</span><span class="p">.</span><span class="mf">0.0</span><span class="o">:</span><span class="mi">15700</span><span class="o">-&gt;</span><span class="mi">8080</span><span class="o">/</span><span class="nx">tcp</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>という形でポートフォワードを設定します。<br/>
-もちろんKitematicから設定可能です。</p>
-
-<p>４．<code>apt-get</code>を最新化する</p>
-
-<p>毎度のことですが、最新化しておきます。<br/>
-まずは、Dockerコンテナにアクセスする。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">docker</span> <span class="nx">exec</span> <span class="o">-</span><span class="nx">it</span> <span class="nx">ubuntu</span> <span class="o">/</span><span class="nx">bin</span><span class="o">/</span><span class="nx">bash</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">update</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">upgrade</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>５．<code>wget</code>と<code>vim</code>をインストールする</p>
-
-<p>後ほど利用するので<code>wget</code>と<code>vim</code>をインストールしておきます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">wget</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">vim</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>６．Swiftサーバの依存モジュールをインストールする</p>
-
-<p><a href="https://swift.org/download/#using-downloads">Swiftの公式サイト</a>にも書かれていますが、依存モジュールがあるのでインストールしましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">clang</span> <span class="nx">libicu</span><span class="o">-</span><span class="nx">dev</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>７．Swiftパッケージをインストールする</p>
-
-<p>Swiftサーバを立てるのに必要なものは2つあります。<br/>
-それぞれ<code>wget</code>でインストールしましょう。<br/>
-今回インストールするSwiftのバージョンは <strong>3.1</strong> です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// バイナリアーカイブの取得</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">wget</span> <span class="nx">https</span><span class="o">:</span><span class="c1">//swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz</span>
-</span><span class='line'><span class="c1">// 署名ファイルの取得</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">wget</span> <span class="nx">https</span><span class="o">:</span><span class="c1">//swift.org/builds/swift-3.1-release/ubuntu1604/swift-3.1-RELEASE/swift-3.1-RELEASE-ubuntu16.04.tar.gz.sig</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>８．PGP鍵をインポートする</p>
-
-<p>次の手順で実施しますが、PGP(Pretty Good Privacy)の公開鍵を利用してSwiftパッケージが安全なものであると署名されたかどうかを検証します。<br/>
-その前準備としてPGP鍵をインポートします。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">gpg</span> <span class="o">--</span><span class="nx">keyserver</span> <span class="nx">hkp</span><span class="o">:</span><span class="c1">//pool.sks-keyservers.net \</span>
-</span><span class='line'>      <span class="o">--</span><span class="nx">recv</span><span class="o">-</span><span class="nx">keys</span> <span class="o">\</span>
-</span><span class='line'>      <span class="s1">&#39;7463 A81A 4B2E EA1B 551F  FBCF D441 C977 412B 37AD&#39;</span> <span class="o">\</span>
-</span><span class='line'>      <span class="s1">&#39;1BE1 E29A 084C B305 F397  D62A 9F59 7F4D 21A5 6D5F&#39;</span> <span class="o">\</span>
-</span><span class='line'>      <span class="s1">&#39;A3BA FD35 56A5 9079 C068  94BD 63BC 1CFE 91D3 06C6&#39;</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">requesting</span> <span class="nx">key</span> <span class="mi">412</span><span class="nx">B37AD</span> <span class="nx">from</span> <span class="nx">hkp</span> <span class="nx">server</span> <span class="nx">pool</span><span class="p">.</span><span class="nx">sks</span><span class="o">-</span><span class="nx">keyservers</span><span class="p">.</span><span class="nx">net</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">requesting</span> <span class="nx">key</span> <span class="mi">21</span><span class="nx">A56D5F</span> <span class="nx">from</span> <span class="nx">hkp</span> <span class="nx">server</span> <span class="nx">pool</span><span class="p">.</span><span class="nx">sks</span><span class="o">-</span><span class="nx">keyservers</span><span class="p">.</span><span class="nx">net</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">requesting</span> <span class="nx">key</span> <span class="mi">91</span><span class="nx">D306C6</span> <span class="nx">from</span> <span class="nx">hkp</span> <span class="nx">server</span> <span class="nx">pool</span><span class="p">.</span><span class="nx">sks</span><span class="o">-</span><span class="nx">keyservers</span><span class="p">.</span><span class="nx">net</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="sr">/root/</span><span class="p">.</span><span class="nx">gnupg</span><span class="o">/</span><span class="nx">trustdb</span><span class="p">.</span><span class="nx">gpg</span><span class="o">:</span> <span class="nx">trustdb</span> <span class="nx">created</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">key</span> <span class="mi">412</span><span class="nx">B37AD</span><span class="o">:</span> <span class="kr">public</span> <span class="nx">key</span> <span class="s2">&quot;Swift Automatic Signing Key #1 &lt;swift-infrastructure@swift.org&gt;&quot;</span> <span class="nx">imported</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">key</span> <span class="mi">21</span><span class="nx">A56D5F</span><span class="o">:</span> <span class="kr">public</span> <span class="nx">key</span> <span class="s2">&quot;Swift 2.2 Release Signing Key &lt;swift-infrastructure@swift.org&gt;&quot;</span> <span class="nx">imported</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">key</span> <span class="mi">91</span><span class="nx">D306C6</span><span class="o">:</span> <span class="kr">public</span> <span class="nx">key</span> <span class="s2">&quot;Swift 3.x Release Signing Key &lt;swift-infrastructure@swift.org&gt;&quot;</span> <span class="nx">imported</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">no</span> <span class="nx">ultimately</span> <span class="nx">trusted</span> <span class="nx">keys</span> <span class="nx">found</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">Total</span> <span class="nx">number</span> <span class="nx">processed</span><span class="o">:</span> <span class="mi">3</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span>               <span class="nx">imported</span><span class="o">:</span> <span class="mi">3</span>  <span class="p">(</span><span class="nx">RSA</span><span class="o">:</span> <span class="mi">3</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>９．PGP鍵で署名を検証する</p>
-
-<p>公式で説明されている通り、<code>key</code>のリフレッシュをします。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">gpg</span> <span class="o">--</span><span class="nx">keyserver</span> <span class="nx">hkp</span><span class="o">:</span><span class="c1">//pool.sks-keyservers.net --refresh-keys Swift</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>続いて、署名を検証します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">gpg</span> <span class="o">--</span><span class="nx">verify</span> <span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="o">-</span><span class="nx">ubuntu16</span><span class="p">.</span><span class="mi">04</span><span class="p">.</span><span class="nx">tar</span><span class="p">.</span><span class="nx">gz</span><span class="p">.</span><span class="nx">sig</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">assuming</span> <span class="nx">signed</span> <span class="nx">data</span> <span class="k">in</span> <span class="err">`</span><span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="o">-</span><span class="nx">ubuntu16</span><span class="p">.</span><span class="mi">04</span><span class="p">.</span><span class="nx">tar</span><span class="p">.</span><span class="nx">gz</span><span class="err">&#39;</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">Signature</span> <span class="nx">made</span> <span class="nx">Tue</span> <span class="nx">Mar</span> <span class="mi">28</span> <span class="mi">07</span><span class="o">:</span><span class="mi">36</span><span class="o">:</span><span class="mi">36</span> <span class="mi">2017</span> <span class="nx">UTC</span> <span class="nx">using</span> <span class="nx">RSA</span> <span class="nx">key</span> <span class="nx">ID</span> <span class="mi">91</span><span class="nx">D306C6</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">Good</span> <span class="nx">signature</span> <span class="nx">from</span> <span class="s2">&quot;Swift 3.x Release Signing Key &lt;swift-infrastructure@swift.org&gt;&quot;</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span> <span class="nx">WARNING</span><span class="o">:</span> <span class="nx">This</span> <span class="nx">key</span> <span class="nx">is</span> <span class="nx">not</span> <span class="nx">certified</span> <span class="kd">with</span> <span class="nx">a</span> <span class="nx">trusted</span> <span class="nx">signature</span><span class="o">!</span>
-</span><span class='line'><span class="nx">gpg</span><span class="o">:</span>          <span class="nx">There</span> <span class="nx">is</span> <span class="nx">no</span> <span class="nx">indication</span> <span class="nx">that</span> <span class="nx">the</span> <span class="nx">signature</span> <span class="nx">belongs</span> <span class="nx">to</span> <span class="nx">the</span> <span class="nx">owner</span><span class="p">.</span>
-</span><span class='line'><span class="nx">Primary</span> <span class="nx">key</span> <span class="nx">fingerprint</span><span class="o">:</span> <span class="nx">A3BA</span> <span class="nx">FD35</span> <span class="mi">56</span><span class="nx">A5</span> <span class="mi">9079</span> <span class="nx">C068</span>  <span class="mi">94</span><span class="nx">BD</span> <span class="mi">63</span><span class="nx">BC</span> <span class="mi">1</span><span class="nx">CFE</span> <span class="mi">91</span><span class="nx">D3</span> <span class="mi">06</span><span class="nx">C6</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>正しいSwiftパッケージであることがわかります。</p>
-
-<p>１０．パッケージを展開する</p>
-
-<p>パッケージは圧縮されているので展開しましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">tar</span> <span class="nx">xzf</span> <span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="o">-</span><span class="nx">ubuntu16</span><span class="p">.</span><span class="mi">04</span><span class="p">.</span><span class="nx">tar</span><span class="p">.</span><span class="nx">gz</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>１１．パスを通す</p>
-
-<p>さて、DLしたパッケージに対して検索パスを設定する必要があります。<br/>
-Dockerコンテナには環境設定ファイルとして<code>.dockerenv</code>があるのでこちらにパスを記載します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// 解凍フォルダの名前が長いので名称を変更する</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">mv</span> <span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="o">-</span><span class="nx">ubuntu16</span><span class="p">.</span><span class="mi">04</span> <span class="nx">swift</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// ファイルを開く</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">vi</span> <span class="p">.</span><span class="nx">dockerenv</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// 下記のようにパスを書く</span>
-</span><span class='line'><span class="kr">export</span> <span class="nx">PATH</span><span class="o">=</span><span class="err">/swift/usr/bin:&quot;${PATH}&quot;</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// 環境設定を更新する</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">source</span> <span class="p">.</span><span class="nx">dockerenv</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// 検索パスが通ったことを確認する</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">which</span> <span class="nx">swift</span>
-</span><span class='line'><span class="o">/</span><span class="nx">swift</span><span class="o">/</span><span class="nx">usr</span><span class="o">/</span><span class="nx">bin</span><span class="o">/</span><span class="nx">swift</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">swift</span> <span class="o">--</span><span class="nx">version</span>
-</span><span class='line'><span class="nx">Swift</span> <span class="nx">version</span> <span class="mf">3.1</span> <span class="p">(</span><span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="p">)</span>
-</span><span class='line'><span class="nx">Target</span><span class="o">:</span> <span class="nx">x86_64</span><span class="o">-</span><span class="nx">unknown</span><span class="o">-</span><span class="nx">linux</span><span class="o">-</span><span class="nx">gnu</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>１２．必要なモジュールをインストールする</p>
-
-<p>このままで<code>swift</code>コマンドを叩いても下記のようにエラーが表示されます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">/swift/usr/bin/lldb: error while loading shared libraries: libedit.so.2: cannot open shared object file: No such file or directory</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>どうやら必要なモジュールが足りないようですね&hellip;<br/>
-ということで下記をインストールしましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">libedit</span><span class="o">-</span><span class="nx">dev</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">libpython</span><span class="o">-</span><span class="nx">dev</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">libxml2</span><span class="o">-</span><span class="nx">dev</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これで<code>swift</code>コマンドを実行できるようになります。<br/>
-ついでに<code>Hello World</code>まで出力してみます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">swift</span>
-</span><span class='line'><span class="nx">Welcome</span> <span class="nx">to</span> <span class="nx">Swift</span> <span class="nx">version</span> <span class="mf">3.1</span> <span class="p">(</span><span class="nx">swift</span><span class="o">-</span><span class="mf">3.1</span><span class="o">-</span><span class="nx">RELEASE</span><span class="p">).</span> <span class="nx">Type</span> <span class="o">:</span><span class="nx">help</span> <span class="k">for</span> <span class="nx">assistance</span><span class="p">.</span>
-</span><span class='line'>  <span class="mi">1</span><span class="o">&gt;</span> <span class="nx">print</span><span class="p">(</span><span class="s2">&quot;Hello, world!&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="nx">Hello</span><span class="p">,</span> <span class="nx">world</span><span class="o">!</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>PerfectでSwiftサーバを立てよう！</h3>
-
-<p>今回もSwiftサーバを立てるために<a href="https://github.com/PerfectlySoft/Perfect">Perfect</a>を利用します。<br/>
-下記手順に従って進めましょう。</p>
-
-<p>１．<code>git</code>をインストールする<br/>
-まずは<code>Perfect</code>を<code>git</code>経由でダウンロードする必要があるので<code>git</code>をインストールしましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">git</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>２．<code>PerfectTemplate</code>をダウンロードする<br/>
-簡潔にSwiftサーバを立てたいので<code>PerfectTemplate</code>をダウンロードします。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">git</span> <span class="nx">clone</span> <span class="nx">https</span><span class="o">:</span><span class="c1">//github.com/PerfectlySoft/PerfectTemplate.git</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>３．必要モジュールをインストールする<br/>
-PerfectのGet Startedに書かれている通り、次の必要なモジュールをインストールします。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">openssl</span> <span class="nx">libssl</span><span class="o">-</span><span class="nx">dev</span> <span class="nx">uuid</span><span class="o">-</span><span class="nx">dev</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>４．不足モジュールをインストールする<br/>
-このままだと<code>swift build</code>実行しても下記エラーが出てしまいました。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">error</span> <span class="k">while</span> <span class="nx">loading</span> <span class="nx">shared</span> <span class="nx">libraries</span><span class="o">:</span> <span class="nx">libcurl</span><span class="p">.</span><span class="nx">so</span><span class="p">.</span><span class="mi">4</span><span class="o">:</span> <span class="nx">cannot</span> <span class="nx">open</span> <span class="nx">shared</span> <span class="nx">object</span> <span class="nx">file</span><span class="o">:</span> <span class="nx">No</span> <span class="nx">such</span> <span class="nx">file</span> <span class="nx">or</span> <span class="nx">directory</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記解決のためにモジュールをインストールしましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">apt</span><span class="o">-</span><span class="nx">get</span> <span class="nx">install</span> <span class="nx">libcurl4</span><span class="o">-</span><span class="nx">openssl</span><span class="o">-</span><span class="nx">dev</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>５．<code>swift build</code>を実行する<br/>
-さて、ビルドしましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="nx">cd</span> <span class="nx">PerfectTemplate</span>
-</span><span class='line'><span class="err">#</span> <span class="nx">swift</span> <span class="nx">build</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>６．Swiftサーバを起動する<br/>
-後は下記コマンドでSwiftサーバを起動しましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="err">#</span> <span class="p">.</span><span class="nx">build</span><span class="o">/</span><span class="nx">debug</span><span class="o">/</span><span class="nx">PerfectTemplate</span>
-</span><span class='line'><span class="p">[</span><span class="nx">INFO</span><span class="p">]</span> <span class="nx">Starting</span> <span class="nx">HTTP</span> <span class="nx">server</span> <span class="nx">localhost</span> <span class="nx">on</span> <span class="mf">0.0</span><span class="p">.</span><span class="mf">0.0</span><span class="o">:</span><span class="mi">8080</span>
-</span><span class='line'><span class="p">[</span><span class="nx">INFO</span><span class="p">]</span> <span class="nx">Starting</span> <span class="nx">HTTP</span> <span class="nx">server</span> <span class="nx">localhost</span> <span class="nx">on</span> <span class="mf">0.0</span><span class="p">.</span><span class="mf">0.0</span><span class="o">:</span><span class="mi">8181</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p><img src="http://grandbig.github.io/images/docker_swift_3.png" alt="Swiftサーバにアクセス" /></p>
-
-<h3>まとめ</h3>
-
-<p>さていかがでしたでしょうか？<br/>
-筆者個人としては、途中で何回かハマったものの、DockerコンテナのUbuntuにSwiftサーバを立てられたことに満足できました。<br/>
-今回はサーバを立てるという基本的なものでしたが、今度はWeb APIを作成して、iOSアプリからアクセスしてみたりなど遊んでみたいと思います。</p>
-
-<p>と言ったところで本日はここまで。</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="https://www.twilio.com/blog/2015/12/getting-started-with-swift-on-linux.html">Getting Started with Swift on Linux</a></li>
-<li><a href="http://qiita.com/yonell/items/79bf4ee3cd65f69903ec">Ubuntu上でSwiftサーバーサイドフレームワークのPerfectを動かしてみた</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
