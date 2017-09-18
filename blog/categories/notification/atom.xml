@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: notification | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/notification/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-09-18T21:43:25+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[プッシュ通知をnode-apnで送ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/09/18/node-apn/"/>
+    <updated>2017-09-18T20:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/09/18/node-apn</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p><a href="https://grandbig.github.io/blog/2017/09/18/firebase-notification/">前回</a>はFirebaseを利用してiOSにRemote Notificationを送信することについて書きました。<br/>
+今後は自作せずにFirebaseを利用するプロダクトが増えてくると思うことに変わりはないのですが、ふと昔利用していた<a href="https://github.com/node-apn/node-apn">node-apn</a>が気になりました。<br/>
+折角の機会なので、この<code>node-apn</code>を利用してRemote Notificationを送信してみたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>プロジェクトの用意</h3>
+
+<p>ベースプロジェクトは<a href="https://github.com/expressjs/express">Express</a>を使ってしまいましょう。<br/>
+今回の各種バージョンは下記の通りです。</p>
+
+<p><code>javascript
+Node.js:  v7.3.0
+npm:      v3.10.10
+Express:  v4.15.0
+nodebrew: v0.9.6
+</code></p>
+
+<p>① Expressコマンドで<code>pushtest</code>プロジェクトの生成</p>
+
+<p><code>javascript
+$ express -t ejs pushtest
+</code></p>
+
+<p>すると下記のプロジェクト構成が出来上がります。</p>
+
+<p><code>javascript
+pushtest
+├── app.js
+├── bin
+│    └── www
+├── package.json
+├── public
+├── routes
+│    ├── index.js
+│    └── users.js
+└── views
+</code></p>
+
+<p>因みに、<code>express</code>コマンドを打つには<code>express</code>と<code>express-generator</code>のインストールが必要です。<br/>
+また、グローバルインストールした<code>node_modules</code>へのパスを<code>.bash_profile</code>に通しておきましょう。</p>
+
+<p><code>javascript
+export PATH=$HOME/.nodebrew/current/bin:$PATH
+export NODE_PATH=$HOME/.nodebrew/current/lib/node_modules
+</code></p>
+
+<p><code>source ~/.bash_profile</code>で最新状況を読み込むのを忘れずに。</p>
+
+<p>② <code>node-apn</code>のインストール</p>
+
+<p><code>javascript
+$ npm install node-apn --save
+</code></p>
+
+<p>因みに、必要なモジュールをインストールしたつもりでも、何度も<code>Cannot find module xxx</code>と出てしまうようであれば、<code>app.js</code>と同じ階層下で<code>npm install -d</code>を実行しましょう。</p>
+
+<h3>処理を実装</h3>
+
+<p>プロジェクトが用意できたので、処理を実装していきましょう。<br/>
+今回は簡単のため要件としては下記のみとします。</p>
+
+<p>・特定の端末のデバイストークンを指定<br/>
+・GETリクエスト</p>
+
+<p>① <code>app.js</code>に処理を実装<br/>
+まずはGETリクエストの受け口を<code>app.js</code>に用意します。</p>
+
+<p>```javascript
+var express = require(&lsquo;express&rsquo;);
+var path = require(&lsquo;path&rsquo;);
+var favicon = require(&lsquo;serve-favicon&rsquo;);
+var logger = require(&lsquo;morgan&rsquo;);
+var cookieParser = require(&lsquo;cookie-parser&rsquo;);
+var bodyParser = require(&lsquo;body-parser&rsquo;);</p>
+
+<p>var index = require(&lsquo;./routes/index&rsquo;);
+var users = require(&lsquo;./routes/users&rsquo;);
+var apns = require(&lsquo;./routes/apns&rsquo;);// apns.jsは④で作成しますが、既にある体で追記</p>
+
+<p>var app = express();</p>
+
+<p>// 省略</p>
+
+<p>app.use(&lsquo;/&rsquo;, index);
+app.use(&lsquo;/users&rsquo;, users);
+app.use(&lsquo;/apns&rsquo;, apns);// GETリクエストを受けられるように追記</p>
+
+<p>// 省略
+```</p>
+
+<p>② <code>routes/apns.js</code>を作成</p>
+
+<p>最後にメインとなる処理を書いていきます。<br/>
+専用の<code>routes/apns.js</code>を作成し、その内部に<code>node-apn</code>を利用した処理を書いていきます。<br/>
+推奨されている<code>APNS Key</code>を利用するため、別途<code>AuthKey_xxxxxxxxxx.p8</code>を用意しましょう。</p>
+
+<p>その結果、プロジェクト構成としては下記のようになります。</p>
+
+<p><code>javascript
+pushtest
+├── app.js
+├── bin
+│    └── www
+├── key
+│    └── AuthKey_xxxxxxxxxx.p8
+├── package.json
+├── public
+├── routes
+│    ├── apns.js
+│    ├── index.js
+│    └── users.js
+└── views
+</code></p>
+
+<p>続いて具体的な処理です。<br/>
+昔よりもシンプルに書けるようになっているイメージです。</p>
+
+<p>```javascript
+var express = require(&lsquo;express&rsquo;);
+var apn = require(&lsquo;apn&rsquo;);
+var qs = require(&lsquo;qs&rsquo;);
+var router = express.Router();</p>
+
+<p>router.get(&lsquo;/&rsquo;, function(req, res, next) {
+  // GETパラメータからトークンを取得
+  var arr = req.url.split(&ldquo;?&rdquo;);
+  var obj = qs.parse(arr[1]);
+  var deviceToken = obj.token;</p>
+
+<p>  // プッシュ通知の設定
+  var options = {</p>
+
+<pre><code>token: {
+  key: "./keys/AuthKey_xxxxxxxxxx.p8",
+  keyId: "xxxxxxxxxx",
+  teamId: "xxxxxxxxxx"
+},
+production: false
+</code></pre>
+
+<p>  };</p>
+
+<p>  var apnProvider = new apn.Provider(options);
+  var note = new apn.Notification();</p>
+
+<p>  note.expiry = Math.floor(Date.now() / 1000) + 3600;
+  note.badge = 3;
+  note.sound = &ldquo;ping.aiff&rdquo;;
+  note.alert = &ldquo;プッシュ通知が届きましたよ！&rdquo;;
+  note.topic = &ldquo;com.xxx.NotificationSample&rdquo;;</p>
+
+<p>  // プッシュ送信
+  apnProvider.send(note, deviceToken).then( (result) => {</p>
+
+<pre><code>res.send("respond with a resource");
+</code></pre>
+
+<p>  });
+});</p>
+
+<p>module.exports = router;
+```</p>
+
+<h3>プッシュ通知を送信</h3>
+
+<p>準備ができたのでプッシュ通知を送ってみましょう。</p>
+
+<p>① <code>Node</code>を起動</p>
+
+<p>デバッグしながら起動するために下記を実行します。</p>
+
+<p><code>javascript
+$ node --inspect --debug-brk bin/www
+</code></p>
+
+<p>すると、下記出力がされるのでChromeでアクセスしましょう。</p>
+
+<p>```javascript
+Debugger listening on port 9229.
+Warning: This is an experimental feature and could change at any time.
+To start debugging, open the following URL in Chrome:</p>
+
+<pre><code>chrome-devtools://devtools/bundled/inspector.html?experiments=true&amp;v8only=true&amp;ws=127.0.0.1:9229/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+</code></pre>
+
+<p>```</p>
+
+<p>② プッシュ通知を送る</p>
+
+<p>下記URLにアクセスしてGETリクエストを投げましょう。</p>
+
+<p><code>javascript
+http://localhost:3000/apns?token=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+</code></p>
+
+<p>たったこれだけで下図のようにプッシュ通知が届きました。</p>
+
+<p><img src="/images/node-apn_1.png" alt="node-apnで送ったプッシュ通知" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて今回は<code>node-apn</code>でのプッシュ通知について書きました。<br/>
+3年以上前に<a href="https://grandbig.github.io/blog/2014/02/22/silentremotenotification/">Silent Remote Notificationを試そう！</a>で利用したりしていたのですが、今見るといろいろと変わっているなと改めて感じました。<br/>
+今更ではありますが、これも一つ勉強になったと思い、<code>Firebase</code>に没頭していこうかなと&hellip;笑<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Silent Remote Notificationを試そう！]]></title>
+    <link href="http://grandbig.github.io/blog/2014/02/22/silentremotenotification/"/>
+    <updated>2014-02-22T00:06:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/02/22/silentremotenotification</id>
+    <content type="html"><![CDATA[<h3>iOS7で新たに追加されたSilent Remote Notificationを使ってみよう！！</h3>
+
+<p>本日はiOS7から新たに追加された<strong>Silent Remote Notification</strong>について紹介します。<br/>
+iOS6までで利用できたRemote Notificationと何が違うのかと言いますと、<strong>ユーザ端末のロック画面に表示させることなく</strong>通知することができるんです。<br/>
+つまり、<br/>
+Remote Notification: ユーザに何かを気づかせるためにプッシュする<br/>
+Silent Remote Notification: ユーザに気づかせることなくプッシュする<br/>
+ということです。</p>
+
+<p>これを見ると、『Silent Remote Notificationって使い道あるの？？』なんて思ってしまいそうですよね。これが意外とありそうなんです。<br/>
+例えば、<br/>
+・ユーザに気づかれずにアプリ内の情報を最新に更新する<br/>
+・ユーザに気づかれずにアプリ内のユーザ情報を取得する<br/>
+ことなどが考えられます。<br/>
+後者はユーザ視点からすると気になるかもしれませんが、『アプリの有用性をユーザに最大限に感じてもらうための方法』と考えて頂ければとても大切なことであると伝わるでしょうか。</p>
+
+<p>そんな様々な使い道がありそうなSilent Remote Notificationについて早速説明していきます。</p>
+
+<!--more-->
+
+
+<h4>ネイティブソースとXcode5の設定について</h4>
+
+<p>まずは、ネイティブソースとXcode5の設定から説明します。Xcode5でプロジェクトを作成したら、TARGETS > Capabilities > Background Modes > Remote notificationsにチェックを入れます。<br/>
+<img src="/images/xcode-silent-notifications1.png" alt="Xcode5での設定方法" /><br/>
+続いてはネイティブソースでプッシュの受取り口を作りましょう。</p>
+
+<p>```c
+// AppDelegate.hファイル
+@interfase AppDelegate : NSObject<UIApplicationDelegate> {</p>
+
+<pre><code>NSString *token;
+</code></pre>
+
+<p>}
+<code>
+</code>c
+// AppDelegate.mファイル
+// ①トークン値の取得
+&ndash; (void)application:(UIApplication <em>)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData </em>)devToken
+{</p>
+
+<pre><code>//デバイストークンから'&lt;','&gt;',' 'を削除して変数に保存
+self.token = [[[[devToken description] stringByReplacingOccurrencesOfString:@"&lt;"withString:@""]
+                        stringByReplacingOccurrencesOfString:@"&gt;" withString:@""]
+                        stringByReplacingOccurrencesOfString: @" " withString: @""];
+
+NSLog(@"deviceToken: %@", self.token);
+</code></pre>
+
+<p>}</p>
+
+<p>// ②通常のRemote Notificationが届いたときに通る処理
+&ndash; (void)application:(UIApplication <em>)application didReceiveRemoteNotification:(NSDictionary </em>)userInfo
+{</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}</p>
+
+<p>// ③Silent Remote Notificationが届いたときに通る処理
+&ndash; (void)application:(UIApplication <em>)application
+ didReceiveRemoteNotification:(NSDictionary </em>)userInfo
+  fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
+{</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```
+プッシュ通知を受け取ったとき、上記に書いたdidReceiveRemoteNotification処理が実行されます。コメントアウトにも書いていますが、③がSilent Remote Notificationが届いたときに通る処理です。<br/>
+ただし、Silent Remote NotificationはiOS7以上でないと対応していないのでiOS6の場合は通常のRemote Notification, Silent Remote Notificationに関わらず②のdidReceiveRemoteNotificationを通りますので、ご注意ください。<br/>
+あとは③に実行させたい処理を書けば、Silent Remote Notificationの実装は完了です。</p>
+
+<h4>動作確認用に簡単にプッシュ通知を送る処理を書こう</h4>
+
+<p>さて、ネイティブ側の実装はできましたが、本当にこれで送れるのか確認したいですよね？Node.jsのnode-apnモジュールを使えば驚くほど簡単に用意することができます。<br/>
+より簡単に作成するためにExpressモジュールを使って説明します。Expressモジュールの用意については<a href="https://gihyo.jp/dev/serial/01/nodejs/0003">第3回 Express.jsを使ったWebアプリケーションを構築</a>を参照ください。</p>
+
+<p>それではpushtestという名前のWebアプリの雛形を作成しましょう。<br/>
+<code>bash
+express -t ejs pushtest
+</code>
+次にpushtest配下で<br/>
+<code>bash
+npm install
+</code>
+を実行して必要なモジュールをインストールしましょう。さらに、node-apnモジュールもインストールしましょう。また後ほど利用するquerystringモジュールもインストールしておきましょう。<br/>
+<code>bash
+npm install apn
+npm install qs
+</code>
+これでモジュールが揃ったので、app.jsを編集しましょう。<br/>
+pushtest/routes/apns.jsを作成しておきます。(デフォルトで作成されるindex.jsかuser.jsをコピーしてファイル名を変更すればOKです)
+```js
+var express = require(&lsquo;express&rsquo;);
+var routes = require(&lsquo;./routes&rsquo;);
+var user = require(&lsquo;./routes/user&rsquo;);
+var apns = require(&lsquo;./routes/apns&rsquo;);// apns.jsの読み込みを追加
+var http = require(&lsquo;http&rsquo;);
+var path = require(&lsquo;path&rsquo;);</p>
+
+<p>var app = express();
+&hellip;
+app.get(&lsquo;/apns&rsquo;, apns.push);// GETリクエストを想定
+&hellip;
+```</p>
+
+<p>そしてお待ちかねのプッシュメイン処理をapns.jsに書いていきます。<br/>
+```js
+var apns = require(&lsquo;apn&rsquo;);
+var qs = require(&lsquo;qs&rsquo;);</p>
+
+<p>exports.push = function(req, res){</p>
+
+<pre><code>// ① GETパラメータからトークンを取得
+var arr = req.url.split("?");
+var obj = qs.parse(arr[1]);
+var token = obj.token;
+
+// ② プッシュ通知の設定
+var options = {
+    "cert": "./keys/cert.pem",
+    "key": "./keys/key.pem",
+    "gateway": "gateway.sandbox.push.apple.com"
+};
+var myDevice = apns.Device(token);
+var apnConnection = new apns.Connection(options);
+
+var note = new apns.Notification();
+note.contentAvailable = 1;
+
+apnConnection.pushNotification(note, myDevice);
+
+res.send("respond with a resource");
+</code></pre>
+
+<p>}
+```
+先ほどインストールしたqsはGETパラメータをオブジェクト化してくれる便りなモジュールです。詳しくは<a href="http://nodejs.org/api/querystring.html">Node.js Manual&amp;Documents</a>を参照してください。<br/>
+まず、①のようにトークン値を取得します。<br/>
+次に②のようにプッシュ通知を送るための設定を書きます。<a href="https://github.com/argon/node-apn">GitHubで公開されているReference</a>をほぼそのまま書くだけなので簡単です。<br/>
+注意しておきたいのはSilent Remote Notificationの場合は<strong>note.contentAvailable=1(note.newsstandAvailable=1でも可)</strong>を設定する必要があります。逆にbadge, alert, soundは不要です。これらを入れてもプッシュ通知ができないわけではないのですが、冒頭に述べた<strong>ユーザに気づかれずに</strong>という要件を満たせなくなります。</p>
+
+<p>因みに, optionsで設定しているcertとkeyは証明書の保存場所です。上記ソースで設定している場所はapp.jsと同じ階層にkeyフォルダがあることを指します。また、gatewayにはsandboxをつけることを忘れずに。(商用の場合はsandboxは不要です。develop用ではsandboxを設定するんです。)<br/>
+証明書(cert.pemとkey.pem)の作成は多くのサイトで説明されているのでここでは割愛します。</p>
+
+<p>ここまで準備ができたら、<br/>
+<code>bash
+node app.js
+</code>
+でWeb&amp;APサーバをローカルに起動しましょう。<br/>
+そして、『localhost:3000?token=トークン値』をブラウザのアドレス部分に打って、Silent Remote Notificationを送りましょう!!<br/>
+トークン値はネイティブソース内のdidRegisterForRemoteNotificationsWithDeviceToken関数でLogとして出力しているはずなので、コピーしましょう。</p>
+
+<p>届きましたでしょうか？</p>
+]]></content>
+  </entry>
+  
+</feed>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: node | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/node/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-09-18T02:10:09+09:00</updated>
+  <updated>2017-09-18T21:43:25+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,245 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[プッシュ通知をnode-apnで送ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/09/18/node-apn/"/>
+    <updated>2017-09-18T20:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/09/18/node-apn</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p><a href="https://grandbig.github.io/blog/2017/09/18/firebase-notification/">前回</a>はFirebaseを利用してiOSにRemote Notificationを送信することについて書きました。<br/>
+今後は自作せずにFirebaseを利用するプロダクトが増えてくると思うことに変わりはないのですが、ふと昔利用していた<a href="https://github.com/node-apn/node-apn">node-apn</a>が気になりました。<br/>
+折角の機会なので、この<code>node-apn</code>を利用してRemote Notificationを送信してみたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>プロジェクトの用意</h3>
+
+<p>ベースプロジェクトは<a href="https://github.com/expressjs/express">Express</a>を使ってしまいましょう。<br/>
+今回の各種バージョンは下記の通りです。</p>
+
+<p><code>javascript
+Node.js:  v7.3.0
+npm:      v3.10.10
+Express:  v4.15.0
+nodebrew: v0.9.6
+</code></p>
+
+<p>① Expressコマンドで<code>pushtest</code>プロジェクトの生成</p>
+
+<p><code>javascript
+$ express -t ejs pushtest
+</code></p>
+
+<p>すると下記のプロジェクト構成が出来上がります。</p>
+
+<p><code>javascript
+pushtest
+├── app.js
+├── bin
+│    └── www
+├── package.json
+├── public
+├── routes
+│    ├── index.js
+│    └── users.js
+└── views
+</code></p>
+
+<p>因みに、<code>express</code>コマンドを打つには<code>express</code>と<code>express-generator</code>のインストールが必要です。<br/>
+また、グローバルインストールした<code>node_modules</code>へのパスを<code>.bash_profile</code>に通しておきましょう。</p>
+
+<p><code>javascript
+export PATH=$HOME/.nodebrew/current/bin:$PATH
+export NODE_PATH=$HOME/.nodebrew/current/lib/node_modules
+</code></p>
+
+<p><code>source ~/.bash_profile</code>で最新状況を読み込むのを忘れずに。</p>
+
+<p>② <code>node-apn</code>のインストール</p>
+
+<p><code>javascript
+$ npm install node-apn --save
+</code></p>
+
+<p>因みに、必要なモジュールをインストールしたつもりでも、何度も<code>Cannot find module xxx</code>と出てしまうようであれば、<code>app.js</code>と同じ階層下で<code>npm install -d</code>を実行しましょう。</p>
+
+<h3>処理を実装</h3>
+
+<p>プロジェクトが用意できたので、処理を実装していきましょう。<br/>
+今回は簡単のため要件としては下記のみとします。</p>
+
+<p>・特定の端末のデバイストークンを指定<br/>
+・GETリクエスト</p>
+
+<p>① <code>app.js</code>に処理を実装<br/>
+まずはGETリクエストの受け口を<code>app.js</code>に用意します。</p>
+
+<p>```javascript
+var express = require(&lsquo;express&rsquo;);
+var path = require(&lsquo;path&rsquo;);
+var favicon = require(&lsquo;serve-favicon&rsquo;);
+var logger = require(&lsquo;morgan&rsquo;);
+var cookieParser = require(&lsquo;cookie-parser&rsquo;);
+var bodyParser = require(&lsquo;body-parser&rsquo;);</p>
+
+<p>var index = require(&lsquo;./routes/index&rsquo;);
+var users = require(&lsquo;./routes/users&rsquo;);
+var apns = require(&lsquo;./routes/apns&rsquo;);// apns.jsは④で作成しますが、既にある体で追記</p>
+
+<p>var app = express();</p>
+
+<p>// 省略</p>
+
+<p>app.use(&lsquo;/&rsquo;, index);
+app.use(&lsquo;/users&rsquo;, users);
+app.use(&lsquo;/apns&rsquo;, apns);// GETリクエストを受けられるように追記</p>
+
+<p>// 省略
+```</p>
+
+<p>② <code>routes/apns.js</code>を作成</p>
+
+<p>最後にメインとなる処理を書いていきます。<br/>
+専用の<code>routes/apns.js</code>を作成し、その内部に<code>node-apn</code>を利用した処理を書いていきます。<br/>
+推奨されている<code>APNS Key</code>を利用するため、別途<code>AuthKey_xxxxxxxxxx.p8</code>を用意しましょう。</p>
+
+<p>その結果、プロジェクト構成としては下記のようになります。</p>
+
+<p><code>javascript
+pushtest
+├── app.js
+├── bin
+│    └── www
+├── key
+│    └── AuthKey_xxxxxxxxxx.p8
+├── package.json
+├── public
+├── routes
+│    ├── apns.js
+│    ├── index.js
+│    └── users.js
+└── views
+</code></p>
+
+<p>続いて具体的な処理です。<br/>
+昔よりもシンプルに書けるようになっているイメージです。</p>
+
+<p>```javascript
+var express = require(&lsquo;express&rsquo;);
+var apn = require(&lsquo;apn&rsquo;);
+var qs = require(&lsquo;qs&rsquo;);
+var router = express.Router();</p>
+
+<p>router.get(&lsquo;/&rsquo;, function(req, res, next) {
+  // GETパラメータからトークンを取得
+  var arr = req.url.split(&ldquo;?&rdquo;);
+  var obj = qs.parse(arr[1]);
+  var deviceToken = obj.token;</p>
+
+<p>  // プッシュ通知の設定
+  var options = {</p>
+
+<pre><code>token: {
+  key: "./keys/AuthKey_xxxxxxxxxx.p8",
+  keyId: "xxxxxxxxxx",
+  teamId: "xxxxxxxxxx"
+},
+production: false
+</code></pre>
+
+<p>  };</p>
+
+<p>  var apnProvider = new apn.Provider(options);
+  var note = new apn.Notification();</p>
+
+<p>  note.expiry = Math.floor(Date.now() / 1000) + 3600;
+  note.badge = 3;
+  note.sound = &ldquo;ping.aiff&rdquo;;
+  note.alert = &ldquo;プッシュ通知が届きましたよ！&rdquo;;
+  note.topic = &ldquo;com.xxx.NotificationSample&rdquo;;</p>
+
+<p>  // プッシュ送信
+  apnProvider.send(note, deviceToken).then( (result) => {</p>
+
+<pre><code>res.send("respond with a resource");
+</code></pre>
+
+<p>  });
+});</p>
+
+<p>module.exports = router;
+```</p>
+
+<h3>プッシュ通知を送信</h3>
+
+<p>準備ができたのでプッシュ通知を送ってみましょう。</p>
+
+<p>① <code>Node</code>を起動</p>
+
+<p>デバッグしながら起動するために下記を実行します。</p>
+
+<p><code>javascript
+$ node --inspect --debug-brk bin/www
+</code></p>
+
+<p>すると、下記出力がされるのでChromeでアクセスしましょう。</p>
+
+<p>```javascript
+Debugger listening on port 9229.
+Warning: This is an experimental feature and could change at any time.
+To start debugging, open the following URL in Chrome:</p>
+
+<pre><code>chrome-devtools://devtools/bundled/inspector.html?experiments=true&amp;v8only=true&amp;ws=127.0.0.1:9229/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+</code></pre>
+
+<p>```</p>
+
+<p>② プッシュ通知を送る</p>
+
+<p>下記URLにアクセスしてGETリクエストを投げましょう。</p>
+
+<p><code>javascript
+http://localhost:3000/apns?token=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+</code></p>
+
+<p>たったこれだけで下図のようにプッシュ通知が届きました。</p>
+
+<p><img src="/images/node-apn_1.png" alt="node-apnで送ったプッシュ通知" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて今回は<code>node-apn</code>でのプッシュ通知について書きました。<br/>
+3年以上前に<a href="https://grandbig.github.io/blog/2014/02/22/silentremotenotification/">Silent Remote Notificationを試そう！</a>で利用したりしていたのですが、今見るといろいろと変わっているなと改めて感じました。<br/>
+今更ではありますが、これも一つ勉強になったと思い、<code>Firebase</code>に没頭していこうかなと&hellip;笑<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Server Side Swift: Perfect を使ってみよう！]]></title>
@@ -1124,254 +1363,6 @@ Node.jsはまだまだ新しい技術ですし、これからもっと学ぶべ�
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[BrightFutureを使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2016/04/03/bright-future/"/>
-    <updated>2016-04-03T17:11:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/04/03/bright-future</id>
-    <content type="html"><![CDATA[<h4>SwiftでPromiseライブラリを使ってみよう</h4>
-
-<p>最近は更新頻度が落ちてしまっていますが、久々に更新します。<br/>
-(iPhoneSEが発表されたことですし笑)</p>
-
-<p>さて、本日はSwift版Promiseライブラリとしては割と有名な <strong>BrightFuture</strong> ライブラリを使ってみたいと思います。<br/>
-筆者は、新しいことに取り組む際は、JSで例を見た方がわかりやすかったりするので、Node.jsのPromiseと交えながら紹介していきたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h4>Promiseとは</h4>
-
-<p>まずは、Promiseの存在について軽く触れておきます。<br/>
-<a href="http://azu.github.io/promises-book/">JS Promiseの本</a>によると、Promiseとは『非同期処理を抽象化したオブジェクトとそれを操作する仕組み』のことだそうです。<br/>
-これだけ読むと理解しがたいと思うので、筆者が感じるPromiseの良さをざっくり書くと&hellip;</p>
-
-<ul>
-<li>非同期処理を繰り返す場合でも、深いネストにならない</li>
-<li>非同期処理を繰り返す場合でも、見かけ上、直列的に処理を書ける</li>
-</ul>
-
-
-<p>ということにつきると思います。</p>
-
-<p>具体的な例については、Node.jsで説明します。</p>
-
-<h4>Node.jsでのPromiseの例</h4>
-
-<p>早速、見ていきます。<br/>
-Node.jsで非同期処理を定義する場合、</p>
-
-<p>```javascript
-// 非同期処理を持ったメソッド
-function p(msg, callback) {</p>
-
-<pre><code>setTimeout(function() {
-    callback(msg);
-}, 1000);
-</code></pre>
-
-<p>}
-```</p>
-
-<p>となります。<br/>
-このメソッドを繰り返し実行する場合、</p>
-
-<p>```javascript
-p(&ldquo;Hello&rdquo;, function(msg1) {</p>
-
-<pre><code>console.log(msg1 + ", date: " + new Date());
-p("Good Evening", function(msg2) {
-    console.log(msg2 + ", date: " + new Date());
-    p("Good Bye", function(msg3) {
-        console.log(msg3 + ", date: " + new Date());
-    });
-});
-</code></pre>
-
-<p>});
-```</p>
-
-<p>のようになります。<br/>
-ネスト深いですね&hellip;。</p>
-
-<p>これをPromiseを用いて書き直してみましょう。<br/>
-まずはメソッドの定義にPromiseを適用します。</p>
-
-<p>```javascript
-function p(msg) {</p>
-
-<pre><code>return new Promise(function(resolve) {
-    setTimeout(function() {
-        resolve(msg);
-    }, 1000);
-});
-</code></pre>
-
-<p>}
-```</p>
-
-<p>こうすることで、呼び出し側で下記のように浅いネストで書くことができます。</p>
-
-<p>```javascript
-p(&ldquo;Hello&rdquo;).then(function(msg1) {</p>
-
-<pre><code>console.log(msg1 + ", date: " + new Date());
-return p("Good Evening");
-</code></pre>
-
-<p>})
-.then(function(msg2) {</p>
-
-<pre><code>console.log(msg2 + ", date: " + new Date());
-return p("Good Bye")
-</code></pre>
-
-<p>})
-.then(function(msg3) {</p>
-
-<pre><code>console.log(msg3 + ", date: " + new Date());
-</code></pre>
-
-<p>});
-```</p>
-
-<p>うむ。かなり浅くなりましたね。<br/>
-これをSwiftで書くとどうなるのでしょうか？</p>
-
-<h4>SwiftでのPromiseの例</h4>
-
-<p>Swiftでも非同期処理を定義する場合、</p>
-
-<p>```objective-c
-func p(msg: String, closure: (String &ndash;> ())) {</p>
-
-<pre><code>let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
-dispatch_async(queue, {
-    sleep(1)
-    dispatch_sync(dispatch_get_main_queue(), {
-        closure(msg)
-    })
-})
-</code></pre>
-
-<p>}
-```</p>
-
-<p>のように書けたりします。<br/>
-これを複数回呼び出す場合、</p>
-
-<p>```objective-c
-p(&ldquo;Hello&rdquo;) { (msg1) in</p>
-
-<pre><code>print(msg1 + ", date: \(NSDate())")
-p("Good Evening") { (msg2) in
-    print(msg2 + ", date: \(NSDate())")
-    p("Good Bye") { (msg3) in
-        print(msg3 + ", date: \(NSDate())")
-    }
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>のようになります。<br/>
-同様にネストが深くなりますね&hellip;。</p>
-
-<p>では、Promiseでネストを改善しましょう。<br/>
-Swiftでは、OSSの<a href="https://github.com/Thomvis/BrightFutures">BrightFuture</a>を利用します。<br/>
-導入はいつも通りCocoaPodsを使いました。</p>
-
-<p>1． Podfileに下記を記載</p>
-
-<p>```objective-c
-source &lsquo;<a href="https://github.com/CocoaPods/Specs.git">https://github.com/CocoaPods/Specs.git</a>&rsquo;
-platform :ios, &lsquo;8.0&rsquo;
-use_frameworks!</p>
-
-<p>pod &lsquo;BrightFutures&rsquo;
-```</p>
-
-<p>2．<code>pod install</code>を実行</p>
-
-<p>導入が完了したら、処理を書き換えていきます。<br/>
-メソッドにPromiseを適用しましょう。</p>
-
-<p>```objective-c
-func p_future(msg: String) &ndash;> Future&lt;String, NoError> {</p>
-
-<pre><code>let promise = Promise&lt;String, NoError&gt;()
-let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
-
-dispatch_async(queue, {
-    sleep(1)
-    dispatch_sync(dispatch_get_main_queue(), {
-        promise.success(msg)
-    })
-})
-
-return promise.future
-</code></pre>
-
-<p>}
-```</p>
-
-<p>これを呼び出すときは下記のように書けます。</p>
-
-<p>```objective-c
-p_future(&ldquo;Hello&rdquo;).flatMap { msg1 in</p>
-
-<pre><code>print(msg1 + ", date: \(NSDate())")
-p_future("Good Evening")
-</code></pre>
-
-<p>}.flatMap { msg2 in</p>
-
-<pre><code>print(msg2 + ", date: \(NSDate())")
-p_future("Good Bye")
-</code></pre>
-
-<p>}.onSuccess { (msg3) in</p>
-
-<pre><code>print(msg3)
-</code></pre>
-
-<p>}
-```</p>
-
-<p>ネストが浅くなりましたね。<br/>
-こうして比較してみると、Node.jsとSwiftで呼び出し側の書き方はかなり似ていますね。<br/>
-Swiftだけを眺めてみてもよくわからないという方はNode.jsの方も見てみると良いと思います。</p>
-
-<p>今回はかなり基本的な例を書かせて頂きましたが、参考になれば幸いです。<br/>
-といったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
 
 ]]></content>
   </entry>

@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-09-18T02:09:27+09:00</updated>
+  <updated>2017-09-18T21:43:25+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,330 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[プッシュ通知をnode-apnで送ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/09/18/node-apn/"/>
+    <updated>2017-09-18T20:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/09/18/node-apn</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p><a href="https://grandbig.github.io/blog/2017/09/18/firebase-notification/">前回</a>はFirebaseを利用してiOSにRemote Notificationを送信することについて書きました。<br/>
+今後は自作せずにFirebaseを利用するプロダクトが増えてくると思うことに変わりはないのですが、ふと昔利用していた<a href="https://github.com/node-apn/node-apn">node-apn</a>が気になりました。<br/>
+折角の機会なので、この<code>node-apn</code>を利用してRemote Notificationを送信してみたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>プロジェクトの用意</h3>
+
+<p>ベースプロジェクトは<a href="https://github.com/expressjs/express">Express</a>を使ってしまいましょう。<br/>
+今回の各種バージョンは下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Node</span><span class="p">.</span><span class="nx">js</span><span class="o">:</span>  <span class="nx">v7</span><span class="p">.</span><span class="mf">3.0</span>
+</span><span class='line'><span class="nx">npm</span><span class="o">:</span>      <span class="nx">v3</span><span class="p">.</span><span class="mf">10.10</span>
+</span><span class='line'><span class="nx">Express</span><span class="o">:</span>  <span class="nx">v4</span><span class="p">.</span><span class="mf">15.0</span>
+</span><span class='line'><span class="nx">nodebrew</span><span class="o">:</span> <span class="nx">v0</span><span class="p">.</span><span class="mf">9.6</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>① Expressコマンドで<code>pushtest</code>プロジェクトの生成</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">express</span> <span class="o">-</span><span class="nx">t</span> <span class="nx">ejs</span> <span class="nx">pushtest</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>すると下記のプロジェクト構成が出来上がります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">pushtest</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">app</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">bin</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">www</span>
+</span><span class='line'><span class="err">├──</span> <span class="kr">package</span><span class="p">.</span><span class="nx">json</span>
+</span><span class='line'><span class="err">├──</span> <span class="kr">public</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">routes</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">users</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">└──</span> <span class="nx">views</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因みに、<code>express</code>コマンドを打つには<code>express</code>と<code>express-generator</code>のインストールが必要です。<br/>
+また、グローバルインストールした<code>node_modules</code>へのパスを<code>.bash_profile</code>に通しておきましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kr">export</span> <span class="nx">PATH</span><span class="o">=</span><span class="nx">$HOME</span><span class="o">/</span><span class="p">.</span><span class="nx">nodebrew</span><span class="o">/</span><span class="nx">current</span><span class="o">/</span><span class="nx">bin</span><span class="o">:</span><span class="nx">$PATH</span>
+</span><span class='line'><span class="kr">export</span> <span class="nx">NODE_PATH</span><span class="o">=</span><span class="nx">$HOME</span><span class="o">/</span><span class="p">.</span><span class="nx">nodebrew</span><span class="o">/</span><span class="nx">current</span><span class="o">/</span><span class="nx">lib</span><span class="o">/</span><span class="nx">node_modules</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>source ~/.bash_profile</code>で最新状況を読み込むのを忘れずに。</p>
+
+<p>② <code>node-apn</code>のインストール</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">npm</span> <span class="nx">install</span> <span class="nx">node</span><span class="o">-</span><span class="nx">apn</span> <span class="o">--</span><span class="nx">save</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因みに、必要なモジュールをインストールしたつもりでも、何度も<code>Cannot find module xxx</code>と出てしまうようであれば、<code>app.js</code>と同じ階層下で<code>npm install -d</code>を実行しましょう。</p>
+
+<h3>処理を実装</h3>
+
+<p>プロジェクトが用意できたので、処理を実装していきましょう。<br/>
+今回は簡単のため要件としては下記のみとします。</p>
+
+<p>・特定の端末のデバイストークンを指定<br/>
+・GETリクエスト</p>
+
+<p>① <code>app.js</code>に処理を実装<br/>
+まずはGETリクエストの受け口を<code>app.js</code>に用意します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">express</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;express&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">path</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">favicon</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;serve-favicon&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">logger</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;morgan&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">cookieParser</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;cookie-parser&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">bodyParser</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;body-parser&#39;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">var</span> <span class="nx">index</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./routes/index&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">users</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./routes/users&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">apns</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./routes/apns&#39;</span><span class="p">);</span><span class="c1">// apns.jsは④で作成しますが、既にある体で追記</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">var</span> <span class="nx">app</span> <span class="o">=</span> <span class="nx">express</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 省略</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="nx">index</span><span class="p">);</span>
+</span><span class='line'><span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;/users&#39;</span><span class="p">,</span> <span class="nx">users</span><span class="p">);</span>
+</span><span class='line'><span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;/apns&#39;</span><span class="p">,</span> <span class="nx">apns</span><span class="p">);</span><span class="c1">// GETリクエストを受けられるように追記</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 省略</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>② <code>routes/apns.js</code>を作成</p>
+
+<p>最後にメインとなる処理を書いていきます。<br/>
+専用の<code>routes/apns.js</code>を作成し、その内部に<code>node-apn</code>を利用した処理を書いていきます。<br/>
+推奨されている<code>APNS Key</code>を利用するため、別途<code>AuthKey_xxxxxxxxxx.p8</code>を用意しましょう。</p>
+
+<p>その結果、プロジェクト構成としては下記のようになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">pushtest</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">app</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">bin</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">www</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">key</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">AuthKey_xxxxxxxxxx</span><span class="p">.</span><span class="nx">p8</span>
+</span><span class='line'><span class="err">├──</span> <span class="kr">package</span><span class="p">.</span><span class="nx">json</span>
+</span><span class='line'><span class="err">├──</span> <span class="kr">public</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">routes</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="nx">apns</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">users</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">└──</span> <span class="nx">views</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて具体的な処理です。<br/>
+昔よりもシンプルに書けるようになっているイメージです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">express</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;express&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">apn</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;apn&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">qs</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;qs&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">router</span> <span class="o">=</span> <span class="nx">express</span><span class="p">.</span><span class="nx">Router</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">router</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// GETパラメータからトークンを取得</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">arr</span> <span class="o">=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">url</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">&quot;?&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">obj</span> <span class="o">=</span> <span class="nx">qs</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">arr</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">deviceToken</span> <span class="o">=</span> <span class="nx">obj</span><span class="p">.</span><span class="nx">token</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// プッシュ通知の設定</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">token</span><span class="o">:</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nx">key</span><span class="o">:</span> <span class="s2">&quot;./keys/AuthKey_xxxxxxxxxx.p8&quot;</span><span class="p">,</span>
+</span><span class='line'>      <span class="nx">keyId</span><span class="o">:</span> <span class="s2">&quot;xxxxxxxxxx&quot;</span><span class="p">,</span>
+</span><span class='line'>      <span class="nx">teamId</span><span class="o">:</span> <span class="s2">&quot;xxxxxxxxxx&quot;</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>    <span class="nx">production</span><span class="o">:</span> <span class="kc">false</span>
+</span><span class='line'>  <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">apnProvider</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">apn</span><span class="p">.</span><span class="nx">Provider</span><span class="p">(</span><span class="nx">options</span><span class="p">);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">note</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">apn</span><span class="p">.</span><span class="nx">Notification</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">expiry</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nb">Date</span><span class="p">.</span><span class="nx">now</span><span class="p">()</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">+</span> <span class="mi">3600</span><span class="p">;</span>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">badge</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">sound</span> <span class="o">=</span> <span class="s2">&quot;ping.aiff&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">alert</span> <span class="o">=</span> <span class="s2">&quot;プッシュ通知が届きましたよ！&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">topic</span> <span class="o">=</span> <span class="s2">&quot;com.xxx.NotificationSample&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// プッシュ送信</span>
+</span><span class='line'>  <span class="nx">apnProvider</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nx">note</span><span class="p">,</span> <span class="nx">deviceToken</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span> <span class="p">(</span><span class="nx">result</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">res</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="s2">&quot;respond with a resource&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'><span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="nx">router</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>プッシュ通知を送信</h3>
+
+<p>準備ができたのでプッシュ通知を送ってみましょう。</p>
+
+<p>① <code>Node</code>を起動</p>
+
+<p>デバッグしながら起動するために下記を実行します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">node</span> <span class="o">--</span><span class="nx">inspect</span> <span class="o">--</span><span class="nx">debug</span><span class="o">-</span><span class="nx">brk</span> <span class="nx">bin</span><span class="o">/</span><span class="nx">www</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>すると、下記出力がされるのでChromeでアクセスしましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Debugger</span> <span class="nx">listening</span> <span class="nx">on</span> <span class="nx">port</span> <span class="mi">9229</span><span class="p">.</span>
+</span><span class='line'><span class="nx">Warning</span><span class="o">:</span> <span class="nx">This</span> <span class="nx">is</span> <span class="nx">an</span> <span class="nx">experimental</span> <span class="nx">feature</span> <span class="nx">and</span> <span class="nx">could</span> <span class="nx">change</span> <span class="nx">at</span> <span class="nx">any</span> <span class="nx">time</span><span class="p">.</span>
+</span><span class='line'><span class="nx">To</span> <span class="nx">start</span> <span class="nx">debugging</span><span class="p">,</span> <span class="nx">open</span> <span class="nx">the</span> <span class="nx">following</span> <span class="nx">URL</span> <span class="k">in</span> <span class="nx">Chrome</span><span class="o">:</span>
+</span><span class='line'>    <span class="nx">chrome</span><span class="o">-</span><span class="nx">devtools</span><span class="o">:</span><span class="c1">//devtools/bundled/inspector.html?experiments=true&amp;v8only=true&amp;ws=127.0.0.1:9229/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>② プッシュ通知を送る</p>
+
+<p>下記URLにアクセスしてGETリクエストを投げましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">http</span><span class="o">:</span><span class="c1">//localhost:3000/apns?token=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>たったこれだけで下図のようにプッシュ通知が届きました。</p>
+
+<p><img src="http://grandbig.github.io/images/node-apn_1.png" alt="node-apnで送ったプッシュ通知" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて今回は<code>node-apn</code>でのプッシュ通知について書きました。<br/>
+3年以上前に<a href="https://grandbig.github.io/blog/2014/02/22/silentremotenotification/">Silent Remote Notificationを試そう！</a>で利用したりしていたのですが、今見るといろいろと変わっているなと改めて感じました。<br/>
+今更ではありますが、これも一つ勉強になったと思い、<code>Firebase</code>に没頭していこうかなと&hellip;笑<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Firebase NotificationをiOSで使ってみよう！]]></title>
@@ -5283,496 +5607,6 @@ JavaScriptなら <code>charAt</code> を利用するだけで任意の場所の�
 
 <p>案外ハマる場面がある気がするので、試しておくと良かったりしますね。<br/>
 今回は単なるメモ書きでした。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Spring Bootで簡単Facebook接続]]></title>
-    <link href="http://grandbig.github.io/blog/2017/04/16/spring-boot-facebook-login/"/>
-    <updated>2017-04-16T14:52:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/04/16/spring-boot-facebook-login</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>さて、久しぶりに<code>Spring Boot</code>で遊んでみました。<br/>
-と言ってもほとんどコードを書く必要のないFacebook認証についてです。<br/>
-(本当は<code>Spring Social</code>を利用したFacebookログインまで書こうかと思ったのですが、一旦簡単なところまで&hellip;)</p>
-
-<h3>Facebookアプリを新規作成</h3>
-
-<p>まずはFacebook認証などをするために、Facebook Developersサイトでアプリを登録しましょう。</p>
-
-<p>１．<a href="https://developers.facebook.com/">facebook developers</a>に遷移<br/>
-トップページから新規アプリを追加しましょう。<br/>
-<img src="http://grandbig.github.io/images/web_facebook_login_1.png" alt="facebook developersトップページ" /></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<p>２．必要項目を入力</p>
-
-<p><img src="http://grandbig.github.io/images/web_facebook_login_2.png" alt="ポップアップに必要事項を入力します" /></p>
-
-<p>３．セキュリティチェックをパス</p>
-
-<p><img src="http://grandbig.github.io/images/web_facebook_login_3.png" alt="セキュリティモーダルの解決" /></p>
-
-<p>４．利用機能の選択</p>
-
-<p><img src="http://grandbig.github.io/images/web_facebook_login_4.png" alt="Facebookの利用機能を選択します" /></p>
-
-<p>５．アプリの設定からプラットフォームを追加</p>
-
-<p>左メニューから設定を選択して、下図の画面を出します。<br/>
-<img src="http://grandbig.github.io/images/web_facebook_login_5.png" alt="プラットフォームを追加します" /></p>
-
-<p>プラットフォームとして『ウェブサイト』を追加します。<br/>
-<img src="http://grandbig.github.io/images/web_facebook_login_6.png" alt="ウェブサイトをプラットフォームとして追加します" /></p>
-
-<p>サイトURLやドメインなど必要事項を入力します。<br/>
-<img src="http://grandbig.github.io/images/web_facebook_login_7.png" alt="必要事項を入力します" /></p>
-
-<p>６．Facebookログインの設定</p>
-
-<p>Facebook認証後に返されるリダイレクトURIを設定します。<br/>
-<img src="http://grandbig.github.io/images/web_facebook_login_8.png" alt="リダイレクトURIを設定します" /></p>
-
-<h3>Spring Bootプロジェクトの新規作成</h3>
-
-<p>さて事前準備は完了したので、Spring BootプロジェクトをIntelliJで新規作成しましょう。</p>
-
-<p>１．IntelliJを起動して、Spring Boot用にベースとなる形式を選択</p>
-
-<p><img src="http://grandbig.github.io/images/web_facebook_login_9.png" alt="Spring Initializerを選択します" /></p>
-
-<p>２．ビルドツールとして<code>Gradle</code>を選択</p>
-
-<p><img src="http://grandbig.github.io/images/web_facebook_login_10.png" alt="Gradleをビルドツールとして選択します" /></p>
-
-<p>３．必要なモジュールを選択</p>
-
-<p>今回は <code>Security</code>, <code>Web</code>, <code>Thymeleaf</code>を利用します。<br/>
-<img src="http://grandbig.github.io/images/web_facebook_login_11.png" alt="必要なモジュールを選択します" /></p>
-
-<h3>Facebook認証処理を実装</h3>
-
-<p>では、実装していきましょう。</p>
-
-<h4>Spring Security周りの修正</h4>
-
-<p>まず、<code>Spring Security</code>はデフォルトBasic認証が有効となっているため、一旦、認証不要箇所などを設定します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// SecurityConfig.java</span>
-</span><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">config</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.context.annotation.Configuration</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.security.config.annotation.web.builders.HttpSecurity</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.security.config.annotation.web.configuration.EnableWebSecurity</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="nd">@Configuration</span>
-</span><span class='line'><span class="nd">@EnableWebSecurity</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">SecurityConfig</span> <span class="kd">extends</span> <span class="n">WebSecurityConfigurerAdapter</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nd">@Override</span>
-</span><span class='line'>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">configure</span><span class="o">(</span><span class="n">HttpSecurity</span> <span class="n">http</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">http</span>
-</span><span class='line'>                <span class="o">.</span><span class="na">authorizeRequests</span><span class="o">()</span>
-</span><span class='line'>                <span class="o">.</span><span class="na">antMatchers</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="s">&quot;/complete&quot;</span><span class="o">,</span> <span class="s">&quot;/api/**&quot;</span><span class="o">).</span><span class="na">permitAll</span><span class="o">()</span>
-</span><span class='line'>                <span class="o">.</span><span class="na">anyRequest</span><span class="o">().</span><span class="na">authenticated</span><span class="o">();</span>
-</span><span class='line'>        <span class="n">http</span><span class="o">.</span><span class="na">formLogin</span><span class="o">();</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記ソースでは<code>/</code>と<code>/complete</code>と<code>/api/**</code>のアクセスを許可しています。<br/>
-それぞれ、</p>
-
-<ul>
-<li><code>/</code>: トップぺージ</li>
-<li><code>/complete</code>: Facebook認証後に表示する画面<br/>
-ここで許可すると認証しなくても表示されてしまいますが、簡単のため</li>
-<li><code>/api/**</code>: Facebook認証を実行するためのAPI用</li>
-</ul>
-
-
-<p>という意図です。</p>
-
-<h4>HTMLページの表示</h4>
-
-<p>続いて、単体HTMLページ表示用の処理です。</p>
-
-<h5>Controllerの処理</h5>
-
-<p><code>Controller</code>は下記の通り。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// TopController.java</span>
-</span><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">controller</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.web.bind.annotation.RequestMapping</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.web.bind.annotation.RestController</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.web.servlet.ModelAndView</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="nd">@RestController</span>
-</span><span class='line'><span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">)</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TopController</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// ログイン画面</span>
-</span><span class='line'>    <span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">&quot;&quot;</span><span class="o">)</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="n">ModelAndView</span> <span class="nf">index</span><span class="o">(</span><span class="n">ModelAndView</span> <span class="n">mav</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">mav</span><span class="o">.</span><span class="na">setViewName</span><span class="o">(</span><span class="s">&quot;index&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">mav</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 認証完了後に表示する</span>
-</span><span class='line'>    <span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">&quot;/complete&quot;</span><span class="o">)</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="n">ModelAndView</span> <span class="nf">complete</span><span class="o">(</span><span class="n">ModelAndView</span> <span class="n">mav</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">mav</span><span class="o">.</span><span class="na">setViewName</span><span class="o">(</span><span class="s">&quot;complete&quot;</span><span class="o">);</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">mav</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>HTMLの処理</h5>
-
-<p>そして、HTMLファイルは下記の通り。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!-- index.html --&gt;</span>
-</span><span class='line'><span class="cp">&lt;!DOCTYPE html&gt;</span>
-</span><span class='line'><span class="nt">&lt;html</span> <span class="na">lang=</span><span class="s">&quot;en&quot;</span> <span class="na">xmlns=</span><span class="s">&quot;http://www.thymeleaf.org&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'><span class="nt">&lt;head&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;meta</span>
-</span><span class='line'>    <span class="na">http-equiv=</span><span class="s">&quot;Content-Type&quot;</span>
-</span><span class='line'>    <span class="na">content=</span><span class="s">&quot;text/html&quot;</span>
-</span><span class='line'>    <span class="na">charset=</span><span class="s">&quot;UTF-8&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;title&gt;</span>Facebook Login Sample<span class="nt">&lt;/title&gt;</span>
-</span><span class='line'><span class="nt">&lt;/head&gt;</span>
-</span><span class='line'><span class="nt">&lt;body&gt;</span>
-</span><span class='line'><span class="nt">&lt;div&gt;</span>これはFacebookログインのためのサンプルトップ画面です。<span class="nt">&lt;/div&gt;</span>
-</span><span class='line'><span class="nt">&lt;form</span> <span class="na">action=</span><span class="s">&quot;/api/login&quot;</span> <span class="na">method=</span><span class="s">&quot;get&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;input</span> <span class="na">type=</span><span class="s">&quot;submit&quot;</span> <span class="na">value=</span><span class="s">&quot;Facebookでログイン&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'><span class="nt">&lt;/form&gt;</span>
-</span><span class='line'><span class="nt">&lt;/body&gt;</span>
-</span><span class='line'><span class="nt">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!-- complete.html --&gt;</span>
-</span><span class='line'><span class="cp">&lt;!DOCTYPE html&gt;</span>
-</span><span class='line'><span class="nt">&lt;html</span> <span class="na">lang=</span><span class="s">&quot;en&quot;</span> <span class="na">xmlns=</span><span class="s">&quot;http://www.thymeleaf.org&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'><span class="nt">&lt;head&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;meta</span>
-</span><span class='line'>    <span class="na">http-equiv=</span><span class="s">&quot;Content-Type&quot;</span>
-</span><span class='line'>    <span class="na">content=</span><span class="s">&quot;text/html&quot;</span>
-</span><span class='line'>    <span class="na">charset=</span><span class="s">&quot;UTF-8&quot;</span><span class="nt">/&gt;</span>
-</span><span class='line'>  <span class="nt">&lt;title&gt;</span>ログイン完了画面<span class="nt">&lt;/title&gt;</span>
-</span><span class='line'><span class="nt">&lt;/head&gt;</span>
-</span><span class='line'><span class="nt">&lt;body&gt;</span>
-</span><span class='line'><span class="nt">&lt;div&gt;</span>ログイン完了しました！！<span class="nt">&lt;/div&gt;</span>
-</span><span class='line'><span class="nt">&lt;/body&gt;</span>
-</span><span class='line'><span class="nt">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>環境変数の設定</h4>
-
-<p>FacebookのアプリIDや認証リクエストを送るURLなどの環境変数を書き出します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// application.properties</span>
-</span><span class='line'><span class="n">server</span><span class="o">.</span><span class="na">port</span><span class="o">=</span><span class="mi">9000</span>
-</span><span class='line'><span class="n">spring</span><span class="o">.</span><span class="na">social</span><span class="o">.</span><span class="na">facebook</span><span class="o">.</span><span class="na">appId</span><span class="o">=</span><span class="n">xxxxxxxxx</span>
-</span><span class='line'><span class="n">sampleApp</span><span class="o">.</span><span class="na">urls</span><span class="o">.</span><span class="na">facebookLogin</span><span class="o">=</span><span class="nl">https:</span><span class="c1">//www.facebook.com/v2.8/dialog/oauth?client_id=xxxxxxxxx&amp;scope=public_profile,email</span>
-</span><span class='line'><span class="n">sampleApp</span><span class="o">.</span><span class="na">urls</span><span class="o">.</span><span class="na">oAuthCallback</span><span class="o">=</span><span class="nl">http:</span><span class="c1">//localhost:9000/api/callback</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>ここで書いた環境変数を他のJavaファイルで利用したいので、<br/>
-新たに<code>MyBean.java</code>と<code>MyProperties.java</code>を新規作成します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// MyBean.java</span>
-</span><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">config</span><span class="o">.</span><span class="na">bean</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyBean</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="n">String</span> <span class="n">facebookLogin</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="n">String</span> <span class="n">oAuthCallback</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setFacebookLogin</span><span class="o">(</span><span class="n">String</span> <span class="n">facebookLogin</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">this</span><span class="o">.</span><span class="na">facebookLogin</span> <span class="o">=</span> <span class="n">facebookLogin</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setoAuthCallback</span><span class="o">(</span><span class="n">String</span> <span class="n">oAuthCallback</span><span class="o">)</span> <span class="o">{</span>
-</span><span class='line'>        <span class="k">this</span><span class="o">.</span><span class="na">oAuthCallback</span> <span class="o">=</span> <span class="n">oAuthCallback</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// MyProperties</span>
-</span><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">example</span><span class="o">.</span><span class="na">config</span><span class="o">.</span><span class="na">properties</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kn">import</span> <span class="nn">com.example.config.bean.MyBean</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.beans.factory.annotation.Autowired</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.context.annotation.Bean</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.context.annotation.Configuration</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.context.annotation.PropertySource</span><span class="o">;</span>
-</span><span class='line'><span class="kn">import</span> <span class="nn">org.springframework.core.env.Environment</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="nd">@Configuration</span>
-</span><span class='line'><span class="nd">@PropertySource</span><span class="o">(</span><span class="n">value</span> <span class="o">=</span> <span class="o">{</span><span class="s">&quot;classpath:application.properties&quot;</span><span class="o">})</span>
-</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyProperties</span> <span class="o">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nd">@Autowired</span>
-</span><span class='line'>    <span class="kd">private</span> <span class="n">Environment</span> <span class="n">env</span><span class="o">;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="nd">@Bean</span>
-</span><span class='line'>    <span class="kd">public</span> <span class="n">MyBean</span> <span class="nf">myBean</span><span class="o">()</span> <span class="o">{</span>
-</span><span class='line'>        <span class="n">MyBean</span> <span class="n">myBean</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MyBean</span><span class="o">();</span>
-</span><span class='line'>        <span class="n">myBean</span><span class="o">.</span><span class="na">setFacebookLogin</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">&quot;sampleApp.urls.facebookLogin&quot;</span><span class="o">));</span>
-</span><span class='line'>        <span class="n">myBean</span><span class="o">.</span><span class="na">setoAuthCallback</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getProperty</span><span class="o">(</span><span class="s">&quot;sampleApp.urls.oAuthCallback&quot;</span><span class="o">));</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">myBean</span><span class="o">;</span>
-</span><span class='line'>    <span class="o">}</span>
-</span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Facebook認証周りの処理</h4>
-
-<p>後はFacebook認証先にURLを送るだけです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kr">package</span> <span class="nx">com</span><span class="p">.</span><span class="nx">example</span><span class="p">.</span><span class="nx">controller</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kr">import</span> <span class="nx">com</span><span class="p">.</span><span class="nx">example</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">bean</span><span class="p">.</span><span class="nx">MyBean</span><span class="p">;</span>
-</span><span class='line'><span class="kr">import</span> <span class="nx">org</span><span class="p">.</span><span class="nx">springframework</span><span class="p">.</span><span class="nx">beans</span><span class="p">.</span><span class="nx">factory</span><span class="p">.</span><span class="nx">annotation</span><span class="p">.</span><span class="nx">Autowired</span><span class="p">;</span>
-</span><span class='line'><span class="kr">import</span> <span class="nx">org</span><span class="p">.</span><span class="nx">springframework</span><span class="p">.</span><span class="nx">stereotype</span><span class="p">.</span><span class="nx">Controller</span><span class="p">;</span>
-</span><span class='line'><span class="kr">import</span> <span class="nx">org</span><span class="p">.</span><span class="nx">springframework</span><span class="p">.</span><span class="nx">web</span><span class="p">.</span><span class="nx">bind</span><span class="p">.</span><span class="nx">annotation</span><span class="p">.</span><span class="nx">RequestMapping</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">@</span><span class="nx">Controller</span>
-</span><span class='line'><span class="err">@</span><span class="nx">RequestMapping</span><span class="p">(</span><span class="s2">&quot;/api&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="kr">public</span> <span class="kr">class</span> <span class="nx">FacebookLoginController</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="kr">private</span> <span class="kr">static</span> <span class="kr">final</span> <span class="nb">String</span> <span class="nx">REDIRECT_URI_PARAMETER</span> <span class="o">=</span> <span class="s2">&quot;redirect_uri&quot;</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="err">@</span><span class="nx">Autowired</span>
-</span><span class='line'>    <span class="kr">private</span> <span class="nx">MyBean</span> <span class="nx">myBean</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="err">@</span><span class="nx">RequestMapping</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="kr">public</span> <span class="nb">String</span> <span class="nx">facebookLogin</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="nx">StringBuilder</span> <span class="nx">sb</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">StringBuilder</span><span class="p">();</span>
-</span><span class='line'>        <span class="nx">sb</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="nx">myBean</span><span class="p">.</span><span class="nx">facebookLogin</span><span class="p">);</span>
-</span><span class='line'>        <span class="nx">sb</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot;&amp;&quot;</span><span class="p">).</span><span class="nx">append</span><span class="p">(</span><span class="nx">REDIRECT_URI_PARAMETER</span><span class="p">).</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">);</span>
-</span><span class='line'>        <span class="nx">sb</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="nx">myBean</span><span class="p">.</span><span class="nx">oAuthCallback</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">return</span> <span class="s2">&quot;redirect:&quot;</span> <span class="o">+</span> <span class="nx">sb</span><span class="p">.</span><span class="nx">toString</span><span class="p">();</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="err">@</span><span class="nx">RequestMapping</span><span class="p">(</span><span class="s2">&quot;/callback&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="kr">public</span> <span class="nb">String</span> <span class="nx">callback</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="s2">&quot;redirect:/complete&quot;</span><span class="p">;</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>動作確認</h3>
-
-<p>ここまで実装ができたので動作確認をしてみましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/web_facebook_login_12.png" alt="ログイン画面" /></p>
-
-<p><img src="http://grandbig.github.io/images/web_facebook_login_13.png" alt="Facebookログイン画面" /></p>
-
-<p><img src="http://grandbig.github.io/images/web_facebook_login_14.png" alt="アプリ許可画面" /></p>
-
-<p><img src="http://grandbig.github.io/images/web_facebook_login_15.png" alt="ログイン完了後" /></p>
-
-<h3>まとめ</h3>
-
-<p>今回は本当に簡易的な部分しか書けませんでした<br/>
-本当は<code>Spring Social</code>を使いこなして、もっといろいろと書こうかと思ったのですが、また次の機会ということで&hellip;</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
