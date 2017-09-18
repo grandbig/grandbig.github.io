@@ -1,0 +1,215 @@
+---
+layout: post
+title: "プッシュ通知をnode-apnで送ってみよう！"
+date: 2017-09-18 20:39
+comments: true
+categories: ios notification node
+---
+
+### はじめに
+[前回](https://grandbig.github.io/blog/2017/09/18/firebase-notification/)はFirebaseを利用してiOSにRemote Notificationを送信することについて書きました。  
+今後は自作せずにFirebaseを利用するプロダクトが増えてくると思うことに変わりはないのですが、ふと昔利用していた[node-apn](https://github.com/node-apn/node-apn)が気になりました。  
+折角の機会なので、この`node-apn`を利用してRemote Notificationを送信してみたいと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### プロジェクトの用意
+ベースプロジェクトは[Express](https://github.com/expressjs/express)を使ってしまいましょう。  
+今回の各種バージョンは下記の通りです。  
+
+```javascript
+Node.js:  v7.3.0
+npm:      v3.10.10
+Express:  v4.15.0
+nodebrew: v0.9.6
+```
+
+① Expressコマンドで`pushtest`プロジェクトの生成  
+
+```javascript
+$ express -t ejs pushtest
+```
+
+すると下記のプロジェクト構成が出来上がります。  
+
+```javascript
+pushtest
+├── app.js
+├── bin
+│    └── www
+├── package.json
+├── public
+├── routes
+│    ├── index.js
+│    └── users.js
+└── views
+```
+
+因みに、`express`コマンドを打つには`express`と`express-generator`のインストールが必要です。  
+また、グローバルインストールした`node_modules`へのパスを`.bash_profile`に通しておきましょう。  
+
+```javascript
+export PATH=$HOME/.nodebrew/current/bin:$PATH
+export NODE_PATH=$HOME/.nodebrew/current/lib/node_modules
+```
+
+`source ~/.bash_profile`で最新状況を読み込むのを忘れずに。  
+
+② `node-apn`のインストール  
+
+```javascript
+$ npm install node-apn --save
+```
+
+因みに、必要なモジュールをインストールしたつもりでも、何度も`Cannot find module xxx`と出てしまうようであれば、`app.js`と同じ階層下で`npm install -d`を実行しましょう。  
+
+### 処理を実装
+プロジェクトが用意できたので、処理を実装していきましょう。  
+今回は簡単のため要件としては下記のみとします。  
+
+・特定の端末のデバイストークンを指定  
+・GETリクエスト  
+
+① `app.js`に処理を実装  
+まずはGETリクエストの受け口を`app.js`に用意します。  
+
+```javascript
+var express = require('express');
+var path = require('path');
+var favicon = require('serve-favicon');
+var logger = require('morgan');
+var cookieParser = require('cookie-parser');
+var bodyParser = require('body-parser');
+
+var index = require('./routes/index');
+var users = require('./routes/users');
+var apns = require('./routes/apns');// apns.jsは④で作成しますが、既にある体で追記
+
+var app = express();
+
+// 省略
+
+app.use('/', index);
+app.use('/users', users);
+app.use('/apns', apns);// GETリクエストを受けられるように追記
+
+// 省略
+```
+
+② `routes/apns.js`を作成  
+
+最後にメインとなる処理を書いていきます。  
+専用の`routes/apns.js`を作成し、その内部に`node-apn`を利用した処理を書いていきます。  
+推奨されている`APNS Key`を利用するため、別途`AuthKey_xxxxxxxxxx.p8`を用意しましょう。
+
+その結果、プロジェクト構成としては下記のようになります。  
+
+```javascript
+pushtest
+├── app.js
+├── bin
+│    └── www
+├── key
+│    └── AuthKey_xxxxxxxxxx.p8
+├── package.json
+├── public
+├── routes
+│    ├── apns.js
+│    ├── index.js
+│    └── users.js
+└── views
+```
+
+続いて具体的な処理です。  
+昔よりもシンプルに書けるようになっているイメージです。  
+
+```javascript
+var express = require('express');
+var apn = require('apn');
+var qs = require('qs');
+var router = express.Router();
+
+router.get('/', function(req, res, next) {
+  // GETパラメータからトークンを取得
+  var arr = req.url.split("?");
+  var obj = qs.parse(arr[1]);
+  var deviceToken = obj.token;
+
+  // プッシュ通知の設定
+  var options = {
+    token: {
+      key: "./keys/AuthKey_xxxxxxxxxx.p8",
+      keyId: "xxxxxxxxxx",
+      teamId: "xxxxxxxxxx"
+    },
+    production: false
+  };
+
+  var apnProvider = new apn.Provider(options);
+  var note = new apn.Notification();
+
+  note.expiry = Math.floor(Date.now() / 1000) + 3600;
+  note.badge = 3;
+  note.sound = "ping.aiff";
+  note.alert = "プッシュ通知が届きましたよ！";
+  note.topic = "com.xxx.NotificationSample";
+
+  // プッシュ送信
+  apnProvider.send(note, deviceToken).then( (result) => {
+    res.send("respond with a resource");
+  });
+});
+
+module.exports = router;
+```
+
+### プッシュ通知を送信
+準備ができたのでプッシュ通知を送ってみましょう。  
+
+① `Node`を起動  
+
+デバッグしながら起動するために下記を実行します。  
+
+```javascript
+$ node --inspect --debug-brk bin/www
+```
+
+すると、下記出力がされるのでChromeでアクセスしましょう。  
+
+```javascript
+Debugger listening on port 9229.
+Warning: This is an experimental feature and could change at any time.
+To start debugging, open the following URL in Chrome:
+    chrome-devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=127.0.0.1:9229/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+② プッシュ通知を送る  
+
+下記URLにアクセスしてGETリクエストを投げましょう。  
+
+```javascript
+http://localhost:3000/apns?token=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+たったこれだけで下図のようにプッシュ通知が届きました。  
+
+![node-apnで送ったプッシュ通知](/images/node-apn_1.png)  
+
+
+### まとめ
+さて今回は`node-apn`でのプッシュ通知について書きました。  
+3年以上前に[Silent Remote Notificationを試そう！](https://grandbig.github.io/blog/2014/02/22/silentremotenotification/)で利用したりしていたのですが、今見るといろいろと変わっているなと改めて感じました。  
+今更ではありますが、これも一つ勉強になったと思い、`Firebase`に没頭していこうかなと...笑  
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>

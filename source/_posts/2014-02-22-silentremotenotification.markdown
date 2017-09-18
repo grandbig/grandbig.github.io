@@ -3,7 +3,7 @@ layout: post
 title: "Silent Remote Notificationを試そう！"
 date: 2014-02-22 00:06
 comments: true
-categories: ios Push
+categories: ios notification node
 ---
 
 ###iOS7で新たに追加されたSilent Remote Notificationを使ってみよう！！
@@ -42,8 +42,8 @@ Silent Remote Notification: ユーザに気づかせることなくプッシュ�
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)devToken
 {
 	//デバイストークンから'<','>',' 'を削除して変数に保存
-	self.token = [[[[devToken description] stringByReplacingOccurrencesOfString:@"<"withString:@""] 
-							stringByReplacingOccurrencesOfString:@">" withString:@""] 
+	self.token = [[[[devToken description] stringByReplacingOccurrencesOfString:@"<"withString:@""]
+							stringByReplacingOccurrencesOfString:@">" withString:@""]
 							stringByReplacingOccurrencesOfString: @" " withString: @""];
 
 	NSLog(@"deviceToken: %@", self.token);

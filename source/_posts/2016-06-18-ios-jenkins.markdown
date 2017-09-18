@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "JekninsからGitHubにアップされたiOSプロジェクトをビルドしよう！"
+title: "JenkinsからGitHubにアップされたiOSプロジェクトをビルドしよう！"
 date: 2016-06-18 22:57
 comments: true
 categories: ios jenkins
@@ -164,4 +164,3 @@ pod install
 * [OS XにJenkinsをHomebrewでセットアップする](http://qiita.com/makoto_kw/items/cbe93d4ebbc35f3b43fd)  
 * [Jenkinsをインストールして使ってみよう](http://www.buildinsider.net/enterprise/jenkins/001)  
 * [invalid byte sequence in US-ASCII](https://github.com/CocoaPods/CocoaPods/issues/639#issuecomment-11483748)  
-
