@@ -42,20 +42,162 @@ Clean Swiftアーキテクチャを採用することで受けられる恩恵と
 ・iOSアプリの見た目を表現する  
 
 #### ViewController
-`Massive ViewController` と揶揄される部分ですが、Clean Swiftでの責務は以下になります。  
+`Massive ViewController` になりがちな部分ですが、Clean Swiftでの責務は以下になります。  
 
 **責務：**  
-・ `Interactor` に具体的な処理内容を問い合わせる  
-・ `Presenter` からの指示を受けて `View` を描画する  
-・ `Router` に画面遷移を依頼する  
+① `Interactor` に具体的な処理内容(表示ロジック)を問い合わせる  
+② `Presenter` からの指示を受けて、最適な `View` を描画する  
+③ `Router` に画面遷移を依頼する  
+
+具体例を下記に記します。  
+
+**【例題】**  
+画面の初期表示時に何らかのデータを取得して表示する  
+
+```objective-c
+import UIKit
+
+protocol SampleViewDisplayLogic: class {
+  func displaySomething(viewModel: SampleView.Something.ViewModel)
+  func transitionToSomeWhere(viewModel: SampleView.Sometime.ViewModel)
+}
+
+class SampleViewController: UIViewController, SampleViewDisplayLogic {
+  var interactor: SampleViewBusinessLogic?
+  var router: (NSObjectProtocol & SampleViewRoutingLogic & SampleViewDataPassing)?
+
+  // MARK: Object lifecycle
+  override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
+    super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
+    setup()
+  }
+
+  required init?(coder aDecoder: NSCoder) {
+    super.init(coder: aDecoder)
+    setup()
+  }
+
+  // MARK: Setup
+  private func setup() {
+    let viewController = self
+    let interactor = SampleViewInteractor()
+    let presenter = SampleViewPresenter()
+    let router = SampleViewRouter()
+    viewController.interactor = interactor
+    viewController.router = router
+    interactor.presenter = presenter
+    presenter.viewController = viewController
+    router.viewController = viewController
+    router.dataStore = interactor
+  }
+
+  // MARK: Routing
+  override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+    if let scene = segue.identifier {
+      let selector = NSSelectorFromString("routeTo\(scene)WithSegue:")
+      if let router = router, router.responds(to: selector) {
+        router.perform(selector, with: segue)
+      }
+    }
+  }
+
+  // MARK: View lifecycle
+  override func viewDidLoad() {
+    super.viewDidLoad()
+
+    fetchSomethingOnLoad()
+  }
+
+  // ① Interactorに具体的な処理内容を問い合わせる
+  func fetchSomethingOnLoad() {
+    let request = SampleView.Something.Request()
+    interactor?.fetchSomething(request: request)
+  }
+
+  // ② Presenterからの指示を受けてViewを描画する
+  func displaySomething(viewModel: SampleView.Something.ViewModel) {
+    // do something
+  }
+
+  // ③ Routerに画面遷移を依頼する
+  func transitionToSomeWhere(viewModel: SampleView.Sometime.ViewModel) {
+    // 画面遷移
+    router?.routeToSomeWhere(segue: nil)
+  }
+}
+```
+
+また、ユーザによるアクション起因の場合は下記のようにするだけです。  
+
+```objective-c
+@IBAction func tapSomeAction(_ sender: Any) {
+  ① Interactorに具体的な処理内容を問い合わせる
+  let request = SampleView.Sometime.Request()
+  interactor?.fetchSometime(request: request)
+}
+```
+
+`Presenter` からの指示を受けて、 `ViewController` は描画処理を実行するため、見た目の整形などの描画処理自体は `ViewController` 内に書きます。  
+
+例えば、  
+
+・正方形の `UIView` を角丸にする/背景色を変更する/非表示にする etc  
+・マップにマーカを配置する/図形を描画する etc  
 
 #### Interactor
 `ViewController` から依頼を受け、 `Interactor` は下記を実施する責務を持っています。  
 
 **責務：**  
-・ `Worker` と `Presenter` を仲介する  
-・ どんな条件で、 `Worker` に何の処理を依頼するのかハンドリングする  
-・ `Worker` 経由で取得したレスポンスを `Presenter` に渡す  
+① `Worker` と `Presenter` を仲介する  
+② どんな条件で、 `Worker` に何の処理を依頼するのかハンドリングする  
+③ `Worker` 経由で取得したレスポンスを `Presenter` に渡す  
+
+```objective-c
+import UIKit
+
+protocol SampleViewBusinessLogic {
+    func fetchSomething(request: SampleView.Something.Request)
+    func fetchSometime(request: SampleView.Sometime.Request)
+}
+
+protocol SampleViewDataStore {
+  // 画面遷移時にパラメータを受け取れるように定義
+  var something: String { get set }
+}
+
+class SampleViewInteractor: SampleViewBusinessLogic, SampleViewDataStore {
+    var presenter: SampleViewPresentationLogic?
+    var worker = SampleViewWorker?
+    var something: String!
+
+    func fetchSomething(request: SampleView.Something.Request) {
+      // ① WorkerとPresenterを仲介する
+      worker.fetch() { (object) in
+        // ③ Worker経由で取得したレスポンスをPresenterに渡す  
+        let response = SampleView.Something.Response(object: object)
+        self.presenter?.presentSomething(response: response)
+      }
+    }
+
+    func fetchSometime(request: SampleView.Sometime.Request) {
+      ② どんな条件で、Workerに何の処理を依頼するのかハンドリングする
+      if request.time > Date() {
+        let response = SampleView.Sometime.Response(future: true)
+        presenter?.presentSometime(response: response)
+
+        return
+      }
+      let response = SampleView.Sometime.Response(future: false)
+      presenter?.presentSometime(response: response)
+    }
+
+    func fetchSomeWhat(request: SampleView.SomeWhat.Request) {
+      // 画面遷移時に渡されたパラメータを利用した描画を実施したい場合
+      let response = SampleView.Something.Response(object: something)
+      self.presenter?.presentSomething(response: response)
+    }
+}
+```
 
 #### Worker
 `Interactor` から受けた依頼を実行します。  
@@ -64,6 +206,20 @@ Clean Swiftアーキテクチャを採用することで受けられる恩恵と
 ・ `API` 処理や `Core Data` / `Realm` などのアプリ内ローカルデータの処理をハンドリングする  
 ・ 取得データを `Model.Response` 形式で返却する  
 ・ 成功/失敗レスポンスをハンドリングする  
+
+```objective-c
+import UIKit
+
+typealias responseHandler = (_ response: SampleView.Something.Response) ->()
+
+class SampleViewWorker {
+
+    func fetch(completion: @escaping (responseHandler) {
+      // APIリクエストまたはローカルDBへのアクセスを実行してデータを取得
+      completion()
+    }
+}
+```
 
 #### Presenter
 `Interactor` から `Worker` 経由で取得したレスポンスを受け取った後に、 `Presenter` は下記を実行することを責務とします。  
