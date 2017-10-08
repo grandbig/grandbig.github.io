@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-10-01T00:41:08+09:00</updated>
+  <updated>2017-10-09T03:25:57+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,821 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Clean Swiftを勉強してみよう！(2)]]></title>
+    <link href="http://grandbig.github.io/blog/2017/10/08/clean-swift-2/"/>
+    <updated>2017-10-08T22:35:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/10/08/clean-swift-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は<a href="https://clean-swift.com/">Clean Swift</a>を用いた具体的な例について見ていきたいと思います。<br/>
+題材として、下記のような要件を持つアプリを扱います。</p>
+
+<p><img src="/images/clean-swift-2_1.png" alt="Clean Swiftの題材アプリ" /></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>アプリの要件</h3>
+
+<p>要件としては、下記の通りです。</p>
+
+<ul>
+<li>現在地を中心にマップを表示する</li>
+<li>検索ボタンをタップして、現在地周辺のレストラン情報を取得する</li>
+<li>マップに表示されたレストランのマーカをタップすると、レストラン情報の概要ウィンドウが表示される</li>
+</ul>
+
+
+<h3>フォルダ構成</h3>
+
+<p>フォルダ構成は以下のようになっています。<br/>
+※ 今回のアプリの名称を <code>CleanFoodLogger</code> とします。</p>
+
+<p><code>javascript
+CleanFoodLogger
+├── Views
+│    └── ViewController+Alert.swift
+├── Models
+│    ├── Restaurant.swift
+│    └── CustomGMSMarker.swift
+├── Workers
+│    └── HotpepperWorker.swift
+├── Services
+│    └── HotpepperAPI.swift
+├── Scenes
+│    └── MapView
+│         ├── View
+│         │    ├── CustomInfoWindow.xib
+│         │    └── CustomInfoWindow.swift
+│         ├── MapViewController.swift
+│         ├── MapViewInteractor.swift
+│         ├── MapViewModels.swift
+│         ├── MapViewPresenter.swift
+│         ├── MapViewRouter.swift
+│         └── MapViewWorker.swift
+├── AppDelegate.swift
+├── Main.storyboard
+├── Assets.xcassets
+└── key.plist
+</code></p>
+
+<p>それぞれの構成の意味について説明します。</p>
+
+<h4>Views</h4>
+
+<p><code>Scene</code> に寄らない共通ビュー系を格納します。</p>
+
+<ul>
+<li><code>ViewController+Alert.swift</code>
+
+<ul>
+<li><code>UIViewController</code> を拡張する形で実装</li>
+<li>共通アラート表示処理を実装</li>
+</ul>
+</li>
+</ul>
+
+
+<h4>Models</h4>
+
+<p><code>Scene</code> に寄らないモデル系を格納します。</p>
+
+<ul>
+<li><code>Restaurant.swift</code>
+
+<ul>
+<li>APIを通して取得したレストラン情報を格納するモデル</li>
+</ul>
+</li>
+<li><code>CustomGMSMarker</code>
+
+<ul>
+<li><code>GMSMarker</code>を継承したカスタムクラス</li>
+<li>マーカにショップ情報を追加して持たせたモデル</li>
+</ul>
+</li>
+</ul>
+
+
+<h4>Workers</h4>
+
+<p><code>Scene</code> に寄らない <code>Clean Swift</code> で言うところの <code>Worker</code> 系を格納します。<br/>
+※ 今回は、レストラン情報を取得するのに<a href="https://webservice.recruit.co.jp/hotpepper/reference.html">ホットペッパーAPI</a>を利用しています。</p>
+
+<ul>
+<li><code>HotpepperWorker.swift</code>
+
+<ul>
+<li>ホットペッパーAPI管理マネージャに当たる <code>Services/HotpepperAPI.swift</code> を通じて取得したレストラン情報を扱う</li>
+</ul>
+</li>
+</ul>
+
+
+<h4>Services</h4>
+
+<p><code>Scene</code> に寄らない管理マネージャ系の共通処理を扱います。</p>
+
+<ul>
+<li><code>HotpepperAPI.swift</code>
+
+<ul>
+<li>ホットペッパーAPIを用いた具体的なロジックを実装</li>
+</ul>
+</li>
+</ul>
+
+
+<h4>Scenes</h4>
+
+<p>ここは画面単位に <code>Clean Swift</code>のテンプレートを当て込んだ構成になります。<br/>
+今回は簡単なサンプルなので1画面しかありません。<br/>
+よって、 <code>Scenes</code> に格納しているのも <code>MapView</code> 1つになります。<br/>
+<code>MapView</code> の配下は <code>Clean Swift</code> テンプレート一式になっています。</p>
+
+<h3>アプリの実装</h3>
+
+<p>続いて具体的なアプリの実装について見ていきます。<br/>
+データフローとしては、下記の通りです。</p>
+
+<p><img src="/images/clean-swift_3.png" alt="データフロー図" /></p>
+
+<p>ではまずは、共通系の処理から説明します。</p>
+
+<h4>Models</h4>
+
+<p>この後の <code>Services</code> や <code>Workers</code> にも出てくるので、まずは <code>Models</code> から説明します。</p>
+
+<h5>Restaurant.swift</h5>
+
+<p>ホットペッパーAPIで取得したレストラン情報の一部を抜粋して格納するため、下記のような構成になっています。<br/>
+今回は <code>==</code> で比較する処理を利用している箇所はありませんが、 <a href="https://github.com/Clean-Swift/CleanStore">Clean Store</a> を参考にしたので、そのまま残しています。</p>
+
+<p>```objective-c
+import Foundation</p>
+
+<p>struct Restaurant: Equatable {</p>
+
+<pre><code>var id: String
+var name: String
+var category: String
+var imageURL: String
+var latitude: Double
+var longitude: Double
+</code></pre>
+
+<p>}</p>
+
+<p>func ==(lhs: Restaurant, rhs: Restaurant) &ndash;> Bool {</p>
+
+<pre><code>return lhs.id == rhs.id
+    &amp;&amp; lhs.name == rhs.name
+    &amp;&amp; lhs.category == rhs.category
+    &amp;&amp; lhs.imageURL == rhs.imageURL
+    &amp;&amp; lhs.latitude == rhs.latitude
+    &amp;&amp; lhs.longitude == rhs.longitude
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>CustomGMSMarker.swift</h5>
+
+<p>マーカをタップした際に、ショップ情報を表示する <code>InfoWindow</code> を表示する要件があるため、 <code>GMSMarker</code> クラスを継承して、ショップ情報を追加しています。</p>
+
+<p>```objective-c
+import Foundation
+import GoogleMaps</p>
+
+<p>class CustomGMSMarker: GMSMarker {</p>
+
+<pre><code>public var id: String!
+public var name: String!
+public var category: String!
+public var imageURL: String!
+
+/// 初期化
+override init() {
+    super.init()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Workers</h4>
+
+<p><code>Services</code> の説明に移る前に、<code>Protocol</code> を提供している <code>Workers</code> について見ていきます。</p>
+
+<h5>HotpepperWorker.swift</h5>
+
+<p>これは、</p>
+
+<ul>
+<li>API処理を扱うための <code>Worker</code> クラスを提供</li>
+<li>外部へのインターフェースを定義したプロトコルの定義</li>
+</ul>
+
+
+<p>の役目を果たしています。</p>
+
+<p>```objective-c
+import Foundation</p>
+
+<p>// MARK: &ndash; Hotpepper worker</p>
+
+<p>class HotpepperWorker {</p>
+
+<pre><code>var hotpepper: HotpepperProtocol
+
+init(hotpepper: HotpepperProtocol) {
+    self.hotpepper = hotpepper
+}
+
+func fetchRestaurants(latitude: Double, longitude: Double, completionHandler: @escaping ([Restaurant], HotpepperError?) -&gt; Void) {
+    hotpepper.fetchRestaurants(latitude: latitude, longitude: longitude) { (restaurants, error) in
+        DispatchQueue.main.async {
+            completionHandler(restaurants, error)
+        }
+    }
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// MARK: Hotpepper API</p>
+
+<p>protocol HotpepperProtocol {</p>
+
+<pre><code>// MARK: CRUD operations
+
+func fetchRestaurants(latitude: Double, longitude: Double, completionHandler: @escaping ([Restaurant], HotpepperError?) -&gt; Void)
+</code></pre>
+
+<p>}</p>
+
+<p>// MARK: &ndash; CRUD operation errors</p>
+
+<p>enum HotpepperError: Equatable, Error {</p>
+
+<pre><code>case CannotFetch(String)
+</code></pre>
+
+<p>}</p>
+
+<p>func ==(lhs: HotpepperError, rhs: HotpepperError) &ndash;> Bool {</p>
+
+<pre><code>switch (lhs, rhs) {
+case (.CannotFetch(let a), .CannotFetch(let b)) where a == b: return true
+default: return false
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Services</h4>
+
+<p><code>Worker</code> で定義された外部へのインターフェースの挙動を実装したクラスに当たります。</p>
+
+<h5>HotpepperAPI.swift</h5>
+
+<p>今回は <code>HotpepperProtocol</code> を継承した <code>HotpepperAPI</code> 内で実際にホットペッパーAPIを叩いて処理しています。</p>
+
+<p>```objective-c
+import Foundation
+import Alamofire
+import SwiftyJSON</p>
+
+<p>class HotpepperAPI: HotpepperProtocol {</p>
+
+<pre><code>/// API Key
+private var apiKey: String = String()
+/// Geocoding APIのベースURL
+private let baseURL: String = "https://webservice.recruit.co.jp/hotpepper/gourmet/v1/"
+
+/// 初期化処理
+// key.plistに定義したAPIKeyを取得してセット
+init() {
+    if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
+        if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
+            if let apiKey = dic["hotpepperApiKey"] as? String {
+                self.apiKey = apiKey
+            }
+        }
+    }
+}
+
+// HotpepperWorker.swift内のHotpepperProtocolインターフェースの具体的な処理
+func fetchRestaurants(latitude: Double, longitude: Double, completionHandler: @escaping ([Restaurant], HotpepperError?) -&gt; Void) {
+    let parameters = ["key": self.apiKey, "format": "json", "lat": latitude, "lng": longitude, "range": 3] as [String : Any]
+    Alamofire.SessionManager.default.requestWithoutCache(baseURL, method: .get, parameters: parameters, encoding: URLEncoding.default, headers: nil).responseJSON { response in
+        var restaurants: [Restaurant] = [Restaurant]()
+
+        if response.result.isFailure {
+            let defaultErrorMessage = "レストラン情報を取得できませんでした。"
+            completionHandler([], HotpepperError.CannotFetch(response.result.error?.localizedDescription ?? defaultErrorMessage))
+            return
+        }
+
+        let json = JSON(response.result.value as Any)
+        guard let shops = json["results"]["shop"].array else {
+            let defaultErrorMessage = "レストラン情報を取得できませんでした。"
+            completionHandler([], HotpepperError.CannotFetch(response.result.error?.localizedDescription ?? defaultErrorMessage))
+            return
+        }
+
+        for shop in shops {
+            let id = shop["id"].string ?? "ID不明"
+            let name = shop["name"].string ?? "ショップ名不明"
+            let category = shop["genre"]["name"].string ?? "カテゴリ不明"
+            let imageURL = shop["photo"]["mobile"]["l"].string ?? ""
+            let latitude = atof(shop["lat"].string ?? "0")
+            let longitude = atof(shop["lng"].string ?? "0")
+            let restaurant = Restaurant(id: id, name: name, category: category, imageURL: imageURL, latitude: latitude, longitude: longitude)
+            restaurants.append(restaurant)
+        }
+
+        completionHandler(restaurants, nil)
+    }
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// Clean Swiftとは無関係ですが、キャッシュなしリクエストをAlamofireを通して実装する処理
+extension Alamofire.SessionManager {</p>
+
+<pre><code>@discardableResult
+open func requestWithoutCache(
+    _ url: URLConvertible,
+    method: HTTPMethod = .get,
+    parameters: Parameters? = nil,
+    encoding: ParameterEncoding = URLEncoding.default,
+    headers: HTTPHeaders? = nil)
+    -&gt; DataRequest {
+        do {
+            var urlRequest = try URLRequest(url: url, method: method, headers: headers)
+            urlRequest.cachePolicy = .reloadIgnoringCacheData // &lt;&lt;== Cache disabled
+            let encodedURLRequest = try encoding.encode(urlRequest, with: parameters)
+            return request(encodedURLRequest)
+        } catch {
+            print(error)
+            return request(URLRequest(url: URL(string: "http://example.com/wrong_request")!))
+        }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>MapView</h4>
+
+<p>ここから重要な <code>Clean Swift</code> を使った実装に入っていきます。<br/>
+今回は共通 <code>Worker</code> のみ利用しているため、 <code>MapViewWorker.swift</code> は省略します。<br/>
+また、画面遷移の処理もないため、 <code>MapViewRouter.swift</code> についても省略します。</p>
+
+<h5>MapViewModels.swift</h5>
+
+<p>Clean Swiftで今回扱う <code>Model</code> は以下の通りです。</p>
+
+<p>```objective-c
+import UIKit</p>
+
+<p>enum MapView {</p>
+
+<pre><code>// MARK: Init mapView
+
+enum Init {
+    struct Request {
+        var latitude: Double
+        var longitude: Double
+    }
+    struct Response {
+        var latitude: Double
+        var longitude: Double
+    }
+    struct ViewModel {
+        var latitude: Double
+        var longitude: Double
+        var zoomLevel: Float
+    }
+}
+
+// MARK: Search restaurants
+
+enum Search {
+    struct Request {
+        var latitude: Double
+        var longitude: Double
+    }
+    struct Response {
+        var restaurants: [Restaurant]
+    }
+    struct ViewModel {
+        var restaurants: [Restaurant]
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<ul>
+<li><code>Init</code>
+
+<ul>
+<li>マップ画面の初期描画時に「現在地を中心としたマップ位置に移動する」際に利用</li>
+</ul>
+</li>
+<li><code>Search</code>
+
+<ul>
+<li>「現在地周辺のレストランを検索する」際に利用</li>
+</ul>
+</li>
+</ul>
+
+
+<h5>MapViewInteractor.swift</h5>
+
+<p><code>ViewController</code> から受け取った依頼を <code>Worker</code> を経由して取得した値を <code>Presenter</code> に渡します。</p>
+
+<p>```objective-c
+import UIKit</p>
+
+<p>protocol MapViewBusinessLogic {</p>
+
+<pre><code>func initMapView(request: MapView.Init.Request)
+func searchRestaurants(request: MapView.Search.Request)
+</code></pre>
+
+<p>}</p>
+
+<p>protocol MapViewDataStore {
+}</p>
+
+<p>class MapViewInteractor: MapViewBusinessLogic, MapViewDataStore {</p>
+
+<pre><code>var presenter: MapViewPresentationLogic?
+var worker = HotpepperWorker(hotpepper: HotpepperAPI())
+private var initView: Bool = false
+
+// MARK: Init mapView
+
+func initMapView(request: MapView.Init.Request) {
+    if !initView {
+        let response = MapView.Init.Response(latitude: request.latitude, longitude: request.longitude)
+        presenter?.presentInitMapView(response: response)
+        initView = true
+    }
+}
+
+// MARK: Search restaurants
+
+func searchRestaurants(request: MapView.Search.Request) {
+    worker.fetchRestaurants(latitude: request.latitude, longitude: request.longitude) { (restaurants, error) in
+        let response = MapView.Search.Response(restaurants: restaurants)
+        self.presenter?.presentSearchedRestaurants(response: response)
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<ul>
+<li><code>initMapView</code>
+
+<ul>
+<li>APIやローカルDBを利用する必要がないため、<code>Worker</code>は利用していません</li>
+<li>初回だけ、実行すれば良い処理なので内部で定義した <code>initView</code> でハンドリングしています</li>
+</ul>
+</li>
+<li><code>searchRestaurants</code>
+
+<ul>
+<li>ホットペッパーAPIによるデータ取得は <code>HotpepperWorker</code> に任せています</li>
+<li><code>HotpepperWorker</code> を介して取得したデータを <code>MapView.Search.Response</code> 形式に変換</li>
+<li>それを <code>MapViewPresenter</code> に渡しています</li>
+</ul>
+</li>
+</ul>
+
+
+<h5>MapViewPresenter.swift</h5>
+
+<p><code>Interactor</code> から受け取ったデータを表示形式に変換して、<code>ViewController</code> に描画指示を出します。</p>
+
+<p>```objective-c
+import UIKit</p>
+
+<p>protocol MapViewPresentationLogic {</p>
+
+<pre><code>func presentInitMapView(response: MapView.Init.Response)
+func presentSearchedRestaurants(response: MapView.Search.Response)
+</code></pre>
+
+<p>}</p>
+
+<p>class MapViewPresenter: MapViewPresentationLogic {</p>
+
+<pre><code>weak var viewController: MapViewDisplayLogic?
+private let zoomLevel: Float = 16.0
+
+// MARK: Present init mapView
+
+func presentInitMapView(response: MapView.Init.Response) {
+    let latitude = response.latitude
+    let longitude = response.longitude
+    let viewModel = MapView.Init.ViewModel(latitude: latitude, longitude: longitude, zoomLevel: zoomLevel)
+    viewController?.displayInitMap(viewModel: viewModel)
+}
+
+// MARK: Present searched restaurants
+
+func presentSearchedRestaurants(response: MapView.Search.Response) {
+    let restaurants = response.restaurants
+    let viewModel = MapView.Search.ViewModel(restaurants: restaurants)
+    if restaurants.count &gt; 0 {
+        viewController?.displaySearchedSuccess(viewModel: viewModel)
+        return
+    }
+    viewController?.displaySearchedFailure(viewModel: viewModel)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<ul>
+<li><code>presentInitMapView</code>
+
+<ul>
+<li>「現在地を中心としたマップ位置に移動する」ために <code>ViewController</code> に緯度/経度/ズームレベルを渡します</li>
+</ul>
+</li>
+<li><code>presentSearchedRestaurants</code>
+
+<ul>
+<li>レストラン情報の有無で <code>ViewController</code> に出す指示を変えています</li>
+<li>今回はシンプルな実装のため、<code>MapView.Search.Response</code> から <code>MapView.Search.ViewModel</code> に変換はありません</li>
+</ul>
+</li>
+</ul>
+
+
+<h5>MapViewController.swift</h5>
+
+<p>最後に <code>ViewController</code> について説明します。<br/>
+下記で</p>
+
+<ul>
+<li><code>Interactor</code> に具体的な処理内容(表示ロジック)を問い合わせる</li>
+<li><code>Presenter</code> からの指示を受けて、最適な <code>View</code> を描画する</li>
+</ul>
+
+
+<p>を実現しています。</p>
+
+<p>```objective-c
+import UIKit
+import GoogleMaps</p>
+
+<p>protocol MapViewDisplayLogic: class {</p>
+
+<pre><code>func displayInitMap(viewModel: MapView.Init.ViewModel)
+func displaySearchedSuccess(viewModel: MapView.Search.ViewModel)
+func displaySearchedFailure(viewModel: MapView.Search.ViewModel)
+</code></pre>
+
+<p>}</p>
+
+<p>class MapViewController: UIViewController, MapViewDisplayLogic {</p>
+
+<pre><code>var interactor: MapViewBusinessLogic?
+var router: (NSObjectProtocol &amp; MapViewRoutingLogic &amp; MapViewDataPassing)?
+
+@IBOutlet weak var mapView: GMSMapView!
+var locationManager: CLLocationManager?
+
+// MARK: Object lifecycle
+
+override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
+    super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
+    setup()
+}
+
+required init?(coder aDecoder: NSCoder) {
+    super.init(coder: aDecoder)
+    setup()
+}
+
+// MARK: Setup
+
+private func setup() {
+    let viewController = self
+    let interactor = MapViewInteractor()
+    let presenter = MapViewPresenter()
+    let router = MapViewRouter()
+    viewController.interactor = interactor
+    viewController.router = router
+    interactor.presenter = presenter
+    presenter.viewController = viewController
+    router.viewController = viewController
+    router.dataStore = interactor
+}
+
+// MARK: Routing
+
+override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+    if let scene = segue.identifier {
+        let selector = NSSelectorFromString("routeTo\(scene)WithSegue:")
+        if let router = router, router.responds(to: selector) {
+            router.perform(selector, with: segue)
+        }
+    }
+}
+
+// MARK: View lifecycle
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    configureMapView()
+    configureLocationManager()
+}
+
+// MARK: Configuration
+func configureMapView() {
+    // GoogleMapの初期化
+    mapView.isMyLocationEnabled = true
+    mapView.mapType = GMSMapViewType.normal
+    mapView.settings.compassButton = true
+    mapView.settings.myLocationButton = true
+    mapView.settings.compassButton = true
+    mapView.delegate = self
+}
+
+func configureLocationManager() {
+    // 位置情報関連の初期化
+    self.locationManager = CLLocationManager()
+    self.locationManager?.desiredAccuracy = kCLLocationAccuracyBest
+    self.locationManager?.requestWhenInUseAuthorization()
+    self.locationManager?.startUpdatingLocation()
+    self.locationManager?.delegate = self
+}
+
+// MARK: Init mapView
+
+func displayInitMap(viewModel: MapView.Init.ViewModel) {
+    // 初期描画時のマップ中心位置の移動
+    let coordinate = CLLocationCoordinate2D(latitude: viewModel.latitude, longitude: viewModel.longitude)
+    let camera = GMSCameraPosition.camera(withTarget: coordinate, zoom: viewModel.zoomLevel)
+    mapView.camera = camera
+}
+
+// MARK: Search restaurants
+
+func searchRestaurants() {
+    guard let latitude = mapView.myLocation?.coordinate.latitude, let longitude = mapView.myLocation?.coordinate.longitude else {
+        return
+    }
+    let request = MapView.Search.Request(latitude: latitude, longitude: longitude)
+    interactor?.searchRestaurants(request: request)
+}
+
+func displaySearchedSuccess(viewModel: MapView.Search.ViewModel) {
+    let restaurants = viewModel.restaurants
+    for restaurant in restaurants {
+        putMarker(restaurant: restaurant)
+    }
+}
+
+func displaySearchedFailure(viewModel: MapView.Search.ViewModel) {
+    showAlert(title: "確認", message: "周辺にレストランは見つかりませんでした。") {
+    }
+}
+
+@IBAction func tappedSearchButton(_ sender: Any) {
+    searchRestaurants()
+}
+
+// MARK: Other
+private func putMarker(restaurant: Restaurant) {
+    let marker = CustomGMSMarker()
+    marker.id = restaurant.id
+    marker.name = restaurant.name
+    marker.category = restaurant.category
+    marker.imageURL = restaurant.imageURL
+    marker.position = CLLocationCoordinate2D(latitude: restaurant.latitude, longitude: restaurant.longitude)
+    marker.icon = UIImage(named: "RestaurantIcon")
+    marker.appearAnimation = GMSMarkerAnimation.pop
+    marker.map = mapView
+}
+</code></pre>
+
+<p>}</p>
+
+<p>extension MapViewController: CLLocationManagerDelegate {</p>
+
+<pre><code>func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    // マップの初期描画
+    if let coordinate = locations.last?.coordinate {
+        let request = MapView.Init.Request(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        interactor?.initMapView(request: request)
+    }
+}
+</code></pre>
+
+<p>}</p>
+
+<p>extension MapViewController: GMSMapViewDelegate {</p>
+
+<pre><code>func mapView(_ mapView: GMSMapView, markerInfoWindow marker: GMSMarker) -&gt; UIView? {
+    guard let cMarker = marker as? CustomGMSMarker else {
+        return nil
+    }
+
+    cMarker.tracksInfoWindowChanges = true
+    let view = CustomInfoWindow(frame: CGRect(x: 0, y: 0, width: 250, height: 265))
+    view.setup(name: cMarker.name, category: cMarker.category, imageURL: cMarker.imageURL)
+
+    return view
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<ul>
+<li><code>configureMapView</code> / <code>configureLocationManager</code>
+
+<ul>
+<li>最低限必要な <code>ViewController</code> 上での設定処理</li>
+<li>ここで <code>startUpdatingLocation</code> を実行することで現在地の更新を開始</li>
+</ul>
+</li>
+<li><code>didUpdateLocations</code> → <code>displayInitMap</code>
+
+<ul>
+<li>初期起動時は <code>mapView.myLocation</code> から現在地の即時取得ができないため、<code>startUpdatingLocation</code> を利用しています</li>
+<li>現在地が取得できたタイミングで <code>didUpdateLocations</code> を通るため、 <code>Interactor</code> にマップ中心位置の移動を依頼しています</li>
+<li>位置を移動させるか否かは <code>ViewController</code> では判断しません</li>
+</ul>
+</li>
+<li><code>tappedSearchButton</code> → <code>searchRestaurants</code> → <code>displaySearchedSuccess</code> / <code>displaySearchedFailure</code>
+
+<ul>
+<li>検索ボタンをタップした時に <code>searchRestaurants</code> を呼び出しています</li>
+<li><code>Interactor</code> にレストラン情報の検索を依頼しています</li>
+<li><code>Presenter</code> から <code>displaySearchedSuccess</code> または <code>displaySearchedFailure</code> の描画指示を受けて描画します</li>
+<li><code>Presenter</code> から返却された <code>MapView.Search.ViewModel</code> を利用して <code>putMarker</code> を実行することでマップにマーカをプロットします。</li>
+<li><code>displaySearchedFailure</code> では、失敗したことをアラート表示することで表現しています</li>
+</ul>
+</li>
+<li><code>GMSMapViewDelegate</code>
+
+<ul>
+<li>マーカタップ時の処理を実装しています</li>
+</ul>
+</li>
+</ul>
+
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+次回は今回扱ったサンプルを拡張する形で実装し、説明していきたいと思います。<br/>
+因みに、本記事のソースは <a href="https://github.com/grandbig/CleanFoodLogger">CleanFoodLogger</a>にて公開しています。</p>
+
+<p>ということで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Clean Swiftを勉強してみよう！(1)]]></title>
@@ -1183,274 +1998,6 @@ _ = self.hotpepperAPIVM.finishSearchRestaurant.ignoreNil().observeNext(with: { (
 <li><a href="https://github.com/ReactiveKit/ReactiveKit">ReactiveKit/ReactiveKit</a></li>
 </ul>
 
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[AlamofireImageを使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/07/23/alamofireimage/"/>
-    <updated>2017-07-23T15:35:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/07/23/alamofireimage</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>本日は何気に今まで使ってこなかった<a href="https://github.com/Alamofire/AlamofireImage">AlamofireImage</a>についてメモ書きです。<br/>
-キャッシュコントロールやら同期/非同期での画像取得など考えなくても良いというのはパワー的にかなり楽になりますね。<br/>
-ということで早速見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>API経由で取得した画像URLを使ってUIImageViewに画像を表示する</h3>
-
-<h4>テストとして利用するAPI</h4>
-
-<p>今回はテスト用APIとして<a href="https://webservice.recruit.co.jp/hotpepper/reference.html">ホットペッパーのグルメサーチAPI</a>を利用しました。</p>
-
-<p>ホットペッパーAPIを利用するには新規登録して<code>API Key</code>をゲットする必要があります。<br/>
-また、前提として取得した<code>API Key</code>は<code>key.plist</code>に書いているとします。</p>
-
-<p><img src="/images/alamofireimage_1.png" alt="API Keyをkey.plistに書き出し" /></p>
-
-<p>上記準備をした上で下記クラスを作成しました。</p>
-
-<p>```objective-c
-// HotpepperAPI.swift
-import Foundation
-import CoreLocation
-import Alamofire
-import SwiftyJSON</p>
-
-<p>/<em>*
- ホットペッパーAPI
- </em>/
-class HotpepperAPI {
-  /// API Key
-  private var apiKey: String = String()
-  /// ホットペッパーAPIのベースURL
-  private let baseURL: String = &ldquo;<a href="https://webservice.recruit.co.jp/hotpepper/gourmet/v1/">https://webservice.recruit.co.jp/hotpepper/gourmet/v1/</a>&rdquo;</p>
-
-<p>  /// 初期化処理
-  init() {</p>
-
-<pre><code>if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
-  if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
-    if let apiKey = dic["hotpepperApiKey"] as? String {
-      self.apiKey = apiKey
-    }
-  }
-}
-</code></pre>
-
-<p>  }</p>
-
-<p>  /**
-   ホットペッパーグルメサーチAPI</p>
-
-<ul>
-<li> parameter coordinate: 位置</li>
-<li><p> parameter completion: レストラン情報を返却するcallback
-*/
-func searchRestaurant(coordinate: CLLocationCoordinate2D, completion: @escaping ((JSON) &ndash;> Void)) {
-let parameters = [&ldquo;key&rdquo;: self.apiKey, &ldquo;format&rdquo;: &ldquo;json&rdquo;, &ldquo;lat&rdquo;: coordinate.latitude, &ldquo;lng&rdquo;: coordinate.longitude, &ldquo;range&rdquo;: 2] as [String : Any]
-Alamofire.request(baseURL, method: .get, parameters: parameters, encoding: URLEncoding.default, headers: nil).responseJSON { response in
-  let json = JSON(response.result.value as Any)
-  let result = json[&ldquo;results&rdquo;][&ldquo;shop&rdquo;]</p>
-
-<p>  completion(result)
-}
-}
-}
-```</p></li>
-</ul>
-
-
-<h4>テストとして用意するUIImageView</h4>
-
-<p>今回はテストとして <strong>マップにプロットしたマーカをタップしたときに表示するInfoWindow内にUIImageViewを用意する</strong> ようにしました。</p>
-
-<p>【準備事項】<br/>
-&ndash; Google Maps SDK for iOSをマップとして利用<br/>
-&ndash; マーカタップ時に表示されるInfoWindowをカスタム化</p>
-
-<p>表示するViewとしては下図のようになります。<br/>
-<img src="/images/alamofireimage_2.png" alt="MarkerInfoContentsView.xib" /></p>
-
-<h4>AlamofireImageの用意</h4>
-
-<p>では肝心な<code>AlamofireImage</code>の導入を見てみましょう。<br/>
-<code>CocoaPods</code>で簡単に導入が可能です。</p>
-
-<p>```objective-c</p>
-
-<h1>Podfile</h1>
-
-<p>use_frameworks!
-platform :ios, &lsquo;10.0&rsquo;</p>
-
-<p>target &ldquo;SampleApp&rdquo; do
-  # Normal libraries
-  &hellip;
-  pod &lsquo;AlamofireImage&rsquo;, &lsquo;~> 3.1&rsquo;
-end</p>
-
-<p>post_install do |installer|
-  installer.pods_project.targets.each do |target|</p>
-
-<pre><code>target.build_configurations.each do |config|
-  config.build_settings['SWIFT_VERSION'] = '3.0'
-end
-</code></pre>
-
-<p>  end
-end
-```</p>
-
-<h4>マーカタップ時に表示するInfoWindowに画像を表示する</h4>
-
-<p>まずは<code>InfoWindow</code>をカスタム化したクラスである<code>MarkerInfoContentsView.swift</code>のソースコードを書きます。</p>
-
-<p>```objective-c
-// MarkerInfoContentsView.swift
-import Foundation
-import UIKit
-import AlamofireImage</p>
-
-<p>class MarkerInfoContentsView: UIView {</p>
-
-<p>  @IBOutlet weak var shopName: UILabel!
-  @IBOutlet weak var categoryName: UILabel!
-  @IBOutlet weak var shopImage: UIImageView!</p>
-
-<p>  override init(frame: CGRect) {</p>
-
-<pre><code>super.init(frame: frame)
-self.xibViewSet()
-</code></pre>
-
-<p>  }</p>
-
-<p>  required init?(coder aDecoder: NSCoder) {</p>
-
-<pre><code>super.init(coder: aDecoder)!
-self.xibViewSet()
-</code></pre>
-
-<p>  }</p>
-
-<p>  internal func xibViewSet() {</p>
-
-<pre><code>if let view = Bundle.main.loadNibNamed("MarkerInfoContentsView", owner: self, options: nil)?.first as? UIView {
-  view.frame = self.bounds
-  self.addSubview(view)
-}
-</code></pre>
-
-<p>  }</p>
-
-<p>  /**</p>
-
-<pre><code>データの設定処理
-
-- parameter shopName: 店舗名
-- parameter categoryName: カテゴリ名
-- parameter shopImageURLString: 画像URL
-</code></pre>
-
-<p>   */
-  func setData(shopName: String?, categoryName: String?, shopImageURLString: String?) {</p>
-
-<pre><code>// 店舗名の設定
-if let shopNameTextCount = shopName?.characters.count, shopNameTextCount &gt; 0 {
-  self.shopName.text = shopName
-} else {
-  self.shopName.text = "店舗名不明"
-  self.shopName.textColor = UIColor.gray
-}
-// 詳細説明の設定
-if let categoryNameTextCount = categoryName?.characters.count, categoryNameTextCount &gt; 0 {
-  self.categoryName.text = categoryName
-} else {
-  self.categoryName.text = "カテゴリ不明"
-  self.categoryName.textColor = UIColor.gray
-}
-// 画像の設定
-if let shopImageURLStringTextCount = shopImageURLString?.characters.count, shopImageURLStringTextCount &gt; 0 {
-  if let shopImageURL = URL(string: shopImageURLString!) {
-    self.shopImage.af_setImage(withURL: shopImageURL, placeholderImage: UIImage(named: "NoImageIcon"))
-  } else {
-    self.shopImage.image = UIImage(named: "NoImageIcon")
-  }
-} else {
-  self.shopImage.image = UIImage(named: "NoImageIcon")
-}    
-</code></pre>
-
-<p>  }
-}
-```</p>
-
-<p>実際に<code>AlamofireImage</code>を利用して画像URLから取得した画像データを格納している箇所は、</p>
-
-<p><code>objective-c
-self.shopImage.af_setImage(withURL: shopImageURL, placeholderImage: UIImage(named: "NoImageIcon"))
-</code></p>
-
-<p>になります。<br/>
-続いて、<code>ViewController.swift</code>での<code>GMSMapViewDelegate</code>部分の処理を抜粋して書きます。</p>
-
-<p>```objective-c
-// ViewController.swift
-extension ViewController: GMSMapViewDelegate {
-  func mapView(_ mapView: GMSMapView, markerInfoWindow marker: GMSMarker) &ndash;> UIView? {</p>
-
-<pre><code>guard let cMarker = marker as? CustomGMSMarker else {
-  return nil
-}
-cMarker.tracksInfoWindowChanges = true
-let view = MarkerInfoContentsView(frame: CGRect(x: 0, y: 0, width: 250, height: 265))
-view.setData(shopName: cMarker.shopName, categoryName: cMarker.categoryName, shopImageURLString: cMarker.imageURL)
-return view
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>重要なのは、 <strong><code>cMarker.tracksInfoWindowChanges = true</code></strong> です。<br/>
-これを書かないと <strong>画像URLから画像データを取得したタイミングで<code>InfoWindow</code>の画像を更新する</strong>ということができなくなります。<br/>
-(<code>placeholderImage</code>として用意した画像がずっと表示されてしまいます。)</p>
-
-<p>筆者はここでドハマリして試行錯誤してしまいました。<br/>
-非同期で画像データを取得しに行っているので、データ取得前に<code>InfoWindow</code>の描画処理に進んでしまうということはわかるのですが、どうすれば想定した挙動が実現できるのか悩みました。<br/>
-ですが、蓋を開けてみれば何ということもなかったんですよね。</p>
-
-<h3>まとめ</h3>
-
-<p>さて、如何でしたでしょうか？<br/>
-画像取得/キャッシュ関連のOSSライブラリは多種多様なものが出ており、好き嫌いもあるかもしれませんが、筆者は通信ライブラリに<code>Alamofire</code>を使うことが多いため、<code>AlamofireImage</code>も嫌いではないんですよね。<br/>
-と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
