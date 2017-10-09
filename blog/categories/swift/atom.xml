@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-10-09T03:25:57+09:00</updated>
+  <updated>2017-10-09T16:48:49+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -73,11 +73,11 @@ CleanFoodLogger
 │         │    ├── CustomInfoWindow.xib
 │         │    └── CustomInfoWindow.swift
 │         ├── MapViewController.swift
-│         ├── MapViewInteractor.swift
-│         ├── MapViewModels.swift
-│         ├── MapViewPresenter.swift
-│         ├── MapViewRouter.swift
-│         └── MapViewWorker.swift
+│         ├── MapInteractor.swift
+│         ├── MapModels.swift
+│         ├── MapPresenter.swift
+│         ├── MapRouter.swift
+│         └── MapWorker.swift
 ├── AppDelegate.swift
 ├── Main.storyboard
 ├── Assets.xcassets
@@ -397,17 +397,17 @@ open func requestWithoutCache(
 <h4>MapView</h4>
 
 <p>ここから重要な <code>Clean Swift</code> を使った実装に入っていきます。<br/>
-今回は共通 <code>Worker</code> のみ利用しているため、 <code>MapViewWorker.swift</code> は省略します。<br/>
-また、画面遷移の処理もないため、 <code>MapViewRouter.swift</code> についても省略します。</p>
+今回は共通 <code>Worker</code> のみ利用しているため、 <code>MapWorker.swift</code> は省略します。<br/>
+また、画面遷移の処理もないため、 <code>MapRouter.swift</code> についても省略します。</p>
 
-<h5>MapViewModels.swift</h5>
+<h5>MapModels.swift</h5>
 
 <p>Clean Swiftで今回扱う <code>Model</code> は以下の通りです。</p>
 
 <p>```objective-c
 import UIKit</p>
 
-<p>enum MapView {</p>
+<p>enum Map {</p>
 
 <pre><code>// MARK: Init mapView
 
@@ -462,35 +462,35 @@ enum Search {
 </ul>
 
 
-<h5>MapViewInteractor.swift</h5>
+<h5>MapInteractor.swift</h5>
 
 <p><code>ViewController</code> から受け取った依頼を <code>Worker</code> を経由して取得した値を <code>Presenter</code> に渡します。</p>
 
 <p>```objective-c
 import UIKit</p>
 
-<p>protocol MapViewBusinessLogic {</p>
+<p>protocol MapBusinessLogic {</p>
 
-<pre><code>func initMapView(request: MapView.Init.Request)
-func searchRestaurants(request: MapView.Search.Request)
+<pre><code>func initMapView(request: Map.Init.Request)
+func searchRestaurants(request: Map.Search.Request)
 </code></pre>
 
 <p>}</p>
 
-<p>protocol MapViewDataStore {
+<p>protocol MapDataStore {
 }</p>
 
-<p>class MapViewInteractor: MapViewBusinessLogic, MapViewDataStore {</p>
+<p>class MapInteractor: MapBusinessLogic, MapDataStore {</p>
 
-<pre><code>var presenter: MapViewPresentationLogic?
+<pre><code>var presenter: MapPresentationLogic?
 var worker = HotpepperWorker(hotpepper: HotpepperAPI())
 private var initView: Bool = false
 
 // MARK: Init mapView
 
-func initMapView(request: MapView.Init.Request) {
+func initMapView(request: Map.Init.Request) {
     if !initView {
-        let response = MapView.Init.Response(latitude: request.latitude, longitude: request.longitude)
+        let response = Map.Init.Response(latitude: request.latitude, longitude: request.longitude)
         presenter?.presentInitMapView(response: response)
         initView = true
     }
@@ -498,9 +498,9 @@ func initMapView(request: MapView.Init.Request) {
 
 // MARK: Search restaurants
 
-func searchRestaurants(request: MapView.Search.Request) {
+func searchRestaurants(request: Map.Search.Request) {
     worker.fetchRestaurants(latitude: request.latitude, longitude: request.longitude) { (restaurants, error) in
-        let response = MapView.Search.Response(restaurants: restaurants)
+        let response = Map.Search.Response(restaurants: restaurants)
         self.presenter?.presentSearchedRestaurants(response: response)
     }
 }
@@ -521,47 +521,47 @@ func searchRestaurants(request: MapView.Search.Request) {
 
 <ul>
 <li>ホットペッパーAPIによるデータ取得は <code>HotpepperWorker</code> に任せています</li>
-<li><code>HotpepperWorker</code> を介して取得したデータを <code>MapView.Search.Response</code> 形式に変換</li>
-<li>それを <code>MapViewPresenter</code> に渡しています</li>
+<li><code>HotpepperWorker</code> を介して取得したデータを <code>Map.Search.Response</code> 形式に変換</li>
+<li>それを <code>MapPresenter</code> に渡しています</li>
 </ul>
 </li>
 </ul>
 
 
-<h5>MapViewPresenter.swift</h5>
+<h5>MapPresenter.swift</h5>
 
 <p><code>Interactor</code> から受け取ったデータを表示形式に変換して、<code>ViewController</code> に描画指示を出します。</p>
 
 <p>```objective-c
 import UIKit</p>
 
-<p>protocol MapViewPresentationLogic {</p>
+<p>protocol MapPresentationLogic {</p>
 
-<pre><code>func presentInitMapView(response: MapView.Init.Response)
-func presentSearchedRestaurants(response: MapView.Search.Response)
+<pre><code>func presentInitMapView(response: Map.Init.Response)
+func presentSearchedRestaurants(response: Map.Search.Response)
 </code></pre>
 
 <p>}</p>
 
-<p>class MapViewPresenter: MapViewPresentationLogic {</p>
+<p>class MapPresenter: MapPresentationLogic {</p>
 
-<pre><code>weak var viewController: MapViewDisplayLogic?
+<pre><code>weak var viewController: MapDisplayLogic?
 private let zoomLevel: Float = 16.0
 
 // MARK: Present init mapView
 
-func presentInitMapView(response: MapView.Init.Response) {
+func presentInitMapView(response: Map.Init.Response) {
     let latitude = response.latitude
     let longitude = response.longitude
-    let viewModel = MapView.Init.ViewModel(latitude: latitude, longitude: longitude, zoomLevel: zoomLevel)
+    let viewModel = Map.Init.ViewModel(latitude: latitude, longitude: longitude, zoomLevel: zoomLevel)
     viewController?.displayInitMap(viewModel: viewModel)
 }
 
 // MARK: Present searched restaurants
 
-func presentSearchedRestaurants(response: MapView.Search.Response) {
+func presentSearchedRestaurants(response: Map.Search.Response) {
     let restaurants = response.restaurants
-    let viewModel = MapView.Search.ViewModel(restaurants: restaurants)
+    let viewModel = Map.Search.ViewModel(restaurants: restaurants)
     if restaurants.count &gt; 0 {
         viewController?.displaySearchedSuccess(viewModel: viewModel)
         return
@@ -584,7 +584,7 @@ func presentSearchedRestaurants(response: MapView.Search.Response) {
 
 <ul>
 <li>レストラン情報の有無で <code>ViewController</code> に出す指示を変えています</li>
-<li>今回はシンプルな実装のため、<code>MapView.Search.Response</code> から <code>MapView.Search.ViewModel</code> に変換はありません</li>
+<li>今回はシンプルな実装のため、<code>Map.Search.Response</code> から <code>Map.Search.ViewModel</code> に変換はありません</li>
 </ul>
 </li>
 </ul>
@@ -607,19 +607,19 @@ func presentSearchedRestaurants(response: MapView.Search.Response) {
 import UIKit
 import GoogleMaps</p>
 
-<p>protocol MapViewDisplayLogic: class {</p>
+<p>protocol MapDisplayLogic: class {</p>
 
-<pre><code>func displayInitMap(viewModel: MapView.Init.ViewModel)
-func displaySearchedSuccess(viewModel: MapView.Search.ViewModel)
-func displaySearchedFailure(viewModel: MapView.Search.ViewModel)
+<pre><code>func displayInitMap(viewModel: Map.Init.ViewModel)
+func displaySearchedSuccess(viewModel: Map.Search.ViewModel)
+func displaySearchedFailure(viewModel: Map.Search.ViewModel)
 </code></pre>
 
 <p>}</p>
 
-<p>class MapViewController: UIViewController, MapViewDisplayLogic {</p>
+<p>class MapViewController: UIViewController, MapDisplayLogic {</p>
 
-<pre><code>var interactor: MapViewBusinessLogic?
-var router: (NSObjectProtocol &amp; MapViewRoutingLogic &amp; MapViewDataPassing)?
+<pre><code>var interactor: MapBusinessLogic?
+var router: (NSObjectProtocol &amp; MapRoutingLogic &amp; MapDataPassing)?
 
 @IBOutlet weak var mapView: GMSMapView!
 var locationManager: CLLocationManager?
@@ -640,9 +640,9 @@ required init?(coder aDecoder: NSCoder) {
 
 private func setup() {
     let viewController = self
-    let interactor = MapViewInteractor()
-    let presenter = MapViewPresenter()
-    let router = MapViewRouter()
+    let interactor = MapInteractor()
+    let presenter = MapPresenter()
+    let router = MapRouter()
     viewController.interactor = interactor
     viewController.router = router
     interactor.presenter = presenter
@@ -693,7 +693,7 @@ func configureLocationManager() {
 
 // MARK: Init mapView
 
-func displayInitMap(viewModel: MapView.Init.ViewModel) {
+func displayInitMap(viewModel: Map.Init.ViewModel) {
     // 初期描画時のマップ中心位置の移動
     let coordinate = CLLocationCoordinate2D(latitude: viewModel.latitude, longitude: viewModel.longitude)
     let camera = GMSCameraPosition.camera(withTarget: coordinate, zoom: viewModel.zoomLevel)
@@ -706,18 +706,18 @@ func searchRestaurants() {
     guard let latitude = mapView.myLocation?.coordinate.latitude, let longitude = mapView.myLocation?.coordinate.longitude else {
         return
     }
-    let request = MapView.Search.Request(latitude: latitude, longitude: longitude)
+    let request = Map.Search.Request(latitude: latitude, longitude: longitude)
     interactor?.searchRestaurants(request: request)
 }
 
-func displaySearchedSuccess(viewModel: MapView.Search.ViewModel) {
+func displaySearchedSuccess(viewModel: Map.Search.ViewModel) {
     let restaurants = viewModel.restaurants
     for restaurant in restaurants {
         putMarker(restaurant: restaurant)
     }
 }
 
-func displaySearchedFailure(viewModel: MapView.Search.ViewModel) {
+func displaySearchedFailure(viewModel: Map.Search.ViewModel) {
     showAlert(title: "確認", message: "周辺にレストランは見つかりませんでした。") {
     }
 }
@@ -747,7 +747,7 @@ private func putMarker(restaurant: Restaurant) {
 <pre><code>func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     // マップの初期描画
     if let coordinate = locations.last?.coordinate {
-        let request = MapView.Init.Request(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let request = Map.Init.Request(latitude: coordinate.latitude, longitude: coordinate.longitude)
         interactor?.initMapView(request: request)
     }
 }
@@ -795,7 +795,7 @@ private func putMarker(restaurant: Restaurant) {
 <li>検索ボタンをタップした時に <code>searchRestaurants</code> を呼び出しています</li>
 <li><code>Interactor</code> にレストラン情報の検索を依頼しています</li>
 <li><code>Presenter</code> から <code>displaySearchedSuccess</code> または <code>displaySearchedFailure</code> の描画指示を受けて描画します</li>
-<li><code>Presenter</code> から返却された <code>MapView.Search.ViewModel</code> を利用して <code>putMarker</code> を実行することでマップにマーカをプロットします。</li>
+<li><code>Presenter</code> から返却された <code>Map.Search.ViewModel</code> を利用して <code>putMarker</code> を実行することでマップにマーカをプロットします。</li>
 <li><code>displaySearchedFailure</code> では、失敗したことをアラート表示することで表現しています</li>
 </ul>
 </li>
