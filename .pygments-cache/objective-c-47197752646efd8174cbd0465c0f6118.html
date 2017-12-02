@@ -1,0 +1,92 @@
+<div class="highlight"><pre><span class="n">import</span> <span class="n">UIKit</span>
+<span class="n">import</span> <span class="n">WebKit</span>
+
+<span class="n">protocol</span> <span class="nl">RestaurantInformationDisplayLogic:</span> <span class="n">class</span> <span class="p">{</span>
+    <span class="n">func</span> <span class="n">displayRestaurantInformation</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">RestaurantInformation</span><span class="p">.</span><span class="n">Load</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">class</span> <span class="nl">RestaurantInformationViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">RestaurantInformationDisplayLogic</span> <span class="p">{</span>
+    <span class="n">var</span> <span class="nl">interactor:</span> <span class="n">RestaurantInformationBusinessLogic</span><span class="o">?</span>
+    <span class="n">var</span> <span class="nl">router:</span> <span class="p">(</span><span class="n">NSObjectProtocol</span> <span class="o">&amp;</span> <span class="n">RestaurantInformationRoutingLogic</span> <span class="o">&amp;</span> <span class="n">RestaurantInformationDataPassing</span><span class="p">)</span><span class="o">?</span>
+    <span class="n">private</span> <span class="n">var</span> <span class="nl">webView:</span> <span class="n">WKWebView</span><span class="o">!</span>
+
+    <span class="c1">// MARK: Object lifecycle</span>
+
+    <span class="n">override</span> <span class="n">init</span><span class="p">(</span><span class="n">nibName</span> <span class="nl">nibNameOrNil:</span> <span class="n">String</span><span class="o">?</span><span class="p">,</span> <span class="n">bundle</span> <span class="nl">nibBundleOrNil:</span> <span class="n">Bundle</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">nibName:</span> <span class="n">nibNameOrNil</span><span class="p">,</span> <span class="nl">bundle:</span> <span class="n">nibBundleOrNil</span><span class="p">)</span>
+        <span class="n">setup</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="n">required</span> <span class="n">init</span><span class="o">?</span><span class="p">(</span><span class="n">coder</span> <span class="nl">aDecoder:</span> <span class="n">NSCoder</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">coder:</span> <span class="n">aDecoder</span><span class="p">)</span>
+        <span class="n">setup</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: Setup</span>
+
+    <span class="n">private</span> <span class="n">func</span> <span class="n">setup</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">let</span> <span class="n">viewController</span> <span class="o">=</span> <span class="n">self</span>
+        <span class="n">let</span> <span class="n">interactor</span> <span class="o">=</span> <span class="n">RestaurantInformationInteractor</span><span class="p">()</span>
+        <span class="n">let</span> <span class="n">presenter</span> <span class="o">=</span> <span class="n">RestaurantInformationPresenter</span><span class="p">()</span>
+        <span class="n">let</span> <span class="n">router</span> <span class="o">=</span> <span class="n">RestaurantInformationRouter</span><span class="p">()</span>
+        <span class="n">viewController</span><span class="p">.</span><span class="n">interactor</span> <span class="o">=</span> <span class="n">interactor</span>
+        <span class="n">viewController</span><span class="p">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">router</span>
+        <span class="n">interactor</span><span class="p">.</span><span class="n">presenter</span> <span class="o">=</span> <span class="n">presenter</span>
+        <span class="n">presenter</span><span class="p">.</span><span class="n">viewController</span> <span class="o">=</span> <span class="n">viewController</span>
+        <span class="n">router</span><span class="p">.</span><span class="n">viewController</span> <span class="o">=</span> <span class="n">viewController</span>
+        <span class="n">router</span><span class="p">.</span><span class="n">dataStore</span> <span class="o">=</span> <span class="n">interactor</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: Routing</span>
+
+    <span class="n">override</span> <span class="n">func</span> <span class="n">prepare</span><span class="p">(</span><span class="k">for</span> <span class="nl">segue:</span> <span class="n">UIStoryboardSegue</span><span class="p">,</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="n">let</span> <span class="n">scene</span> <span class="o">=</span> <span class="n">segue</span><span class="p">.</span><span class="n">identifier</span> <span class="p">{</span>
+            <span class="n">let</span> <span class="n">selector</span> <span class="o">=</span> <span class="n">NSSelectorFromString</span><span class="p">(</span><span class="s">&quot;routeTo\(scene)WithSegue:&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">let</span> <span class="n">router</span> <span class="o">=</span> <span class="n">router</span><span class="p">,</span> <span class="n">router</span><span class="p">.</span><span class="n">responds</span><span class="p">(</span><span class="nl">to:</span> <span class="n">selector</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">router</span><span class="p">.</span><span class="n">perform</span><span class="p">(</span><span class="n">selector</span><span class="p">,</span> <span class="nl">with:</span> <span class="n">segue</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: View lifecycle</span>
+
+    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+
+        <span class="n">self</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="s">&quot;RestaurantInformation&quot;</span>
+        <span class="n">configuraWebView</span><span class="p">()</span>
+        <span class="n">loadRestaurantInformation</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: Configuration</span>
+
+    <span class="n">private</span> <span class="n">func</span> <span class="n">configuraWebView</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">let</span> <span class="n">webConfiguration</span> <span class="o">=</span> <span class="n">WKWebViewConfiguration</span><span class="p">()</span>
+        <span class="n">let</span> <span class="n">frame</span> <span class="o">=</span> <span class="n">CGRect</span><span class="p">(</span><span class="nl">x:</span> <span class="mi">0</span><span class="p">,</span> <span class="nl">y:</span> <span class="mi">0</span><span class="p">,</span> <span class="nl">width:</span> <span class="n">self</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">width</span><span class="p">,</span> <span class="nl">height:</span> <span class="n">self</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">height</span><span class="p">)</span>
+        <span class="n">webView</span> <span class="o">=</span> <span class="n">WKWebView</span><span class="p">(</span><span class="nl">frame:</span> <span class="n">frame</span><span class="p">,</span> <span class="nl">configuration:</span> <span class="n">webConfiguration</span><span class="p">)</span>
+        <span class="n">webView</span><span class="p">.</span><span class="n">uiDelegate</span> <span class="o">=</span> <span class="n">self</span>
+        <span class="n">webView</span><span class="p">.</span><span class="n">navigationDelegate</span> <span class="o">=</span> <span class="n">self</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">addSubview</span><span class="p">(</span><span class="n">webView</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: Load restaurant information</span>
+
+    <span class="n">func</span> <span class="n">loadRestaurantInformation</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">let</span> <span class="n">request</span> <span class="o">=</span> <span class="n">RestaurantInformation</span><span class="p">.</span><span class="n">Load</span><span class="p">.</span><span class="n">Request</span><span class="p">()</span>
+        <span class="n">interactor</span><span class="o">?</span><span class="p">.</span><span class="n">loadRestaurantInformation</span><span class="p">(</span><span class="nl">request:</span> <span class="n">request</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="n">func</span> <span class="n">displayRestaurantInformation</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">RestaurantInformation</span><span class="p">.</span><span class="n">Load</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="n">let</span> <span class="n">url</span> <span class="o">=</span> <span class="n">URL</span><span class="p">(</span><span class="nl">string:</span> <span class="n">viewModel</span><span class="p">.</span><span class="n">url</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">let</span> <span class="n">urlRequest</span> <span class="o">=</span> <span class="n">URLRequest</span><span class="p">(</span><span class="nl">url:</span> <span class="n">url</span><span class="p">)</span>
+            <span class="n">webView</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">urlRequest</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">extension</span> <span class="nl">RestaurantInformationViewController:</span> <span class="n">WKUIDelegate</span> <span class="p">{</span>
+<span class="p">}</span>
+
+<span class="n">extension</span> <span class="nl">RestaurantInformationViewController:</span> <span class="n">WKNavigationDelegate</span> <span class="p">{</span>    
+<span class="p">}</span>
+</pre></div>

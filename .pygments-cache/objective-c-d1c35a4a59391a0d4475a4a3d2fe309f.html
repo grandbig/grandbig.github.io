@@ -1,0 +1,68 @@
+<div class="highlight"><pre><span class="c1">// ViewController.swift</span>
+<span class="n">import</span> <span class="n">UIKit</span>
+
+<span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+
+	<span class="n">var</span> <span class="nl">auth:</span><span class="n">GTMOAuth2Authentication</span><span class="o">!</span>
+	<span class="n">let</span> <span class="nl">kKeychainItemName:</span><span class="n">NSString</span><span class="o">!</span> <span class="o">=</span> <span class="s">&quot;GOAuthTest&quot;</span>
+	<span class="n">let</span> <span class="nl">scope:</span><span class="n">NSString</span><span class="o">!</span> <span class="o">=</span> <span class="s">&quot;https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/calendar&quot;</span>
+	<span class="n">let</span> <span class="nl">clientId:</span><span class="n">NSString</span><span class="o">!</span> <span class="o">=</span> <span class="s">&quot;Googleから発行されたクライアントID&quot;</span>
+	<span class="n">let</span> <span class="nl">clientSecret:</span><span class="n">NSString</span><span class="o">!</span> <span class="o">=</span> <span class="s">&quot;Googleから発行されたクライアントシークレット&quot;</span>
+	<span class="n">let</span> <span class="nl">hasLoggedIn:</span><span class="n">NSString</span><span class="o">!</span> <span class="o">=</span> <span class="s">&quot;hasLoggedInKey&quot;</span>
+
+	<span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+	<span class="p">}</span>
+
+	<span class="n">override</span> <span class="n">func</span> <span class="n">viewDidAppear</span><span class="p">(</span><span class="nl">animated:</span> <span class="n">Bool</span><span class="p">)</span> <span class="p">{</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">startLogIn</span><span class="p">()</span>
+	<span class="p">}</span>
+
+	<span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+	<span class="p">}</span>
+
+	<span class="n">func</span> <span class="n">startLogIn</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">var</span> <span class="nl">defaults:</span><span class="n">NSUserDefaults</span><span class="o">?</span> <span class="o">=</span> <span class="n">NSUserDefaults</span><span class="p">.</span><span class="n">standardUserDefaults</span><span class="p">()</span>
+		<span class="n">var</span> <span class="nl">hasLoggedInFlag:</span><span class="n">Bool</span><span class="o">!</span> <span class="o">=</span> <span class="n">defaults</span><span class="o">?</span><span class="p">.</span><span class="n">boolForKey</span><span class="p">(</span><span class="n">hasLoggedIn</span><span class="p">)</span>
+
+		<span class="k">if</span><span class="p">(</span><span class="n">hasLoggedInFlag</span> <span class="o">==</span> <span class="n">true</span><span class="p">)</span> <span class="p">{</span>
+			<span class="c1">// 認証したことがある場合</span>
+			<span class="n">self</span><span class="p">.</span><span class="n">auth</span> <span class="o">=</span> <span class="n">GTMOAuth2ViewControllerTouch</span><span class="p">.</span><span class="n">authForGoogleFromKeychainForName</span><span class="p">(</span><span class="s">&quot;Google&quot;</span><span class="p">,</span> <span class="nl">clientID:</span> <span class="n">clientId</span><span class="p">,</span> <span class="nl">clientSecret:</span> <span class="n">clientSecret</span><span class="p">)</span>
+
+			<span class="c1">// アクセストークンの取得</span>
+			<span class="n">self</span><span class="p">.</span><span class="n">authorizeRequest</span><span class="p">()</span>
+		<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+			<span class="c1">// 認証したことがない場合</span>
+			<span class="n">var</span> <span class="nl">gvc:</span><span class="n">GTMOAuth2ViewControllerTouch</span><span class="o">!</span> <span class="o">=</span> <span class="n">GTMOAuth2ViewControllerTouch</span><span class="p">(</span><span class="nl">scope:</span> <span class="n">scope</span><span class="p">,</span> <span class="nl">clientID:</span> <span class="n">clientId</span><span class="p">,</span> <span class="nl">clientSecret:</span> <span class="n">clientSecret</span><span class="p">,</span> <span class="nl">keychainItemName:</span> <span class="s">&quot;Google&quot;</span><span class="p">,</span> <span class="nl">delegate:</span> <span class="n">self</span><span class="p">,</span> <span class="nl">finishedSelector:</span> <span class="s">&quot;viewController:finishedWithAuth:error:&quot;</span><span class="p">)</span>
+			<span class="n">self</span><span class="p">.</span><span class="n">presentViewController</span><span class="p">(</span><span class="n">gvc</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">true</span><span class="p">,</span> <span class="nl">completion:</span> <span class="nb">nil</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+
+	<span class="n">func</span> <span class="n">viewController</span><span class="p">(</span><span class="nl">viewController:</span><span class="n">GTMOAuth2ViewControllerTouch</span><span class="o">!</span><span class="p">,</span> <span class="nl">finishedWithAuth:</span><span class="n">GTMOAuth2Authentication</span><span class="o">!</span><span class="p">,</span> <span class="nl">error:</span><span class="n">NSError</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">if</span><span class="p">(</span><span class="n">error</span> <span class="o">!=</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span>
+			<span class="c1">// 認証失敗</span>
+		<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+			<span class="c1">// 認証成功</span>
+			<span class="n">self</span><span class="p">.</span><span class="n">auth</span> <span class="o">=</span> <span class="n">finishedWithAuth</span>
+			<span class="n">var</span> <span class="n">defaults</span> <span class="o">=</span> <span class="n">NSUserDefaults</span><span class="p">.</span><span class="n">standardUserDefaults</span><span class="p">()</span>
+			<span class="n">defaults</span><span class="p">.</span><span class="n">setBool</span><span class="p">(</span><span class="n">true</span><span class="p">,</span> <span class="nl">forKey:</span> <span class="n">hasLoggedIn</span><span class="p">)</span>
+			<span class="n">defaults</span><span class="p">.</span><span class="n">synchronize</span><span class="p">()</span>
+
+			<span class="c1">// アクセストークンの取得</span>
+			<span class="n">self</span><span class="p">.</span><span class="n">authorizeRequest</span><span class="p">()</span>
+		<span class="p">}</span>
+
+		<span class="c1">// 認証画面を閉じる</span>
+		<span class="n">viewController</span><span class="p">.</span><span class="n">dismissViewControllerAnimated</span><span class="p">(</span><span class="n">true</span><span class="p">,</span> <span class="nl">completion:</span> <span class="nb">nil</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="n">func</span> <span class="n">authorizeRequest</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">println</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">)</span>
+		<span class="n">var</span> <span class="nl">req:</span><span class="n">NSMutableURLRequest</span><span class="o">!</span> <span class="o">=</span> <span class="n">NSMutableURLRequest</span><span class="p">(</span><span class="nl">URL:</span> <span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">.</span><span class="n">tokenURL</span><span class="p">)</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">.</span><span class="n">authorizeRequest</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="nl">completionHandler:</span> <span class="p">{</span> <span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span> <span class="k">in</span>
+			<span class="n">println</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">)</span>
+		<span class="p">})</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

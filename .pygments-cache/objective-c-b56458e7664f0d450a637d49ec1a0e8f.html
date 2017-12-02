@@ -1,0 +1,65 @@
+<div class="highlight"><pre><span class="c1">// mongoHandler.swift</span>
+
+<span class="n">import</span> <span class="n">PerfectLib</span>
+<span class="n">import</span> <span class="n">PerfectHTTP</span>
+<span class="n">import</span> <span class="n">MongoDB</span>
+
+<span class="n">class</span> <span class="n">MongoHandler</span> <span class="p">{</span>
+
+  <span class="n">var</span> <span class="nl">client:</span> <span class="n">MongoClient</span><span class="o">?</span>
+  <span class="n">var</span> <span class="nl">database:</span> <span class="n">MongoDatabase</span><span class="o">?</span>
+  <span class="n">var</span> <span class="nl">collection:</span> <span class="n">MongoCollection</span><span class="o">?</span>
+
+  <span class="c1">// MongoDBへの接続処理</span>
+  <span class="n">fileprivate</span> <span class="n">func</span> <span class="n">connect</span><span class="p">()</span> <span class="p">{</span>
+
+    <span class="c1">// コネクション確立</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">MongoClient</span><span class="p">(</span><span class="nl">uri:</span> <span class="s">&quot;mongodb://localhost&quot;</span><span class="p">)</span>
+
+    <span class="c1">// testデータベースへの接続</span>
+    <span class="n">database</span> <span class="o">=</span> <span class="n">client</span><span class="o">?</span><span class="p">.</span><span class="n">getDatabase</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;test&quot;</span><span class="p">)</span>
+
+    <span class="c1">// testCollectionコレクションへの接続</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">collection</span> <span class="o">=</span> <span class="n">database</span><span class="o">?</span><span class="p">.</span><span class="n">getCollection</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;testCollection&quot;</span><span class="p">)</span>
+  <span class="p">}</span>
+
+  <span class="c1">// MongoDBからの切断処理</span>
+  <span class="n">fileprivate</span> <span class="n">func</span> <span class="n">close</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">collection</span><span class="o">?</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">database</span><span class="o">?</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">client</span><span class="o">?</span><span class="p">.</span><span class="n">close</span><span class="p">()</span>
+  <span class="p">}</span>
+
+  <span class="n">func</span> <span class="n">searchAll</span><span class="p">(</span><span class="nl">request:</span> <span class="n">HTTPRequest</span><span class="p">,</span> <span class="n">_</span> <span class="nl">response:</span> <span class="n">HTTPResponse</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// MongoDBへの接続</span>
+    <span class="n">connect</span><span class="p">()</span>
+    <span class="c1">// 指定コレクションが見つからない場合は処理終了</span>
+    <span class="n">guard</span> <span class="n">let</span> <span class="n">collection</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">collection</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="k">return</span>
+    <span class="p">}</span>
+
+    <span class="c1">// データ全件取得のためBSONオブジェクトを初期化してクエリとして設定</span>
+    <span class="n">let</span> <span class="n">fnd</span> <span class="o">=</span> <span class="n">collection</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="nl">query:</span> <span class="n">BSON</span><span class="p">())</span>
+
+    <span class="c1">// データ格納用に配列を定義</span>
+    <span class="n">var</span> <span class="n">arr</span> <span class="o">=</span> <span class="p">[</span><span class="n">String</span><span class="p">]()</span>
+
+    <span class="c1">// 取得したデータを配列に格納する</span>
+    <span class="c1">// fndはMongoCursor型であり、for文での繰り返し処理が可能</span>
+    <span class="k">for</span> <span class="n">x</span> <span class="k">in</span> <span class="n">fnd</span><span class="o">!</span> <span class="p">{</span>
+        <span class="n">arr</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="n">asString</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c1">// JSONStringに変換</span>
+    <span class="n">let</span> <span class="n">returning</span> <span class="o">=</span> <span class="s">&quot;{</span><span class="se">\&quot;</span><span class="s">data</span><span class="se">\&quot;</span><span class="s">:[\(arr.joined(separator: &quot;</span><span class="p">,</span><span class="s">&quot;))]}&quot;</span>
+
+    <span class="c1">// レスポンスデータとして設定</span>
+    <span class="n">response</span><span class="p">.</span><span class="n">appendBody</span><span class="p">(</span><span class="nl">string:</span> <span class="n">returning</span><span class="p">)</span>
+    <span class="c1">// レスポンス処理完了</span>
+    <span class="n">response</span><span class="p">.</span><span class="n">completed</span><span class="p">()</span>
+
+    <span class="c1">// MongoDBから切断</span>
+    <span class="n">close</span><span class="p">()</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

@@ -1,0 +1,513 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>JenkinsからGitHubにアップされたiOSプロジェクトをビルドしよう！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="Jenkins / GitHub / Xcodeを連携させよう！ さて、今日はJenkinsとGitHubとXcodeの連携について見ていきます。
+筆者はこれまで、手元の自身のMac端末でビルドして、Fabricでアプリを配信することが多かったのですが、最近、 &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2016/06/18/ios-jenkins/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">JenkinsからGitHubにアップされたiOSプロジェクトをビルドしよう！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-06-18T22:57:00+09:00" pubdate data-updated="true">Jun 18<span>th</span>, 2016</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h4>Jenkins / GitHub / Xcodeを連携させよう！</h4>
+
+<p>さて、今日はJenkinsとGitHubとXcodeの連携について見ていきます。<br/>
+筆者はこれまで、手元の自身のMac端末でビルドして、Fabricでアプリを配信することが多かったのですが、最近、<a href="https://deploygate.com/?locale=ja">Deploygate</a>を使う場面が出てきました。<br/>
+業界スタンダートな方法なのかわからないものの、JenkinsとDeploygateを連携させてJenkins上でビルドしたアプリをDeploygateから配信することができます。<br/>
+そういった筆者にとって新しい機会に恵まれたものの、触ってみた経験がないためわからないことが多々あったりします。<br/>
+そこで、今回はローカル環境でJenkins / GitHub / Xcodeを連携させて遊んでみようと思います。</p>
+
+<!-- more -->
+
+
+<h5>Jenkinsのインストール</h5>
+
+<p>まずは、JenkinsをHomebrewでローカル環境にインストールします。<br/>
+<code>brew install jenkins</code>を実行します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="nl">Password:</span>
+</span><span class='line'><span class="o">==&gt;</span> <span class="n">Downloading</span> <span class="nl">http:</span><span class="c1">//mirrors.jenkins-ci.org/war/2.9/jenkins.war</span>
+</span><span class='line'><span class="o">==&gt;</span> <span class="n">Downloading</span> <span class="n">from</span> <span class="nl">http:</span><span class="c1">//ftp.yz.yamagata-u.ac.jp/pub/misc/jenkins/war/2.9/jenkins.war</span>
+</span><span class='line'><span class="cp">######################################################################## 100.0%</span>
+</span><span class='line'><span class="o">==&gt;</span> <span class="n">jar</span> <span class="n">xvf</span> <span class="n">jenkins</span><span class="p">.</span><span class="n">war</span>
+</span><span class='line'><span class="o">==&gt;</span> <span class="n">Caveats</span>
+</span><span class='line'><span class="nl">Note:</span> <span class="n">When</span> <span class="n">using</span> <span class="n">launchctl</span> <span class="n">the</span> <span class="n">port</span> <span class="n">will</span> <span class="n">be</span> <span class="mf">8080.</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">To</span> <span class="n">have</span> <span class="n">launchd</span> <span class="n">start</span> <span class="n">jenkins</span> <span class="n">now</span> <span class="n">and</span> <span class="n">restart</span> <span class="n">at</span> <span class="nl">login:</span>
+</span><span class='line'>  <span class="n">brew</span> <span class="n">services</span> <span class="n">start</span> <span class="n">jenkins</span>
+</span><span class='line'><span class="n">Or</span><span class="p">,</span> <span class="k">if</span> <span class="n">you</span> <span class="n">don</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">want</span><span class="o">/</span><span class="n">need</span> <span class="n">a</span> <span class="n">background</span> <span class="n">service</span> <span class="n">you</span> <span class="n">can</span> <span class="n">just</span> <span class="nl">run:</span>
+</span><span class='line'>    <span class="n">jenkins</span>
+</span><span class='line'><span class="o">==&gt;</span> <span class="n">Summary</span>
+</span><span class='line'><span class="err">🍺</span>  <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">Cellar</span><span class="o">/</span><span class="n">jenkins</span><span class="o">/</span><span class="mf">2.9</span><span class="o">:</span> <span class="mi">6</span> <span class="n">files</span><span class="p">,</span> <span class="mf">66.4</span><span class="n">M</span><span class="p">,</span> <span class="n">built</span> <span class="k">in</span> <span class="mi">59</span> <span class="n">seconds</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Jenkinsをこれから使う機会も多いかもしれないので自動起動設定もしちゃいましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">cp</span> <span class="o">-</span><span class="n">p</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">jenkins</span><span class="o">/*</span><span class="p">.</span><span class="n">plist</span> <span class="o">~/</span><span class="n">Library</span><span class="o">/</span><span class="n">LaunchAgents</span>
+</span><span class='line'><span class="n">launchctl</span> <span class="n">load</span> <span class="o">~/</span><span class="n">Library</span><span class="o">/</span><span class="n">LaunchAgents</span><span class="o">/</span><span class="n">homebrew</span><span class="p">.</span><span class="n">mxcl</span><span class="p">.</span><span class="n">jenkins</span><span class="p">.</span><span class="n">plist</span>
+</span><span class='line'><span class="n">launchctl</span> <span class="n">start</span> <span class="n">homebrew</span><span class="p">.</span><span class="n">mxcl</span><span class="p">.</span><span class="n">jenkins</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>本当に起動してるかな〜と心配な方は<code>ps aux | grep jenkins</code>を叩いちゃいましょう！<br/>
+すると下記のように表示されます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">java</span> <span class="o">-</span><span class="n">Dmail</span><span class="p">.</span><span class="n">smtp</span><span class="p">.</span><span class="n">starttls</span><span class="p">.</span><span class="n">enable</span><span class="o">=</span><span class="n">true</span> <span class="o">-</span><span class="n">jar</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">jenkins</span><span class="o">/</span><span class="n">libexec</span><span class="o">/</span><span class="n">jenkins</span><span class="p">.</span><span class="n">war</span> <span class="o">--</span><span class="n">httpListenAddress</span><span class="o">=</span><span class="mf">127.0.0.1</span> <span class="o">--</span><span class="n">httpPort</span><span class="o">=</span><span class="mi">8080</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>Jenkinsの初期登録を完了させよう！</h5>
+
+<p>インストール完了したので、Jenkins上でジョブを作りましょう！<br/>
+早速、<code>http://localhost:8080</code>にアクセスしてください。</p>
+
+<p>すると、 <strong>Unlock Jenkins</strong> と大きく書かれた画面が表示されます。<br/>
+この画面の表示された指示に従って、管理者パスワードを入力しましょう。
+(コマンドは画面に表示された通りにターミナルで叩けばOKです。)</p>
+
+<p><img src="/images/jenkins-1.png" alt="初期画面" /></p>
+
+<p>続いて、 <strong>Customize Jenkins</strong> 画面に遷移するので、<br/>
+<strong>Install suggested plugins</strong> を選択しましょう。</p>
+
+<p><img src="/images/jenkins-2.png" alt="Customize Jenkins" /></p>
+
+<p>そして、ユーザー登録をします。</p>
+
+<p><img src="/images/jenkins-3.png" alt="ユーザー登録" /></p>
+
+<p>これでJenkinsのトップ画面が表示されます。<br/>
+Xcode Pluginがまだインストールされていないので、インストールします。</p>
+
+<p>左メニューから「Jenkinsの管理 > プラグインの管理」を選択します。</p>
+
+<p><img src="/images/jenkins-6.png" alt="プラグインの管理" /></p>
+
+<p>検索ボックスでXcodeと入力してください。<br/>
+<strong>Xcode integration</strong> が見つかりますので、インストールしてください。<br/>
+これで必要なプラグインのインストールが完了しました。</p>
+
+<h5>Jenkinsで新規ジョブを作成しよう！</h5>
+
+<p>左メニューから新規ジョブを作成します。</p>
+
+<p><img src="/images/jenkins-4.png" alt="新規ジョブの作成" /></p>
+
+<p>ジョブ名を入力して、「フリースタイル・プロジェクトのビルド」を選択して、OKを押します。</p>
+
+<p><img src="/images/jenkins-5.png" alt="ジョブのベースを作成" /></p>
+
+<p>まず、GitHubと連携させましょう。<br/>
+JenkinsのジョブにGitのRepository URLを設定します。</p>
+
+<p><img src="/images/jenkins-7.png" alt="JenkinsでGitのRepository URLを設定" /></p>
+
+<p>ただ単に設定すると403 Errorが出てしまうので、GitHub側を設定します。<br/>
+GitHubから取得したいRepositoryを選択します。<br/>
+Settings > Webhooks &amp; services > Add Webhook を選択します。<br/>
+下記のように設定しましょう！</p>
+
+<p><img src="/images/jenkins-8.png" alt="Webhooks &amp; services" /></p>
+
+<p>これでJenkins側の403 Errorが解消されるはずです。</p>
+
+<p>続いてビルド情報を入力していきます。</p>
+
+<p>ビルド手順の追加 > 「シェルの実行」を追加します</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp">#!/bin/bash -l</span>
+</span><span class='line'><span class="n">pod</span> <span class="n">install</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このタイミングで、<code>.bashrc</code>に<code>export LC_ALL="en_US.UTF-8"</code>を追加しておきましょう。<br/>
+(追加しないと『 <strong>invalid byte sequence in US-ASCII</strong> 』が後々発生します。)</p>
+
+<p>ビルド手順の追加 > 「Xcode」を追加します<br/>
+設定は下記のようにしてきます。</p>
+
+<p>【Code signing &amp; OS X keychain options】</p>
+
+<p><img src="/images/jenkins-9.png" alt="Code signing &amp; OS X keychain options" /></p>
+
+<p>【Advanced Xcode build options】</p>
+
+<p><img src="/images/jenkins-10.png" alt="Advanced Xcode build options" /></p>
+
+<table>
+<thead>
+<tr>
+<th></th>
+<th align="left">Xcode Schema File: </th>
+<th align="center">FacebookLoginSample</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td align="left">Xcode Workspace File: </td>
+<td align="center">FacebookLoginSample|</td>
+</tr>
+<tr>
+<td></td>
+<td align="left">Xcode Project File: </td>
+<td align="center">FacebookLoginSample|</td>
+</tr>
+<tr>
+<td></td>
+<td align="left">Build output directory: </td>
+<td align="center">${WORKSPACE}/build|</td>
+</tr>
+</tbody>
+</table>
+
+
+<p>　</p>
+
+<h5>Jennkinsでジョブを実行しよう！</h5>
+
+<p>これでジョブを実行してみましょう！<br/>
+左メニューから『 <strong>ビルド実行</strong> 』を選択します。</p>
+
+<p><img src="/images/jenkins-11.png" alt="ビルド実行" /></p>
+
+<p>ビルドを実行すると、ビルド履歴に新たに項目が追加されます。<br/>
+詳しいビルド状況を追いたければ、時間部分を選択します。</p>
+
+<p><img src="/images/jenkins-12.png" alt="ビルド状況の確認" /></p>
+
+<p>そして、画面遷移後の左メニューから『 <strong>コンソール出力</strong> 』を選択します。</p>
+
+<p><img src="/images/jenkins-13.png" alt="コンソール出力" /></p>
+
+<p>これで最後までログを追うことができます。</p>
+
+<h4>まとめ</h4>
+
+<p>さて如何でしたでしょうか？<br/>
+筆者も初めてローカル環境でJenkinsを立ててみましたが、意外とハマリポイントが多かったです。<br/>
+証明書周りでもう少し調べてみたいところもあるので、またわかったことがあればブログに書いていきたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://qiita.com/makoto_kw/items/cbe93d4ebbc35f3b43fd">OS XにJenkinsをHomebrewでセットアップする</a></li>
+<li><a href="http://www.buildinsider.net/enterprise/jenkins/001">Jenkinsをインストールして使ってみよう</a></li>
+<li><a href="https://github.com/CocoaPods/CocoaPods/issues/639#issuecomment-11483748">invalid byte sequence in US-ASCII</a></li>
+</ul>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-06-18T22:57:00+09:00" pubdate data-updated="true">Jun 18<span>th</span>, 2016</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/jenkins/'>jenkins</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2016/06/18/ios-jenkins/" data-via="" data-counturl="http://grandbig.github.io/blog/2016/06/18/ios-jenkins/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/06/12/filter-map/" title="Previous Post: SwiftとJava8とJavaScriptでreduce / filter / map / flatMap">&laquo; SwiftとJava8とJavaScriptでreduce / filter / map / flatMap</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/06/19/swift-java-optional/" title="Next Post: SwiftとJava8でOptional型を比較してみよう！">SwiftとJava8でOptional型を比較してみよう！ &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/12/02/universallink/">今更だけど試してみようUniversalLink</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/11/27/iphonex-statusbar/">iPhoneXのステータスバーの高さ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/09/clean-swift-3/">Clean Swiftを勉強してみよう！(3)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/08/clean-swift-2/">Clean Swiftを勉強してみよう！(2)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/09/25/clean-swift/">Clean Swiftを勉強してみよう！(1)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (160)</a></li><li><a href='/blog/categories/swift'>swift (63)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/redux'>redux (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2016/06/18/ios-jenkins/';
+        var disqus_url = 'http://grandbig.github.io/blog/2016/06/18/ios-jenkins/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

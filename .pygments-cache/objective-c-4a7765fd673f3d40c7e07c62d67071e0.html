@@ -1,0 +1,43 @@
+<div class="highlight"><pre><span class="c1">// HotpepperAPI.swift</span>
+<span class="n">import</span> <span class="n">Foundation</span>
+<span class="n">import</span> <span class="n">CoreLocation</span>
+<span class="n">import</span> <span class="n">Alamofire</span>
+<span class="n">import</span> <span class="n">SwiftyJSON</span>
+
+<span class="cm">/**</span>
+<span class="cm"> ホットペッパーAPI</span>
+<span class="cm"> */</span>
+<span class="n">class</span> <span class="n">HotpepperAPI</span> <span class="p">{</span>
+  <span class="c1">/// API Key</span>
+  <span class="n">private</span> <span class="n">var</span> <span class="nl">apiKey:</span> <span class="n">String</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+  <span class="c1">/// ホットペッパーAPIのベースURL</span>
+  <span class="n">private</span> <span class="n">let</span> <span class="nl">baseURL:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;https://webservice.recruit.co.jp/hotpepper/gourmet/v1/&quot;</span>
+
+  <span class="c1">/// 初期化処理</span>
+  <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="s">&quot;key&quot;</span><span class="p">,</span> <span class="nl">ofType:</span> <span class="s">&quot;plist&quot;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s">&quot;hotpepperApiKey&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="p">{</span>
+          <span class="n">self</span><span class="p">.</span><span class="n">apiKey</span> <span class="o">=</span> <span class="n">apiKey</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="cm">/**</span>
+<span class="cm">   ホットペッパーグルメサーチAPI</span>
+
+<span class="cm">   - parameter coordinate: 位置</span>
+<span class="cm">   - parameter completion: レストラン情報を返却するcallback</span>
+<span class="cm">   */</span>
+  <span class="n">func</span> <span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">,</span> <span class="nl">completion:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">((</span><span class="n">JSON</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">let</span> <span class="n">parameters</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;key&quot;</span><span class="o">:</span> <span class="n">self</span><span class="p">.</span><span class="n">apiKey</span><span class="p">,</span> <span class="s">&quot;format&quot;</span><span class="o">:</span> <span class="s">&quot;json&quot;</span><span class="p">,</span> <span class="s">&quot;lat&quot;</span><span class="o">:</span> <span class="n">coordinate</span><span class="p">.</span><span class="n">latitude</span><span class="p">,</span> <span class="s">&quot;lng&quot;</span><span class="o">:</span> <span class="n">coordinate</span><span class="p">.</span><span class="n">longitude</span><span class="p">,</span> <span class="s">&quot;range&quot;</span><span class="o">:</span> <span class="mi">2</span><span class="p">]</span> <span class="n">as</span> <span class="p">[</span><span class="n">String</span> <span class="o">:</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">Alamofire</span><span class="p">.</span><span class="n">request</span><span class="p">(</span><span class="n">baseURL</span><span class="p">,</span> <span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">parameters:</span> <span class="n">parameters</span><span class="p">,</span> <span class="nl">encoding:</span> <span class="n">URLEncoding</span><span class="p">.</span><span class="k">default</span><span class="p">,</span> <span class="nl">headers:</span> <span class="nb">nil</span><span class="p">).</span><span class="n">responseJSON</span> <span class="p">{</span> <span class="n">response</span> <span class="k">in</span>
+      <span class="n">let</span> <span class="n">json</span> <span class="o">=</span> <span class="n">JSON</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">value</span> <span class="n">as</span> <span class="n">Any</span><span class="p">)</span>
+      <span class="n">let</span> <span class="n">result</span> <span class="o">=</span> <span class="n">json</span><span class="p">[</span><span class="s">&quot;results&quot;</span><span class="p">][</span><span class="s">&quot;shop&quot;</span><span class="p">]</span>
+
+      <span class="n">completion</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

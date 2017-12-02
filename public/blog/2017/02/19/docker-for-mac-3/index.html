@@ -1,0 +1,665 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Dockerコンテナ内のUbuntuでApache設定を試してみよう！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに 前回のDockerにWebサーバーを立てよう！に引き続きDocker内Apacheで遊んでみます。
+前回はUbuntuへのApacheインストールから起動まで見てきました。
+実際の現場でApacheを利用する際は様々な設定を施す必要があります。 &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Dockerコンテナ内のUbuntuでApache設定を試してみよう！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-02-19T23:45:00+09:00" pubdate data-updated="true">Feb 19<span>th</span>, 2017</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>前回の<a href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/">DockerにWebサーバーを立てよう！</a>に引き続きDocker内Apacheで遊んでみます。<br/>
+前回はUbuntuへのApacheインストールから起動まで見てきました。<br/>
+実際の現場でApacheを利用する際は様々な設定を施す必要があります。<br/>
+本記事ではその一端を少しでも学ぼうということで書いていきます。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>DocumentRootの設定</h3>
+
+<p>Apacheでは設定ファイルで静的ファイルのルートパスを設定することができます。<br/>
+デフォルトでは<code>/var/www/html</code>になっています。<br/>
+これは、<code>/etc/apache2/sites-enabled/000-default.conf</code>で次のように定義されています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="o">&lt;</span><span class="nx">VirtualHost</span> <span class="o">*:</span><span class="mi">80</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">The</span> <span class="nx">ServerName</span> <span class="nx">directive</span> <span class="nx">sets</span> <span class="nx">the</span> <span class="nx">request</span> <span class="nx">scheme</span><span class="p">,</span> <span class="nx">hostname</span> <span class="nx">and</span> <span class="nx">port</span> <span class="nx">that</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">the</span> <span class="nx">server</span> <span class="nx">uses</span> <span class="nx">to</span> <span class="nx">identify</span> <span class="nx">itself</span><span class="p">.</span> <span class="nx">This</span> <span class="nx">is</span> <span class="nx">used</span> <span class="nx">when</span> <span class="nx">creating</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">redirection</span> <span class="nx">URLs</span><span class="p">.</span> <span class="nx">In</span> <span class="nx">the</span> <span class="nx">context</span> <span class="nx">of</span> <span class="nx">virtual</span> <span class="nx">hosts</span><span class="p">,</span> <span class="nx">the</span> <span class="nx">ServerName</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">specifies</span> <span class="nx">what</span> <span class="nx">hostname</span> <span class="nx">must</span> <span class="nx">appear</span> <span class="k">in</span> <span class="nx">the</span> <span class="nx">request</span><span class="err">’</span><span class="nx">s</span> <span class="nx">Host</span><span class="o">:</span> <span class="nx">header</span> <span class="nx">to</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">match</span> <span class="k">this</span> <span class="nx">virtual</span> <span class="nx">host</span><span class="p">.</span> <span class="nx">For</span> <span class="nx">the</span> <span class="k">default</span> <span class="nx">virtual</span> <span class="nx">host</span> <span class="p">(</span><span class="k">this</span> <span class="nx">file</span><span class="p">)</span> <span class="k">this</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">value</span> <span class="nx">is</span> <span class="nx">not</span> <span class="nx">decisive</span> <span class="nx">as</span> <span class="nx">it</span> <span class="nx">is</span> <span class="nx">used</span> <span class="nx">as</span> <span class="nx">a</span> <span class="nx">last</span> <span class="nx">resort</span> <span class="nx">host</span> <span class="nx">regardless</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">However</span><span class="p">,</span> <span class="nx">you</span> <span class="nx">must</span> <span class="nx">set</span> <span class="nx">it</span> <span class="k">for</span> <span class="nx">any</span> <span class="nx">further</span> <span class="nx">virtual</span> <span class="nx">host</span> <span class="nx">explicitly</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span><span class="nx">ServerName</span> <span class="nx">www</span><span class="p">.</span><span class="nx">example</span><span class="p">.</span><span class="nx">com</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">ServerAdmin</span> <span class="nx">webmaster</span><span class="err">@</span><span class="nx">localhost</span>
+</span><span class='line'>  <span class="nx">DocumentRoot</span> <span class="o">/</span><span class="kd">var</span><span class="err">/www/html</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Available</span> <span class="nx">loglevels</span><span class="o">:</span> <span class="nx">trace8</span><span class="p">,</span> <span class="p">...,</span> <span class="nx">trace1</span><span class="p">,</span> <span class="nx">debug</span><span class="p">,</span> <span class="nx">info</span><span class="p">,</span> <span class="nx">notice</span><span class="p">,</span> <span class="nx">warn</span><span class="p">,</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">error</span><span class="p">,</span> <span class="nx">crit</span><span class="p">,</span> <span class="nx">alert</span><span class="p">,</span> <span class="nx">emerg</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">It</span> <span class="nx">is</span> <span class="nx">also</span> <span class="nx">possible</span> <span class="nx">to</span> <span class="nx">configure</span> <span class="nx">the</span> <span class="nx">loglevel</span> <span class="k">for</span> <span class="nx">particular</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">modules</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">g</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span><span class="nx">LogLevel</span> <span class="nx">info</span> <span class="nx">ssl</span><span class="o">:</span><span class="nx">warn</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">ErrorLog</span> <span class="nx">$</span><span class="p">{</span><span class="nx">APACHE_LOG_DIR</span><span class="p">}</span><span class="o">/</span><span class="nx">error</span><span class="p">.</span><span class="nx">log</span>
+</span><span class='line'>  <span class="nx">CustomLog</span> <span class="nx">$</span><span class="p">{</span><span class="nx">APACHE_LOG_DIR</span><span class="p">}</span><span class="o">/</span><span class="nx">access</span><span class="p">.</span><span class="nx">log</span> <span class="nx">combined</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">For</span> <span class="nx">most</span> <span class="nx">configuration</span> <span class="nx">files</span> <span class="nx">from</span> <span class="nx">conf</span><span class="o">-</span><span class="nx">available</span><span class="o">/</span><span class="p">,</span> <span class="nx">which</span> <span class="nx">are</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">enabled</span> <span class="nx">or</span> <span class="nx">disabled</span> <span class="nx">at</span> <span class="nx">a</span> <span class="nx">global</span> <span class="nx">level</span><span class="p">,</span> <span class="nx">it</span> <span class="nx">is</span> <span class="nx">possible</span> <span class="nx">to</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">include</span> <span class="nx">a</span> <span class="nx">line</span> <span class="k">for</span> <span class="nx">only</span> <span class="nx">one</span> <span class="nx">particular</span> <span class="nx">virtual</span> <span class="nx">host</span><span class="p">.</span> <span class="nx">For</span> <span class="nx">example</span> <span class="nx">the</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">following</span> <span class="nx">line</span> <span class="nx">enables</span> <span class="nx">the</span> <span class="nx">CGI</span> <span class="nx">configuration</span> <span class="k">for</span> <span class="k">this</span> <span class="nx">host</span> <span class="nx">only</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">after</span> <span class="nx">it</span> <span class="nx">has</span> <span class="nx">been</span> <span class="nx">globally</span> <span class="nx">disabled</span> <span class="kd">with</span> <span class="s2">&quot;a2disconf&quot;</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span><span class="nx">Include</span> <span class="nx">conf</span><span class="o">-</span><span class="nx">available</span><span class="o">/</span><span class="nx">serve</span><span class="o">-</span><span class="nx">cgi</span><span class="o">-</span><span class="nx">bin</span><span class="p">.</span><span class="nx">conf</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/VirtualHost&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">#</span> <span class="nx">vim</span><span class="o">:</span> <span class="nx">syntax</span><span class="o">=</span><span class="nx">apache</span> <span class="nx">ts</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sw</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sts</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sr</span> <span class="nx">noet</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>必要があれば書き換えて使いましょう。</p>
+
+<h3>リバースプロキシ設定</h3>
+
+<p>リバースプロキシとは、</p>
+
+<ul>
+<li>クライアントからのアクセスをキャッチして、特定のサーバへ送るプロキシサーバ</li>
+<li>セキュリティや負荷分散などのために利用される</li>
+</ul>
+
+
+<p>ものです。<br/>
+詳しくは<a href="https://ja.wikipedia.org/wiki/%E3%83%AA%E3%83%90%E3%83%BC%E3%82%B9%E3%83%97%E3%83%AD%E3%82%AD%E3%82%B7">リバースプロキシ &ndash; wiki</a>を見てください。</p>
+
+<p>設定はいたって簡単です。<br/>
+まずは、モジュールの有効化をするために下記コマンドを打ちましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// プロキシモジュールの有効化</span>
+</span><span class='line'><span class="nx">$</span> <span class="nx">a2enmod</span> <span class="nx">proxy</span> <span class="nx">proxy_http</span>
+</span><span class='line'><span class="nx">Enabling</span> <span class="nx">module</span> <span class="nx">proxy</span><span class="p">.</span>
+</span><span class='line'><span class="nx">Considering</span> <span class="nx">dependency</span> <span class="nx">proxy</span> <span class="k">for</span> <span class="nx">proxy_http</span><span class="o">:</span>
+</span><span class='line'><span class="nx">Module</span> <span class="nx">proxy</span> <span class="nx">already</span> <span class="nx">enabled</span>
+</span><span class='line'><span class="nx">Enabling</span> <span class="nx">module</span> <span class="nx">proxy_http</span><span class="p">.</span>
+</span><span class='line'><span class="nx">To</span> <span class="nx">activate</span> <span class="nx">the</span> <span class="k">new</span> <span class="nx">configuration</span><span class="p">,</span> <span class="nx">you</span> <span class="nx">need</span> <span class="nx">to</span> <span class="nx">run</span><span class="o">:</span>
+</span><span class='line'>  <span class="nx">service</span> <span class="nx">apache2</span> <span class="nx">restart</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Apacheを再起動</span>
+</span><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">restart</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、設定ファイルを更新します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="o">&lt;</span><span class="nx">IfModule</span> <span class="nx">mod_proxy</span><span class="p">.</span><span class="nx">c</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">If</span> <span class="nx">you</span> <span class="nx">want</span> <span class="nx">to</span> <span class="nx">use</span> <span class="nx">apache2</span> <span class="nx">as</span> <span class="nx">a</span> <span class="nx">forward</span> <span class="nx">proxy</span><span class="p">,</span> <span class="nx">uncomment</span> <span class="nx">the</span>
+</span><span class='line'>  <span class="err">#</span> <span class="s1">&#39;ProxyRequests On&#39;</span> <span class="nx">line</span> <span class="nx">and</span> <span class="nx">the</span> <span class="o">&lt;</span><span class="nx">Proxy</span> <span class="o">*&gt;</span> <span class="nx">block</span> <span class="nx">below</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">WARNING</span><span class="o">:</span> <span class="nx">Be</span> <span class="nx">careful</span> <span class="nx">to</span> <span class="nx">restrict</span> <span class="nx">access</span> <span class="nx">inside</span> <span class="nx">the</span> <span class="o">&lt;</span><span class="nx">Proxy</span> <span class="o">*&gt;</span> <span class="nx">block</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Open</span> <span class="nx">proxy</span> <span class="nx">servers</span> <span class="nx">are</span> <span class="nx">dangerous</span> <span class="nx">both</span> <span class="nx">to</span> <span class="nx">your</span> <span class="nx">network</span> <span class="nx">and</span> <span class="nx">to</span> <span class="nx">the</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Internet</span> <span class="nx">at</span> <span class="nx">large</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">If</span> <span class="nx">you</span> <span class="nx">only</span> <span class="nx">want</span> <span class="nx">to</span> <span class="nx">use</span> <span class="nx">apache2</span> <span class="nx">as</span> <span class="nx">a</span> <span class="nx">reverse</span> <span class="nx">proxy</span><span class="o">/</span><span class="nx">gateway</span> <span class="k">in</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">front</span> <span class="nx">of</span> <span class="nx">some</span> <span class="nx">web</span> <span class="nx">application</span> <span class="nx">server</span><span class="p">,</span> <span class="nx">you</span> <span class="nx">DON</span><span class="err">’</span><span class="nx">T</span> <span class="nx">need</span>
+</span><span class='line'>  <span class="nx">ProxyRequests</span> <span class="nx">Off</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="o">&lt;</span><span class="nx">Proxy</span> <span class="o">*&gt;</span>
+</span><span class='line'>  <span class="err">#</span>   <span class="nx">AddDefaultCharset</span> <span class="nx">off</span>
+</span><span class='line'>  <span class="err">#</span>   <span class="nx">Require</span> <span class="nx">all</span> <span class="nx">denied</span>
+</span><span class='line'>  <span class="err">#</span>   <span class="err">#</span><span class="nx">Require</span> <span class="nx">local</span>
+</span><span class='line'>    <span class="nx">Require</span> <span class="nx">all</span> <span class="nx">granted</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="err">/Proxy&gt;</span>
+</span><span class='line'>  <span class="nx">ProxyPass</span> <span class="o">/</span><span class="nx">hoge</span><span class="o">/</span> <span class="nx">http</span><span class="o">:</span><span class="c1">//localhost:80/hoge.html</span>
+</span><span class='line'>  <span class="nx">ProxyPassReverse</span> <span class="o">/</span><span class="nx">hoge</span><span class="o">/</span> <span class="nx">http</span><span class="o">:</span><span class="c1">//localhost:80/hoge.html</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Enable</span><span class="o">/</span><span class="nx">disable</span> <span class="nx">the</span> <span class="nx">handling</span> <span class="nx">of</span> <span class="nx">HTTP</span><span class="o">/</span><span class="mf">1.1</span> <span class="s2">&quot;Via:&quot;</span> <span class="nx">headers</span><span class="p">.</span>
+</span><span class='line'>  <span class="err">#</span> <span class="p">(</span><span class="s2">&quot;Full&quot;</span> <span class="nx">adds</span> <span class="nx">the</span> <span class="nx">server</span> <span class="nx">version</span><span class="p">;</span> <span class="s2">&quot;Block&quot;</span> <span class="nx">removes</span> <span class="nx">all</span> <span class="nx">outgoing</span> <span class="nx">Via</span><span class="o">:</span> <span class="nx">headers</span><span class="p">)</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Set</span> <span class="nx">to</span> <span class="nx">one</span> <span class="nx">of</span><span class="o">:</span> <span class="nx">Off</span> <span class="o">|</span> <span class="nx">On</span> <span class="o">|</span> <span class="nx">Full</span> <span class="o">|</span> <span class="nx">Block</span>
+</span><span class='line'>  <span class="err">#</span><span class="nx">ProxyVia</span> <span class="nx">Off</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/IfModule&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">#</span> <span class="nx">vim</span><span class="o">:</span> <span class="nx">syntax</span><span class="o">=</span><span class="nx">apache</span> <span class="nx">ts</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sw</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sts</span><span class="o">=</span><span class="mi">4</span> <span class="nx">sr</span> <span class="nx">noet</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記の設定について説明します。</p>
+
+<ul>
+<li><code>ProxyRequests Off</code>: フォワードプロキシをOFFにする設定です</li>
+<li><code>&lt;Proxy *&gt; 〜 &lt;/Proxy&gt;</code>: アクセスパスに対するアクセス権限範囲を設定します</li>
+<li><code>ProxyPass 元のアクセス要求パス 転送パス</code>: クライアントからのアクセス要求を転送します</li>
+<li><code>ProxyPassReverse 元のアクセス要求パス 転送パス</code>: Apache に HTTP リダイレクト応答の Location, Content-Location, URI ヘッダの調整を担います</li>
+</ul>
+
+
+<p>筆者自身、フォワードプロキシという単語を意識して使ったことがなかったのですが、ごくごく普通に使われているものなんですよね&hellip;<br/>
+Apache公式ページの下記記述を見るとよくわかります。</p>
+
+<blockquote><p>ファイアウォールによって 制限されている内部のクライアントにインターネットへのアクセスを 提供するもの</p></blockquote>
+
+<p>どうも<code>ProxyPassReverse</code>は理解するのが厄介だったようで多くの方が記事にしてくれていました。</p>
+
+<ul>
+<li><a href="http://dev.classmethod.jp/server-side/server/introduction_mod_proxy/">mod_proxy再入門 – ProxyPassとProxyPassReverse</a></li>
+<li><a href="http://d.hatena.ne.jp/a666666/20090211/1234348004">やっとわかった、リバースプロキシの設定の意味</a></li>
+</ul>
+
+
+<p>上記設定をしたので下記にアクセスしてみます。<br/>
+<code>http://localhost:15600/hoge/</code><br/>
+結果は下記の通りです。</p>
+
+<p><img src="/images/docker_reverse_proxy.png" alt="リバースプロキシした画面を表示" /></p>
+
+<p>このために用意した<code>hoge.html</code>が表示されました。</p>
+
+<h3>RewriteRuleの設定</h3>
+
+<p><code>Rewrite</code>はクライアントからのリクエストを内部変換してリダイレクトするような機能です。<br/>
+今回は些か簡単な例を扱ったためリバースプロキシとの違いがわかりにくかったかもしれません。<br/>
+あくまでも<code>Rewrite</code>はパスの読み替えであるため、物理的に別のサーバに接続を促すようなリバースプロキシならではの設定はできません。</p>
+
+<p>まずはモジュールを有効化させます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">a2enmod</span> <span class="nx">rewrite</span>
+</span><span class='line'><span class="nx">Enabling</span> <span class="nx">module</span> <span class="nx">rewrite</span><span class="p">.</span>
+</span><span class='line'><span class="nx">To</span> <span class="nx">activate</span> <span class="nx">the</span> <span class="k">new</span> <span class="nx">configuration</span><span class="p">,</span> <span class="nx">you</span> <span class="nx">need</span> <span class="nx">to</span> <span class="nx">run</span><span class="o">:</span>
+</span><span class='line'>  <span class="nx">service</span> <span class="nx">apache2</span> <span class="nx">restart</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Apacheを再起動</span>
+</span><span class='line'><span class="nx">$</span> <span class="o">/</span><span class="nx">etc</span><span class="o">/</span><span class="nx">init</span><span class="p">.</span><span class="nx">d</span><span class="o">/</span><span class="nx">apache2</span> <span class="nx">restart</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、静的ファイルパスへのアクセス制限を変更します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /etc/apache2/apache2.conf</span>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">Directory</span> <span class="o">/</span><span class="kd">var</span><span class="sr">/www/</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="nx">Options</span> <span class="nx">Indexes</span> <span class="nx">FollowSymLinks</span>
+</span><span class='line'>  <span class="nx">AllowOverride</span> <span class="nx">All</span>
+</span><span class='line'>  <span class="nx">Require</span> <span class="nx">all</span> <span class="nx">granted</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/Directory&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>デフォルトでは上記が<code>AllowOverride None</code>だったのを<code>AllowOverride All</code>に変更しています。<br/>
+さらに、<code>.htaccess</code>ファイルを作成して書き換えルールを記載します。<br/>
+<code>.htaccess</code>を利用する設定は<code>apache2.conf</code>にデフォルトで記載されています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /etc/apache2/apache2.conf</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">AccessFileName</span><span class="o">:</span> <span class="nx">The</span> <span class="nx">name</span> <span class="nx">of</span> <span class="nx">the</span> <span class="nx">file</span> <span class="nx">to</span> <span class="nx">look</span> <span class="k">for</span> <span class="k">in</span> <span class="nx">each</span> <span class="nx">directory</span>
+</span><span class='line'><span class="err">#</span> <span class="k">for</span> <span class="nx">additional</span> <span class="nx">configuration</span> <span class="nx">directives</span><span class="p">.</span>  <span class="nx">See</span> <span class="nx">also</span> <span class="nx">the</span> <span class="nx">AllowOverride</span>
+</span><span class='line'><span class="err">#</span> <span class="nx">directive</span><span class="p">.</span>
+</span><span class='line'><span class="err">#</span>
+</span><span class='line'><span class="nx">AccessFileName</span> <span class="p">.</span><span class="nx">htaccess</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>そして実際の<code>RewriteRule</code>の記載です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /var/www/html/.htaccess</span>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">IfModule</span> <span class="nx">mod_rewrite</span><span class="p">.</span><span class="nx">c</span><span class="o">&gt;</span>
+</span><span class='line'><span class="nx">RewriteEngine</span> <span class="nx">On</span>
+</span><span class='line'><span class="nx">RewriteRule</span> <span class="o">^</span><span class="nx">fuga</span><span class="o">/</span><span class="p">(.</span><span class="o">*</span><span class="p">)</span><span class="nx">$</span> <span class="o">/</span><span class="nx">bar</span><span class="o">/</span><span class="nx">$1</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/IfModule&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>サンプル用に、<code>/var/www/html</code>配下に<code>bar</code>フォルダを作成し、その配下に<code>index.html</code>を作成しました。<br/>
+上記設定をしたので下記にアクセスしてみます。<br/>
+<code>http://localhost:15600/fuga/</code><br/>
+結果は下記の通りです。</p>
+
+<p><img src="/images/docker_rewrite.png" alt="RewriteRule適用" /></p>
+
+<h3>ErrorDocumentの設定</h3>
+
+<p>エラー発生時にカスタムエラーページを表示したいときなどに利用します。<br/>
+具体的には、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// /etc/apache2/site-enabled/000-default.conf</span>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">VirtualHost</span> <span class="o">*:</span><span class="mi">80</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="nx">ErrorLog</span> <span class="nx">$</span><span class="p">{</span><span class="nx">APACHE_LOG_DIR</span><span class="p">}</span><span class="o">/</span><span class="nx">error</span><span class="p">.</span><span class="nx">log</span>
+</span><span class='line'>  <span class="nx">CustomLog</span> <span class="nx">$</span><span class="p">{</span><span class="nx">APACHE_LOG_DIR</span><span class="p">}</span><span class="o">/</span><span class="nx">access</span><span class="p">.</span><span class="nx">log</span> <span class="nx">combined</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 以下、ErrorDocumentの設定</span>
+</span><span class='line'>  <span class="nx">ErrorDocument</span> <span class="mi">404</span> <span class="nx">error_404</span><span class="p">.</span><span class="nx">html</span>
+</span><span class='line'>  <span class="nx">ErrorDocument</span> <span class="mi">500</span> <span class="nx">error_500</span><span class="p">.</span><span class="nx">html</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/VirtualHost&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のように設定が可能です。<br/>
+Ubuntuの場合、<code>/etc/apache2/conf-enabled/localized-error-pages.conf</code>に<code>ErrorDocument</code>の構文が全てコメントアウトの状態で記載があるため、本格的にやるならきちんとファイルを分けた方が良さそうです。</p>
+
+<h3>まとめ</h3>
+
+<p>さて今回はApacheの設定を少し見ることができました。<br/>
+WEBサーバとはどんなものなのか、わかったようでわかっていなかったことが見えてきた気がします。<br/>
+引き続き勉強を続けていきたいものです。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-02-19T23:45:00+09:00" pubdate data-updated="true">Feb 19<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/apache/'>apache</a>, <a class='category' href='/blog/categories/docker/'>docker</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3/" data-via="" data-counturl="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/02/19/docker-for-mac-2/" title="Previous Post: Dockerコンテナ内のUbuntuにWebサーバーを立てよう！">&laquo; Dockerコンテナ内のUbuntuにWebサーバーを立てよう！</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/02/25/docker-for-mac-4/" title="Next Post: Dockerコンテナ内のUbuntuでRedisを使ってみよう！">Dockerコンテナ内のUbuntuでRedisを使ってみよう！ &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/12/02/universallink/">今更だけど試してみようUniversalLink</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/11/27/iphonex-statusbar/">iPhoneXのステータスバーの高さ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/09/clean-swift-3/">Clean Swiftを勉強してみよう！(3)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/08/clean-swift-2/">Clean Swiftを勉強してみよう！(2)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/09/25/clean-swift/">Clean Swiftを勉強してみよう！(1)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (160)</a></li><li><a href='/blog/categories/swift'>swift (63)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/redux'>redux (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3/';
+        var disqus_url = 'http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

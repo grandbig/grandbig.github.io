@@ -1,0 +1,39 @@
+<div class="highlight"><pre><span class="c1">// ViewController.m</span>
+<span class="c1">// GETボタンをタップしてユーザ情報を取得</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">IBAction</span><span class="p">)</span><span class="nf">getBtnAction:</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nv">sender</span> <span class="p">{</span>
+	<span class="n">NSError</span> <span class="o">*</span><span class="n">err</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+	<span class="n">NSDictionary</span> <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span> <span class="nl">httpGetRequest:</span><span class="s">@&quot;https://www.googleapis.com/oauth2/v2/userinfo&quot;</span> <span class="nl">timeout:</span><span class="mi">10</span> <span class="nl">error:</span><span class="o">&amp;</span><span class="n">err</span><span class="p">];</span>
+	<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;res: %@&quot;</span><span class="p">,</span> <span class="n">res</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// GETリクエスト処理</span>
+<span class="k">-</span> <span class="p">(</span><span class="n">NSDictionary</span> <span class="o">*</span><span class="p">)</span><span class="nf">httpGetRequest:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">url</span>
+						 <span class="nf">timeout:</span><span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nv">timeout</span>
+						   <span class="nf">error:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">**</span><span class="p">)</span><span class="nv">error</span>
+<span class="p">{</span>
+	<span class="n">NSDictionary</span> <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+
+	<span class="k">if</span><span class="p">(</span><span class="n">url</span><span class="p">)</span> <span class="p">{</span>
+		<span class="n">NSError</span> <span class="o">*</span><span class="n">err</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+		<span class="n">NSMutableURLRequest</span> <span class="o">*</span><span class="n">request</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSMutableURLRequest</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithURL:</span><span class="p">[</span><span class="n">NSURL</span> <span class="nl">URLWithString:</span><span class="n">urlEscapeStr</span><span class="p">]</span> <span class="nl">cachePolicy:</span><span class="n">NSURLRequestReloadIgnoringLocalCacheData</span> <span class="nl">timeoutInterval:</span><span class="n">timeout</span><span class="p">];</span>
+
+		<span class="c1">// ヘッダーにアクセストークンをセット</span>
+		<span class="n">NSString</span> <span class="o">*</span><span class="n">token</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSString</span> <span class="nl">stringWithFormat:</span><span class="s">@&quot;OAuth %@&quot;</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">accessToken</span><span class="p">];</span>
+		<span class="p">[</span><span class="n">request</span> <span class="nl">setValue:</span><span class="n">token</span> <span class="nl">forHTTPHeaderField:</span><span class="s">@&quot;Authorization&quot;</span><span class="p">];</span>
+
+		<span class="n">NSURLResponse</span> <span class="o">*</span><span class="n">response</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+		<span class="n">NSData</span> <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURLConnection</span> <span class="nl">sendSynchronousRequest:</span><span class="n">request</span> <span class="nl">returningResponse:</span><span class="o">&amp;</span><span class="n">response</span> <span class="nl">error:</span><span class="o">&amp;</span><span class="n">err</span><span class="p">];</span>
+
+		<span class="c1">// ステータスコードの取得</span>
+		<span class="n">NSInteger</span> <span class="n">statusCode</span> <span class="o">=</span> <span class="p">[(</span><span class="n">NSHTTPURLResponse</span> <span class="o">*</span><span class="p">)</span><span class="n">response</span> <span class="n">statusCode</span><span class="p">];</span>
+		<span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">||</span> <span class="n">statusCode</span> <span class="o">&gt;=</span> <span class="mi">400</span><span class="p">)</span> <span class="p">{</span>
+			<span class="o">*</span><span class="n">error</span> <span class="o">=</span> <span class="n">err</span><span class="p">;</span>
+		<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+			<span class="n">NSError</span> <span class="o">*</span><span class="n">error</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+			<span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSJSONSerialization</span> <span class="nl">JSONObjectWithData:</span><span class="n">res</span> <span class="nl">options:</span><span class="n">NSJSONReadingAllowFragments</span> <span class="nl">error:</span><span class="o">&amp;</span><span class="n">error</span><span class="p">];</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+	
+	<span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>

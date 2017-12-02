@@ -1,0 +1,621 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>プッシュ通知をnode-apnで送ってみよう！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに 前回はFirebaseを利用してiOSにRemote Notificationを送信することについて書きました。
+今後は自作せずにFirebaseを利用するプロダクトが増えてくると思うことに変わりはないのですが、ふと昔利用していたnode-apnが気になりました。
+折角の機会なので、 &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2017/09/18/node-apn/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">プッシュ通知をnode-apnで送ってみよう！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-09-18T20:39:00+09:00" pubdate data-updated="true">Sep 18<span>th</span>, 2017</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p><a href="https://grandbig.github.io/blog/2017/09/18/firebase-notification/">前回</a>はFirebaseを利用してiOSにRemote Notificationを送信することについて書きました。<br/>
+今後は自作せずにFirebaseを利用するプロダクトが増えてくると思うことに変わりはないのですが、ふと昔利用していた<a href="https://github.com/node-apn/node-apn">node-apn</a>が気になりました。<br/>
+折角の機会なので、この<code>node-apn</code>を利用してRemote Notificationを送信してみたいと思います。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>プロジェクトの用意</h3>
+
+<p>ベースプロジェクトは<a href="https://github.com/expressjs/express">Express</a>を使ってしまいましょう。<br/>
+今回の各種バージョンは下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Node</span><span class="p">.</span><span class="nx">js</span><span class="o">:</span>  <span class="nx">v7</span><span class="p">.</span><span class="mf">3.0</span>
+</span><span class='line'><span class="nx">npm</span><span class="o">:</span>      <span class="nx">v3</span><span class="p">.</span><span class="mf">10.10</span>
+</span><span class='line'><span class="nx">Express</span><span class="o">:</span>  <span class="nx">v4</span><span class="p">.</span><span class="mf">15.0</span>
+</span><span class='line'><span class="nx">nodebrew</span><span class="o">:</span> <span class="nx">v0</span><span class="p">.</span><span class="mf">9.6</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>① Expressコマンドで<code>pushtest</code>プロジェクトの生成</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">express</span> <span class="o">-</span><span class="nx">t</span> <span class="nx">ejs</span> <span class="nx">pushtest</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>すると下記のプロジェクト構成が出来上がります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">pushtest</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">app</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">bin</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">www</span>
+</span><span class='line'><span class="err">├──</span> <span class="kr">package</span><span class="p">.</span><span class="nx">json</span>
+</span><span class='line'><span class="err">├──</span> <span class="kr">public</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">routes</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">users</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">└──</span> <span class="nx">views</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因みに、<code>express</code>コマンドを打つには<code>express</code>と<code>express-generator</code>のインストールが必要です。<br/>
+また、グローバルインストールした<code>node_modules</code>へのパスを<code>.bash_profile</code>に通しておきましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kr">export</span> <span class="nx">PATH</span><span class="o">=</span><span class="nx">$HOME</span><span class="o">/</span><span class="p">.</span><span class="nx">nodebrew</span><span class="o">/</span><span class="nx">current</span><span class="o">/</span><span class="nx">bin</span><span class="o">:</span><span class="nx">$PATH</span>
+</span><span class='line'><span class="kr">export</span> <span class="nx">NODE_PATH</span><span class="o">=</span><span class="nx">$HOME</span><span class="o">/</span><span class="p">.</span><span class="nx">nodebrew</span><span class="o">/</span><span class="nx">current</span><span class="o">/</span><span class="nx">lib</span><span class="o">/</span><span class="nx">node_modules</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>source ~/.bash_profile</code>で最新状況を読み込むのを忘れずに。</p>
+
+<p>② <code>node-apn</code>のインストール</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">npm</span> <span class="nx">install</span> <span class="nx">node</span><span class="o">-</span><span class="nx">apn</span> <span class="o">--</span><span class="nx">save</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因みに、必要なモジュールをインストールしたつもりでも、何度も<code>Cannot find module xxx</code>と出てしまうようであれば、<code>app.js</code>と同じ階層下で<code>npm install -d</code>を実行しましょう。</p>
+
+<h3>処理を実装</h3>
+
+<p>プロジェクトが用意できたので、処理を実装していきましょう。<br/>
+今回は簡単のため要件としては下記のみとします。</p>
+
+<p>・特定の端末のデバイストークンを指定<br/>
+・GETリクエスト</p>
+
+<p>① <code>app.js</code>に処理を実装<br/>
+まずはGETリクエストの受け口を<code>app.js</code>に用意します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">express</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;express&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">path</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">favicon</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;serve-favicon&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">logger</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;morgan&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">cookieParser</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;cookie-parser&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">bodyParser</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;body-parser&#39;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">var</span> <span class="nx">index</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./routes/index&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">users</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./routes/users&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">apns</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;./routes/apns&#39;</span><span class="p">);</span><span class="c1">// apns.jsは④で作成しますが、既にある体で追記</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">var</span> <span class="nx">app</span> <span class="o">=</span> <span class="nx">express</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 省略</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="nx">index</span><span class="p">);</span>
+</span><span class='line'><span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;/users&#39;</span><span class="p">,</span> <span class="nx">users</span><span class="p">);</span>
+</span><span class='line'><span class="nx">app</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span><span class="s1">&#39;/apns&#39;</span><span class="p">,</span> <span class="nx">apns</span><span class="p">);</span><span class="c1">// GETリクエストを受けられるように追記</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 省略</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>② <code>routes/apns.js</code>を作成</p>
+
+<p>最後にメインとなる処理を書いていきます。<br/>
+専用の<code>routes/apns.js</code>を作成し、その内部に<code>node-apn</code>を利用した処理を書いていきます。<br/>
+推奨されている<code>APNS Key</code>を利用するため、別途<code>AuthKey_xxxxxxxxxx.p8</code>を用意しましょう。</p>
+
+<p>その結果、プロジェクト構成としては下記のようになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">pushtest</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">app</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">bin</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">www</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">key</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">AuthKey_xxxxxxxxxx</span><span class="p">.</span><span class="nx">p8</span>
+</span><span class='line'><span class="err">├──</span> <span class="kr">package</span><span class="p">.</span><span class="nx">json</span>
+</span><span class='line'><span class="err">├──</span> <span class="kr">public</span>
+</span><span class='line'><span class="err">├──</span> <span class="nx">routes</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="nx">apns</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="nx">index</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="nx">users</span><span class="p">.</span><span class="nx">js</span>
+</span><span class='line'><span class="err">└──</span> <span class="nx">views</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて具体的な処理です。<br/>
+昔よりもシンプルに書けるようになっているイメージです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">express</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;express&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">apn</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;apn&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">qs</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;qs&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">router</span> <span class="o">=</span> <span class="nx">express</span><span class="p">.</span><span class="nx">Router</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">router</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// GETパラメータからトークンを取得</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">arr</span> <span class="o">=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">url</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">&quot;?&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">obj</span> <span class="o">=</span> <span class="nx">qs</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">arr</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">deviceToken</span> <span class="o">=</span> <span class="nx">obj</span><span class="p">.</span><span class="nx">token</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// プッシュ通知の設定</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">token</span><span class="o">:</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nx">key</span><span class="o">:</span> <span class="s2">&quot;./keys/AuthKey_xxxxxxxxxx.p8&quot;</span><span class="p">,</span>
+</span><span class='line'>      <span class="nx">keyId</span><span class="o">:</span> <span class="s2">&quot;xxxxxxxxxx&quot;</span><span class="p">,</span>
+</span><span class='line'>      <span class="nx">teamId</span><span class="o">:</span> <span class="s2">&quot;xxxxxxxxxx&quot;</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>    <span class="nx">production</span><span class="o">:</span> <span class="kc">false</span>
+</span><span class='line'>  <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">apnProvider</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">apn</span><span class="p">.</span><span class="nx">Provider</span><span class="p">(</span><span class="nx">options</span><span class="p">);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">note</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">apn</span><span class="p">.</span><span class="nx">Notification</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">expiry</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nb">Date</span><span class="p">.</span><span class="nx">now</span><span class="p">()</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">+</span> <span class="mi">3600</span><span class="p">;</span>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">badge</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">sound</span> <span class="o">=</span> <span class="s2">&quot;ping.aiff&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">alert</span> <span class="o">=</span> <span class="s2">&quot;プッシュ通知が届きましたよ！&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="nx">note</span><span class="p">.</span><span class="nx">topic</span> <span class="o">=</span> <span class="s2">&quot;com.xxx.NotificationSample&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// プッシュ送信</span>
+</span><span class='line'>  <span class="nx">apnProvider</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nx">note</span><span class="p">,</span> <span class="nx">deviceToken</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span> <span class="p">(</span><span class="nx">result</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">res</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="s2">&quot;respond with a resource&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'><span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="nx">router</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>プッシュ通知を送信</h3>
+
+<p>準備ができたのでプッシュ通知を送ってみましょう。</p>
+
+<p>① <code>Node</code>を起動</p>
+
+<p>デバッグしながら起動するために下記を実行します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">$</span> <span class="nx">node</span> <span class="o">--</span><span class="nx">inspect</span> <span class="o">--</span><span class="nx">debug</span><span class="o">-</span><span class="nx">brk</span> <span class="nx">bin</span><span class="o">/</span><span class="nx">www</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>すると、下記出力がされるのでChromeでアクセスしましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Debugger</span> <span class="nx">listening</span> <span class="nx">on</span> <span class="nx">port</span> <span class="mi">9229</span><span class="p">.</span>
+</span><span class='line'><span class="nx">Warning</span><span class="o">:</span> <span class="nx">This</span> <span class="nx">is</span> <span class="nx">an</span> <span class="nx">experimental</span> <span class="nx">feature</span> <span class="nx">and</span> <span class="nx">could</span> <span class="nx">change</span> <span class="nx">at</span> <span class="nx">any</span> <span class="nx">time</span><span class="p">.</span>
+</span><span class='line'><span class="nx">To</span> <span class="nx">start</span> <span class="nx">debugging</span><span class="p">,</span> <span class="nx">open</span> <span class="nx">the</span> <span class="nx">following</span> <span class="nx">URL</span> <span class="k">in</span> <span class="nx">Chrome</span><span class="o">:</span>
+</span><span class='line'>    <span class="nx">chrome</span><span class="o">-</span><span class="nx">devtools</span><span class="o">:</span><span class="c1">//devtools/bundled/inspector.html?experiments=true&amp;v8only=true&amp;ws=127.0.0.1:9229/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>② プッシュ通知を送る</p>
+
+<p>下記URLにアクセスしてGETリクエストを投げましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">http</span><span class="o">:</span><span class="c1">//localhost:3000/apns?token=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>たったこれだけで下図のようにプッシュ通知が届きました。</p>
+
+<p><img src="/images/node-apn_1.png" alt="node-apnで送ったプッシュ通知" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて今回は<code>node-apn</code>でのプッシュ通知について書きました。<br/>
+3年以上前に<a href="https://grandbig.github.io/blog/2014/02/22/silentremotenotification/">Silent Remote Notificationを試そう！</a>で利用したりしていたのですが、今見るといろいろと変わっているなと改めて感じました。<br/>
+今更ではありますが、これも一つ勉強になったと思い、<code>Firebase</code>に没頭していこうかなと&hellip;笑<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-09-18T20:39:00+09:00" pubdate data-updated="true">Sep 18<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/node/'>node</a>, <a class='category' href='/blog/categories/notification/'>notification</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2017/09/18/node-apn/" data-via="" data-counturl="http://grandbig.github.io/blog/2017/09/18/node-apn/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/09/18/firebase-notification/" title="Previous Post: Firebase NotificationをiOSで使ってみよう！">&laquo; Firebase NotificationをiOSで使ってみよう！</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/09/25/clean-swift/" title="Next Post: Clean Swiftを勉強してみよう！(1)">Clean Swiftを勉強してみよう！(1) &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/12/02/universallink/">今更だけど試してみようUniversalLink</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/11/27/iphonex-statusbar/">iPhoneXのステータスバーの高さ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/09/clean-swift-3/">Clean Swiftを勉強してみよう！(3)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/08/clean-swift-2/">Clean Swiftを勉強してみよう！(2)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/09/25/clean-swift/">Clean Swiftを勉強してみよう！(1)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (160)</a></li><li><a href='/blog/categories/swift'>swift (63)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/redux'>redux (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2017/09/18/node-apn/';
+        var disqus_url = 'http://grandbig.github.io/blog/2017/09/18/node-apn/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

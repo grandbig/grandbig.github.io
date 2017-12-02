@@ -1,0 +1,71 @@
+<div class="highlight"><pre><span class="n">import</span> <span class="n">UIKit</span>
+
+<span class="n">protocol</span> <span class="nl">SampleViewDisplayLogic:</span> <span class="n">class</span> <span class="p">{</span>
+  <span class="n">func</span> <span class="n">displaySomething</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">SampleView</span><span class="p">.</span><span class="n">Something</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span>
+  <span class="n">func</span> <span class="n">transitionToSomeWhere</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">SampleView</span><span class="p">.</span><span class="n">Sometime</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">class</span> <span class="nl">SampleViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">SampleViewDisplayLogic</span> <span class="p">{</span>
+  <span class="n">var</span> <span class="nl">interactor:</span> <span class="n">SampleViewBusinessLogic</span><span class="o">?</span>
+  <span class="n">var</span> <span class="nl">router:</span> <span class="p">(</span><span class="n">NSObjectProtocol</span> <span class="o">&amp;</span> <span class="n">SampleViewRoutingLogic</span> <span class="o">&amp;</span> <span class="n">SampleViewDataPassing</span><span class="p">)</span><span class="o">?</span>
+
+  <span class="c1">// MARK: Object lifecycle</span>
+  <span class="n">override</span> <span class="n">init</span><span class="p">(</span><span class="n">nibName</span> <span class="nl">nibNameOrNil:</span> <span class="n">String</span><span class="o">?</span><span class="p">,</span> <span class="n">bundle</span> <span class="nl">nibBundleOrNil:</span> <span class="n">Bundle</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">nibName:</span> <span class="n">nibNameOrNil</span><span class="p">,</span> <span class="nl">bundle:</span> <span class="n">nibBundleOrNil</span><span class="p">)</span>
+    <span class="n">setup</span><span class="p">()</span>
+  <span class="p">}</span>
+
+  <span class="n">required</span> <span class="n">init</span><span class="o">?</span><span class="p">(</span><span class="n">coder</span> <span class="nl">aDecoder:</span> <span class="n">NSCoder</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">coder:</span> <span class="n">aDecoder</span><span class="p">)</span>
+    <span class="n">setup</span><span class="p">()</span>
+  <span class="p">}</span>
+
+  <span class="c1">// MARK: Setup</span>
+  <span class="n">private</span> <span class="n">func</span> <span class="n">setup</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">let</span> <span class="n">viewController</span> <span class="o">=</span> <span class="n">self</span>
+    <span class="n">let</span> <span class="n">interactor</span> <span class="o">=</span> <span class="n">SampleViewInteractor</span><span class="p">()</span>
+    <span class="n">let</span> <span class="n">presenter</span> <span class="o">=</span> <span class="n">SampleViewPresenter</span><span class="p">()</span>
+    <span class="n">let</span> <span class="n">router</span> <span class="o">=</span> <span class="n">SampleViewRouter</span><span class="p">()</span>
+    <span class="n">viewController</span><span class="p">.</span><span class="n">interactor</span> <span class="o">=</span> <span class="n">interactor</span>
+    <span class="n">viewController</span><span class="p">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">router</span>
+    <span class="n">interactor</span><span class="p">.</span><span class="n">presenter</span> <span class="o">=</span> <span class="n">presenter</span>
+    <span class="n">presenter</span><span class="p">.</span><span class="n">viewController</span> <span class="o">=</span> <span class="n">viewController</span>
+    <span class="n">router</span><span class="p">.</span><span class="n">viewController</span> <span class="o">=</span> <span class="n">viewController</span>
+    <span class="n">router</span><span class="p">.</span><span class="n">dataStore</span> <span class="o">=</span> <span class="n">interactor</span>
+  <span class="p">}</span>
+
+  <span class="c1">// MARK: Routing</span>
+  <span class="n">override</span> <span class="n">func</span> <span class="n">prepare</span><span class="p">(</span><span class="k">for</span> <span class="nl">segue:</span> <span class="n">UIStoryboardSegue</span><span class="p">,</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="n">let</span> <span class="n">scene</span> <span class="o">=</span> <span class="n">segue</span><span class="p">.</span><span class="n">identifier</span> <span class="p">{</span>
+      <span class="n">let</span> <span class="n">selector</span> <span class="o">=</span> <span class="n">NSSelectorFromString</span><span class="p">(</span><span class="s">&quot;routeTo\(scene)WithSegue:&quot;</span><span class="p">)</span>
+      <span class="k">if</span> <span class="n">let</span> <span class="n">router</span> <span class="o">=</span> <span class="n">router</span><span class="p">,</span> <span class="n">router</span><span class="p">.</span><span class="n">responds</span><span class="p">(</span><span class="nl">to:</span> <span class="n">selector</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">router</span><span class="p">.</span><span class="n">perform</span><span class="p">(</span><span class="n">selector</span><span class="p">,</span> <span class="nl">with:</span> <span class="n">segue</span><span class="p">)</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="c1">// MARK: View lifecycle</span>
+  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+
+    <span class="n">fetchSomethingOnLoad</span><span class="p">()</span>
+  <span class="p">}</span>
+
+  <span class="c1">// ① Interactorに具体的な処理内容を問い合わせる</span>
+  <span class="n">func</span> <span class="n">fetchSomethingOnLoad</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">let</span> <span class="n">request</span> <span class="o">=</span> <span class="n">SampleView</span><span class="p">.</span><span class="n">Something</span><span class="p">.</span><span class="n">Request</span><span class="p">()</span>
+    <span class="n">interactor</span><span class="o">?</span><span class="p">.</span><span class="n">fetchSomething</span><span class="p">(</span><span class="nl">request:</span> <span class="n">request</span><span class="p">)</span>
+  <span class="p">}</span>
+
+  <span class="c1">// ② Presenterからの指示を受けてViewを描画する</span>
+  <span class="n">func</span> <span class="n">displaySomething</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">SampleView</span><span class="p">.</span><span class="n">Something</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// do something</span>
+  <span class="p">}</span>
+
+  <span class="c1">// ③ Routerに画面遷移を依頼する</span>
+  <span class="n">func</span> <span class="n">transitionToSomeWhere</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">SampleView</span><span class="p">.</span><span class="n">Sometime</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 画面遷移</span>
+    <span class="n">router</span><span class="o">?</span><span class="p">.</span><span class="n">routeToSomeWhere</span><span class="p">(</span><span class="nl">segue:</span> <span class="nb">nil</span><span class="p">)</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

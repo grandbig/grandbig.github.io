@@ -1,0 +1,71 @@
+<div class="highlight"><pre><span class="c1">// ViewController.m</span>
+<span class="cp">#import &quot;ViewController.h&quot;</span>
+<span class="cp">#import &quot;OAuth2Client.h&quot;</span>
+
+<span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">clientId</span> <span class="o">=</span> <span class="s">@&quot;&quot;</span><span class="p">;</span>
+<span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">clientSecret</span> <span class="o">=</span> <span class="s">@&quot;&quot;</span><span class="p">;</span>
+<span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">authorizationURL</span> <span class="o">=</span> <span class="s">@&quot;https://accounts.google.com/o/oauth2/auth&quot;</span><span class="p">;</span>
+<span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">tokenURL</span> <span class="o">=</span> <span class="s">@&quot;https://accounts.google.com/o/oauth2/token&quot;</span><span class="p">;</span>
+<span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">scope</span> <span class="o">=</span> <span class="s">@&quot;https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar&quot;</span><span class="p">;</span>
+
+<span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span><span class="o">&lt;</span><span class="n">UIWebViewDelegate</span><span class="o">&gt;</span>
+
+<span class="k">@property</span> <span class="p">(</span><span class="n">weak</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">UIWebView</span> <span class="o">*</span><span class="n">webView</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSMutableData</span> <span class="o">*</span><span class="n">receivedData</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">assign</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="o">*</span><span class="n">isLogin</span><span class="p">;</span>
+
+<span class="k">@end</span>
+
+<span class="k">@implementation</span> <span class="nc">ViewController</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span> <span class="p">{</span>
+	<span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+
+	<span class="n">_webView</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+	<span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+	<span class="k">if</span><span class="p">([</span><span class="n">defaults</span> <span class="nl">boolForKey:</span><span class="s">@&quot;isLogin&quot;</span><span class="p">])</span> <span class="p">{</span>
+		<span class="c1">// 既にOAuth2.0認証実行済みの場合</span>
+		<span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">getRefreshAccessToken:</span><span class="o">^</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">)</span> <span class="p">{</span>
+			<span class="c1">// 成功した場合</span>
+			<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">accessToken</span><span class="p">);</span>
+		<span class="p">}</span> <span class="nl">failure:</span><span class="o">^</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+			<span class="c1">// 失敗した場合</span>
+			<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+		<span class="p">}];</span>
+	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+		<span class="c1">// 初めてOAuth2.0認証を実行する場合</span>
+		<span class="c1">// OAuth2.0認証に必要な各種パラメータの設定</span>
+		<span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">setUpOAuth2AccountClientId:</span><span class="n">clientId</span> <span class="nl">clientSecret:</span><span class="n">clientSecret</span> <span class="nl">scope:</span><span class="n">scope</span> <span class="nl">authorizationURL:</span><span class="n">authorizationURL</span> <span class="nl">tokenURL:</span><span class="n">tokenURL</span><span class="p">];</span>
+		<span class="c1">// OAuth2.0認証リクエスト</span>
+		<span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">requestAccessToAccount:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="n">preparedURL</span><span class="p">)</span> <span class="p">{</span>
+			<span class="c1">// リクエスト</span>
+			<span class="p">[</span><span class="n">_webView</span> <span class="nl">loadRequest:</span><span class="p">[</span><span class="n">NSURLRequest</span> <span class="nl">requestWithURL:</span> <span class="n">preparedURL</span><span class="p">]];</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">didReceiveMemoryWarning</span> <span class="p">{</span>
+	<span class="p">[</span><span class="n">super</span> <span class="n">didReceiveMemoryWarning</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">UIWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">shouldStartLoadWithRequest:</span><span class="p">(</span><span class="n">NSURLRequest</span> <span class="o">*</span><span class="p">)</span><span class="nv">request</span> <span class="nf">navigationType:</span><span class="p">(</span><span class="n">UIWebViewNavigationType</span><span class="p">)</span><span class="nv">navigationType</span> <span class="p">{</span>
+
+	<span class="k">if</span><span class="p">([</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">checkRedirectURI:</span><span class="n">request</span><span class="p">]])</span> <span class="p">{</span>
+		<span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">getAccessToken:</span><span class="n">request</span> <span class="nl">completionHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">){</span>
+			<span class="c1">// 処理が終了したら呼び出される</span>
+			<span class="k">if</span><span class="p">(</span><span class="n">accessToken</span><span class="p">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+				<span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+				<span class="p">[</span><span class="n">defaults</span> <span class="nl">setBool:</span><span class="n">YES</span> <span class="nl">forKey:</span><span class="s">@&quot;isLogin&quot;</span><span class="p">];</span>
+				<span class="p">[</span><span class="n">defaults</span> <span class="n">synchronize</span><span class="p">];</span>
+			<span class="p">}</span>
+			<span class="p">[</span><span class="n">webView</span> <span class="n">removeFromSuperview</span><span class="p">];</span>
+		<span class="p">}];</span>
+
+		<span class="k">return</span> <span class="n">NO</span><span class="p">;</span>
+	<span class="p">}</span>
+
+	<span class="k">return</span> <span class="n">YES</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">@end</span>
+</pre></div>

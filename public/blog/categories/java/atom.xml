@@ -1,0 +1,1138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: java | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/java/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-12-02T19:17:09+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Spring Bootで簡単Facebook接続]]></title>
+    <link href="http://grandbig.github.io/blog/2017/04/16/spring-boot-facebook-login/"/>
+    <updated>2017-04-16T14:52:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/04/16/spring-boot-facebook-login</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、久しぶりに<code>Spring Boot</code>で遊んでみました。<br/>
+と言ってもほとんどコードを書く必要のないFacebook認証についてです。<br/>
+(本当は<code>Spring Social</code>を利用したFacebookログインまで書こうかと思ったのですが、一旦簡単なところまで&hellip;)</p>
+
+<h3>Facebookアプリを新規作成</h3>
+
+<p>まずはFacebook認証などをするために、Facebook Developersサイトでアプリを登録しましょう。</p>
+
+<p>１．<a href="https://developers.facebook.com/">facebook developers</a>に遷移<br/>
+トップページから新規アプリを追加しましょう。<br/>
+<img src="/images/web_facebook_login_1.png" alt="facebook developersトップページ" /></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>２．必要項目を入力</p>
+
+<p><img src="/images/web_facebook_login_2.png" alt="ポップアップに必要事項を入力します" /></p>
+
+<p>３．セキュリティチェックをパス</p>
+
+<p><img src="/images/web_facebook_login_3.png" alt="セキュリティモーダルの解決" /></p>
+
+<p>４．利用機能の選択</p>
+
+<p><img src="/images/web_facebook_login_4.png" alt="Facebookの利用機能を選択します" /></p>
+
+<p>５．アプリの設定からプラットフォームを追加</p>
+
+<p>左メニューから設定を選択して、下図の画面を出します。<br/>
+<img src="/images/web_facebook_login_5.png" alt="プラットフォームを追加します" /></p>
+
+<p>プラットフォームとして『ウェブサイト』を追加します。<br/>
+<img src="/images/web_facebook_login_6.png" alt="ウェブサイトをプラットフォームとして追加します" /></p>
+
+<p>サイトURLやドメインなど必要事項を入力します。<br/>
+<img src="/images/web_facebook_login_7.png" alt="必要事項を入力します" /></p>
+
+<p>６．Facebookログインの設定</p>
+
+<p>Facebook認証後に返されるリダイレクトURIを設定します。<br/>
+<img src="/images/web_facebook_login_8.png" alt="リダイレクトURIを設定します" /></p>
+
+<h3>Spring Bootプロジェクトの新規作成</h3>
+
+<p>さて事前準備は完了したので、Spring BootプロジェクトをIntelliJで新規作成しましょう。</p>
+
+<p>１．IntelliJを起動して、Spring Boot用にベースとなる形式を選択</p>
+
+<p><img src="/images/web_facebook_login_9.png" alt="Spring Initializerを選択します" /></p>
+
+<p>２．ビルドツールとして<code>Gradle</code>を選択</p>
+
+<p><img src="/images/web_facebook_login_10.png" alt="Gradleをビルドツールとして選択します" /></p>
+
+<p>３．必要なモジュールを選択</p>
+
+<p>今回は <code>Security</code>, <code>Web</code>, <code>Thymeleaf</code>を利用します。<br/>
+<img src="/images/web_facebook_login_11.png" alt="必要なモジュールを選択します" /></p>
+
+<h3>Facebook認証処理を実装</h3>
+
+<p>では、実装していきましょう。</p>
+
+<h4>Spring Security周りの修正</h4>
+
+<p>まず、<code>Spring Security</code>はデフォルトBasic認証が有効となっているため、一旦、認証不要箇所などを設定します。</p>
+
+<p>```java
+// SecurityConfig.java
+package com.example.config;</p>
+
+<p>import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;</p>
+
+<p>@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {</p>
+
+<pre><code>@Override
+protected void configure(HttpSecurity http) throws Exception {
+    http
+            .authorizeRequests()
+            .antMatchers("/", "/complete", "/api/**").permitAll()
+            .anyRequest().authenticated();
+    http.formLogin();
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記ソースでは<code>/</code>と<code>/complete</code>と<code>/api/**</code>のアクセスを許可しています。<br/>
+それぞれ、</p>
+
+<ul>
+<li><code>/</code>: トップぺージ</li>
+<li><code>/complete</code>: Facebook認証後に表示する画面<br/>
+ここで許可すると認証しなくても表示されてしまいますが、簡単のため</li>
+<li><code>/api/**</code>: Facebook認証を実行するためのAPI用</li>
+</ul>
+
+
+<p>という意図です。</p>
+
+<h4>HTMLページの表示</h4>
+
+<p>続いて、単体HTMLページ表示用の処理です。</p>
+
+<h5>Controllerの処理</h5>
+
+<p><code>Controller</code>は下記の通り。</p>
+
+<p>```java
+// TopController.java
+package com.example.controller;</p>
+
+<p>import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.ModelAndView;</p>
+
+<p>@RestController
+@RequestMapping(&ldquo;/&rdquo;)
+public class TopController {</p>
+
+<pre><code>// ログイン画面
+@RequestMapping("")
+public ModelAndView index(ModelAndView mav) {
+    mav.setViewName("index");
+    return mav;
+}
+
+// 認証完了後に表示する
+@RequestMapping("/complete")
+public ModelAndView complete(ModelAndView mav) {
+    mav.setViewName("complete");
+    return mav;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>HTMLの処理</h5>
+
+<p>そして、HTMLファイルは下記の通り。</p>
+
+<p>```html</p>
+
+<!-- index.html -->
+
+
+<p>&lt;!DOCTYPE html>
+<html lang="en" xmlns="http://www.thymeleaf.org">
+<head>
+  &lt;meta</p>
+
+<pre><code>http-equiv="Content-Type"
+content="text/html"
+charset="UTF-8"/&gt;
+</code></pre>
+
+<p>  <title>Facebook Login Sample</title>
+</head>
+<body></p>
+
+<div>これはFacebookログインのためのサンプルトップ画面です。</div>
+
+
+<p><form action="/api/login" method="get">
+  <input type="submit" value="Facebookでログイン"/>
+</form>
+</body>
+</html>
+```</p>
+
+<p>```html</p>
+
+<!-- complete.html -->
+
+
+<p>&lt;!DOCTYPE html>
+<html lang="en" xmlns="http://www.thymeleaf.org">
+<head>
+  &lt;meta</p>
+
+<pre><code>http-equiv="Content-Type"
+content="text/html"
+charset="UTF-8"/&gt;
+</code></pre>
+
+<p>  <title>ログイン完了画面</title>
+</head>
+<body></p>
+
+<div>ログイン完了しました！！</div>
+
+
+<p></body>
+</html>
+```</p>
+
+<h4>環境変数の設定</h4>
+
+<p>FacebookのアプリIDや認証リクエストを送るURLなどの環境変数を書き出します。</p>
+
+<p><code>java
+// application.properties
+server.port=9000
+spring.social.facebook.appId=xxxxxxxxx
+sampleApp.urls.facebookLogin=https://www.facebook.com/v2.8/dialog/oauth?client_id=xxxxxxxxx&amp;scope=public_profile,email
+sampleApp.urls.oAuthCallback=http://localhost:9000/api/callback
+</code></p>
+
+<p>ここで書いた環境変数を他のJavaファイルで利用したいので、<br/>
+新たに<code>MyBean.java</code>と<code>MyProperties.java</code>を新規作成します。</p>
+
+<p>```java
+// MyBean.java
+package com.example.config.bean;</p>
+
+<p>public class MyBean {</p>
+
+<pre><code>public String facebookLogin;
+
+public String oAuthCallback;
+
+public void setFacebookLogin(String facebookLogin) {
+    this.facebookLogin = facebookLogin;
+}
+
+public void setoAuthCallback(String oAuthCallback) {
+    this.oAuthCallback = oAuthCallback;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>```java
+// MyProperties
+package com.example.config.properties;</p>
+
+<p>import com.example.config.bean.MyBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.core.env.Environment;</p>
+
+<p>@Configuration
+@PropertySource(value = {&ldquo;classpath:application.properties&rdquo;})
+public class MyProperties {</p>
+
+<pre><code>@Autowired
+private Environment env;
+
+@Bean
+public MyBean myBean() {
+    MyBean myBean = new MyBean();
+    myBean.setFacebookLogin(env.getProperty("sampleApp.urls.facebookLogin"));
+    myBean.setoAuthCallback(env.getProperty("sampleApp.urls.oAuthCallback"));
+    return myBean;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Facebook認証周りの処理</h4>
+
+<p>後はFacebook認証先にURLを送るだけです。</p>
+
+<p>```javascript
+package com.example.controller;</p>
+
+<p>import com.example.config.bean.MyBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;</p>
+
+<p>@Controller
+@RequestMapping(&ldquo;/api&rdquo;)
+public class FacebookLoginController {</p>
+
+<pre><code>private static final String REDIRECT_URI_PARAMETER = "redirect_uri";
+
+@Autowired
+private MyBean myBean;
+
+@RequestMapping("/login")
+public String facebookLogin() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(myBean.facebookLogin);
+    sb.append("&amp;").append(REDIRECT_URI_PARAMETER).append("=");
+    sb.append(myBean.oAuthCallback);
+
+    return "redirect:" + sb.toString();
+}
+
+@RequestMapping("/callback")
+public String callback() {
+    return "redirect:/complete";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>動作確認</h3>
+
+<p>ここまで実装ができたので動作確認をしてみましょう。</p>
+
+<p><img src="/images/web_facebook_login_12.png" alt="ログイン画面" /></p>
+
+<p><img src="/images/web_facebook_login_13.png" alt="Facebookログイン画面" /></p>
+
+<p><img src="/images/web_facebook_login_14.png" alt="アプリ許可画面" /></p>
+
+<p><img src="/images/web_facebook_login_15.png" alt="ログイン完了後" /></p>
+
+<h3>まとめ</h3>
+
+<p>今回は本当に簡易的な部分しか書けませんでした<br/>
+本当は<code>Spring Social</code>を使いこなして、もっといろいろと書こうかと思ったのですが、また次の機会ということで&hellip;</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftとJava8でOptional型を比較してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/06/19/swift-java-optional/"/>
+    <updated>2016-06-19T21:12:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/06/19/swift-java-optional</id>
+    <content type="html"><![CDATA[<h4>SwiftとJava8のOptional型を比較してみよう！</h4>
+
+<p>本日はSwiftとJava8のOptional型について比較してみたいと思います。<br/>
+最近チラチラとJava8を見かける機会が多いのですが、Swiftと同じくOptional型という概念があるんだ〜と何となく思っていました。<br/>
+が、実際に全く同じというわけではないと思うので比較したいと思ったわけです。<br/>
+ということで早速見ていきましょう！</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>SwiftのOptional型とは</h5>
+
+<p>まずはSwiftのOptional型から見ていきましょう。<br/>
+SwiftはObjective-Cでよく発生していた『思いがけず<code>nil</code>が入ったプロパティにアクセスしてExceptionが発生する』という事象を回避できる <strong>Optional型</strong> という概念があります。<br/>
+Swiftでは <strong>Optional型</strong> と <strong>非Optional型</strong> を変数定義時に明示的に利用することでこういったExceptionを回避することが可能なのです。</p>
+
+<ul>
+<li>Optional型: 変数に<code>nil</code>を代入することを <strong>許容します</strong>
+
+<ul>
+<li>Optional型はデータ型の末尾に <strong>『?』</strong> か <strong>『!』</strong> をつけます
+
+<ul>
+<li>『?』: 一般的なOptional型です</li>
+<li>『!』: 暗黙的Optional型です</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>非Optional型: 変数に<code>nil</code>を代入することを <strong>許容しません</strong></li>
+</ul>
+
+
+<p>```objective-c
+// Optional型
+var hoge: Int?
+var fuga: Int!</p>
+
+<p>// 非Optional型
+var piyo
+```</p>
+
+<h5>Optional型から値を取得する方法は</h5>
+
+<p>さて、Optional型の宣言方法は先程話した通りです。<br/>
+実際に値を取得する際はOptional型で定義された変数を <strong>アンラップ</strong> する必要があります。</p>
+
+<p>ここで注意したいのが、先に紹介した『!』を使った暗黙的Optional型の場合は <strong>自動的にアンラップする</strong> ので開発者側はアンラップさせる必要がないということです。</p>
+
+<p>アンラップ方法は下記の3通りです。</p>
+
+<ul>
+<li>Forced Unwrapping: 変数に『!』をつけます</li>
+<li>Optional Binding: <code>if</code>文を利用します</li>
+<li>Optional Chaining: 変数に『?』をつけます</li>
+</ul>
+
+
+<p>Forced UnwrappingとOptional Bindeingの例は下記です。</p>
+
+<p>```objective-c
+var hoge: Int? = 1</p>
+
+<p>// Forced Unwrapping
+print(hoge!)</p>
+
+<p>// Optional Binding
+if let fuga = hoge {</p>
+
+<pre><code>print(fuga)
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いてOptional Chainingの例を書きます。<br/>
+まずは下記のようなクラスを定義します。</p>
+
+<p>```objective-c
+class Hoge: NSObject {</p>
+
+<pre><code>func hogehoge() {
+    print("hogehogeメソッドを実行しました")
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記で定義したクラスの<code>hogehoge</code>メソッドをOptional Chaningを利用して実行します。</p>
+
+<p>```objective-c
+var hoge: Hoge? = Hoge()</p>
+
+<p>// Optional Chaining
+hoge?.hogehoge()
+```</p>
+
+<p>このようにSwiftではコーディングしていく段階でかなり<code>nil</code>に注意する必要があることがわかります。</p>
+
+<h5>Java8のOptional型とは</h5>
+
+<p>次にJava8のOptional型について見ていきましょう！<br/>
+Java8ではOptionalを利用することで</p>
+
+<ul>
+<li><code>null</code>の可能性がある変数をラップしておくことで、値を安全に取り出せる</li>
+<li>実行したメソッドが<code>null</code>を返却する可能性がある場合に、場合分けを短く書ける</li>
+</ul>
+
+
+<p>というメリットがあります。<br/>
+では実際に使い方を見ていきましょう！</p>
+
+<p>```java
+String hoge = &ldquo;hoge&rdquo;;</p>
+
+<p>// Optional型にラップする
+Optional<String> hogeOpt = Optional.of(hoge);</p>
+
+<p>// Optional型から値を取り出す
+// getメソッドを使う
+System.out.println(hogeOpt.get());</p>
+
+<p>// orElseメソッドを使う
+System.out.println(hogeOpt.orElse(&ldquo;default data&rdquo;));</p>
+
+<p>// orElseGetメソッドを使う
+System.out.println(hogeOpt.orElseGet(() &ndash;> &ldquo;default data&rdquo;));</p>
+
+<p>// ifPresentメソッドを使う
+hogeOpt.ifPresent( hoge &ndash;> {</p>
+
+<pre><code>// 値があったときにログ出力
+System.out.println(hoge);
+</code></pre>
+
+<p>});
+```</p>
+
+<p>上記を見ると幾つか値の取得方法があることがわかると思います。<br/>
+それぞれSwiftの表記に近しいところがあると感じました。</p>
+
+<p>例えば、<code>get</code>メソッドは値が<code>null</code>だった場合に<code>NoSuchElementException</code>を投げます。<br/>
+逆に言えば、確実に<code>null</code>が来ない場合の<code>get</code>メソッドが利用できると言えます。<br/>
+これはSwiftで言うところの『Forced Unwrapping』です。</p>
+
+<p><code>orElse</code>や<code>orElseGet</code>はSwiftで言うところのnil合体演算子である『??』を利用しているのとほぼ同等です。<br/>
+(Swiftであれば<code>let val = hoge ?? "default data"</code>みたいな感じですね。)</p>
+
+<p><code>ifPresent</code>メソッドもSwiftで言うところの『Optional Binding』と言えるでしょう。</p>
+
+<h4>まとめ</h4>
+
+<p>さて如何でしたでしょうか？<br/>
+Android Studio 2.2からJava8のラムダ式サポートなんて話も聞こえてきますし、<br/>
+スマートフォンのアプリ開発者は今後、SwiftにもJava8にも関わっていく可能性が十分ありえます。<br/>
+そうなったときに学習コストが高いな〜と避けるのではなく、案外触ってみると「あれ！？似てる&hellip;」なんてことがあるかもしれません。<br/>
+そんな近未来！？を夢見つつブログを書いてみたのでした。<br/>
+ということで今日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://qiita.com/maiki055/items/b24378a3707bd35a31a8">どこよりも分かりやすいSwiftの"?&ldquo;と&rdquo;!"</a></li>
+<li><a href="http://www.task-notes.com/entry/20150708/1436324400">Java8のOptionalの使い方について</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftとJava8とJavaScriptでreduce / filter / map / flatMap]]></title>
+    <link href="http://grandbig.github.io/blog/2016/06/12/filter-map/"/>
+    <updated>2016-06-12T21:01:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/06/12/filter-map</id>
+    <content type="html"><![CDATA[<h4>SwiftとJava8とJavaScriptを比較してみよう！</h4>
+
+<p>本日は前々から気になっていた『SwiftとJava8とJavaScript』の比較をしてみたいと思います。<br/>
+と言っても難しいことをやるわけではなく、今回はreduce, filter, map, flatMapメソッドの書き方を比較してみます。</p>
+
+<p>筆者個人としては、どうしてもSwiftやJava8から書き方やメソッドの意味の理解を始めようとすると時間がかかってしまいます。<br/>
+なので、JavaScriptから入って比較することで理解が促進することがあるのです。</p>
+
+<p>では早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>reduceメソッド</h4>
+
+<p>まずは<code>reduce</code>メソッドです。</p>
+
+<h5>JavaScript</h5>
+
+<p>```javascript
+var array = [1, 2, 3, 4, 5];
+var reduced = array.reduce(function(previus, current) {</p>
+
+<pre><code>return previous + current;
+</code></pre>
+
+<p>}, 0);</p>
+
+<p>// 結果 &ndash;> 15
+```</p>
+
+<h5>Swift</h5>
+
+<p>```objective-c
+let array = [1, 2, 3, 4, 5]
+let reduced = array.reduce(0) { (previous, current) &ndash;> Int in</p>
+
+<pre><code>previous + current
+</code></pre>
+
+<p>}</p>
+
+<p>// 結果 &ndash;> 15
+```</p>
+
+<h5>Java8</h5>
+
+<p>```java
+List<Integer> integerList = Arrays.asList(1, 2, 3, 4, 5);
+Optional<Integer> sum = list.stream().reduce((previous, current) &ndash;> previous + current);</p>
+
+<p>// 結果 &ndash;> 15
+```</p>
+
+<h4>filterメソッド</h4>
+
+<p>次に<code>filter</code>メソッドです。</p>
+
+<h5>JavaScript</h5>
+
+<p>```javascript
+var array = [1, 50, 800, 3, 44];
+var filtered = array.filter(function(elem) {</p>
+
+<pre><code>return elem &gt;= 10;
+</code></pre>
+
+<p>});</p>
+
+<p>// 結果 &ndash;> [50, 800, 44]
+```</p>
+
+<h5>Swift</h5>
+
+<p>```objective-c
+let array = [1, 50, 800, 3, 44]
+var filtered = array.filter { (elem) &ndash;> Bool in</p>
+
+<pre><code>elem &gt;= 10
+</code></pre>
+
+<p>}</p>
+
+<p>// 結果 &ndash;> [50, 800, 44]
+```</p>
+
+<h5>Java8</h5>
+
+<p>```java
+List<Integer> list = Arrays.asList(1, 50, 800, 3, 44);
+List<Integer> filteredList = new ArrayList<Integer>();
+list.stream().filter(elem &ndash;> elem >= 10).forEach(elem &ndash;> filteredList.add(elem));</p>
+
+<p>// 結果 &ndash;> [50, 800, 44]
+```</p>
+
+<h4>mapメソッド</h4>
+
+<p>続いて<code>map</code>メソッドです。</p>
+
+<h5>JavaScript</h5>
+
+<p>```javascript
+var array = [1, 2, 3, 4, 5];
+var mapped = array.map(function(elem) {</p>
+
+<pre><code>return elem * elem;
+</code></pre>
+
+<p>});</p>
+
+<p>// 結果 &ndash;> [1, 4, 9, 16, 25]
+```</p>
+
+<h5>Swift</h5>
+
+<p>```objective-c
+let array = [1, 2, 3, 4, 5]
+var mapped = array.map { (elem) &ndash;> Int in</p>
+
+<pre><code>elem * elem
+</code></pre>
+
+<p>}</p>
+
+<p>// 結果 &ndash;> [1, 4, 9, 16, 25]
+```</p>
+
+<h5>Java8</h5>
+
+<p>```java
+List<Integer> list = Arrays.asList(1, 2, 3, 4, 5);
+List<Integer> mappedList = new ArrayList<Integer>();
+list.stream().map(elem &ndash;> elem * elem).forEach(elem &ndash;> mappedList.add(elem));</p>
+
+<p>// 結果 &ndash;> [1, 4, 9, 16, 25]
+```</p>
+
+<h4>flatMapメソッド</h4>
+
+<p>最後に<code>flatMap</code>メソッドです。<br/>
+(と言いつつ、処理の意味的には<code>flatten</code>しか入っていませんね&hellip;)</p>
+
+<h5>JavaScript</h5>
+
+<p>JavaScriptでは標準で<code>flatMap</code>メソッドは実装されていません。<br/>
+自作するしかないわけですが、<code>flatMap = flatten + map</code>なので下記のように書けます。</p>
+
+<p>```javascript
+var listArrayList = [[1, 2], [3], [4, 5]]
+var flatMappedList = Array.prototype.concat.apply([], listArrayList).map(function(elem) {</p>
+
+<pre><code>return elem;
+</code></pre>
+
+<p>});</p>
+
+<p>// 結果 &ndash;> [1, 2, 3, 4, 5]
+```</p>
+
+<h5>Swift</h5>
+
+<p>```objective-c
+var listArrayList:[Int]] = []
+let list1: [Int] = [1, 2]
+let list2: [Int] = [3]
+let list3: [Int] = [4, 5]
+listArrayList.append(list1)
+listArrayList.append(list2)
+listArrayList.append(list3)</p>
+
+<p>let flatMappedList = listArrayList.flatMap { (elem) &ndash;> [Int] in</p>
+
+<pre><code>return elem
+</code></pre>
+
+<p>}</p>
+
+<p>// 結果 &ndash;> [1, 2, 3, 4, 5]
+```</p>
+
+<h5>Java8</h5>
+
+<p>```java
+List&lt;List<Integer>> listArrayList = new ArrayList&lt;List<Integer>>();
+List<Integer> list1 = Arrays.asList(1, 2);
+List<Integer> list2 = Arrays.asList(3);
+List<Integer> list3 = Arrays.asList(4, 5);
+listArrayList.add(list1);
+listArrayList.add(list2);
+listArrayList.add(list3);
+List<Integer> flatMappedList = new ArrayList<Integer>();
+listArrayList.stream().flatMap(elem &ndash;> elem.stream()).forEach(elem &ndash;> flatMappedList.add(elem));</p>
+
+<p>// 結果 &ndash;> [1, 2, 3, 4, 5]
+```</p>
+
+<p>さていかがでしたでしょうか？<br/>
+1つの言語を極めれば、何となく他の言語でも書き方がわかるという話を聞いたりすると思うのですが、こういったことの延長戦にある話なんだろうなと思ったりました。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Spring Bootでリダイレクト先にパラメータを渡す方法]]></title>
+    <link href="http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot/"/>
+    <updated>2016-05-28T20:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot</id>
+    <content type="html"><![CDATA[<h4>RedirectAttributesを使ってみよう！</h4>
+
+<p>さて、本日は久々にSpring Bootの話です。</p>
+
+<p>皆さんはWebアプリケーションを作る中で、「リダイレクト先にパラメータを渡したい！」なんてことはありませんでしょうか？<br/>
+筆者は先日、そのような状況に鉢合わせたのですが、ググってみてもなかなか求めている答えが見つからず、少々悩んでしまいました。<br/>
+GETリクエストであればリダイレクト後にURLからリクエストパラメータが取得できますが、<br/>
+POSTリクエストやURLにリクエストパラメータを表示するわけにいかない仕様の場合はそうもいきません。</p>
+
+<p>そんなときに役に立つのが<code>RedirectAttributes</code>です。<br/>
+では、早速、使い方を見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<h4>リダイレクト先に文字列を送る</h4>
+
+<p>まずは単純な例から見ていきましょう。<br/>
+下記はリダイレクト先に文字列をパラメータとして渡す例です。</p>
+
+<p>```java
+// HelloController
+@Controller
+public class HelloController {</p>
+
+<pre><code>@RequestMappinf(value = "/", method = RequestMethod.POST)
+public String form(RedirectAttributes redirectAttributes, @RequestParam("name") String name) {
+
+    redirectAttributes.addFlashSttribute("name", name);
+    return "redirect:/redirectSample";
+}
+
+@RequestMapping("/redirectSample")
+public String sample(@ModelAttributes("name") String name) {
+
+    System.out.println("name: " + name);
+    return "sample";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>実際に動かしてみれば、正しくログが出力されることを確認できるでしょう。<br/>
+上記で<code>return "sample";</code>としているのは単なる例なので、適切なtemplateを指定してあげてください。</p>
+
+<h4>リダイレクト先にオブジェクトを送る</h4>
+
+<p>続いて、パラメータをまとめて送るパターンです。<br/>
+今回は下記のように定義された<code>MyData</code>を送ってみましょう。<br/>
+※ソースを簡単にするために<code>build.gradle</code>に<code>compile("org.projectlombok:lombok:1.16.6")</code>を設定して<code>@Data</code>を利用しています。</p>
+
+<p>```java
+// MyData.java
+@Data
+public class MyData {</p>
+
+<pre><code>private String name;
+private String memo;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>では、実際にパラメータを送ってみましょう。</p>
+
+<p>```java
+// HelloController</p>
+
+<p>@Controller
+public class HelloController {</p>
+
+<pre><code>@RequestMapping(value = "/", method = RequestMethod.POST)
+public String form(RedirectAttributes redirectAttributes, @RequestParam("name") String name, @RequestParam("memo") String memo) {
+
+    // MyDataについては後述します
+    MyData mydata = new MyData(name, memo);
+    ModelMap modelMap = new ModelMap();
+    modelMap.addAttribute("mydata", mydata);
+    redirectAttributes.addFlashAttribute("model", modelMap);
+
+    return "redirect:/redirectSample";
+}
+
+@RequestMapping("/redirectSample")
+public String sample(@ModelAttribute("model")ModelMap modelMap) {
+
+    MyData mydata = modelMap.get("mydata");
+    String name = mydata.getName();
+    String memo = mydata.getMemo();
+    System.out.println("name: " + name + ", memo: " + memo);
+
+    return "sample";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>オブジェクトとしてパラメータを送るには<code>ModelMap</code>に一度格納する必要があります。<br/>
+パラメータを受け取ったあとに型変換して取り出せばOKです。</p>
+
+<h4>RedirectAttributesにおけるaddAttributeとaddFlashAttributeの違い</h4>
+
+<p>さて、今回は<code>RedirectAttributes</code>の<code>addFlashAttribute</code>を利用しましたが、<code>RedirectAttributes</code>には<code>addAttribute</code>というメソッドも存在します。<br/>
+ではなぜ<code>addFlashAttribute</code>を利用したのか参考までに書いておきます。</p>
+
+<h5>RedirectAttributesのaddAttributeはリダイレクト先に文字列としてパラメータを送る</h5>
+
+<p>大きな違いは<code>addFlashAttribute</code>のように<code>ModelMap</code>型でパラメータを送れません。<br/>
+よって、複数のパラメータを送るには1つずつパラメータをセットするしか方法がありません。</p>
+
+<p><code>java
+// addAttributeの例
+redirectAttributes.addAttribute("name", "hogehoge");
+redirectAttributes.addAttribute("memo", "fugafuga");
+</code></p>
+
+<h5>RedirectAttributesのaddAttributeはリダイレクト先でのパラメータの受取り方が異なる</h5>
+
+<p>こちらも大きな違いとなりますが、<code>addFlashAttribute</code>のときのように<code>@ModelAttribute</code>を使ってパラメータを受け取ることができません。<br/>
+<code>addAttribute</code>の場合、<code>@RequestParameter</code>を使ってパラメータを受取ります。</p>
+
+<p>```java
+// addAttributeの例
+@RequestMapping(&ldquo;/redirectSample&rdquo;)
+public String sample(@RequestParam(&ldquo;name&rdquo;) String name, @RequestParam(&ldquo;memo&rdquo;) String memo) {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>リロード時の挙動が異なる</h5>
+
+<p>最後になりますが、<br/>
+<code>addAttribute</code>と<code>addFlashAttribute</code>ではリダイレクト後にリロードすると挙動が異なります。<br/>
+<code>addAttribute</code>ではGETリクエストとしてURLの末尾に<code>?name=hogehoge&amp;memo=fugafuga</code>という形でパラメータが渡されるため、リロードをしてもパラメータを受け取ることができます。</p>
+
+<p>しかし、<code>addFlashAttribute</code>では<code>flashMap</code>を利用したパラメータ渡しとなっています。<br/>
+よって、リダイレクト後は<code>flashMap</code>からパラメータが残らないため、何もパラメータを受け取ることはできなくなります。</p>
+
+<p>いかがでしたでしょうか？<br/>
+筆者にとってもSpring Bootに慣れない日々が続きますが、気づいたことや学んだことについてはブログにまとめていきたと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[快適なSpring BootプログラミングのためにIntelliJ IDEA Ultimate版を購入しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/04/30/start-spring-boot-intellij-ultimate/"/>
+    <updated>2016-04-30T14:48:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/04/30/start-spring-boot-intellij-ultimate</id>
+    <content type="html"><![CDATA[<h4>はじめに</h4>
+
+<p>筆者は決してJetBrains社の回し者ではありません笑<br/>
+最近、Spring Bootにチャレンジしているのですが、自宅ではvimを使っていました。<br/>
+なぜかって、IntelliJ IDEA Community版だとSpring Bootプログラミングの際に面倒なことが多いんですもの&hellip;。<br/>
+しかしながら、vimでSpring Bootプログラミングを続けるのもしんどいので、<br/>
+とうとうIntelliJ IDEA Ultimate版に手を出してしまったということなんです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>IntelliJ IDEA Ultimate版とは</h4>
+
+<p>さて、早速、IntelliJ IDEA Ultimate版の何が良いかについて説明していきます。<br/>
+IntelliJ IDEAとは<a href="https://www.jetbrains.com/">JetBrains</a>社が開発した多言語対応の統合開発環境のことです。<br/>
+Android StudioがIntelliJ IDEAを元に作られていることは割りと有名な話ですね。</p>
+
+<p>筆者が<a href="http://grandbig.github.io/blog/2016/04/16/start-spring-boot/">Spring Bootを使い始めよう！</a>の記事内で使用していたIntelliJ IDEAはCommunity版だったのですが、<br/>
+もちろん、Community版でもプログラミングを書くことやGradleによるビルド実行は問題ありません。<br/>
+しかし、Community版では例えば下記のようなことに対応できません。</p>
+
+<ul>
+<li>Spring Boot Framework関連の予測変換</li>
+<li>Thymeleaf関連の予測変換</li>
+<li>Spring Bootを利用したプロジェクトをIntelliJから新規作成可能</li>
+</ul>
+
+
+<p>これに対応したのが <strong>IntelliJ IDEA Ultimate版</strong> なのです。<br/>
+詳細は公式サイトから知ることができます。</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate1.png" alt="IntelliJ 比較表" /></p>
+
+<p>また、価格ですが、個人版であれば、ビジネス版よりも比較的に安く購入することができます。<br/>
+1年単位での購入なのですが、使い続けるほどに安くなるという価格設定がエンジニア魂をくすぐります。<br/>
+下図のように、3年目以降は初年度の半額弱にまで安くなります。<br/>
+(Apple Developer Programも同じような仕組みにして欲しいですね笑)</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate2.png" alt="IntelliJ IDEA Ultimate版の価格" /></p>
+
+<p>因みに、同ページに「All Products Pack」という商品もありますが、<br/>
+PHP, Ruby等々を無双したい方向けなので、筆者には今のところ不要です。</p>
+
+<h4>IntelliJ IDEA Ultimate版の購入と設定</h4>
+
+<p>IntelliJ IDEA Ultimate版の購入方法と設定について説明します。<br/>
+購入は非常に簡単です。</p>
+
+<p>1．<a href="https://www.jetbrains.com/idea/buy/#edition=personal">Buyページ</a>で <strong>Buy Now</strong> をクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate2.png" alt="Buyページ" /></p>
+
+<p>2．CustomerページでEmailアドレスを入力してNEXTをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate3.png" alt="Customerページ" /></p>
+
+<p>3．Emailアドレスと国を確認してPROCESS AS NEW CUSTOMERをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate4.png" alt="Customerページ2" /></p>
+
+<p>4．Customer Infoページで必要事項を入力してPLACE ORDERをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate5.png" alt="Customer Infoページ" /></p>
+
+<p>5．JetBrains社から届いたメールの添付ファイルを開封して、リンクをクリックしてActivationページへ遷移</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate6.png" alt="JetBrains社から届いたメールの添付ファイル" /></p>
+
+<p>6．Activationページを確認</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate7.png" alt="Activationページ" /></p>
+
+<p>ここまでで、購入完了したことを確認できます。<br/>
+続いて設定に必要な工程について説明します。</p>
+
+<p>7．ActivationページでDownload activation codeをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate8.png" alt="Activationページ2" /></p>
+
+<p>8．IntelliJ IDEA Ultimate版をDownLoad</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate9.png" alt="Ultimate版をDownLoad" /></p>
+
+<p>9．Activation codeをIntelliJ IDEA Ultimate版に登録</p>
+
+<p>DownLoadしたIntelliJ IDEA Ultimate版を起動して、先ほどDownLoadしたActivation codeを設定しましょう。</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate10.png" alt="IntelliJ IDEA Ultimate" /></p>
+
+<p>以上で設定も完了です。</p>
+
+<h4>IntelliJ IDEA Ultimate版でSpring Bootを始めよう！</h4>
+
+<p>では、IntelliJ IDEA Ultimate版でSpring Bootを利用する新規プロジェクトを作成しましょう。</p>
+
+<p>1．IntelliJ IDEA Ultimate版を起動してCreate New Projectをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate11.png" alt="Create New Project" /></p>
+
+<p>2．Spring Inilializrを選択</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate12.png" alt="Spring Initializr" /></p>
+
+<p>3．各種名称や項目を設定</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate13.png" alt="各種名称や項目の設定" /></p>
+
+<p>4．必要なDependencyを設定</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate14.png" alt="必要な名称や項目の設定" /></p>
+
+<p>5．プロジェクト名と保存場所を設定</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate15.png" alt="プロジェクト名と保存場所を設定" /></p>
+
+<p>6．Gradleの設定の確認</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate16.png" alt="Gradleの設定の確認" /></p>
+
+<p>以上で新規プロジェクトが作成できました。<br/>
+プロジェクトを実行してみましょう。</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate17.png" alt="プロジェクトの実行" /></p>
+
+<p>さて、如何でしたでしょうか？<br/>
+非常に簡単に導入できますし、使い勝手も良いので、これからSpring Bootプログラミングを始める方は検討してみてはいかがでしょうか？<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: in-app-purchase | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/in-app-purchase/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-12-02T19:17:09+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iOSアプリ内課金: 自動更新購読]]></title>
+    <link href="http://grandbig.github.io/blog/2016/09/25/ios-in-app-purchase/"/>
+    <updated>2016-09-25T17:45:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/09/25/ios-in-app-purchase</id>
+    <content type="html"><![CDATA[<h3>アプリ内課金とは</h3>
+
+<p>アプリ内課金とはiTunes Storeを通してアプリ内の様々なものを購入する機能です。<br/>
+例えば、</p>
+
+<ol>
+<li>電子書籍アプリの購読</li>
+<li>コミュニケーションアプリのスタンプ</li>
+<li>ゲームアプリの協力なアイテム</li>
+</ol>
+
+
+<p>などが該当します。<br/>
+2と3に関しては買い切りプランとして、1は一定の購読期間を持ったプランとしてAppleから提供されています。<br/>
+本記事では一定の購読期間を持ったプラン <strong>自動更新購読(Auto-Renewing subscription)</strong> について書きます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>自動更新購読(Auto-Renewing subscripion)とは</h3>
+
+<p>アプリ内課金をアプリに実装する場合、もちろん事前にできる限りのテストをしなければいけません。Appleはテスト用にSandbox環境を用意しています。<br/>
+では、Sandbox環境と本番環境は何が違うのでしょう。<br/>
+また、アプリがどの状態のときにSandbox環境で試すことができ、どこから本番環境となるのでしょう。</p>
+
+<h4>購読期間の違い</h4>
+
+<p>まず、Sandbox環境では、テストをしやすくするために実際の購読期間よりも短い期間となっています。<br/>
+1年を1時間と考えれば、1〜12ヶ月まで空で時間を計算できますが、7日のみ3分が割り当てられていることに注意しましょう。<br/>
+(同じ割合で行くと、流石に短すぎるからだと思われます。)</p>
+
+<p>Sandbox環境</p>
+
+<ul>
+<li>7日 → 3分</li>
+<li>1ヶ月 → 5分</li>
+<li>2ヶ月 → 10分</li>
+<li>3ヶ月 → 15分</li>
+<li>6ヶ月 → 30分</li>
+<li>12ヶ月 → 60分</li>
+</ul>
+
+
+<h4>Sandbox環境では自動更新キャンセルができない</h4>
+
+<p>Sandbox環境では、iTunes Connectで作成するテスト用のApple IDアカウントを使用します。<br/>
+しかしながら、本物のアカウントでないため、設定アプリから購読の自動更新をキャンセルすることはできません。</p>
+
+<p><img src="/images/in-app-purchase-1.png" alt="設定アプリから管理画面には遷移できない" /></p>
+
+<p>自動更新をキャンセルすることができない代わりに、自動で5回だけ購読が更新されます。<br/>
+つまり、1回購読を始めれば、計6回分だけ購読が続きます。</p>
+
+<p>しかしながら、自動で購読が更新されると言っても、即時更新ではありません。<br/>
+(恐らく、Apple側のサーバでもバッチを回しているのではないでしょうか&hellip;)</p>
+
+<p>例えば、Sandbox環境で1ヶ月プランを購入したとしましょう。</p>
+
+<ul>
+<li>1回目の購入日: 2016/09/25 10:00:00.000</li>
+<li>1回目の期限日: 2016/09/25 10:05:00.000</li>
+<li>2回目の購入日: 2016/09/25 10:07:00.000</li>
+</ul>
+
+
+<p>このように「1回目の期限日」と「2回目の購入日」が完全一致するわけではないのです。<br/>
+こういった仕様を理解した上でテストを進めないと思わぬ誤った結果を出してしまうかもしれません。</p>
+
+<h4>請求の有無について</h4>
+
+<p>開発中に最も気になるのは請求の有無ではないでしょうか？<br/>
+心配しなくともSandbox環境では請求は発生しません。<br/>
+もちろん本番環境では請求が発生します。</p>
+
+<h4>アプリの状態別環境</h4>
+
+<p>iOSアプリは様々な状態が存在します。<br/>
+それは次の5つです。<br/>
+Develop / Adhoc / TestFlight / Promotion Code / Release</p>
+
+<p>各状態で本番環境とSandbox環境のどちらが使えるのかまとめると下記のようになります。</p>
+
+<ul>
+<li>Sandbox環境
+
+<ul>
+<li>Develop</li>
+<li>Adhoc</li>
+<li>TestFlight</li>
+</ul>
+</li>
+<li>本番環境
+
+<ul>
+<li>Promotion Code</li>
+<li>Release</li>
+</ul>
+</li>
+</ul>
+
+
+<p>Promotion Codeでアプリを配布するには、Appleの審査を通過する必要があります。</p>
+
+<h3>レシート検証</h3>
+
+<p>自動更新購読は買い切りと違って、継続した結果をサービス提供側のサーバで保持しておく必要があります。<br/>
+(サービス特性上、それがないのはサーバを使わずにアプリ内で完結する場合のみでしょう。)<br/>
+そこで避けては通れないのが <strong>レシート検証</strong> です。</p>
+
+<p>レシート検証には2種類の方法があります。</p>
+
+<ul>
+<li>ローカル検証
+
+<ul>
+<li>アプリ内で独自実装します。</li>
+<li>独自実装する理由は公開されたサードパーティ製ライブラリを使うと仕組みがバレてしまうからです。</li>
+</ul>
+</li>
+<li>App Store検証
+
+<ul>
+<li>信頼できるサーバを用意してサーバサイド処理として実装します。</li>
+<li>アプリから直接App Storeに検証しに行くことは脆弱性があるため推奨されていません。</li>
+</ul>
+</li>
+</ul>
+
+
+<h4>App Store検証</h4>
+
+<p>App Store検証できるように、Appleは <strong>レシート検証API</strong> を用意しています。<br/>
+ここでも本番環境とSandbox環境でアクセス先URLに違いがあります。</p>
+
+<ul>
+<li>Sandbox環境URL: <a href="https://sandbox.itunes.apple.com/verifyReceipt">https://sandbox.itunes.apple.com/verifyReceipt</a></li>
+<li>本番環境URL: <a href="https://buy.itunes.apple.com/verifyReceipt">https://buy.itunes.apple.com/verifyReceipt</a></li>
+</ul>
+
+
+<p>共にリクエストパラメータは2種類になります。</p>
+
+<ul>
+<li><code>receipt_data</code>
+
+<ul>
+<li>base64エンコードを施したレシートデータ</li>
+</ul>
+</li>
+<li><code>password</code>
+
+<ul>
+<li>iTunes Connectで発行した共有シークレットキー</li>
+</ul>
+</li>
+</ul>
+
+
+<p>また、レスポンスデータも同じになります。<br/>
+ここでは重要なものだけ書きます。</p>
+
+<ul>
+<li><code>status</code>
+
+<ul>
+<li>有効なレシートの場合は <strong>0</strong> 。それ以外は幾つかの理由で無効なレシートとなっています。</li>
+</ul>
+</li>
+<li><code>receipt</code>
+
+<ul>
+<li><code>bundle_id</code>: iOSアプリの<code>CFBundleIdentifier</code></li>
+<li><code>application_version</code>: iOSアプリの<code>CFBundleVersion</code></li>
+<li><code>in_app</code>: 購買履歴(自動更新購読の場合、更新された段階で追加されます。)</li>
+<li><code>original_application_version</code>: iOSアプリの<code>CFBundleVersion</code></li>
+<li><code>product_id</code>: 購入アイテムのプロダクトID</li>
+<li><code>transaction_id</code>: 購入アイテムのトランザクションID</li>
+</ul>
+</li>
+<li><code>latest_receipt</code>
+
+<ul>
+<li>base64エンコードを施した直近の更新に対応するトランザクションレシート</li>
+</ul>
+</li>
+<li><code>latest_receipt_info</code>
+
+<ul>
+<li>購読履歴(自動更新購読の場合、更新された段階で追加されます。)</li>
+</ul>
+</li>
+</ul>
+
+
+<p>上記のレスポンスデータ概要を見ると、<br/>
+<code>receipt.in_app</code>と<code>latest_receipt_info</code>は同じものに見えます。<br/>
+実際にはレシート検証APIを叩いたタイミングで取得できるデータは異なります。<br/>
+Appleは<code>in_app</code>を利用することを推奨しており、<code>latest_receipt</code>と<code>latest_receipt_info</code>は「 <strong>iOS 6型のトランザクションレシートの場合のみ。</strong> 」としています。<br/>
+しかしながら、iOS7以降でもこれらの値は返却されてきます。<br/>
+ここがネット上で調べてもはっきりしない部分ではあるのですが、筆者の試した感覚では<code>latest_receipt_info</code>は<code>in_app</code>よりもリアルタイムに情報が更新されている気がしています。<br/>
+<code>in_app</code>は自動で更新された後にレシート検証APIを叩いても1回目は必ず情報が更新されていません。<br/>
+1回目で返却された<code>latest_receipt</code>を<code>receipt_data</code>として利用すると正しく更新された<code>in_app</code>が返却されます。<br/>
+(Sandbox環境の場合であって、本番環境では検証できていません。)</p>
+
+<p>このことを考えると、<code>in_app</code>は非常に使いにくいものに思われますが、使い方に寄るのかもしれません&hellip;<br/>
+今後、<code>latest_receipt</code>と<code>latest_receipt_info</code>が廃止されてしまうかもしれませんし、そうなったときにAppleは事前に告知をするのか&hellip;などなど不安要素は実にたくさんあります。</p>
+
+<p>アプリ側では、起動時に課金周りの監視処理を必ず実行する必要があります。<br/>
+これを実行することで、自動更新購読の場合に更新を検知してサーバに送信するといったフローができるためでしょう。</p>
+
+<p>冒頭に上げた2種類のレシート検証APIの使い道は様々あるのかもしれませんが、<br/>
+筆者としては今のところ</p>
+
+<ul>
+<li>ローカル検証
+
+<ul>
+<li>必ずアプリ側の処理に組み込む</li>
+</ul>
+</li>
+<li>App Store検証
+
+<ul>
+<li>アプリ不具合やクラッシュなどで漏れたユーザへの対応</li>
+<li>アプリを起動しないユーザへの対応</li>
+</ul>
+</li>
+</ul>
+
+
+<p>と考えています。<br/>
+つまりはどちらも必要なんですね。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、筆者的にはもう少しローカル検証やリストアに関しての理解が乏しいと感じています。<br/>
+これからまだまだ関わる気もするので、また理解が進んだら続きを書こうかなと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考</p>
+
+<ul>
+<li><a href="https://developer.apple.com/jp/documentation/ValidateAppStoreReceipt.pdf">レシート検証 プログラミングガイド</a></li>
+<li><a href="http://ameblo.jp/principia-ca/entry-12071724382.html">自動購買課金について</a></li>
+<li><a href="http://qiita.com/monoqlo/items/24d36e3a95bc813a7276">In-App Purchaseを実装する際に調べたことまとめ</a></li>
+<li><a href="http://qiita.com/koyopro/items/c6c387b136da1698f666">iOSアプリの課金検証環境</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

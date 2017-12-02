@@ -1,0 +1,1169 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>QuickでSwiftコードのUnitテストをしよう！(2) - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに 今回は久しぶりにQuickを使ったSwiftコードでのUnitテストについて見ていきたいと思います。
+前回記事を書いてから実に1年以上経過しました。
+当時、筆者はテスト駆動型での開発を業務で実行することがありませんでした。 &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2017/05/06/quick-2/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">QuickでSwiftコードのUnitテストをしよう！(2)</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-05-06T19:39:00+09:00" pubdate data-updated="true">May 6<span>th</span>, 2017</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>今回は久しぶりに<code>Quick</code>を使ったSwiftコードでのUnitテストについて見ていきたいと思います。<br/>
+<a href="https://grandbig.github.io/blog/2016/01/16/quick/">前回</a>記事を書いてから実に1年以上経過しました。<br/>
+当時、筆者はテスト駆動型での開発を業務で実行することがありませんでした。
+最近は当たり前に単体テストを書かずにコードを書くことがありえないという開発環境になってきました。<br/>
+しかし、それはWEBの世界に閉じており、iOSの世界では未だ、単体テストを書く工数が見合わないといった話が議論されていたりします。<br/>
+言わんとすることはわからんでもないものの、WEBの世界でもテスト駆動型開発が広まるまではきっと同じような話をしていたのではないかと思ったりしています。<br/>
+つまり、今後はiOSでも単体テストを書かないなんてありえないといった世界になるのでは？と期待しているのです。</p>
+
+<p>そんな期待を抱きつつ、本記事を書いていきたいと思います。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>テスト内容</h3>
+
+<p>今回テスト内容として<code>Realm</code>に関わる処理を取り上げたいと思います。<br/>
+狙いとしてはSpring BootでWEBアプリケーションを開発したときで言うところの<code>Repository</code>に関するテストといったイメージになります。</p>
+
+<h3>テスト対象処理</h3>
+
+<p>さて、具体的なテストの対象となる処理を書きます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// IDからデータを検索</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">searchEngineerById</span><span class="p">(</span><span class="n">_</span> <span class="kt">id</span><span class="o">:</span> <span class="n">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Engineer</span><span class="o">?</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">filter</span><span class="p">(</span><span class="s">&quot;id == \(id)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">engineers</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">engineers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">nil</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 名前からデータを検索</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">searchEngineerByName</span><span class="p">(</span><span class="n">_</span> <span class="nl">name:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Results</span><span class="o">&lt;</span><span class="n">Engineer</span><span class="o">&gt;?</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">filter</span><span class="p">(</span><span class="s">&quot;name == &#39;\(name)&#39;&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">engineers</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">engineers</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">nil</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 保存しているデータ数を取得</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">countEngineer</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Int</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">count</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 新規データ作成</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">createEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="n">String</span><span class="p">,</span> <span class="nl">level:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="n">String</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">searchEngineerByName</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">nil</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 既に検索結果がある場合は処理を終了</span>
+</span><span class='line'>      <span class="k">return</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 検索結果がない場合は処理を継続</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">skillList</span> <span class="o">=</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Skill</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>    <span class="k">for</span> <span class="n">skill</span> <span class="k">in</span> <span class="n">skills</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">newSkill</span> <span class="o">=</span> <span class="n">Skill</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">newSkill</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">skill</span>
+</span><span class='line'>      <span class="n">skillList</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">newSkill</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">Engineer</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">engineer</span><span class="p">.</span><span class="kt">id</span> <span class="o">=</span> <span class="n">countEngineer</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">engineer</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+</span><span class='line'>    <span class="n">engineer</span><span class="p">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">level</span>
+</span><span class='line'>    <span class="n">engineer</span><span class="p">.</span><span class="n">skills</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="nl">objectsIn:</span> <span class="n">skillList</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">realm</span><span class="p">.</span><span class="n">create</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">value:</span> <span class="n">engineer</span><span class="p">,</span> <span class="nl">update:</span> <span class="n">false</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// IDを元にレベルを更新</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">updateEngineerLevelById</span><span class="p">(</span><span class="n">_</span> <span class="kt">id</span><span class="o">:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">level:</span> <span class="n">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">searchEngineerById</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 検索結果がある場合は処理を継続</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">level</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 検索結果がない場合は処理を終了</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">false</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// IDを元にスキルを更新</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">updateEngineerSkillById</span><span class="p">(</span><span class="n">_</span> <span class="kt">id</span><span class="o">:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="n">String</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">searchEngineerById</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 検索結果がある場合は処理を継続</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">skill</span> <span class="k">in</span> <span class="n">skills</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">let</span> <span class="n">newSkill</span> <span class="o">=</span> <span class="n">Skill</span><span class="p">()</span>
+</span><span class='line'>          <span class="n">newSkill</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">skill</span>
+</span><span class='line'>          <span class="n">engineer</span><span class="p">.</span><span class="n">skills</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">newSkill</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 検索結果がない場合は処理を終了</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">false</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Quickの導入方法</h3>
+
+<p>Swift3になっていることもあるので、念のためQuickの導入方法を書いておきたいと思います。<br/>
+(<code>Realm</code>も使っていることに注意してください。)</p>
+
+<p><code>CocoaPods</code>にて導入します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp"># Podfile</span>
+</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="s">&quot;QuickTestSample&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="err">#</span> <span class="n">Normal</span> <span class="n">libraries</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RealmSwift</span><span class="err">&#39;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">abstract_target</span> <span class="err">&#39;</span><span class="n">Tests</span><span class="err">&#39;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">inherit</span><span class="o">!</span> <span class="o">:</span><span class="n">search_paths</span>
+</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;QuickTestSampleTests&quot;</span>
+</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;QuickTestSampleUITests&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Quick</span><span class="err">&#39;</span>
+</span><span class='line'>    <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Nimble</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">end</span>
+</span><span class='line'><span class="n">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">post_install</span> <span class="k">do</span> <span class="o">|</span><span class="n">installer</span><span class="o">|</span>
+</span><span class='line'>  <span class="n">installer</span><span class="p">.</span><span class="n">pods_project</span><span class="p">.</span><span class="n">targets</span><span class="p">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">target</span><span class="o">|</span>
+</span><span class='line'>    <span class="n">target</span><span class="p">.</span><span class="n">build_configurations</span><span class="p">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">config</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">config</span><span class="p">.</span><span class="n">build_settings</span><span class="p">[</span><span class="err">&#39;</span><span class="n">SWIFT_VERSION</span><span class="err">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="err">&#39;</span><span class="mf">3.0</span><span class="err">&#39;</span>
+</span><span class='line'>    <span class="n">end</span>
+</span><span class='line'>  <span class="n">end</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Quickでのテストコードの実装</h3>
+
+<p>早速、Quickでのテストコードを実装していきましょう。</p>
+
+<h4>Quickでテスト実行するための準備</h4>
+
+<p>Quickでテストを実行するためには、テスト用に用意されたファイルのクラスを変更する必要があります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// QuickTestSampleTests</span>
+</span><span class='line'><span class="n">import</span> <span class="n">XCTest</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Quick</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Nimble</span>
+</span><span class='line'><span class="err">@</span><span class="n">testable</span> <span class="n">import</span> <span class="n">QuickTestSample</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">QuickTestSampleTests:</span> <span class="n">QuickSpec</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">spec</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>テスト用データの作成について</h4>
+
+<p>今回、<code>Realm</code>関連の処理を実装するにあたって悩んだのが、モック用のデータをどうするかという問題です。<br/>
+今回取り上げている処理がかなりシンプルな処理であるため、<strong>manual mocking</strong> で作成するのも微妙です。</p>
+
+<p>結果、下記のように実装しました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// QuickTestSampleTests</span>
+</span><span class='line'><span class="n">import</span> <span class="n">XCTest</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Quick</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Nimble</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>   <span class="c1">// 追加</span>
+</span><span class='line'><span class="err">@</span><span class="n">testable</span> <span class="n">import</span> <span class="n">QuickTestSample</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">QuickTestSampleTests:</span> <span class="n">QuickSpec</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">spec</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">describe</span><span class="p">(</span><span class="s">&quot;Realm Database&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// テスト用のRealmデータ保存ファイルを作成</span>
+</span><span class='line'>      <span class="c1">// 保存場所はdefault.realmと同じでファイル名のみtest.realmに変更</span>
+</span><span class='line'>      <span class="n">var</span> <span class="n">config</span> <span class="o">=</span> <span class="n">Realm</span><span class="p">.</span><span class="n">Configuration</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">config</span><span class="p">.</span><span class="n">fileURL</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">fileURL</span><span class="o">!</span><span class="p">.</span><span class="n">deletingLastPathComponent</span><span class="p">().</span><span class="n">appendingPathComponent</span><span class="p">(</span><span class="s">&quot;test.realm&quot;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">Realm</span><span class="p">.</span><span class="n">Configuration</span><span class="p">.</span><span class="n">defaultConfiguration</span> <span class="o">=</span> <span class="n">config</span>
+</span><span class='line'>      <span class="c1">// 上記の設定情報を利用してRealmを扱う</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">(</span><span class="nl">configuration:</span> <span class="n">config</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">beforeEach</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// テスト用にモックデータを追加</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">Engineer</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;mock_name&quot;</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">level</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">skill</span> <span class="o">=</span> <span class="n">Skill</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">skill</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;mock_skill_name&quot;</span>
+</span><span class='line'>        <span class="n">engineer</span><span class="p">.</span><span class="n">skills</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">skill</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">realm</span><span class="p">.</span><span class="n">create</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">value:</span> <span class="n">engineer</span><span class="p">,</span> <span class="nl">update:</span> <span class="n">false</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">afterEach</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// テスト終了後にデータを全て削除</span>
+</span><span class='line'>        <span class="n">try</span><span class="o">!</span> <span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">realm</span><span class="p">.</span><span class="n">deleteAll</span><span class="p">()</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このように、最低限必要なモックデータをテスト用の<code>Realm</code>のデータベースに作成してみました。<br/>
+<code>Realm</code>の使い方さえ間違えなければ、こちらでテストしたい独自処理には影響を与えないはずです。</p>
+
+<p>上記のソースコードにコメントとして書いていますが、ポイントとしては下記の通りです。</p>
+
+<ul>
+<li>実際のアプリで利用する<code>Realm</code>ファイルとは別のテスト用の<code>Realm</code>ファイルを利用する</li>
+<li>テスト実行前にテスト用のモックデータを作成する</li>
+<li>テスト実行後はテスト用のモックデータを全て削除する</li>
+</ul>
+
+
+<h4>テストの記載箇所</h4>
+
+<p>さて、実際にテストを実装すると下記のようになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// QuickTestSampleTests</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">override</span> <span class="n">func</span> <span class="n">spec</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">subject:</span> <span class="n">ViewController</span><span class="o">!</span>
+</span><span class='line'>  <span class="n">describe</span><span class="p">(</span><span class="s">&quot;Realm Database&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">beforeEach</span> <span class="p">{</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">describe</span><span class="p">(</span><span class="s">&quot;searchEngineerById&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">it</span><span class="p">(</span><span class="s">&quot;find realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerById</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>        <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_name&quot;</span><span class="p">))</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">afterEach</span> <span class="p">{</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ポイント次の通りです。</p>
+
+<ul>
+<li>テストの内容は<code>beforeEach</code>と<code>afterEach</code>の間に書く</li>
+<li>メソッドごとにテストを記載していることをわかりやすくするために、<code>describe</code>でメソッドごとにくくる</li>
+<li>テストで確かめたい内容次第で<code>notTo</code> / <code>to</code> / <code>equal</code> などを使い分ける</li>
+</ul>
+
+
+<h4>テストの内容</h4>
+
+<p>では、テスト内容の詳細を個別に見ていきたいと思います。</p>
+
+<h5>searchEngineerByIdのテスト</h5>
+
+<p>まずは、<code>searchEngineerById</code>のテストを書きます。<br/>
+このメソッドは検索成功時に<code>Engineer</code>型のオブジェクトを返し、検索失敗時には<code>nil</code>を返します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>検索成功：取得内容の整合性をチェック</li>
+<li>検索失敗：<code>nil</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// QuickTestSampleTests</span>
+</span><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;searchEngineerById&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 取得内容の整合性チェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;find realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerById</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_name&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">skills</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_skill_name&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// nilであることのチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;cannot find realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerById</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>searchEngineerByNameのテスト</h5>
+
+<p>続いて、<code>searchEngineerByName</code>のテストを書きます。<br/>
+このメソッドは検索成功時に<code>List&lt;Engineer&gt;</code>型のオブジェクトを返し、検索失敗時には<code>nil</code>を返します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>検索成功：取得内容の整合性およびカウント数のチェック</li>
+<li>検索失敗：<code>nil</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;searchEngineerByName&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 取得内容の整合性およびカウント数のチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;find realm data by name&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerByName</span><span class="p">(</span><span class="s">&quot;mock_name&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">.</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_name&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">skills</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_skill_name&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// nilであることのチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;cannot find realm data by name&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerByName</span><span class="p">(</span><span class="s">&quot;mock_mistake_name&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>countEngineerのテスト</h5>
+
+<p>次は<code>countEngineer</code>のテストを書きます。<br/>
+このメソッドは検索成功時にデータのレコード数を返却します。<br/>
+検索失敗時の処理は独自実装していないため成功時のテストのみ書きます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;countEngineer&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// カウント数のチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;count realm data&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">count</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">countEngineer</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>createEngineerのテスト</h5>
+
+<p>今度は<code>createEngineer</code>のテストを書きます。<br/>
+このメソッドは同名の<code>Engineer</code>オブジェクトが保存されている場合は、新規オブジェクトを作成しないということがポイントです。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>新規<code>Engineer</code>オブジェクト作成が成功した場合：取得内容の整合性およびカウント数のチェック</li>
+<li>新規<code>Engineer</code>オブジェクト作成が失敗した場合：カウント数が変わっていないことをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;createEngineer&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// カウント数が変わっていないことのチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;cannot create engineer&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">subject</span><span class="p">.</span><span class="n">createEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;mock_name&quot;</span><span class="p">,</span> <span class="nl">level:</span> <span class="mi">1</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="s">&quot;swift&quot;</span><span class="p">])</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerByName</span><span class="p">(</span><span class="s">&quot;mock_name&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">.</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 取得内容の整合性およびカウント数のチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;create new engineer&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">subject</span><span class="p">.</span><span class="n">createEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;takahiro&quot;</span><span class="p">,</span> <span class="nl">level:</span> <span class="mi">1</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="s">&quot;swift&quot;</span><span class="p">,</span> <span class="s">&quot;spring boot&quot;</span><span class="p">,</span> <span class="s">&quot;react.js&quot;</span><span class="p">])</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerByName</span><span class="p">(</span><span class="s">&quot;takahiro&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="p">).</span><span class="n">notTo</span><span class="p">(</span><span class="n">beNil</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">.</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;takahiro&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">skills</span><span class="p">.</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">skills</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;swift&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">skills</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;spring boot&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineers</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">skills</span><span class="p">[</span><span class="mi">2</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;react.js&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>updateEngineerLevelByIdのテスト</h5>
+
+<p><code>updateEngineerLevelById</code>のテストを書きます。<br/>
+このメソッドは成功可否に応じて<code>true / false</code>を返却します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>更新成功：<code>true</code>であることをチェック</li>
+<li>更新失敗：<code>false</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;updateEngineerLevelById&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// trueであることをチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;update level for realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">updated</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">updateEngineerLevelById</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nl">level:</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerById</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">updated</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beTrue</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">level</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// falseであることをチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;cannot update level for realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">updated</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">updateEngineerLevelById</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nl">level:</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">updated</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beFalse</span><span class="p">())</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>updateEngineerSkillByIdのテスト</h5>
+
+<p><code>updateEngineerSkillById</code>のテストを書きます。<br/>
+このメソッドは成功可否に応じて<code>true / false</code>を返却します。</p>
+
+<p>そのため、このメソッドに対するテストとしては、</p>
+
+<ul>
+<li>更新成功：<code>true</code>であることをチェック</li>
+<li>更新失敗：<code>false</code>であることをチェック</li>
+</ul>
+
+
+<p>を書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">describe</span><span class="p">(</span><span class="s">&quot;updateEngineerSkillById&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// trueであることをチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;update skill for realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">updated</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">updateEngineerSkillById</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="s">&quot;mock_skill_name_2&quot;</span><span class="p">])</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">searchEngineerById</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">updated</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beTrue</span><span class="p">())</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">skills</span><span class="p">.</span><span class="n">count</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">skills</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_skill_name&quot;</span><span class="p">))</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">engineer</span><span class="o">?</span><span class="p">.</span><span class="n">skills</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">name</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">equal</span><span class="p">(</span><span class="s">&quot;mock_skill_name_2&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// falseであることをチェック</span>
+</span><span class='line'>  <span class="n">it</span><span class="p">(</span><span class="s">&quot;cannot update skill for realm data by id&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">updated</span> <span class="o">=</span> <span class="n">subject</span><span class="p">.</span><span class="n">updateEngineerSkillById</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nl">skills:</span> <span class="p">[</span><span class="s">&quot;mock_skill_name_2&quot;</span><span class="p">])</span>
+</span><span class='line'>    <span class="n">expect</span><span class="p">(</span><span class="n">updated</span><span class="p">).</span><span class="n">to</span><span class="p">(</span><span class="n">beFalse</span><span class="p">())</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Quickでのテストコードの書式</h3>
+
+<p>今回新たに出た書式についてまとめておきます。</p>
+
+<h4>notTo</h4>
+
+<p>対象と異なることを期待するときに利用します。</p>
+
+<ul>
+<li>書式例：<code>expect(engineer).notTo(beNil())</code></li>
+<li>期待値：<code>engineer</code>オブジェクトが<code>nil</code>でない</li>
+</ul>
+
+
+<h4>to</h4>
+
+<p>対象と一致することを期待するときに利用します。</p>
+
+<h5>equalと組み合わせた場合</h5>
+
+<ul>
+<li>書式例：<code>expect(engineer?.name).to(equal("mock_name"))</code></li>
+<li>期待値：<code>engineer</code>オブジェクトの<code>name</code>プロパティが<code>mock_name</code>と一致すること</li>
+</ul>
+
+
+<h5>beTrue / beFalseと組み合わせた場合</h5>
+
+<ul>
+<li>書式例：<code>expect(updated).to(beTrue())</code></li>
+<li>期待値：<code>updated</code>の値が<code>true</code>と一致すること</li>
+</ul>
+
+
+<h4>beNil / equal / beTrue / beFalse</h4>
+
+<p>それぞれ、</p>
+
+<ul>
+<li>beNil()：<code>nil</code>であること</li>
+<li>equal()：引数の値であること(数字や文字列などを引数に設定します)</li>
+<li>beTrue()：<code>true</code>であること</li>
+<li>beFalse()：<code>false</code>であること</li>
+</ul>
+
+
+<p>を意味します。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+今回は最近の経験を元にiOSでテスト駆動型の開発をするなら&hellip;をイメージして書いてみました。<br/>
+次はもっと複雑なパターンのテストを試しに書いてみても良いかなと思いつつ、本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="https://realm.io/jp/docs/swift/latest/#realm-3">Realm公式ドキュメント</a></li>
+<li><a href="https://news.realm.io/jp/news/rachel-bobbins-testing-view-controllers-quick/">Quickを使ってビューコントローラをテストする</a></li>
+<li><a href="https://github.com/Quick/Quick/blob/master/Documentation/ja/ConfiguringQuick.md">Quickの挙動をカスタマイズしましょう</a></li>
+<li><a href="https://github.com/Quick/Quick/blob/master/Documentation/ja/QuickExamplesAndGroups.md">QuickのExamplesとExample Groupsで、たくさんのテストでも整理整頓</a></li>
+</ul>
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-05-06T19:39:00+09:00" pubdate data-updated="true">May 6<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/quick/'>quick</a>, <a class='category' href='/blog/categories/realm/'>realm</a>, <a class='category' href='/blog/categories/swift/'>swift</a>, <a class='category' href='/blog/categories/test/'>test</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2017/05/06/quick-2/" data-via="" data-counturl="http://grandbig.github.io/blog/2017/05/06/quick-2/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/05/06/swift3-realm/" title="Previous Post: Swift3でRealmSwiftを使ってみよう！">&laquo; Swift3でRealmSwiftを使ってみよう！</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/05/14/firebase-ios/" title="Next Post: FirebaseをiOSで使ってみよう！">FirebaseをiOSで使ってみよう！ &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/12/02/universallink/">今更だけど試してみようUniversalLink</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/11/27/iphonex-statusbar/">iPhoneXのステータスバーの高さ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/09/clean-swift-3/">Clean Swiftを勉強してみよう！(3)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/08/clean-swift-2/">Clean Swiftを勉強してみよう！(2)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/09/25/clean-swift/">Clean Swiftを勉強してみよう！(1)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (160)</a></li><li><a href='/blog/categories/swift'>swift (63)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/redux'>redux (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2017/05/06/quick-2/';
+        var disqus_url = 'http://grandbig.github.io/blog/2017/05/06/quick-2/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

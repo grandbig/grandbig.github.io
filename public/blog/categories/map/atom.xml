@@ -1,0 +1,706 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: map | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/map/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-12-02T19:17:09+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Google Maps SDK for iOSを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/07/16/google-maps-sdk-2/"/>
+    <updated>2017-07-16T23:43:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/07/16/google-maps-sdk-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>前回、<a href="http://grandbig.github.io/blog/2017/06/18/google-maps-sdk/">Google Maps SDK for iOSを導入してみよう！</a>について説明しましたが、今回はもう一歩踏み込んで使い方を見ていこうと思います。</p>
+
+<p>これまた本家の<a href="https://developers.google.com/maps/documentation/ios-sdk/start?hl=ja">Google スタートガイド</a>を見ればできることも多いのですが、見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Google Mapにマーカを配置する</h3>
+
+<p>Google Mapを使う上で必ずと言っていいほど利用する機能である「マーカの配置」を見ていきましょう。<br/>
+これは実に簡単で「マーカを配置するメソッド」はたった下記だけで実装できます。</p>
+
+<p>```objective-c
+/**
+  マップにマーカを設置する処理</p>
+
+<ul>
+<li>parameter title: マーカのタイトル</li>
+<li>parameter coordinate: 位置</li>
+<li>parameter iconName: アイコン名</li>
+<li>parameter completion: Callback
+*/
+private func putMarker(title: String?, coordinate: CLLocationCoordinate2D, iconName: String?, completion: @escaping ((GMSMarker) &ndash;> Void)) {
+// マーカの生成
+let marker = GMSMarker()
+marker.title = title
+marker.position = coordinate
+if iconName != nil {
+// アイコン名が指定されている場合は画像を設定
+marker.icon = UIImage.init(named: iconName!)
+}
+marker.map = self.mapView
+completion(marker)
+}
+```</li>
+</ul>
+
+
+<h3>Google Mapからマーカを削除する</h3>
+
+<p>逆にGoogle Mapからマーカを削除する場合はどうするかを見ていきます。<br/>
+これも簡単なので、下記のように実装できます。</p>
+
+<p>```objective-c
+/**
+  マップからマーカを削除する処理</p>
+
+<ul>
+<li>parameter marker: マーカ
+*/
+private func deleteMarker(marker: GMSMarker) {
+marker.map = nil
+}
+```</li>
+</ul>
+
+
+<h3>2つのマーカが入る縮尺にGoogle Mapを変更する</h3>
+
+<p>こちらはGoogle Mapを捉えるカメラの位置を移動することで実現可能です。</p>
+
+<p>```objective-c
+@IBOutlet weak var mapView: GMSMapView!</p>
+
+<p>&lt;省略></p>
+
+<p>/**
+  現在地と指定した場所の両方が入るようにマップの縮尺を変更する処理</p>
+
+<ul>
+<li>parameter coordinate: 場所
+*/
+private func changeCameraPosition(fromCoordinate: CLLocationCoordinate2D, toCoordinate: CLLocationCoordinate2D) {
+let bounds = GMSCoordinateBounds(coordinate: fromCoordinate, coordinate: toCoordinate)
+let margin: CGFloat = 50.0  // 上下左右に設定するマージン
+guard let camera = self.mapView.camera(for: bounds, insets: UIEdgeInsets(top: margin, left: margin, bottom: margin, right: margin)) else {
+return
+}
+self.mapView.camera = camera
+}
+```</li>
+</ul>
+
+
+<h3>Google Mapに線を描画する</h3>
+
+<p>これもそんなに難しくありません。</p>
+
+<p>```objective-c
+@IBOutlet weak var mapView: GMSMapView!
+private var routePath: GMSPolyline = GMSPolyline()</p>
+
+<p>&lt;省略></p>
+
+<p>/**
+  マップへの線描画</p>
+
+<ul>
+<li>parameter fromCoordinate: 起点位置</li>
+<li>parameter toCoordinate: 終点位置
+*/
+private func drawPolyline(fromCoordinate: CLLocationCoordinate2D, toCoordinate: CLLocationCoordinate2D) {</li>
+</ul>
+
+
+<p>  let path = GMSMutablePath()
+  path.add(fromCoordinate)
+  path.add(toCoordinate)</p>
+
+<p>  self.routePath = GMSPolyline(path: path)
+  self.routePath.strokeWidth = 3.0
+  self.routePath.map = self.mapView
+}
+```</p>
+
+<h3>Google Mapから線を削除する</h3>
+
+<p>先程描画した線を削除するには下記で実行できます。</p>
+
+<p>```objective-c
+private var routePath: GMSPolyline = GMSPolyline()</p>
+
+<p>&lt;省略></p>
+
+<p>/<em>*
+  マップへの描画線を削除する処理
+</em>/
+private func clearRoutePath() {
+  self.routePath.map = nil
+}
+```</p>
+
+<h3>緯度/経度とピクセル座標の相互変換</h3>
+
+<p>これは利用ケースが限られるかもしれませんが、覚えておくと役に立つ処理です。<br/>
+Google Mapは複数のマップ座標を扱うことができます。</p>
+
+<ul>
+<li>緯度/経度を用いて地球上にプロット</li>
+<li>世界座標: メルカトル図法を用いて緯度/経度を地図に変換した座標</li>
+<li>ピクセル座標: 世界座標を指定したズームレベルで変換した座標</li>
+<li>タイル座標: 地図を複数の画像に分けたときの座標</li>
+</ul>
+
+
+<p>ほとんどの場合は緯度/経度をマップにプロットすると思いますが、<br/>
+筆者は先日ピクセル座標を利用する場面がありました。</p>
+
+<p>それは、「Google Mapの上に透過Viewが載せられた状態でGoogle Mapにマーカを配置する」というものでした。
+今回はこれを例に変換方法を見ていきましょう。</p>
+
+<h4>ピクセル座標を緯度/経度に変換</h4>
+
+<p>これはGoogle Maps SDKに用意されています。</p>
+
+<p><code>objective-c
+let pressPoint = CGPoint(x: 100, y: 200)
+let coordinate = self.mapView.projection.coordinate(for: pressPoint)
+</code></p>
+
+<p>たったのこれだけでピクセル座標を緯度/経度に変換できるんです。</p>
+
+<h4>緯度/経度をピクセル座標に変換</h4>
+
+<p>これもGoogle Maps SDKに用意されています。</p>
+
+<p><code>objective-c
+let coordinate = CLLocationCoordinate2D(latitude: 35, longitude: 139)
+let point = self.mapView.projection.point(for: coordinate)
+</code></p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+JavaScriptでGoogle Maps APIを利用していた方々も臆することなく使えるような簡単さだと思います。<br/>
+次回はGeocoding APIやDirection APIを見ていきたいと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Google Maps SDK for iOSを導入してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/06/18/google-maps-sdk/"/>
+    <updated>2017-06-18T19:47:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/06/18/google-maps-sdk</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>本日は<a href="https://developers.google.com/maps/documentation/ios-sdk/?hl=ja">Google Maps SDK for iOS</a>の導入の仕方を書きたいと思います。<br/>
+(<a href="https://grandbig.github.io/blog/2014/01/27/googlemapssdk2/">3年以上前</a>に遊んでいたようですが、全く記憶にない&hellip;)</p>
+
+<p>基本的には、<a href="https://developers.google.com/maps/documentation/ios-sdk/start?hl=ja">本家のスタートガイド</a>に従って進めるだけで特に問題なく<code>Google Map</code>を実装できるでしょう。<br/>
+筆者の場合は<code>Storyboard</code>を使いたかったので少し気をつける必要がありました。<br/>
+では早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Google Maps SDK for iOSの導入</h3>
+
+<p>実際に手順を書いていきます。</p>
+
+<p><strong>１．Xcodeでプロジェクトを作成します。</strong><br/>
+<strong>２．<code>Podfile</code>を作成します。</strong></p>
+
+<p>```objective-c</p>
+
+<h1>Podfile</h1>
+
+<p>use_frameworks!</p>
+
+<p>target &ldquo;GoogleMapsSample&rdquo; do
+  # Normal libraries
+  pod &lsquo;GoogleMaps&rsquo;
+  pod &lsquo;GooglePlaces&rsquo;</p>
+
+<p>  abstract_target &lsquo;Tests&rsquo; do</p>
+
+<pre><code>inherit! :search_paths
+target "GoogleMapsSampleTests"
+target "GoogleMapsSampleUITests"
+
+pod 'Quick'
+pod 'Nimble'
+</code></pre>
+
+<p>  end
+end</p>
+
+<p>post_install do |installer|
+  installer.pods_project.targets.each do |target|</p>
+
+<pre><code>target.build_configurations.each do |config|
+  config.build_settings['SWIFT_VERSION'] = '3.0'
+end
+</code></pre>
+
+<p>  end
+end
+```</p>
+
+<p><strong>３．<code>pod install</code>で必要な<code>Framework</code>をインストールします。</strong><br/>
+<strong>４．APIキーを取得します。</strong><br/>
+スタートガイドに従って下記ボタンをクリックすればAPIキーを取得することができます。</p>
+
+<p><img src="/images/google-maps-sdk-1.png" alt="APIキーの取得" /></p>
+
+<p><strong>５．アプリのAPIキーを読み取らせる処理を導入します。</strong><br/>
+筆者の場合、基本的なソースコードは<code>GitHub</code>に公開したかったため、そのままAPIキーをべた書きするわけにいきませんでした。<br/>
+なので、<code>key.plist</code>ファイルを作成し、このファイルを<code>GitHub</code>にアップしないという手法を取ることにしました。</p>
+
+<p>下図のように<code>key.plist</code>ファイルを作成</p>
+
+<p><img src="/images/google-maps-sdk-2.png" alt="key.plistの作成" /></p>
+
+<p>また下図のようなフォルダ構成で<code>Info.plist</code>と同じ階層に<code>key.plist</code>を配置しています。<br/>
+<img src="/images/google-maps-sdk-6.png" alt="フォルダ構成" /></p>
+
+<p><code>AppDelegate.swift</code>で<code>key.plist</code>からAPIキーを読み込みます。</p>
+
+<p>```objective-c
+// AppDelegate.swift
+import UIKit
+import GoogleMaps
+import GooglePlaces</p>
+
+<p>@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {</p>
+
+<p>  var window: UIWindow?</p>
+
+<p>  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) &ndash;> Bool {</p>
+
+<pre><code>// Override point for customization after application launch.
+
+if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
+  if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
+    if let apiKey = dic["googleMapsApiKey"] as? String {
+      GMSServices.provideAPIKey(apiKey)
+      GMSPlacesClient.provideAPIKey(apiKey)
+    }
+  }
+}
+
+return true
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<p><strong>６．<code>Storyboard</code>に<code>Google Map</code>を追加します。</strong><br/>
+本家スタートガイドだと<code>Storyboard</code>を利用しない方式での説明が書かれていましたが、筆者は<code>Storyboard</code>を利用しました。</p>
+
+<p><img src="/images/google-maps-sdk-3.png" alt="StoryboardにGoogle Mapを配置" /></p>
+
+<p>これで導入が完了です。</p>
+
+<h3>Google Cloud PlatformのAPI Managerで詳細設定</h3>
+
+<p>先程、本家のスタートガイドからAPIキーを取得していましたが、<a href="https://console.cloud.google.com/home">Google Cloud Platform</a>内の<code>API Manager</code>からAPIキーに対して詳細設定をすることができます。<br/>
+例えば、スタートガイドから取得しただけでは、APIキーの用途が無制限になっています。<br/>
+この状態では意図しない大量利用に繋がる可能性もあるため、iOSアプリでのみ利用するなど詳細を設定した方が良いでしょう。</p>
+
+<p><code>API Manager</code>ページには下記のように遷移できます。<br/>
+<img src="/images/google-maps-sdk-4.png" alt="Google Cloud Platform" /></p>
+
+<p>APIキーの詳細設定は下記の通りです。<br/>
+<img src="/images/google-maps-sdk-5.png" alt="APIキーの詳細設定" /></p>
+
+<h3>Google Mapで初期描画時の中心位置を現在地にしてみる</h3>
+
+<p>Apple標準で用意されている<code>MapKit</code>であれば、</p>
+
+<p><code>objective-c
+self.mapView.setUserTrackingMode(MKUserTrackingMode.follow, animated: true)
+</code></p>
+
+<p>とすれば良いだけでした。<br/>
+しかし、<code>Google Map</code>では同様の手立てがなさそうなので、下記のように対応しました。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import GoogleMaps
+import GooglePlaces</p>
+
+<p>class ViewController: UIViewController, GMSMapViewDelegate, CLLocationManagerDelegate {</p>
+
+<p>  @IBOutlet weak var mapView: GMSMapView!
+  private var locationManager: CLLocationManager?
+  private var currentLocation: CLLocation?
+  private var placesClient: GMSPlacesClient!
+  private var zoomLevel: Float = 15.0
+  /// 初期描画の判断に利用
+  private var initView: Bool = false</p>
+
+<p>  override func viewDidLoad() {</p>
+
+<pre><code>super.viewDidLoad()
+// Do any additional setup after loading the view, typically from a nib.
+
+// GoogleMapの初期化
+self.mapView.isMyLocationEnabled = true
+self.mapView.mapType = GMSMapViewType.normal
+self.mapView.settings.compassButton = true
+self.mapView.settings.myLocationButton = true
+self.mapView.delegate = self
+
+// 位置情報関連の初期化
+self.locationManager = CLLocationManager()
+self.locationManager?.desiredAccuracy = kCLLocationAccuracyBest
+self.locationManager?.requestAlwaysAuthorization()
+self.locationManager?.distanceFilter = 50
+self.locationManager?.startUpdatingLocation()
+self.locationManager?.delegate = self
+
+self.placesClient = GMSPlacesClient.shared()
+</code></pre>
+
+<p>  }</p>
+
+<p>  override func didReceiveMemoryWarning() {</p>
+
+<pre><code>super.didReceiveMemoryWarning()
+// Dispose of any resources that can be recreated.
+</code></pre>
+
+<p>  }</p>
+
+<p>  // MARK: CLLocationManagerDelegate
+  func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {</p>
+
+<pre><code>if !self.initView {
+  // 初期描画時のマップ中心位置の移動
+  let camera = GMSCameraPosition.camera(withTarget: (locations.last?.coordinate)!, zoom: self.zoomLevel)
+  self.mapView.camera = camera
+  self.locationManager?.stopUpdatingLocation()
+  self.initView = true
+}
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>これは<code>viewDidLoad</code>時に<code>startUpdatingLocation()</code>で位置情報の取得を開始し、取得したタイミングである<code>didUpdateLocations</code>内で位置情報を<code>camera</code>に設定しています。<br/>
+(もっと良い方法がありそうな気もしますが、一旦これで様子見&hellip;)</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+これから<code>Google Maps SDK for iOS</code>をバシバシ使っていきたいと思っているので理解が進み次第、続きを書いていきたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Mapに好きな画像を配置しよう！ Swift編]]></title>
+    <link href="http://grandbig.github.io/blog/2017/06/04/put-annotation-2/"/>
+    <updated>2017-06-04T21:24:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/06/04/put-annotation-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>実に3年半ほど前のブログを始めた当初、<a href="https://grandbig.github.io/blog/2013/09/28/put-annotation/">Mapに好きな画像を配置しよう！</a>といった記事を書いたことがありました。<br/>
+駆け出しのiOSエンジニアであった当時の筆者はお世辞にもObjective-CやiOS自体について詳しいとは言い難きスキルレベルでした。<br/>
+(当時のブログ記事に不必要な記述があるかとは思いますが、あえてそのまま残しています。)</p>
+
+<p>それから月日を経て、Swiftで同じ実装をするタイミングがあったことで、本記事を書こうと思い、今に至ります。<br/>
+簡単な内容ではありますが、感慨深く書かせて頂いています笑</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>CustomAnnotationを作成しよう</h3>
+
+<p>当時と同じ手法で実装してみます。</p>
+
+<p>```objective-c
+import Foundation
+import MapKit</p>
+
+<p>class CustomAnnotation:NSObject, MKAnnotation {
+  public var coordinate: CLLocationCoordinate2D
+  public var title: String?
+  public var subtitle: String?</p>
+
+<p>  init(coordinate: CLLocationCoordinate2D, title: String, subtitle: String) {</p>
+
+<pre><code>self.coordinate = coordinate
+self.title = title
+self.subtitle = subtitle
+
+super.init()
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>上記では、<code>MKAnnotation</code>を拡張し、<code>coordinate</code> / <code>title</code> / <code>subtitle</code>を初期化時に一斉に設定できるようなイニシャライザを用意しました。</p>
+
+<h3>Mapに画像を配置しよう</h3>
+
+<p>さて、ではMapに画像を配置する方法を見ていきます。</p>
+
+<p>```objective-c
+import UIKit
+import MapKit</p>
+
+<p>class ViewController: UIViewController, MKMapViewDelegate {
+  @IBOutlet weak var mapView: MKMapView!</p>
+
+<p>  override func viewDidLoad() {</p>
+
+<pre><code>super.viewDidLoad()
+
+// マップ関連の初期化処理
+self.mapView.delegate = self
+self.mapView.setUserTrackingMode(MKUserTrackingMode.followWithHeading, animated: true)
+
+// CustomAnnotationの初期化
+let ann = CustomAnnotation.init(coordinate: CLLocationCoordinate2D.init(latitude: 35.685623, longitude: 139.763153), title: "TEST", subtitle: "test")
+// CustomAnnotationをマップに配置
+self.mapView.addAnnotation(ann)
+</code></pre>
+
+<p>  }</p>
+
+<p>  &lt;省略></p>
+
+<p>  // MARK: MKMapViewDelegate
+  func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) &ndash;> MKAnnotationView? {</p>
+
+<pre><code>if (annotation is MKUserLocation) {
+  // ユーザの現在地の青丸マークは置き換えない
+  return nil
+} else {
+  // CustomAnnotationの場合に画像を配置
+  let identifier = "Pin"
+  var annotationView: MKAnnotationView? = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+  if annotationView == nil {
+    annotationView = MKAnnotationView.init(annotation: annotation, reuseIdentifier: identifier)
+  }
+  annotationView?.image = UIImage.init(named: "xxxx") // 任意の画像名
+  annotationView?.annotation = annotation
+  annotationView.canShowCallout = true  // タップで吹き出しを表示
+  return annotationView
+}
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>結果は次のようになります。<br/>
+<img src="/images/annotationpractice6.png" alt="Mapに画像を表示" /></p>
+
+<h3>まとめ</h3>
+
+<p>昔は様々なサイトを参考にしながら、解読しながら書いていたソースがすんなりと書くことができました。<br/>
+今回の記事を通して、もっと他にもSwiftに書き直しても良い記事がありそうだなと思いました。
+まあ、タイミング見てですかね&hellip;といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[MKMapViewの初期中心点をユーザの現在地に設定する方法]]></title>
+    <link href="http://grandbig.github.io/blog/2014/02/16/userlocationandmap/"/>
+    <updated>2014-02-16T21:16:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/02/16/userlocationandmap</id>
+    <content type="html"><![CDATA[<h3>MKMapViewの中心位置について考えた</h3>
+
+<p>本日はMKMapViewの初期表示について説明します。MKMapViewを扱うときにはユーザの位置情報を用いることが多いと思います。そのほとんどの場合、マップを初期表示したときにユーザの現在地を中心にしたいのではないかと思います。しかしながらiPhoneで位置情報を取得するとき、アプリを起動して即座に現在地を特定することはできません。では、『どうするのか？』について失敗談を交えつつ紹介させて頂きます。</p>
+
+<!--more-->
+
+
+<p>まずは失敗例から紹介します。<br/>
+筆者は<strong>ユーザの現在地をマップの中心位置に設定する</strong>ということに意識が向きすぎたせいか当初は下記の手段を取っていました。</p>
+
+<p>下記はViewController.h<br/>
+```</p>
+
+<h1>import &lt;UIKit/UIKit.h></h1>
+
+<h1>import &lt;CoreLocation/CoreLocation.h></h1>
+
+<h1>import &lt;MapKit/MapKit.h></h1>
+
+<p>@interface ViewController : UIViewController &lt;MKMapViewDelegate, CLLocationManagerDelegate></p>
+
+<p>@property (strong, nonatomic) IBOutlet CLLocationManager <em>locationManager;
+@property (weak, nonatomic) IBOutlet MKMapView </em>map;
+```</p>
+
+<p>下記はViewController.m<br/>
+<code>
+// ユーザの位置を取得
+CLLocation *location = [locationManager location];
+CLLocationCoordinate2D uCoordinate = [location coordinate];
+// マップの中心位置を設定
+MKCoordinateRegion region = MKCoordinateRegionMake(uCoordinate, MKCoordinateSpanMake(0.05, 0.05));
+</code>
+しかし、これではアプリ起動直後に真っ青な画面が表示されてしまうことでしょう。その理由はiPhone側で位置情報を取得する前にマップを表示しようとしてしまっているためです。結果、ユーザの現在地はlatitude, longitude共に0として返ってきます。<br/>
+ここで筆者はマップに現在地のピンを表示することは割りと早くできていることに気づきました。であれば何かマップからユーザ情報が取得できるのではないかと。<br/>
+で考えたのが下記。(ViewController.mのみ修正)<br/>
+<code>
+// ユーザの位置を取得
+CLLocation *userLocation = self.map.userLocation.location;
+CLLocationCoordinate2D uCoordinate = CLLocationCoordinate2DMake(userLocation.coordinate.latitude, userLocation.coordinate.longitude);
+// マップの中心位置を設定
+MKCoordinateRegion region = MKCoordinateRegionMake(uCoordinate, MKCoordinateSpanMake(0.05, 0.05));
+</code></p>
+
+<p>しかし、これまたアプリ起動後に真っ青な画面が表示されてしまいました&hellip;。う〜む、なかなかうまくいかない。</p>
+
+<p>で、結局、下記で解決。(ViewController.mのみ修正)<br/>
+<code>
+// マップにユーザの現在地を表示
+self.map.showsUserLocation = YES;
+// マップの中心地がユーザの現在地を追従するように設定
+[self.map setUserTrackingMode:MKUserTrackingModeFollow];
+</code>
+位置情報が取れ次第(ユーザの現在地が特定でき次第)、マップの中心地が移動するのでアプリ起動後に割りとすぐ理想の結果が得られます。(因みにマップを動かせば、追従モードはOFFとなります。)</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Google Maps SDK for iOSをiOS6対応させようとしてハマったこと]]></title>
+    <link href="http://grandbig.github.io/blog/2014/01/27/googlemapssdk2/"/>
+    <updated>2014-01-27T23:50:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2014/01/27/googlemapssdk2</id>
+    <content type="html"><![CDATA[<h3>iOS6からGoogle Maps SDKが使いたい！！</h3>
+
+<p>さて、最近取り組んでいるGoogle Maps SDKについて書きます。前回ご紹介させて頂いたときはiOS7からの対応として書かせて頂きました。<br/>
+今日はiOS6から対応するアプリを開発する上でハマったことについて説明します。</p>
+
+<p>Xcode5でiOS6から対応に変更するとき、<strong>Deployment Target</strong>を6.0に変更すると思います。そのままClearn ⇒ Buildをしてみると下図のようなおびただしい数のエラーが&hellip;<br/>
+<img src="/images/googlemapssdk_howtouse1.png" alt="iOS6でビルドするとエラーがたくさん出る" /></p>
+
+<!--more-->
+
+
+<p>なぜ、Deployment Targetを変えただけでこんなにもエラーが？と思ったので、エラー内容を見てみると&hellip;<br/>
+<strong>Undefined symbols for architecture armv7</strong>と書いてあります。<br/>
+これだけで調べてもよくわかりませんでした。(原因がわかってからよくよく見てみると様々なサイトでヒントを教えてくれていたとわかるのですが&hellip;)</p>
+
+<p>もう少し、詳しく見てみると<strong>Google Maps</strong>がひっかかっていることがわかりました。で、再度検索し続けると<br/>
+<strong>ライブラリが足りない</strong><br/>
+という可能性にたどり着きました。<br/>
+さ、<a href="https://developers.google.com/maps/documentation/ios/start?hl=ja">Google Maps SDK 公式ページ</a>を見てみましょう。<br/>
+自分で作成したXcodeプロジェクトに追加してあるライブラリと公式ページに書いてある追加すべきライブラリを比較すると下記の違いに気づきました。(作成したXcodeプロジェクトにはデフォルトで追加されているライブラリも含まれています。)<br/>
+<img src="/images/googlemapssdk_howtouse2.png" alt="ライブラリが違う" /></p>
+
+<p>結果、ライブラリが異なるという単純な理由だったわけですが、気づくのに時間がかかりました。<br/>
+iOS7では動いてしまうという部分も混乱を招く原因だったと思います。</p>
+
+<p>ま、英語を嫌がらずに公式ページを読んだ方が時間はかかりませんってことですね&hellip;。<br/>
+今日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

@@ -1,0 +1,560 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: apache | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/apache/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-12-02T19:17:09+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuでApache設定を試してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3/"/>
+    <updated>2017-02-19T23:45:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/19/docker-for-mac-3</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>前回の<a href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/">DockerにWebサーバーを立てよう！</a>に引き続きDocker内Apacheで遊んでみます。<br/>
+前回はUbuntuへのApacheインストールから起動まで見てきました。<br/>
+実際の現場でApacheを利用する際は様々な設定を施す必要があります。<br/>
+本記事ではその一端を少しでも学ぼうということで書いていきます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>DocumentRootの設定</h3>
+
+<p>Apacheでは設定ファイルで静的ファイルのルートパスを設定することができます。<br/>
+デフォルトでは<code>/var/www/html</code>になっています。<br/>
+これは、<code>/etc/apache2/sites-enabled/000-default.conf</code>で次のように定義されています。</p>
+
+<p>```javascript
+<VirtualHost *:80>
+  # The ServerName directive sets the request scheme, hostname and port that
+  # the server uses to identify itself. This is used when creating
+  # redirection URLs. In the context of virtual hosts, the ServerName
+  # specifies what hostname must appear in the request’s Host: header to
+  # match this virtual host. For the default virtual host (this file) this
+  # value is not decisive as it is used as a last resort host regardless.
+  # However, you must set it for any further virtual host explicitly.
+  #ServerName www.example.com</p>
+
+<p>  ServerAdmin webmaster@localhost
+  DocumentRoot /var/www/html</p>
+
+<p>  # Available loglevels: trace8, &hellip;, trace1, debug, info, notice, warn,
+  # error, crit, alert, emerg.
+  # It is also possible to configure the loglevel for particular
+  # modules, e.g.
+  #LogLevel info ssl:warn</p>
+
+<p>  ErrorLog ${APACHE_LOG_DIR}/error.log
+  CustomLog ${APACHE_LOG_DIR}/access.log combined</p>
+
+<p>  # For most configuration files from conf-available/, which are
+  # enabled or disabled at a global level, it is possible to
+  # include a line for only one particular virtual host. For example the
+  # following line enables the CGI configuration for this host only
+  # after it has been globally disabled with &ldquo;a2disconf&rdquo;.
+  #Include conf-available/serve-cgi-bin.conf
+</VirtualHost></p>
+
+<h1>vim: syntax=apache ts=4 sw=4 sts=4 sr noet</h1>
+
+<p>```</p>
+
+<p>必要があれば書き換えて使いましょう。</p>
+
+<h3>リバースプロキシ設定</h3>
+
+<p>リバースプロキシとは、</p>
+
+<ul>
+<li>クライアントからのアクセスをキャッチして、特定のサーバへ送るプロキシサーバ</li>
+<li>セキュリティや負荷分散などのために利用される</li>
+</ul>
+
+
+<p>ものです。<br/>
+詳しくは<a href="https://ja.wikipedia.org/wiki/%E3%83%AA%E3%83%90%E3%83%BC%E3%82%B9%E3%83%97%E3%83%AD%E3%82%AD%E3%82%B7">リバースプロキシ &ndash; wiki</a>を見てください。</p>
+
+<p>設定はいたって簡単です。<br/>
+まずは、モジュールの有効化をするために下記コマンドを打ちましょう。</p>
+
+<p>```javascript
+// プロキシモジュールの有効化
+$ a2enmod proxy proxy_http
+Enabling module proxy.
+Considering dependency proxy for proxy_<a href="http:">http:</a>
+Module proxy already enabled
+Enabling module proxy_http.
+To activate the new configuration, you need to run:
+  service apache2 restart</p>
+
+<p>// Apacheを再起動
+$ /etc/init.d/apache2 restart
+```</p>
+
+<p>続いて、設定ファイルを更新します。</p>
+
+<p>```javascript
+<IfModule mod_proxy.c></p>
+
+<p>  # If you want to use apache2 as a forward proxy, uncomment the
+  # &lsquo;ProxyRequests On&rsquo; line and the <Proxy *> block below.
+  # WARNING: Be careful to restrict access inside the <Proxy *> block.
+  # Open proxy servers are dangerous both to your network and to the
+  # Internet at large.
+  #
+  # If you only want to use apache2 as a reverse proxy/gateway in
+  # front of some web application server, you DON’T need
+  ProxyRequests Off</p>
+
+<p>  <Proxy *>
+  #   AddDefaultCharset off
+  #   Require all denied
+  #   #Require local</p>
+
+<pre><code>Require all granted
+</code></pre>
+
+<p>  </Proxy>
+  ProxyPass /hoge/ <a href="http://localhost:80/hoge.html">http://localhost:80/hoge.html</a>
+  ProxyPassReverse /hoge/ <a href="http://localhost:80/hoge.html">http://localhost:80/hoge.html</a></p>
+
+<p>  # Enable/disable the handling of HTTP/1.1 &ldquo;Via:&rdquo; headers.
+  # (&ldquo;Full&rdquo; adds the server version; &ldquo;Block&rdquo; removes all outgoing Via: headers)
+  # Set to one of: Off | On | Full | Block
+  #ProxyVia Off
+</IfModule></p>
+
+<h1>vim: syntax=apache ts=4 sw=4 sts=4 sr noet</h1>
+
+<p>```</p>
+
+<p>上記の設定について説明します。</p>
+
+<ul>
+<li><code>ProxyRequests Off</code>: フォワードプロキシをOFFにする設定です</li>
+<li><code>&lt;Proxy *&gt; 〜 &lt;/Proxy&gt;</code>: アクセスパスに対するアクセス権限範囲を設定します</li>
+<li><code>ProxyPass 元のアクセス要求パス 転送パス</code>: クライアントからのアクセス要求を転送します</li>
+<li><code>ProxyPassReverse 元のアクセス要求パス 転送パス</code>: Apache に HTTP リダイレクト応答の Location, Content-Location, URI ヘッダの調整を担います</li>
+</ul>
+
+
+<p>筆者自身、フォワードプロキシという単語を意識して使ったことがなかったのですが、ごくごく普通に使われているものなんですよね&hellip;<br/>
+Apache公式ページの下記記述を見るとよくわかります。</p>
+
+<blockquote><p>ファイアウォールによって 制限されている内部のクライアントにインターネットへのアクセスを 提供するもの</p></blockquote>
+
+<p>どうも<code>ProxyPassReverse</code>は理解するのが厄介だったようで多くの方が記事にしてくれていました。</p>
+
+<ul>
+<li><a href="http://dev.classmethod.jp/server-side/server/introduction_mod_proxy/">mod_proxy再入門 – ProxyPassとProxyPassReverse</a></li>
+<li><a href="http://d.hatena.ne.jp/a666666/20090211/1234348004">やっとわかった、リバースプロキシの設定の意味</a></li>
+</ul>
+
+
+<p>上記設定をしたので下記にアクセスしてみます。<br/>
+<code>http://localhost:15600/hoge/</code><br/>
+結果は下記の通りです。</p>
+
+<p><img src="/images/docker_reverse_proxy.png" alt="リバースプロキシした画面を表示" /></p>
+
+<p>このために用意した<code>hoge.html</code>が表示されました。</p>
+
+<h3>RewriteRuleの設定</h3>
+
+<p><code>Rewrite</code>はクライアントからのリクエストを内部変換してリダイレクトするような機能です。<br/>
+今回は些か簡単な例を扱ったためリバースプロキシとの違いがわかりにくかったかもしれません。<br/>
+あくまでも<code>Rewrite</code>はパスの読み替えであるため、物理的に別のサーバに接続を促すようなリバースプロキシならではの設定はできません。</p>
+
+<p>まずはモジュールを有効化させます。</p>
+
+<p>```javascript
+$ a2enmod rewrite
+Enabling module rewrite.
+To activate the new configuration, you need to run:
+  service apache2 restart</p>
+
+<p>// Apacheを再起動
+$ /etc/init.d/apache2 restart
+```</p>
+
+<p>続いて、静的ファイルパスへのアクセス制限を変更します。</p>
+
+<p><code>javascript
+// /etc/apache2/apache2.conf
+&lt;Directory /var/www/&gt;
+  Options Indexes FollowSymLinks
+  AllowOverride All
+  Require all granted
+&lt;/Directory&gt;
+</code></p>
+
+<p>デフォルトでは上記が<code>AllowOverride None</code>だったのを<code>AllowOverride All</code>に変更しています。<br/>
+さらに、<code>.htaccess</code>ファイルを作成して書き換えルールを記載します。<br/>
+<code>.htaccess</code>を利用する設定は<code>apache2.conf</code>にデフォルトで記載されています。</p>
+
+<p>```javascript
+// /etc/apache2/apache2.conf</p>
+
+<h1>AccessFileName: The name of the file to look for in each directory</h1>
+
+<h1>for additional configuration directives.  See also the AllowOverride</h1>
+
+<h1>directive.</h1>
+
+<p>#
+AccessFileName .htaccess
+```</p>
+
+<p>そして実際の<code>RewriteRule</code>の記載です。</p>
+
+<p><code>javascript
+// /var/www/html/.htaccess
+&lt;IfModule mod_rewrite.c&gt;
+RewriteEngine On
+RewriteRule ^fuga/(.*)$ /bar/$1
+&lt;/IfModule&gt;
+</code></p>
+
+<p>サンプル用に、<code>/var/www/html</code>配下に<code>bar</code>フォルダを作成し、その配下に<code>index.html</code>を作成しました。<br/>
+上記設定をしたので下記にアクセスしてみます。<br/>
+<code>http://localhost:15600/fuga/</code><br/>
+結果は下記の通りです。</p>
+
+<p><img src="/images/docker_rewrite.png" alt="RewriteRule適用" /></p>
+
+<h3>ErrorDocumentの設定</h3>
+
+<p>エラー発生時にカスタムエラーページを表示したいときなどに利用します。<br/>
+具体的には、</p>
+
+<p>```javascript
+// /etc/apache2/site-enabled/000-default.conf
+<VirtualHost *:80>
+  &hellip;
+  ErrorLog ${APACHE_LOG_DIR}/error.log
+  CustomLog ${APACHE_LOG_DIR}/access.log combined</p>
+
+<p>  // 以下、ErrorDocumentの設定
+  ErrorDocument 404 error_404.html
+  ErrorDocument 500 error_500.html
+  &hellip;
+</VirtualHost>
+```</p>
+
+<p>のように設定が可能です。<br/>
+Ubuntuの場合、<code>/etc/apache2/conf-enabled/localized-error-pages.conf</code>に<code>ErrorDocument</code>の構文が全てコメントアウトの状態で記載があるため、本格的にやるならきちんとファイルを分けた方が良さそうです。</p>
+
+<h3>まとめ</h3>
+
+<p>さて今回はApacheの設定を少し見ることができました。<br/>
+WEBサーバとはどんなものなのか、わかったようでわかっていなかったことが見えてきた気がします。<br/>
+引き続き勉強を続けていきたいものです。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Dockerコンテナ内のUbuntuにWebサーバーを立てよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2/"/>
+    <updated>2017-02-19T15:05:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/19/docker-for-mac-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、今回は前回(<a href="http://grandbig.github.io/blog/2017/02/13/docker-for-mac-1/">Docker for Macをインストールしよう！</a>)構築したDocker内のUbuntuサーバの中で遊んでみます。<br/>
+まずは、基本となるWebサーバを立てるところから始めたいと思います。</p>
+
+<p>今回は最も有名であろう(Nginxも人気ですが&hellip;) <strong>Apache</strong> を利用したWebサーバの構築をしてみます。<br/>
+限りなく常識に近いと思うものの、一応概要だけ紹介すると、Apacheとは下記の通りです。</p>
+
+<ul>
+<li>正式名所は「 <strong>Apache HTTP Server</strong> 」</li>
+<li>Webサーバソフトウェア</li>
+<li>Apache Licenseで無償で提供</li>
+<li>2.2系と2.4系があるがモダンなのは <strong>2.4系</strong></li>
+</ul>
+
+
+<p>というところで早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Host Macからアクセスするためのポートフォワード設定</h3>
+
+<p>これからApacheをインストールするわけですが、その前にDockerコンテナにポートフォワード設定をしてみましょう。<br/>
+Docker for Macなら簡単にできます。</p>
+
+<p>１．該当コンテナの設定を見ましょう</p>
+
+<p><img src="/images/docker_port_forward_1.png" alt="設定を見る" /></p>
+
+<p>２．Port設定を見ましょう</p>
+
+<p><img src="/images/docker_port_forward_2.png" alt="Port設定を見る" /></p>
+
+<p>３．ポートフォワードの設定を追加する</p>
+
+<p><img src="/images/docker_port_forward_3.png" alt="ポートフォワードの設定を追加" /></p>
+
+<p>上記では、<code>http://localhost:15600/</code>でMacからアクセスできるようにしています。<br/>
+<code>localhost</code>でなく、具体的にIPアドレスを指定しても良いようですが、今回は特に必要ないのでこれでいきます。</p>
+
+<h3>Apacheのインストール</h3>
+
+<p>まずは当然のことながらインストール作業から始めます。<br/>
+DockerのUbuntuコンテナを起動した後にログインして、下記コマンドを叩きましょう。</p>
+
+<p>ログインはDockerアプリに含まれている <strong>Kitematic</strong> からもできますし、コマンドでもできます。</p>
+
+<p>```javascript
+// docker コンテナにログイン
+$ docker exec -it &lt;&lt;コンテナ名>> bash</p>
+
+<p>// apt-getのアップデート
+$ apt-get update
+// Apacheのインストール
+$ apt-get install apache2
+```</p>
+
+<p>なぜ初めに<code>apt-get update</code>をやっているかと言うと、これをやらずに突き進もうとした際に下記エラーが発生したためです。</p>
+
+<p>```javascript</p>
+
+<h1>apt-get install apache2</h1>
+
+<p>Reading package lists&hellip; Done
+Building dependency tree     <br/>
+Reading state information&hellip; Done
+E: Unable to locate package apache2
+```</p>
+
+<p>きちんとApacheのインストールが完了したか確認するためにバージョンを見てみましょう。</p>
+
+<p>```javascript
+// バージョン確認方法(1)
+$ apachectl -v
+Server version: Apache/2.4.18 (Ubuntu)
+Server built:   2016-07-14T12:32:26</p>
+
+<p>// バージョン確認方法(2)
+$ apache2 -v
+Server version: Apache/2.4.18 (Ubuntu)
+Server built:   2016-07-14T12:32:26
+```</p>
+
+<h3>Apacheの起動確認</h3>
+
+<p>インストール後はデフォルトで起動していると思いますが、念のため確認しておきましょう。</p>
+
+<p><code>javascript
+$ /etc/init.d/apache2 status
+ * apache2 is running
+</code></p>
+
+<p>因みに、初期状態では<code>start</code>や<code>restart</code>コマンドを実行したときに下記警告が表示されます。</p>
+
+<p><code>javascript
+$ /etc/init.d/apache2 restart
+ * Restarting Apache httpd web server apache2                                                                                                                                                           AH00558: apache2: Could not reliably determine the server’s fully qualified domain name, using XX.XX.XX.XX. Set the 'ServerName' directive globally to suppress this message
+</code></p>
+
+<p>これを回避するためには設定ファイルに<code>ServerName</code>を定義する必要があります。<br/>
+(警告は出るものの、起動には何ら問題はありません。)</p>
+
+<p>下記のように設定ファイルを開きます。</p>
+
+<p><code>javascript
+// 設定ファイルを開く
+$ vi /etc/apache2/apache2.conf
+</code></p>
+
+<p>続いて、<code>ServerName</code>を適当な場所に定義してやりましょう。</p>
+
+<p>```javascript
+// /etc/apache2/apache2.conf
+// 省略</p>
+
+<h1>Include list of ports to listen on</h1>
+
+<p>Include ports.conf</p>
+
+<p>ServerName xxx.com
+// 省略
+```</p>
+
+<p>これにより、エラーなく起動や再起動できることを確認できるはずです。</p>
+
+<p><code>javascript
+$ /etc/init.d/apache2 restart
+ * Restarting Apache httpd web server apache2  
+</code></p>
+
+<p>これでApacheが起動していることが確認できたので、GETリクエストを投げてアクセスしてみましょう。<br/>
+Ubuntu用のApacheデフォルトページが返却されるはずです。</p>
+
+<p>```javascript
+$ curl <a href="http://127.0.0.1/">http://127.0.0.1/</a></p>
+
+<p>&lt;!DOCTYPE html PUBLIC &ldquo;&ndash;//W3C//DTD XHTML 1.0 Transitional//EN&rdquo; &ldquo;<a href="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd</a>&rdquo;>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  &hellip;
+</html>
+```</p>
+
+<h3>Webページにアクセス</h3>
+
+<p>冒頭でポートフォワード設定をしたので、Apacheが起動しているのであれば、Macからページを見れるはずです！<br/>
+早速見てみましょう。<br/>
+設定した<code>http://localhost:15600/</code>でアクセスすると下記のようにページが表示されます。</p>
+
+<p><img src="/images/docker_apache_1.png" alt="DockerコンテナのWEBページ" /></p>
+
+<h3>便利コマンド利用するためにモジュールをインストール</h3>
+
+<p>Webサーバを構築する上で、あまりにもまっさらなUbuntuだったため幾つか必要なものをインストールする必要がありました。<br/>
+その紹介もおまけ程度に書いておきます。</p>
+
+<h4>lessのインストール</h4>
+
+<p>毎回<code>cat</code>コマンドで中身を見る必要性がないこともあると思います。<br/>
+流石に<code>less</code>くらいはインストールしておきます。</p>
+
+<p>```javascript
+// lessのインストール
+$ apt-get install less</p>
+
+<p>// lessのバージョン確認
+$ less &mdash;help
+```</p>
+
+<h4>lessコマンドで色をつける</h4>
+
+<p>ついでに<code>less</code>コマンドで色を付けて見やすくする方法を書いておきます。</p>
+
+<p><code>javascript
+// source-highlightのインストール
+$ apt-get install source-highlight
+</code></p>
+
+<p>Dockerコンテナ内の環境変数は<code>.dockerenv</code>ファイル内に書きます。</p>
+
+<p>```javascript
+// .dockerenvに下記を追加</p>
+
+<h1>Source-hilight with less</h1>
+
+<p>export LESSOPEN=&ldquo;| /usr/share/source-highlight/src-hilite-lesspipe.sh %s&rdquo;
+export LESS=&lsquo;-R&rsquo;
+```</p>
+
+<p>結果を反映させるために、下記コマンドを叩きましょう。</p>
+
+<p><code>javascript
+$ source ~/.dockerenv
+</code></p>
+
+<h4>vi/vimのインストール</h4>
+
+<p>ファイルを作成する際に必ず必要になります。</p>
+
+<p>```javascript
+// vimのインストール
+$ apt-get install vim</p>
+
+<p>// vimのバージョン確認
+$ vim -v
+// viのバージョン確認
+$ vi -v
+```</p>
+
+<h4>curlのインストール</h4>
+
+<p><code>curl</code>は試しにHTTPリクエストを投げてみたいことがあると思ったのでインストールしてみました。</p>
+
+<p>```javascript
+// curlのインストール
+$ apt-get install curl</p>
+
+<p>// curlのバージョン確認
+$ curl -V
+curl 7.47.0 (x86_64-pc-linux-gnu) libcurl/7.47.0 GnuTLS/3.4.10 zlib/1.2.8 libidn/1.32 librtmp/2.3
+Protocols: dict file ftp ftps gopher http https imap imaps ldap ldaps pop3 pop3s rtmp rtsp smb smbs smtp smtps telnet tftp
+Features: AsynchDNS IDN IPv6 Largefile GSS-API Kerberos SPNEGO NTLM NTLM_WB SSL libz TLS-SRP UnixSockets
+```</p>
+
+<h3>まとめ</h3>
+
+<p>さて一先ず本記事の目的は達成できました。<br/>
+が、Apacheのあまりにも簡単な基礎部分しか見ていません。<br/>
+引き続き、最低限の設定を見ていきたいと思っています。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<h3>参考</h3>
+
+<p>以下、ページを参考にさせて頂きました。</p>
+
+<ul>
+<li><a href="http://www.nemotos.net/?p=1100">Ubuntuでlessを使って構文をカラー表示する方法</a></li>
+<li><a href="http://qiita.com/maemori/items/e7318b088b9e4bf22310">docker-machineコマンド</a></li>
+<li><a href="https://docs.docker.com/kitematic/userguide/">Kitematic user guide</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

@@ -1,0 +1,158 @@
+<div class="highlight"><pre><span class="n">import</span> <span class="n">UIKit</span>
+<span class="n">import</span> <span class="n">GoogleMaps</span>
+
+<span class="n">protocol</span> <span class="nl">MapDisplayLogic:</span> <span class="n">class</span> <span class="p">{</span>
+    <span class="n">func</span> <span class="n">displayInitMap</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">Map</span><span class="p">.</span><span class="n">Init</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span>
+    <span class="n">func</span> <span class="n">displaySearchedSuccess</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">Map</span><span class="p">.</span><span class="n">Search</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span>
+    <span class="n">func</span> <span class="n">displaySearchedFailure</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">Map</span><span class="p">.</span><span class="n">Search</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">class</span> <span class="nl">MapViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">MapDisplayLogic</span> <span class="p">{</span>
+    <span class="n">var</span> <span class="nl">interactor:</span> <span class="n">MapBusinessLogic</span><span class="o">?</span>
+    <span class="n">var</span> <span class="nl">router:</span> <span class="p">(</span><span class="n">NSObjectProtocol</span> <span class="o">&amp;</span> <span class="n">MapRoutingLogic</span> <span class="o">&amp;</span> <span class="n">MapDataPassing</span><span class="p">)</span><span class="o">?</span>
+
+    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">mapView:</span> <span class="n">GMSMapView</span><span class="o">!</span>
+    <span class="n">var</span> <span class="nl">locationManager:</span> <span class="n">CLLocationManager</span><span class="o">?</span>
+
+    <span class="c1">// MARK: Object lifecycle</span>
+
+    <span class="n">override</span> <span class="n">init</span><span class="p">(</span><span class="n">nibName</span> <span class="nl">nibNameOrNil:</span> <span class="n">String</span><span class="o">?</span><span class="p">,</span> <span class="n">bundle</span> <span class="nl">nibBundleOrNil:</span> <span class="n">Bundle</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">nibName:</span> <span class="n">nibNameOrNil</span><span class="p">,</span> <span class="nl">bundle:</span> <span class="n">nibBundleOrNil</span><span class="p">)</span>
+        <span class="n">setup</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="n">required</span> <span class="n">init</span><span class="o">?</span><span class="p">(</span><span class="n">coder</span> <span class="nl">aDecoder:</span> <span class="n">NSCoder</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">coder:</span> <span class="n">aDecoder</span><span class="p">)</span>
+        <span class="n">setup</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: Setup</span>
+
+    <span class="n">private</span> <span class="n">func</span> <span class="n">setup</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">let</span> <span class="n">viewController</span> <span class="o">=</span> <span class="n">self</span>
+        <span class="n">let</span> <span class="n">interactor</span> <span class="o">=</span> <span class="n">MapInteractor</span><span class="p">()</span>
+        <span class="n">let</span> <span class="n">presenter</span> <span class="o">=</span> <span class="n">MapPresenter</span><span class="p">()</span>
+        <span class="n">let</span> <span class="n">router</span> <span class="o">=</span> <span class="n">MapRouter</span><span class="p">()</span>
+        <span class="n">viewController</span><span class="p">.</span><span class="n">interactor</span> <span class="o">=</span> <span class="n">interactor</span>
+        <span class="n">viewController</span><span class="p">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">router</span>
+        <span class="n">interactor</span><span class="p">.</span><span class="n">presenter</span> <span class="o">=</span> <span class="n">presenter</span>
+        <span class="n">presenter</span><span class="p">.</span><span class="n">viewController</span> <span class="o">=</span> <span class="n">viewController</span>
+        <span class="n">router</span><span class="p">.</span><span class="n">viewController</span> <span class="o">=</span> <span class="n">viewController</span>
+        <span class="n">router</span><span class="p">.</span><span class="n">dataStore</span> <span class="o">=</span> <span class="n">interactor</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: Routing</span>
+
+    <span class="n">override</span> <span class="n">func</span> <span class="n">prepare</span><span class="p">(</span><span class="k">for</span> <span class="nl">segue:</span> <span class="n">UIStoryboardSegue</span><span class="p">,</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="n">let</span> <span class="n">scene</span> <span class="o">=</span> <span class="n">segue</span><span class="p">.</span><span class="n">identifier</span> <span class="p">{</span>
+            <span class="n">let</span> <span class="n">selector</span> <span class="o">=</span> <span class="n">NSSelectorFromString</span><span class="p">(</span><span class="s">&quot;routeTo\(scene)WithSegue:&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">let</span> <span class="n">router</span> <span class="o">=</span> <span class="n">router</span><span class="p">,</span> <span class="n">router</span><span class="p">.</span><span class="n">responds</span><span class="p">(</span><span class="nl">to:</span> <span class="n">selector</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">router</span><span class="p">.</span><span class="n">perform</span><span class="p">(</span><span class="n">selector</span><span class="p">,</span> <span class="nl">with:</span> <span class="n">segue</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: View lifecycle</span>
+
+    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+
+        <span class="n">configureMapView</span><span class="p">()</span>
+        <span class="n">configureLocationManager</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: Configuration</span>
+    <span class="n">func</span> <span class="n">configureMapView</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// GoogleMapの初期化</span>
+        <span class="n">mapView</span><span class="p">.</span><span class="n">isMyLocationEnabled</span> <span class="o">=</span> <span class="n">true</span>
+        <span class="n">mapView</span><span class="p">.</span><span class="n">mapType</span> <span class="o">=</span> <span class="n">GMSMapViewType</span><span class="p">.</span><span class="n">normal</span>
+        <span class="n">mapView</span><span class="p">.</span><span class="n">settings</span><span class="p">.</span><span class="n">compassButton</span> <span class="o">=</span> <span class="n">true</span>
+        <span class="n">mapView</span><span class="p">.</span><span class="n">settings</span><span class="p">.</span><span class="n">myLocationButton</span> <span class="o">=</span> <span class="n">true</span>
+        <span class="n">mapView</span><span class="p">.</span><span class="n">settings</span><span class="p">.</span><span class="n">compassButton</span> <span class="o">=</span> <span class="n">true</span>
+        <span class="n">mapView</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+    <span class="p">}</span>
+
+    <span class="n">func</span> <span class="n">configureLocationManager</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// 位置情報関連の初期化</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">desiredAccuracy</span> <span class="o">=</span> <span class="n">kCLLocationAccuracyBest</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">requestWhenInUseAuthorization</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">startUpdatingLocation</span><span class="p">()</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: Init mapView</span>
+
+    <span class="n">func</span> <span class="n">displayInitMap</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">Map</span><span class="p">.</span><span class="n">Init</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// 初期描画時のマップ中心位置の移動</span>
+        <span class="n">let</span> <span class="n">coordinate</span> <span class="o">=</span> <span class="n">CLLocationCoordinate2D</span><span class="p">(</span><span class="nl">latitude:</span> <span class="n">viewModel</span><span class="p">.</span><span class="n">latitude</span><span class="p">,</span> <span class="nl">longitude:</span> <span class="n">viewModel</span><span class="p">.</span><span class="n">longitude</span><span class="p">)</span>
+        <span class="n">let</span> <span class="n">camera</span> <span class="o">=</span> <span class="n">GMSCameraPosition</span><span class="p">.</span><span class="n">camera</span><span class="p">(</span><span class="nl">withTarget:</span> <span class="n">coordinate</span><span class="p">,</span> <span class="nl">zoom:</span> <span class="n">viewModel</span><span class="p">.</span><span class="n">zoomLevel</span><span class="p">)</span>
+        <span class="n">mapView</span><span class="p">.</span><span class="n">camera</span> <span class="o">=</span> <span class="n">camera</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: Search restaurants</span>
+
+    <span class="n">func</span> <span class="n">searchRestaurants</span><span class="p">()</span> <span class="p">{</span>
+        <span class="n">guard</span> <span class="n">let</span> <span class="n">latitude</span> <span class="o">=</span> <span class="n">mapView</span><span class="p">.</span><span class="n">myLocation</span><span class="o">?</span><span class="p">.</span><span class="n">coordinate</span><span class="p">.</span><span class="n">latitude</span><span class="p">,</span> <span class="n">let</span> <span class="n">longitude</span> <span class="o">=</span> <span class="n">mapView</span><span class="p">.</span><span class="n">myLocation</span><span class="o">?</span><span class="p">.</span><span class="n">coordinate</span><span class="p">.</span><span class="n">longitude</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">return</span>
+        <span class="p">}</span>
+        <span class="n">let</span> <span class="n">request</span> <span class="o">=</span> <span class="n">Map</span><span class="p">.</span><span class="n">Search</span><span class="p">.</span><span class="n">Request</span><span class="p">(</span><span class="nl">latitude:</span> <span class="n">latitude</span><span class="p">,</span> <span class="nl">longitude:</span> <span class="n">longitude</span><span class="p">)</span>
+        <span class="n">interactor</span><span class="o">?</span><span class="p">.</span><span class="n">searchRestaurants</span><span class="p">(</span><span class="nl">request:</span> <span class="n">request</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="n">func</span> <span class="n">displaySearchedSuccess</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">Map</span><span class="p">.</span><span class="n">Search</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">let</span> <span class="n">restaurants</span> <span class="o">=</span> <span class="n">viewModel</span><span class="p">.</span><span class="n">restaurants</span>
+        <span class="k">for</span> <span class="n">restaurant</span> <span class="k">in</span> <span class="n">restaurants</span> <span class="p">{</span>
+            <span class="n">putMarker</span><span class="p">(</span><span class="nl">restaurant:</span> <span class="n">restaurant</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="n">func</span> <span class="n">displaySearchedFailure</span><span class="p">(</span><span class="nl">viewModel:</span> <span class="n">Map</span><span class="p">.</span><span class="n">Search</span><span class="p">.</span><span class="n">ViewModel</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">showAlert</span><span class="p">(</span><span class="nl">title:</span> <span class="s">&quot;確認&quot;</span><span class="p">,</span> <span class="nl">message:</span> <span class="s">&quot;周辺にレストランは見つかりませんでした。&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">tappedSearchButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">searchRestaurants</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="c1">// MARK: Other</span>
+    <span class="n">private</span> <span class="n">func</span> <span class="n">putMarker</span><span class="p">(</span><span class="nl">restaurant:</span> <span class="n">Restaurant</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">let</span> <span class="n">marker</span> <span class="o">=</span> <span class="n">CustomGMSMarker</span><span class="p">()</span>
+        <span class="n">marker</span><span class="p">.</span><span class="kt">id</span> <span class="o">=</span> <span class="n">restaurant</span><span class="p">.</span><span class="kt">id</span>
+        <span class="n">marker</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">restaurant</span><span class="p">.</span><span class="n">name</span>
+        <span class="n">marker</span><span class="p">.</span><span class="n">category</span> <span class="o">=</span> <span class="n">restaurant</span><span class="p">.</span><span class="n">category</span>
+        <span class="n">marker</span><span class="p">.</span><span class="n">imageURL</span> <span class="o">=</span> <span class="n">restaurant</span><span class="p">.</span><span class="n">imageURL</span>
+        <span class="n">marker</span><span class="p">.</span><span class="n">position</span> <span class="o">=</span> <span class="n">CLLocationCoordinate2D</span><span class="p">(</span><span class="nl">latitude:</span> <span class="n">restaurant</span><span class="p">.</span><span class="n">latitude</span><span class="p">,</span> <span class="nl">longitude:</span> <span class="n">restaurant</span><span class="p">.</span><span class="n">longitude</span><span class="p">)</span>
+        <span class="n">marker</span><span class="p">.</span><span class="n">icon</span> <span class="o">=</span> <span class="n">UIImage</span><span class="p">(</span><span class="nl">named:</span> <span class="s">&quot;RestaurantIcon&quot;</span><span class="p">)</span>
+        <span class="n">marker</span><span class="p">.</span><span class="n">appearAnimation</span> <span class="o">=</span> <span class="n">GMSMarkerAnimation</span><span class="p">.</span><span class="n">pop</span>
+        <span class="n">marker</span><span class="p">.</span><span class="n">map</span> <span class="o">=</span> <span class="n">mapView</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">extension</span> <span class="nl">MapViewController:</span> <span class="n">CLLocationManagerDelegate</span> <span class="p">{</span>
+
+    <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didUpdateLocations</span> <span class="nl">locations:</span> <span class="p">[</span><span class="n">CLLocation</span><span class="p">])</span> <span class="p">{</span>
+        <span class="c1">// マップの初期描画</span>
+        <span class="k">if</span> <span class="n">let</span> <span class="n">coordinate</span> <span class="o">=</span> <span class="n">locations</span><span class="p">.</span><span class="n">last</span><span class="o">?</span><span class="p">.</span><span class="n">coordinate</span> <span class="p">{</span>
+            <span class="n">let</span> <span class="n">request</span> <span class="o">=</span> <span class="n">Map</span><span class="p">.</span><span class="n">Init</span><span class="p">.</span><span class="n">Request</span><span class="p">(</span><span class="nl">latitude:</span> <span class="n">coordinate</span><span class="p">.</span><span class="n">latitude</span><span class="p">,</span> <span class="nl">longitude:</span> <span class="n">coordinate</span><span class="p">.</span><span class="n">longitude</span><span class="p">)</span>
+            <span class="n">interactor</span><span class="o">?</span><span class="p">.</span><span class="n">initMapView</span><span class="p">(</span><span class="nl">request:</span> <span class="n">request</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">extension</span> <span class="nl">MapViewController:</span> <span class="n">GMSMapViewDelegate</span> <span class="p">{</span>
+
+    <span class="n">func</span> <span class="n">mapView</span><span class="p">(</span><span class="n">_</span> <span class="nl">mapView:</span> <span class="n">GMSMapView</span><span class="p">,</span> <span class="n">markerInfoWindow</span> <span class="nl">marker:</span> <span class="n">GMSMarker</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UIView</span><span class="o">?</span> <span class="p">{</span>
+        <span class="n">guard</span> <span class="n">let</span> <span class="n">cMarker</span> <span class="o">=</span> <span class="n">marker</span> <span class="n">as</span><span class="o">?</span> <span class="n">CustomGMSMarker</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nb">nil</span>
+        <span class="p">}</span>
+
+        <span class="n">cMarker</span><span class="p">.</span><span class="n">tracksInfoWindowChanges</span> <span class="o">=</span> <span class="n">true</span>
+        <span class="n">let</span> <span class="n">view</span> <span class="o">=</span> <span class="n">CustomInfoWindow</span><span class="p">(</span><span class="nl">frame:</span> <span class="n">CGRect</span><span class="p">(</span><span class="nl">x:</span> <span class="mi">0</span><span class="p">,</span> <span class="nl">y:</span> <span class="mi">0</span><span class="p">,</span> <span class="nl">width:</span> <span class="mi">250</span><span class="p">,</span> <span class="nl">height:</span> <span class="mi">265</span><span class="p">))</span>
+        <span class="n">view</span><span class="p">.</span><span class="n">setup</span><span class="p">(</span><span class="nl">name:</span> <span class="n">cMarker</span><span class="p">.</span><span class="n">name</span><span class="p">,</span> <span class="nl">category:</span> <span class="n">cMarker</span><span class="p">.</span><span class="n">category</span><span class="p">,</span> <span class="nl">imageURL:</span> <span class="n">cMarker</span><span class="p">.</span><span class="n">imageURL</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">view</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

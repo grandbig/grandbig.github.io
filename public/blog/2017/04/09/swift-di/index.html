@@ -1,0 +1,635 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>SwinjectでDIを意識してみよう！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに 筆者はここ１年間、主にバックエンド構築にSpring Bootを利用してきました。
+Spring Framework自体は2002年頃にリリースされたそうなのですが、Spring &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2017/04/09/swift-di/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">SwinjectでDIを意識してみよう！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-04-09T22:51:00+09:00" pubdate data-updated="true">Apr 9<span>th</span>, 2017</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>筆者はここ１年間、主にバックエンド構築にSpring Bootを利用してきました。<br/>
+Spring Framework自体は2002年頃にリリースされたそうなのですが、Spring BootはSpringベースでのアプリ開発を楽にしてくれる新たな形で様々なSpringのFramework群を統合したものとのことです。<br/>
+(Spring Bootでググると2〜3年前辺りからの記事が多い印象です。)</p>
+
+<p>Springの特徴は何と言っても <strong>DI</strong> でしょう。<br/>
+今回はそのSpringの代名詞とも言える <strong>DI</strong> をSwiftで扱ってみたいと思います。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>DIとは</h3>
+
+<p>DIとは『Dependency Injection』の略語で、日本語だと依存性の注入と翻訳されたりします。<br/>
+具体的に何者なのかと言うと、</p>
+
+<ul>
+<li>コンポーネント間の依存関係を排除するソフトウェアパターン (<a href="https://ja.wikipedia.org/wiki/%E4%BE%9D%E5%AD%98%E6%80%A7%E3%81%AE%E6%B3%A8%E5%85%A5">Wikipedia &ndash; 依存性の注入</a>)</li>
+<li>これにより疎結合性が高まるので単体テストが書きやすい</li>
+</ul>
+
+
+<p>というものです。</p>
+
+<p>Springベースのアプリでは基本パターンとして利用しています。<br/>
+詳しい説明は省きますが、<br/>
+Spring起動時に<code>Bean</code>化したオブジェクトを<code>@Autowired</code>アノテーションを利用することで、DIコンテナ経由で簡単に <strong>DI</strong> を利用することができます。</p>
+
+<p>注意しておきたいこととして、<br/>
+<code>Bean</code>定義したクラスは<code>@Autowired</code>アノテーションで呼び出される際、デフォルトでシングルトンパターンとして生成されたオブジェクトを呼び出しています。</p>
+
+<h3>SwiftでDIするには？</h3>
+
+<p>さて、そんなSpringの特徴的なDIですが、Swiftアプリで利用することはできるのでしょうか？<br/>
+筆者が調べたところ、最も人気のあるSwift版DIライブラリとして<a href="https://github.com/Swinject/Swinject">Swinject</a>というものがあるようです。<br/>
+本日時点でGitHub上のスター数が<code>1,432</code>となっており、なかなかの注目度かと思います。</p>
+
+<p>しかも、下記のようにSwift3にも対応しているのが嬉しいですね！</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">iOS</span> <span class="mf">8.0</span><span class="o">+</span> <span class="o">/</span> <span class="n">Mac</span> <span class="n">OS</span> <span class="n">X</span> <span class="mf">10.10</span><span class="o">+</span> <span class="o">/</span> <span class="n">watchOS</span> <span class="mf">2.0</span><span class="o">+</span> <span class="o">/</span> <span class="n">tvOS</span> <span class="mf">9.0</span><span class="o">+</span>
+</span><span class='line'><span class="n">Swift</span> <span class="mf">2.2</span> <span class="n">or</span> <span class="mf">2.3</span>
+</span><span class='line'><span class="n">Xcode</span> <span class="mf">7.0</span><span class="o">+</span>
+</span><span class='line'><span class="n">Swift</span> <span class="mi">3</span>
+</span><span class='line'><span class="n">Xcode</span> <span class="mf">8.0</span><span class="o">+</span>
+</span><span class='line'><span class="n">Carthage</span> <span class="mf">0.18</span><span class="o">+</span> <span class="p">(</span><span class="k">if</span> <span class="n">you</span> <span class="n">use</span><span class="p">)</span>
+</span><span class='line'><span class="n">CocoaPods</span> <span class="mf">1.1.1</span><span class="o">+</span> <span class="p">(</span><span class="k">if</span> <span class="n">you</span> <span class="n">use</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>実際に<code>Swinject</code>を利用してSwiftでのDIを試してみたいと思います。</p>
+
+<h3>Swinjectの使い方</h3>
+
+<p>では早速使ってみましょう。</p>
+
+<h4>Swinjectのインストール</h4>
+
+<p>CocoaPodsでインストールするために下記のように<code>Podfile</code>を作成しましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Podfile</span>
+</span><span class='line'><span class="n">source</span> <span class="err">&#39;</span><span class="nl">https:</span><span class="c1">//github.com/CocoaPods/Specs.git&#39;</span>
+</span><span class='line'><span class="n">platform</span> <span class="o">:</span><span class="n">ios</span><span class="p">,</span> <span class="err">&#39;</span><span class="mf">8.0</span><span class="err">&#39;</span> <span class="err">#</span> <span class="n">or</span> <span class="n">platform</span> <span class="o">:</span><span class="n">osx</span><span class="p">,</span> <span class="err">&#39;</span><span class="mf">10.10</span><span class="err">&#39;</span> <span class="k">if</span> <span class="n">your</span> <span class="n">target</span> <span class="n">is</span> <span class="n">OS</span> <span class="n">X</span><span class="p">.</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="err">&#39;</span><span class="n">SwinjectSample</span><span class="err">&#39;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">use_frameworks</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Swinject</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">2.0.0</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">SwinjectStoryboard</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="mf">1.0.0</span><span class="err">&#39;</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>その後に<code>pod install</code>を実行しましょう。<br/>
+これで<code>Swinject</code>の用意は完了です。</p>
+
+<h4>DIしたいクラスの定義</h4>
+
+<p>サンプルとしてDIしたいクラスを定義します。<br/>
+具体的なクラスだけでなく <strong>プロトコル</strong> を定義しているのは、<br/>
+後々、同じような<code>JavaProgrammer</code>クラスを作成したくなった際に便利だからです。<br/>
+(ベースが同じで、拡張機能が必要になった際に、0から書き直す必要がなくなります。)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Engineer.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">protocol</span> <span class="n">Engineer</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span><span class="o">?</span> <span class="p">{</span> <span class="n">get</span> <span class="n">set</span> <span class="p">}</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">develop</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">String</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">SwiftProgrammer:</span> <span class="n">Engineer</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span><span class="o">?</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="nl">name:</span> <span class="n">String</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">develop</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="s">&quot;Let&#39;s start developing a swift application!&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、先程作成した<code>Engineer</code>を参照する<code>CompanyOwner</code>クラスを作成します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Company.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">protocol</span> <span class="n">Person</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">hire</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">String</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">CompanyOwner:</span> <span class="n">Person</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="nl">humanResource:</span> <span class="n">Engineer</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="nl">humanResource:</span> <span class="n">Engineer</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">humanResource</span> <span class="o">=</span> <span class="n">humanResource</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">hire</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">name</span> <span class="o">=</span> <span class="n">humanResource</span><span class="p">.</span><span class="n">name</span> <span class="o">??</span> <span class="s">&quot;someone&quot;</span>
+</span><span class='line'>        <span class="k">return</span> <span class="s">&quot;I&#39;m hiring \(name). \(humanResource.develop())&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ここで<code>SwiftProgrammer</code>クラスでなく<code>Engineer</code>プロトコルを参照することで、<code>CompanyOwner</code>クラス自体が<code>SwiftProgrammer</code>クラスに依存することがなくなりました。<br/>
+つまり<code>JavaProgrammer</code>を雇いたい<code>CompanyOwner</code>クラスが必要になった場合、作成するのは<code>JavaProgrammer</code>クラスのみで良くなります。<br/>
+これはこれで<code>CompanyOwner</code>クラスに対して単体テストコードを書く時に<code>SwiftProgrammer</code>クラスに依存せずに書くことができます。</p>
+
+<h4>DIコンテナへのクラスの登録</h4>
+
+<p>さて、DIしたいクラスが定義できたので、そのクラスをDIコンテナに登録します。<br/>
+公式ページによると<code>SwinjectStoryboard</code>を利用する場合と利用しない場合の2種類の方法があるそうですが、今回は簡単に対応可能な<code>SwinjectStoryboard</code>利用する方法で書いてみます。</p>
+
+<p>サンプルとして、<code>ViewController.swift</code>でDIコンテナ経由で呼び出したクラスを利用したいとします。<br/>
+その場合、下記のように、<code>ViewController.swift</code>にコンテナ定義を書きます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">SwinjectStoryboard</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="n">SwinjectStoryboard</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">class</span> <span class="n">func</span> <span class="n">setup</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// (1)</span>
+</span><span class='line'>        <span class="n">defaultContainer</span><span class="p">.</span><span class="k">register</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">)</span> <span class="p">{</span> <span class="n">_</span> <span class="k">in</span> <span class="n">SwiftProgrammer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;Takahiro&quot;</span><span class="p">)</span> <span class="p">}</span>
+</span><span class='line'>        <span class="c1">// (2)</span>
+</span><span class='line'>        <span class="n">defaultContainer</span><span class="p">.</span><span class="k">register</span><span class="p">(</span><span class="n">Person</span><span class="p">.</span><span class="n">self</span><span class="p">)</span> <span class="p">{</span> <span class="n">r</span> <span class="k">in</span>
+</span><span class='line'>            <span class="n">CompanyOwner</span><span class="p">(</span><span class="nl">humanResource:</span> <span class="n">r</span><span class="p">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">Engineer</span><span class="p">.</span><span class="n">self</span><span class="p">)</span><span class="o">!</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="c1">// (3)</span>
+</span><span class='line'>        <span class="n">defaultContainer</span><span class="p">.</span><span class="n">storyboardInitCompleted</span><span class="p">(</span><span class="n">ViewController</span><span class="p">.</span><span class="n">self</span><span class="p">)</span> <span class="p">{</span> <span class="n">r</span><span class="p">,</span> <span class="n">c</span> <span class="k">in</span>
+</span><span class='line'>            <span class="n">c</span><span class="p">.</span><span class="n">person</span> <span class="o">=</span> <span class="n">r</span><span class="p">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">Person</span><span class="p">.</span><span class="n">self</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="p">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>順々に説明すると、</p>
+
+<ol>
+<li><code>defaultContainer</code>に<code>Engineer</code>指定で<code>SwiftProgrammer(name: "Takahiro")</code>が呼び出されるように登録</li>
+<li><code>defaultContainer</code>に<code>Person</code>指定で<code>CompanyOwner(humanResource: r.resolve(Engineer.self)!)</code>が呼び出されるように登録<br/>
+※ 1で<code>Engineer</code>指定で<code>SwiftProgrammer(name: "Takahiro")</code>呼び出しをセットしているので、それが2の<code>CompanyOwner</code>の引数にセットされます。</li>
+<li><code>defaultContainer</code>にDIコンテナ経由での呼び出し先と先ほどまで定義していた<code>Person</code>指定での呼び出し元を紐付け</li>
+</ol>
+
+
+<p>となっています。<br/>
+これにより、下記のように<code>ViewController.swift</code>内でDIコンテナ経由で<code>Person</code>指定で想定した処理を呼び出すことができます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">person:</span> <span class="n">Person</span><span class="o">?</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>        <span class="c1">// Do any additional setup after loading the view, typically from a nib.</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="n">person</span><span class="o">?</span><span class="p">.</span><span class="n">hire</span><span class="p">()</span> <span class="o">??</span> <span class="s">&quot;I can&#39;t hire engineers.&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>        <span class="c1">// Dispose of any resources that can be recreated.</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記を見ると、<code>ViewController</code>クラスの中で<code>Person</code>をインスタンス化している箇所はないことがわかると思います。<br/>
+つまり、DIコンテナ経由で<code>Person</code>を呼び出せているわけですね。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、<code>Swinject</code>を利用してサンプルを書いてみた感想ですが&hellip;<br/>
+正直、Spring Bootと比較すると、Swiftでは手動で書くべきところが多いと感じました。<br/>
+また、様々な<code>UIViewController</code>にまたがって利用する場合は記載箇所に一工夫必要なのかなとも思いました。<br/>
+(毎回、全<code>UIViewController</code>系のファイルに<code>setUp()</code>を書くわけにもいかないと思いますし&hellip;)</p>
+
+<p>まだまだ未知数なところがあるので、継続して試してみたいところではあります。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考：</p>
+
+<ul>
+<li><a href="http://permanent-til.me/archives/613">Spring BeanはSingletonだから、状態持たせるとバグるよ。</a></li>
+<li><a href="http://qiita.com/chkkchy/items/5f59817beb3dff9c0c1e">SpringのDIとnewってなにがちがうんだっけ？</a></li>
+<li><a href="https://github.com/Swinject/Swinject">Swinject</a></li>
+<li><a href="http://dev.classmethod.jp/smartphone/swinject-dependency-injection/">Swinjectを使ったDependency Injection</a></li>
+</ul>
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-04-09T22:51:00+09:00" pubdate data-updated="true">Apr 9<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/springboot/'>springboot</a>, <a class='category' href='/blog/categories/swift/'>swift</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2017/04/09/swift-di/" data-via="" data-counturl="http://grandbig.github.io/blog/2017/04/09/swift-di/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/03/25/docker-for-mac-6/" title="Previous Post: Kitematicでエラーが発生してDockerコンテナが作成できない！！">&laquo; Kitematicでエラーが発生してDockerコンテナが作成できない！！</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/04/11/docker-for-mac-7/" title="Next Post: Dockerコンテナ内のUbuntuにSwiftサーバを立てよう！">Dockerコンテナ内のUbuntuにSwiftサーバを立てよう！ &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/12/02/universallink/">今更だけど試してみようUniversalLink</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/11/27/iphonex-statusbar/">iPhoneXのステータスバーの高さ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/09/clean-swift-3/">Clean Swiftを勉強してみよう！(3)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/08/clean-swift-2/">Clean Swiftを勉強してみよう！(2)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/09/25/clean-swift/">Clean Swiftを勉強してみよう！(1)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (160)</a></li><li><a href='/blog/categories/swift'>swift (63)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/redux'>redux (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2017/04/09/swift-di/';
+        var disqus_url = 'http://grandbig.github.io/blog/2017/04/09/swift-di/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

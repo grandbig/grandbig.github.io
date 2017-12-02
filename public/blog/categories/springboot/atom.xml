@@ -1,0 +1,1039 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: springboot | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/springboot/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-12-02T19:17:09+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Spring Bootで簡単Facebook接続]]></title>
+    <link href="http://grandbig.github.io/blog/2017/04/16/spring-boot-facebook-login/"/>
+    <updated>2017-04-16T14:52:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/04/16/spring-boot-facebook-login</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、久しぶりに<code>Spring Boot</code>で遊んでみました。<br/>
+と言ってもほとんどコードを書く必要のないFacebook認証についてです。<br/>
+(本当は<code>Spring Social</code>を利用したFacebookログインまで書こうかと思ったのですが、一旦簡単なところまで&hellip;)</p>
+
+<h3>Facebookアプリを新規作成</h3>
+
+<p>まずはFacebook認証などをするために、Facebook Developersサイトでアプリを登録しましょう。</p>
+
+<p>１．<a href="https://developers.facebook.com/">facebook developers</a>に遷移<br/>
+トップページから新規アプリを追加しましょう。<br/>
+<img src="/images/web_facebook_login_1.png" alt="facebook developersトップページ" /></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>２．必要項目を入力</p>
+
+<p><img src="/images/web_facebook_login_2.png" alt="ポップアップに必要事項を入力します" /></p>
+
+<p>３．セキュリティチェックをパス</p>
+
+<p><img src="/images/web_facebook_login_3.png" alt="セキュリティモーダルの解決" /></p>
+
+<p>４．利用機能の選択</p>
+
+<p><img src="/images/web_facebook_login_4.png" alt="Facebookの利用機能を選択します" /></p>
+
+<p>５．アプリの設定からプラットフォームを追加</p>
+
+<p>左メニューから設定を選択して、下図の画面を出します。<br/>
+<img src="/images/web_facebook_login_5.png" alt="プラットフォームを追加します" /></p>
+
+<p>プラットフォームとして『ウェブサイト』を追加します。<br/>
+<img src="/images/web_facebook_login_6.png" alt="ウェブサイトをプラットフォームとして追加します" /></p>
+
+<p>サイトURLやドメインなど必要事項を入力します。<br/>
+<img src="/images/web_facebook_login_7.png" alt="必要事項を入力します" /></p>
+
+<p>６．Facebookログインの設定</p>
+
+<p>Facebook認証後に返されるリダイレクトURIを設定します。<br/>
+<img src="/images/web_facebook_login_8.png" alt="リダイレクトURIを設定します" /></p>
+
+<h3>Spring Bootプロジェクトの新規作成</h3>
+
+<p>さて事前準備は完了したので、Spring BootプロジェクトをIntelliJで新規作成しましょう。</p>
+
+<p>１．IntelliJを起動して、Spring Boot用にベースとなる形式を選択</p>
+
+<p><img src="/images/web_facebook_login_9.png" alt="Spring Initializerを選択します" /></p>
+
+<p>２．ビルドツールとして<code>Gradle</code>を選択</p>
+
+<p><img src="/images/web_facebook_login_10.png" alt="Gradleをビルドツールとして選択します" /></p>
+
+<p>３．必要なモジュールを選択</p>
+
+<p>今回は <code>Security</code>, <code>Web</code>, <code>Thymeleaf</code>を利用します。<br/>
+<img src="/images/web_facebook_login_11.png" alt="必要なモジュールを選択します" /></p>
+
+<h3>Facebook認証処理を実装</h3>
+
+<p>では、実装していきましょう。</p>
+
+<h4>Spring Security周りの修正</h4>
+
+<p>まず、<code>Spring Security</code>はデフォルトBasic認証が有効となっているため、一旦、認証不要箇所などを設定します。</p>
+
+<p>```java
+// SecurityConfig.java
+package com.example.config;</p>
+
+<p>import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;</p>
+
+<p>@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {</p>
+
+<pre><code>@Override
+protected void configure(HttpSecurity http) throws Exception {
+    http
+            .authorizeRequests()
+            .antMatchers("/", "/complete", "/api/**").permitAll()
+            .anyRequest().authenticated();
+    http.formLogin();
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記ソースでは<code>/</code>と<code>/complete</code>と<code>/api/**</code>のアクセスを許可しています。<br/>
+それぞれ、</p>
+
+<ul>
+<li><code>/</code>: トップぺージ</li>
+<li><code>/complete</code>: Facebook認証後に表示する画面<br/>
+ここで許可すると認証しなくても表示されてしまいますが、簡単のため</li>
+<li><code>/api/**</code>: Facebook認証を実行するためのAPI用</li>
+</ul>
+
+
+<p>という意図です。</p>
+
+<h4>HTMLページの表示</h4>
+
+<p>続いて、単体HTMLページ表示用の処理です。</p>
+
+<h5>Controllerの処理</h5>
+
+<p><code>Controller</code>は下記の通り。</p>
+
+<p>```java
+// TopController.java
+package com.example.controller;</p>
+
+<p>import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.ModelAndView;</p>
+
+<p>@RestController
+@RequestMapping(&ldquo;/&rdquo;)
+public class TopController {</p>
+
+<pre><code>// ログイン画面
+@RequestMapping("")
+public ModelAndView index(ModelAndView mav) {
+    mav.setViewName("index");
+    return mav;
+}
+
+// 認証完了後に表示する
+@RequestMapping("/complete")
+public ModelAndView complete(ModelAndView mav) {
+    mav.setViewName("complete");
+    return mav;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>HTMLの処理</h5>
+
+<p>そして、HTMLファイルは下記の通り。</p>
+
+<p>```html</p>
+
+<!-- index.html -->
+
+
+<p>&lt;!DOCTYPE html>
+<html lang="en" xmlns="http://www.thymeleaf.org">
+<head>
+  &lt;meta</p>
+
+<pre><code>http-equiv="Content-Type"
+content="text/html"
+charset="UTF-8"/&gt;
+</code></pre>
+
+<p>  <title>Facebook Login Sample</title>
+</head>
+<body></p>
+
+<div>これはFacebookログインのためのサンプルトップ画面です。</div>
+
+
+<p><form action="/api/login" method="get">
+  <input type="submit" value="Facebookでログイン"/>
+</form>
+</body>
+</html>
+```</p>
+
+<p>```html</p>
+
+<!-- complete.html -->
+
+
+<p>&lt;!DOCTYPE html>
+<html lang="en" xmlns="http://www.thymeleaf.org">
+<head>
+  &lt;meta</p>
+
+<pre><code>http-equiv="Content-Type"
+content="text/html"
+charset="UTF-8"/&gt;
+</code></pre>
+
+<p>  <title>ログイン完了画面</title>
+</head>
+<body></p>
+
+<div>ログイン完了しました！！</div>
+
+
+<p></body>
+</html>
+```</p>
+
+<h4>環境変数の設定</h4>
+
+<p>FacebookのアプリIDや認証リクエストを送るURLなどの環境変数を書き出します。</p>
+
+<p><code>java
+// application.properties
+server.port=9000
+spring.social.facebook.appId=xxxxxxxxx
+sampleApp.urls.facebookLogin=https://www.facebook.com/v2.8/dialog/oauth?client_id=xxxxxxxxx&amp;scope=public_profile,email
+sampleApp.urls.oAuthCallback=http://localhost:9000/api/callback
+</code></p>
+
+<p>ここで書いた環境変数を他のJavaファイルで利用したいので、<br/>
+新たに<code>MyBean.java</code>と<code>MyProperties.java</code>を新規作成します。</p>
+
+<p>```java
+// MyBean.java
+package com.example.config.bean;</p>
+
+<p>public class MyBean {</p>
+
+<pre><code>public String facebookLogin;
+
+public String oAuthCallback;
+
+public void setFacebookLogin(String facebookLogin) {
+    this.facebookLogin = facebookLogin;
+}
+
+public void setoAuthCallback(String oAuthCallback) {
+    this.oAuthCallback = oAuthCallback;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>```java
+// MyProperties
+package com.example.config.properties;</p>
+
+<p>import com.example.config.bean.MyBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.core.env.Environment;</p>
+
+<p>@Configuration
+@PropertySource(value = {&ldquo;classpath:application.properties&rdquo;})
+public class MyProperties {</p>
+
+<pre><code>@Autowired
+private Environment env;
+
+@Bean
+public MyBean myBean() {
+    MyBean myBean = new MyBean();
+    myBean.setFacebookLogin(env.getProperty("sampleApp.urls.facebookLogin"));
+    myBean.setoAuthCallback(env.getProperty("sampleApp.urls.oAuthCallback"));
+    return myBean;
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Facebook認証周りの処理</h4>
+
+<p>後はFacebook認証先にURLを送るだけです。</p>
+
+<p>```javascript
+package com.example.controller;</p>
+
+<p>import com.example.config.bean.MyBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;</p>
+
+<p>@Controller
+@RequestMapping(&ldquo;/api&rdquo;)
+public class FacebookLoginController {</p>
+
+<pre><code>private static final String REDIRECT_URI_PARAMETER = "redirect_uri";
+
+@Autowired
+private MyBean myBean;
+
+@RequestMapping("/login")
+public String facebookLogin() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(myBean.facebookLogin);
+    sb.append("&amp;").append(REDIRECT_URI_PARAMETER).append("=");
+    sb.append(myBean.oAuthCallback);
+
+    return "redirect:" + sb.toString();
+}
+
+@RequestMapping("/callback")
+public String callback() {
+    return "redirect:/complete";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>動作確認</h3>
+
+<p>ここまで実装ができたので動作確認をしてみましょう。</p>
+
+<p><img src="/images/web_facebook_login_12.png" alt="ログイン画面" /></p>
+
+<p><img src="/images/web_facebook_login_13.png" alt="Facebookログイン画面" /></p>
+
+<p><img src="/images/web_facebook_login_14.png" alt="アプリ許可画面" /></p>
+
+<p><img src="/images/web_facebook_login_15.png" alt="ログイン完了後" /></p>
+
+<h3>まとめ</h3>
+
+<p>今回は本当に簡易的な部分しか書けませんでした<br/>
+本当は<code>Spring Social</code>を使いこなして、もっといろいろと書こうかと思ったのですが、また次の機会ということで&hellip;</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SwinjectでDIを意識してみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2017/04/09/swift-di/"/>
+    <updated>2017-04-09T22:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/04/09/swift-di</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>筆者はここ１年間、主にバックエンド構築にSpring Bootを利用してきました。<br/>
+Spring Framework自体は2002年頃にリリースされたそうなのですが、Spring BootはSpringベースでのアプリ開発を楽にしてくれる新たな形で様々なSpringのFramework群を統合したものとのことです。<br/>
+(Spring Bootでググると2〜3年前辺りからの記事が多い印象です。)</p>
+
+<p>Springの特徴は何と言っても <strong>DI</strong> でしょう。<br/>
+今回はそのSpringの代名詞とも言える <strong>DI</strong> をSwiftで扱ってみたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>DIとは</h3>
+
+<p>DIとは『Dependency Injection』の略語で、日本語だと依存性の注入と翻訳されたりします。<br/>
+具体的に何者なのかと言うと、</p>
+
+<ul>
+<li>コンポーネント間の依存関係を排除するソフトウェアパターン (<a href="https://ja.wikipedia.org/wiki/%E4%BE%9D%E5%AD%98%E6%80%A7%E3%81%AE%E6%B3%A8%E5%85%A5">Wikipedia &ndash; 依存性の注入</a>)</li>
+<li>これにより疎結合性が高まるので単体テストが書きやすい</li>
+</ul>
+
+
+<p>というものです。</p>
+
+<p>Springベースのアプリでは基本パターンとして利用しています。<br/>
+詳しい説明は省きますが、<br/>
+Spring起動時に<code>Bean</code>化したオブジェクトを<code>@Autowired</code>アノテーションを利用することで、DIコンテナ経由で簡単に <strong>DI</strong> を利用することができます。</p>
+
+<p>注意しておきたいこととして、<br/>
+<code>Bean</code>定義したクラスは<code>@Autowired</code>アノテーションで呼び出される際、デフォルトでシングルトンパターンとして生成されたオブジェクトを呼び出しています。</p>
+
+<h3>SwiftでDIするには？</h3>
+
+<p>さて、そんなSpringの特徴的なDIですが、Swiftアプリで利用することはできるのでしょうか？<br/>
+筆者が調べたところ、最も人気のあるSwift版DIライブラリとして<a href="https://github.com/Swinject/Swinject">Swinject</a>というものがあるようです。<br/>
+本日時点でGitHub上のスター数が<code>1,432</code>となっており、なかなかの注目度かと思います。</p>
+
+<p>しかも、下記のようにSwift3にも対応しているのが嬉しいですね！</p>
+
+<p><code>objective-c
+iOS 8.0+ / Mac OS X 10.10+ / watchOS 2.0+ / tvOS 9.0+
+Swift 2.2 or 2.3
+Xcode 7.0+
+Swift 3
+Xcode 8.0+
+Carthage 0.18+ (if you use)
+CocoaPods 1.1.1+ (if you use)
+</code></p>
+
+<p>実際に<code>Swinject</code>を利用してSwiftでのDIを試してみたいと思います。</p>
+
+<h3>Swinjectの使い方</h3>
+
+<p>では早速使ってみましょう。</p>
+
+<h4>Swinjectのインストール</h4>
+
+<p>CocoaPodsでインストールするために下記のように<code>Podfile</code>を作成しましょう。</p>
+
+<p>```
+// Podfile
+source &lsquo;<a href="https://github.com/CocoaPods/Specs.git">https://github.com/CocoaPods/Specs.git</a>&rsquo;
+platform :ios, &lsquo;8.0&rsquo; # or platform :osx, &lsquo;10.10&rsquo; if your target is OS X.</p>
+
+<p>target &lsquo;SwinjectSample&rsquo; do
+  use_frameworks!</p>
+
+<p>  pod &lsquo;Swinject&rsquo;, &lsquo;~> 2.0.0&rsquo;
+  pod &lsquo;SwinjectStoryboard&rsquo;, &lsquo;1.0.0&rsquo;
+end
+```</p>
+
+<p>その後に<code>pod install</code>を実行しましょう。<br/>
+これで<code>Swinject</code>の用意は完了です。</p>
+
+<h4>DIしたいクラスの定義</h4>
+
+<p>サンプルとしてDIしたいクラスを定義します。<br/>
+具体的なクラスだけでなく <strong>プロトコル</strong> を定義しているのは、<br/>
+後々、同じような<code>JavaProgrammer</code>クラスを作成したくなった際に便利だからです。<br/>
+(ベースが同じで、拡張機能が必要になった際に、0から書き直す必要がなくなります。)</p>
+
+<p>```objective-c
+// Engineer.swift
+import Foundation</p>
+
+<p>protocol Engineer {</p>
+
+<pre><code>var name: String? { get set }
+func develop() -&gt; String
+</code></pre>
+
+<p>}</p>
+
+<p>class SwiftProgrammer: Engineer {</p>
+
+<pre><code>var name: String?
+
+init(name: String?) {
+    self.name = name
+}
+
+func develop() -&gt; String {
+    return "Let's start developing a swift application!"
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いて、先程作成した<code>Engineer</code>を参照する<code>CompanyOwner</code>クラスを作成します。</p>
+
+<p>```objective-c
+// Company.swift
+import Foundation</p>
+
+<p>protocol Person {</p>
+
+<pre><code>func hire() -&gt; String
+</code></pre>
+
+<p>}</p>
+
+<p>class CompanyOwner: Person {</p>
+
+<pre><code>let humanResource: Engineer
+
+init(humanResource: Engineer) {
+    self.humanResource = humanResource
+}
+
+func hire() -&gt; String {
+    let name = humanResource.name ?? "someone"
+    return "I'm hiring \(name). \(humanResource.develop())"
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここで<code>SwiftProgrammer</code>クラスでなく<code>Engineer</code>プロトコルを参照することで、<code>CompanyOwner</code>クラス自体が<code>SwiftProgrammer</code>クラスに依存することがなくなりました。<br/>
+つまり<code>JavaProgrammer</code>を雇いたい<code>CompanyOwner</code>クラスが必要になった場合、作成するのは<code>JavaProgrammer</code>クラスのみで良くなります。<br/>
+これはこれで<code>CompanyOwner</code>クラスに対して単体テストコードを書く時に<code>SwiftProgrammer</code>クラスに依存せずに書くことができます。</p>
+
+<h4>DIコンテナへのクラスの登録</h4>
+
+<p>さて、DIしたいクラスが定義できたので、そのクラスをDIコンテナに登録します。<br/>
+公式ページによると<code>SwinjectStoryboard</code>を利用する場合と利用しない場合の2種類の方法があるそうですが、今回は簡単に対応可能な<code>SwinjectStoryboard</code>利用する方法で書いてみます。</p>
+
+<p>サンプルとして、<code>ViewController.swift</code>でDIコンテナ経由で呼び出したクラスを利用したいとします。<br/>
+その場合、下記のように、<code>ViewController.swift</code>にコンテナ定義を書きます。</p>
+
+<p>```objective-c
+// ViewController.swift
+import UIKit
+import SwinjectStoryboard</p>
+
+<p>extension SwinjectStoryboard {</p>
+
+<pre><code>class func setup() {
+    // (1)
+    defaultContainer.register(Engineer.self) { _ in SwiftProgrammer(name: "Takahiro") }
+    // (2)
+    defaultContainer.register(Person.self) { r in
+        CompanyOwner(humanResource: r.resolve(Engineer.self)!)
+    }
+    // (3)
+    defaultContainer.storyboardInitCompleted(ViewController.self) { r, c in
+        c.person = r.resolve(Person.self)
+    }
+}
+</code></pre>
+
+<p>}
+&hellip;
+```</p>
+
+<p>順々に説明すると、</p>
+
+<ol>
+<li><code>defaultContainer</code>に<code>Engineer</code>指定で<code>SwiftProgrammer(name: "Takahiro")</code>が呼び出されるように登録</li>
+<li><code>defaultContainer</code>に<code>Person</code>指定で<code>CompanyOwner(humanResource: r.resolve(Engineer.self)!)</code>が呼び出されるように登録<br/>
+※ 1で<code>Engineer</code>指定で<code>SwiftProgrammer(name: "Takahiro")</code>呼び出しをセットしているので、それが2の<code>CompanyOwner</code>の引数にセットされます。</li>
+<li><code>defaultContainer</code>にDIコンテナ経由での呼び出し先と先ほどまで定義していた<code>Person</code>指定での呼び出し元を紐付け</li>
+</ol>
+
+
+<p>となっています。<br/>
+これにより、下記のように<code>ViewController.swift</code>内でDIコンテナ経由で<code>Person</code>指定で想定した処理を呼び出すことができます。</p>
+
+<p>```objective-c
+// ViewController.swift</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>var person: Person?
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+    // Do any additional setup after loading the view, typically from a nib.
+    print(person?.hire() ?? "I can't hire engineers.")
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+    // Dispose of any resources that can be recreated.
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記を見ると、<code>ViewController</code>クラスの中で<code>Person</code>をインスタンス化している箇所はないことがわかると思います。<br/>
+つまり、DIコンテナ経由で<code>Person</code>を呼び出せているわけですね。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、<code>Swinject</code>を利用してサンプルを書いてみた感想ですが&hellip;<br/>
+正直、Spring Bootと比較すると、Swiftでは手動で書くべきところが多いと感じました。<br/>
+また、様々な<code>UIViewController</code>にまたがって利用する場合は記載箇所に一工夫必要なのかなとも思いました。<br/>
+(毎回、全<code>UIViewController</code>系のファイルに<code>setUp()</code>を書くわけにもいかないと思いますし&hellip;)</p>
+
+<p>まだまだ未知数なところがあるので、継続して試してみたいところではあります。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考：</p>
+
+<ul>
+<li><a href="http://permanent-til.me/archives/613">Spring BeanはSingletonだから、状態持たせるとバグるよ。</a></li>
+<li><a href="http://qiita.com/chkkchy/items/5f59817beb3dff9c0c1e">SpringのDIとnewってなにがちがうんだっけ？</a></li>
+<li><a href="https://github.com/Swinject/Swinject">Swinject</a></li>
+<li><a href="http://dev.classmethod.jp/smartphone/swinject-dependency-injection/">Swinjectを使ったDependency Injection</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Spring Bootでリダイレクト先にパラメータを渡す方法]]></title>
+    <link href="http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot/"/>
+    <updated>2016-05-28T20:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot</id>
+    <content type="html"><![CDATA[<h4>RedirectAttributesを使ってみよう！</h4>
+
+<p>さて、本日は久々にSpring Bootの話です。</p>
+
+<p>皆さんはWebアプリケーションを作る中で、「リダイレクト先にパラメータを渡したい！」なんてことはありませんでしょうか？<br/>
+筆者は先日、そのような状況に鉢合わせたのですが、ググってみてもなかなか求めている答えが見つからず、少々悩んでしまいました。<br/>
+GETリクエストであればリダイレクト後にURLからリクエストパラメータが取得できますが、<br/>
+POSTリクエストやURLにリクエストパラメータを表示するわけにいかない仕様の場合はそうもいきません。</p>
+
+<p>そんなときに役に立つのが<code>RedirectAttributes</code>です。<br/>
+では、早速、使い方を見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<h4>リダイレクト先に文字列を送る</h4>
+
+<p>まずは単純な例から見ていきましょう。<br/>
+下記はリダイレクト先に文字列をパラメータとして渡す例です。</p>
+
+<p>```java
+// HelloController
+@Controller
+public class HelloController {</p>
+
+<pre><code>@RequestMappinf(value = "/", method = RequestMethod.POST)
+public String form(RedirectAttributes redirectAttributes, @RequestParam("name") String name) {
+
+    redirectAttributes.addFlashSttribute("name", name);
+    return "redirect:/redirectSample";
+}
+
+@RequestMapping("/redirectSample")
+public String sample(@ModelAttributes("name") String name) {
+
+    System.out.println("name: " + name);
+    return "sample";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>実際に動かしてみれば、正しくログが出力されることを確認できるでしょう。<br/>
+上記で<code>return "sample";</code>としているのは単なる例なので、適切なtemplateを指定してあげてください。</p>
+
+<h4>リダイレクト先にオブジェクトを送る</h4>
+
+<p>続いて、パラメータをまとめて送るパターンです。<br/>
+今回は下記のように定義された<code>MyData</code>を送ってみましょう。<br/>
+※ソースを簡単にするために<code>build.gradle</code>に<code>compile("org.projectlombok:lombok:1.16.6")</code>を設定して<code>@Data</code>を利用しています。</p>
+
+<p>```java
+// MyData.java
+@Data
+public class MyData {</p>
+
+<pre><code>private String name;
+private String memo;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>では、実際にパラメータを送ってみましょう。</p>
+
+<p>```java
+// HelloController</p>
+
+<p>@Controller
+public class HelloController {</p>
+
+<pre><code>@RequestMapping(value = "/", method = RequestMethod.POST)
+public String form(RedirectAttributes redirectAttributes, @RequestParam("name") String name, @RequestParam("memo") String memo) {
+
+    // MyDataについては後述します
+    MyData mydata = new MyData(name, memo);
+    ModelMap modelMap = new ModelMap();
+    modelMap.addAttribute("mydata", mydata);
+    redirectAttributes.addFlashAttribute("model", modelMap);
+
+    return "redirect:/redirectSample";
+}
+
+@RequestMapping("/redirectSample")
+public String sample(@ModelAttribute("model")ModelMap modelMap) {
+
+    MyData mydata = modelMap.get("mydata");
+    String name = mydata.getName();
+    String memo = mydata.getMemo();
+    System.out.println("name: " + name + ", memo: " + memo);
+
+    return "sample";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>オブジェクトとしてパラメータを送るには<code>ModelMap</code>に一度格納する必要があります。<br/>
+パラメータを受け取ったあとに型変換して取り出せばOKです。</p>
+
+<h4>RedirectAttributesにおけるaddAttributeとaddFlashAttributeの違い</h4>
+
+<p>さて、今回は<code>RedirectAttributes</code>の<code>addFlashAttribute</code>を利用しましたが、<code>RedirectAttributes</code>には<code>addAttribute</code>というメソッドも存在します。<br/>
+ではなぜ<code>addFlashAttribute</code>を利用したのか参考までに書いておきます。</p>
+
+<h5>RedirectAttributesのaddAttributeはリダイレクト先に文字列としてパラメータを送る</h5>
+
+<p>大きな違いは<code>addFlashAttribute</code>のように<code>ModelMap</code>型でパラメータを送れません。<br/>
+よって、複数のパラメータを送るには1つずつパラメータをセットするしか方法がありません。</p>
+
+<p><code>java
+// addAttributeの例
+redirectAttributes.addAttribute("name", "hogehoge");
+redirectAttributes.addAttribute("memo", "fugafuga");
+</code></p>
+
+<h5>RedirectAttributesのaddAttributeはリダイレクト先でのパラメータの受取り方が異なる</h5>
+
+<p>こちらも大きな違いとなりますが、<code>addFlashAttribute</code>のときのように<code>@ModelAttribute</code>を使ってパラメータを受け取ることができません。<br/>
+<code>addAttribute</code>の場合、<code>@RequestParameter</code>を使ってパラメータを受取ります。</p>
+
+<p>```java
+// addAttributeの例
+@RequestMapping(&ldquo;/redirectSample&rdquo;)
+public String sample(@RequestParam(&ldquo;name&rdquo;) String name, @RequestParam(&ldquo;memo&rdquo;) String memo) {</p>
+
+<pre><code>...
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>リロード時の挙動が異なる</h5>
+
+<p>最後になりますが、<br/>
+<code>addAttribute</code>と<code>addFlashAttribute</code>ではリダイレクト後にリロードすると挙動が異なります。<br/>
+<code>addAttribute</code>ではGETリクエストとしてURLの末尾に<code>?name=hogehoge&amp;memo=fugafuga</code>という形でパラメータが渡されるため、リロードをしてもパラメータを受け取ることができます。</p>
+
+<p>しかし、<code>addFlashAttribute</code>では<code>flashMap</code>を利用したパラメータ渡しとなっています。<br/>
+よって、リダイレクト後は<code>flashMap</code>からパラメータが残らないため、何もパラメータを受け取ることはできなくなります。</p>
+
+<p>いかがでしたでしょうか？<br/>
+筆者にとってもSpring Bootに慣れない日々が続きますが、気づいたことや学んだことについてはブログにまとめていきたと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[快適なSpring BootプログラミングのためにIntelliJ IDEA Ultimate版を購入しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/04/30/start-spring-boot-intellij-ultimate/"/>
+    <updated>2016-04-30T14:48:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/04/30/start-spring-boot-intellij-ultimate</id>
+    <content type="html"><![CDATA[<h4>はじめに</h4>
+
+<p>筆者は決してJetBrains社の回し者ではありません笑<br/>
+最近、Spring Bootにチャレンジしているのですが、自宅ではvimを使っていました。<br/>
+なぜかって、IntelliJ IDEA Community版だとSpring Bootプログラミングの際に面倒なことが多いんですもの&hellip;。<br/>
+しかしながら、vimでSpring Bootプログラミングを続けるのもしんどいので、<br/>
+とうとうIntelliJ IDEA Ultimate版に手を出してしまったということなんです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>IntelliJ IDEA Ultimate版とは</h4>
+
+<p>さて、早速、IntelliJ IDEA Ultimate版の何が良いかについて説明していきます。<br/>
+IntelliJ IDEAとは<a href="https://www.jetbrains.com/">JetBrains</a>社が開発した多言語対応の統合開発環境のことです。<br/>
+Android StudioがIntelliJ IDEAを元に作られていることは割りと有名な話ですね。</p>
+
+<p>筆者が<a href="http://grandbig.github.io/blog/2016/04/16/start-spring-boot/">Spring Bootを使い始めよう！</a>の記事内で使用していたIntelliJ IDEAはCommunity版だったのですが、<br/>
+もちろん、Community版でもプログラミングを書くことやGradleによるビルド実行は問題ありません。<br/>
+しかし、Community版では例えば下記のようなことに対応できません。</p>
+
+<ul>
+<li>Spring Boot Framework関連の予測変換</li>
+<li>Thymeleaf関連の予測変換</li>
+<li>Spring Bootを利用したプロジェクトをIntelliJから新規作成可能</li>
+</ul>
+
+
+<p>これに対応したのが <strong>IntelliJ IDEA Ultimate版</strong> なのです。<br/>
+詳細は公式サイトから知ることができます。</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate1.png" alt="IntelliJ 比較表" /></p>
+
+<p>また、価格ですが、個人版であれば、ビジネス版よりも比較的に安く購入することができます。<br/>
+1年単位での購入なのですが、使い続けるほどに安くなるという価格設定がエンジニア魂をくすぐります。<br/>
+下図のように、3年目以降は初年度の半額弱にまで安くなります。<br/>
+(Apple Developer Programも同じような仕組みにして欲しいですね笑)</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate2.png" alt="IntelliJ IDEA Ultimate版の価格" /></p>
+
+<p>因みに、同ページに「All Products Pack」という商品もありますが、<br/>
+PHP, Ruby等々を無双したい方向けなので、筆者には今のところ不要です。</p>
+
+<h4>IntelliJ IDEA Ultimate版の購入と設定</h4>
+
+<p>IntelliJ IDEA Ultimate版の購入方法と設定について説明します。<br/>
+購入は非常に簡単です。</p>
+
+<p>1．<a href="https://www.jetbrains.com/idea/buy/#edition=personal">Buyページ</a>で <strong>Buy Now</strong> をクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate2.png" alt="Buyページ" /></p>
+
+<p>2．CustomerページでEmailアドレスを入力してNEXTをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate3.png" alt="Customerページ" /></p>
+
+<p>3．Emailアドレスと国を確認してPROCESS AS NEW CUSTOMERをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate4.png" alt="Customerページ2" /></p>
+
+<p>4．Customer Infoページで必要事項を入力してPLACE ORDERをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate5.png" alt="Customer Infoページ" /></p>
+
+<p>5．JetBrains社から届いたメールの添付ファイルを開封して、リンクをクリックしてActivationページへ遷移</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate6.png" alt="JetBrains社から届いたメールの添付ファイル" /></p>
+
+<p>6．Activationページを確認</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate7.png" alt="Activationページ" /></p>
+
+<p>ここまでで、購入完了したことを確認できます。<br/>
+続いて設定に必要な工程について説明します。</p>
+
+<p>7．ActivationページでDownload activation codeをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate8.png" alt="Activationページ2" /></p>
+
+<p>8．IntelliJ IDEA Ultimate版をDownLoad</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate9.png" alt="Ultimate版をDownLoad" /></p>
+
+<p>9．Activation codeをIntelliJ IDEA Ultimate版に登録</p>
+
+<p>DownLoadしたIntelliJ IDEA Ultimate版を起動して、先ほどDownLoadしたActivation codeを設定しましょう。</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate10.png" alt="IntelliJ IDEA Ultimate" /></p>
+
+<p>以上で設定も完了です。</p>
+
+<h4>IntelliJ IDEA Ultimate版でSpring Bootを始めよう！</h4>
+
+<p>では、IntelliJ IDEA Ultimate版でSpring Bootを利用する新規プロジェクトを作成しましょう。</p>
+
+<p>1．IntelliJ IDEA Ultimate版を起動してCreate New Projectをクリック</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate11.png" alt="Create New Project" /></p>
+
+<p>2．Spring Inilializrを選択</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate12.png" alt="Spring Initializr" /></p>
+
+<p>3．各種名称や項目を設定</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate13.png" alt="各種名称や項目の設定" /></p>
+
+<p>4．必要なDependencyを設定</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate14.png" alt="必要な名称や項目の設定" /></p>
+
+<p>5．プロジェクト名と保存場所を設定</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate15.png" alt="プロジェクト名と保存場所を設定" /></p>
+
+<p>6．Gradleの設定の確認</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate16.png" alt="Gradleの設定の確認" /></p>
+
+<p>以上で新規プロジェクトが作成できました。<br/>
+プロジェクトを実行してみましょう。</p>
+
+<p><img src="/images/start-spring-boot-intellij-ultimate17.png" alt="プロジェクトの実行" /></p>
+
+<p>さて、如何でしたでしょうか？<br/>
+非常に簡単に導入できますし、使い勝手も良いので、これからSpring Bootプログラミングを始める方は検討してみてはいかがでしょうか？<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Spring BootでSystem.inにハマったメモ]]></title>
+    <link href="http://grandbig.github.io/blog/2016/04/17/gradle-spring-boot/"/>
+    <updated>2016-04-17T23:13:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/04/17/gradle-spring-boot</id>
+    <content type="html"><![CDATA[<h4>Spring BootをGradleでビルドしてハマったメモ</h4>
+
+<p>今日は超絶ハマって苦しんだ超初歩についてメモ書きです。<br/>
+Spring Bootに関する情報はあまり多くはないのですが、<br/>
+さらに困ったことにほとんどの書籍やネット情報ではMavenでビルドしているのでGradleに関する情報が乏しくてハマりました&hellip;。</p>
+
+<p>Javaでキーボード入力のために、<br/>
+<code>Scanner scanner = new Scanner(System.in);</code>を記述することがあります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>これをメインファイルに記述した状態で<code>gradle bootRun</code>コマンドを実行しても、<br/>
+しれっと処理が流れてしまいました&hellip;。<br/>
+「なぜだ〜〜〜」と格闘すること数時間!?</p>
+
+<p>解決方法がわかりました。下記を<code>build.gradle</code>に追加します。</p>
+
+<p>```java
+// build.gradle
+bootRun {</p>
+
+<pre><code>standardInput = System.in
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これは<code>bootRun</code>タスクを実行したときに、<br/>
+<code>System.in</code>をInput処理として判別するように定義しています。<br/>
+もう一度<code>gradle bootRun</code>を実行してみると処理が途中でStopしてユーザ入力を受け付けるようになりました。</p>
+
+<p>いや〜ハマった&hellip;。<br/>
+本日は完全なるメモ書きでした。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+]]></content>
+  </entry>
+  
+</feed>

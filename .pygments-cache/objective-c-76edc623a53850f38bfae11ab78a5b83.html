@@ -1,0 +1,67 @@
+<div class="highlight"><pre><span class="n">import</span> <span class="n">Foundation</span>
+<span class="n">import</span> <span class="n">UIKit</span>
+<span class="n">import</span> <span class="n">RxSwift</span>
+<span class="n">import</span> <span class="n">RxCocoa</span>
+
+<span class="c1">// (6)</span>
+<span class="n">private</span> <span class="n">extension</span> <span class="n">UILabel</span> <span class="p">{</span>
+	<span class="n">var</span> <span class="nl">rx_driveCoordinates:</span> <span class="n">AnyObserver</span><span class="o">&lt;</span><span class="n">CLLocationCoordinate2D</span><span class="o">&gt;</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="n">UIBindingObserver</span><span class="p">(</span><span class="nl">UIElement:</span> <span class="n">self</span><span class="p">)</span> <span class="p">{</span> <span class="n">label</span><span class="p">,</span> <span class="n">location</span> <span class="k">in</span>
+			<span class="n">label</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Lat: \(location.latitude)</span><span class="se">\n</span><span class="s">Lon: \(location.longitude)&quot;</span>
+		<span class="p">}.</span><span class="n">asObserver</span><span class="p">()</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// (7)</span>
+<span class="n">private</span> <span class="n">extension</span> <span class="n">UIView</span> <span class="p">{</span>
+	<span class="n">var</span> <span class="nl">rx_driveAuthorization:</span> <span class="n">AnyObserver</span><span class="o">&lt;</span><span class="n">Bool</span><span class="o">&gt;</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="n">UIBindingObserver</span><span class="p">(</span><span class="nl">UIElement:</span> <span class="n">self</span><span class="p">)</span> <span class="p">{</span> <span class="n">view</span><span class="p">,</span> <span class="n">authorized</span> <span class="k">in</span>
+			<span class="k">if</span> <span class="n">authorized</span> <span class="p">{</span>
+				<span class="n">view</span><span class="p">.</span><span class="n">hidden</span> <span class="o">=</span> <span class="n">true</span>
+				<span class="n">view</span><span class="p">.</span><span class="n">superview</span><span class="o">?</span><span class="p">.</span><span class="n">sendSubviewToBack</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+			<span class="p">}</span>
+			<span class="k">else</span> <span class="p">{</span>
+				<span class="n">view</span><span class="p">.</span><span class="n">hidden</span> <span class="o">=</span> <span class="n">false</span>
+				<span class="n">view</span><span class="p">.</span><span class="n">superview</span><span class="o">?</span><span class="p">.</span><span class="n">bringSubviewToFront</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+			<span class="p">}</span>
+		<span class="p">}.</span><span class="n">asObserver</span><span class="p">()</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">class</span> <span class="nl">GeolocationViewController:</span> <span class="n">ViewController</span> <span class="p">{</span>
+	<span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">noGeolocationView:</span> <span class="n">UIView</span><span class="o">!</span>
+	<span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">button:</span> <span class="n">UIButton</span><span class="o">!</span>
+	<span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">button2:</span> <span class="n">UIButton</span><span class="o">!</span>
+	<span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">label:</span> <span class="n">UILabel</span><span class="o">!</span>
+
+	<span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+
+		<span class="n">let</span> <span class="n">geolocationService</span> <span class="o">=</span> <span class="n">GeolocationService</span><span class="p">.</span><span class="n">instance</span>
+
+		<span class="n">geolocationService</span><span class="p">.</span><span class="n">authorized</span>
+			<span class="p">.</span><span class="n">drive</span><span class="p">(</span><span class="n">noGeolocationView</span><span class="p">.</span><span class="n">rx_driveAuthorization</span><span class="p">)</span> <span class="c1">// (8)</span>
+			<span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
+
+		<span class="n">geolocationService</span><span class="p">.</span><span class="n">location</span>
+			<span class="p">.</span><span class="n">drive</span><span class="p">(</span><span class="n">label</span><span class="p">.</span><span class="n">rx_driveCoordinates</span><span class="p">)</span> <span class="c1">// (8)</span>
+			<span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
+
+		<span class="n">button</span><span class="p">.</span><span class="n">rx_tap</span>
+			<span class="p">.</span><span class="n">bindNext</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="k">in</span>
+				<span class="n">self</span><span class="o">?</span><span class="p">.</span><span class="n">openAppPreferences</span><span class="p">()</span>
+			<span class="p">}</span>
+			<span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
+
+		<span class="n">button2</span><span class="p">.</span><span class="n">rx_tap</span>
+			<span class="p">.</span><span class="n">bindNext</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="k">in</span>
+				<span class="n">self</span><span class="o">?</span><span class="p">.</span><span class="n">openAppPreferences</span><span class="p">()</span>
+			<span class="p">}</span>
+			<span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="n">private</span> <span class="n">func</span> <span class="n">openAppPreferences</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">UIApplication</span><span class="p">.</span><span class="n">sharedApplication</span><span class="p">().</span><span class="n">openURL</span><span class="p">(</span><span class="n">NSURL</span><span class="p">(</span><span class="nl">string:</span> <span class="n">UIApplicationOpenSettingsURLString</span><span class="p">)</span><span class="o">!</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

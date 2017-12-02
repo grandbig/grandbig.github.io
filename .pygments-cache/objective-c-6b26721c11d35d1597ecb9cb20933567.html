@@ -1,0 +1,169 @@
+<div class="highlight"><pre><span class="c1">// ViewController.m</span>
+
+<span class="cp">#import &quot;ViewController.h&quot;</span>
+<span class="cp">#import &quot;WKWebViewProtocol.h&quot;</span>
+<span class="cp">#import &quot;WKWebView+ProtocolConfirmed.h&quot;</span>
+<span class="cp">#import &quot;UIWebView+ProtocolConfirmed.h&quot;</span>
+<span class="cp">#import &quot;OAuth2Client.h&quot;</span>
+
+<span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">clientId</span> <span class="o">=</span> <span class="s">@&quot;クライアントID&quot;</span><span class="p">;</span>
+<span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">clientSecret</span> <span class="o">=</span> <span class="s">@&quot;クライアントシークレット&quot;</span><span class="p">;</span>
+<span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">authorizationURL</span> <span class="o">=</span> <span class="s">@&quot;https://accounts.google.com/o/oauth2/auth&quot;</span><span class="p">;</span>
+<span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">tokenURL</span> <span class="o">=</span> <span class="s">@&quot;https://accounts.google.com/o/oauth2/token&quot;</span><span class="p">;</span>
+<span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">scope</span> <span class="o">=</span> <span class="s">@&quot;https://www.googleapis.com/auth/plus.login+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/calendar&quot;</span><span class="p">;</span>
+
+<span class="c1">// UIWebViewおよびWKWebView関連のDelegateを読み込む</span>
+<span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span><span class="o">&lt;</span><span class="n">UIWebViewDelegate</span><span class="p">,</span> <span class="n">WKUIDelegate</span><span class="p">,</span> <span class="n">WKNavigationDelegate</span><span class="o">&gt;</span>
+
+<span class="c1">// UIWebViewとWKWebViewを一纏めにしたWebViewとして下記を定義</span>
+<span class="k">@property</span><span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">assign</span><span class="p">)</span> <span class="kt">id</span> <span class="o">&lt;</span><span class="n">WKWebViewProtocol</span><span class="o">&gt;</span> <span class="n">webView</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSMutableData</span> <span class="o">*</span><span class="n">receivedData</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">assign</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="o">*</span><span class="n">isLogin</span><span class="p">;</span>
+
+<span class="k">@end</span>
+
+<span class="k">@implementation</span> <span class="nc">ViewController</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span> <span class="p">{</span>
+	<span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+	
+	<span class="c1">// WebViewを画面に追加する処理</span>
+	<span class="p">[</span><span class="n">self</span> <span class="n">createWebView</span><span class="p">];</span>
+
+	<span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+	<span class="k">if</span><span class="p">([</span><span class="n">defaults</span> <span class="nl">boolForKey:</span><span class="s">@&quot;isLogin&quot;</span><span class="p">])</span> <span class="p">{</span>
+		<span class="c1">// 既にOAuth2.0認証実行済みの場合</span>
+		<span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">getRefreshAccessToken:</span><span class="o">^</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">)</span> <span class="p">{</span>
+			<span class="c1">// 成功した場合</span>
+			<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">accessToken</span><span class="p">);</span>
+		<span class="p">}</span> <span class="nl">failure:</span><span class="o">^</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+			<span class="c1">// 失敗した場合</span>
+			<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">error</span><span class="p">);</span>
+		<span class="p">}];</span>
+	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+		<span class="c1">// 初めてOAuth2.0認証を実行する場合</span>
+		<span class="c1">// OAuth2.0認証に必要な各種パラメータの設定</span>
+		<span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">setUpOAuth2AccountClientId:</span><span class="n">clientId</span> <span class="nl">clientSecret:</span><span class="n">clientSecret</span> <span class="nl">scope:</span><span class="n">scope</span> <span class="nl">authorizationURL:</span><span class="n">authorizationURL</span> <span class="nl">tokenURL:</span><span class="n">tokenURL</span><span class="p">];</span>
+		<span class="c1">// OAuth2.0認証リクエスト</span>
+		<span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">requestAccessToAccount:</span><span class="o">^</span><span class="p">(</span><span class="n">NSURL</span> <span class="o">*</span><span class="n">preparedURL</span><span class="p">)</span> <span class="p">{</span>
+			<span class="c1">// リクエスト</span>
+			<span class="p">[</span><span class="n">_webView</span> <span class="nl">loadRequest:</span><span class="p">[</span><span class="n">NSURLRequest</span> <span class="nl">requestWithURL:</span> <span class="n">preparedURL</span><span class="p">]];</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">didReceiveMemoryWarning</span> <span class="p">{</span>
+	<span class="p">[</span><span class="n">super</span> <span class="n">didReceiveMemoryWarning</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="c1">// WKWebViewまたはUIWebViewをViewに追加する処理</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">createWebView</span> <span class="p">{</span>
+	
+	<span class="k">if</span><span class="p">(</span><span class="n">NSClassFromString</span><span class="p">(</span><span class="s">@&quot;WKWebView&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span>
+		<span class="c1">// iOS8の場合</span>
+		<span class="n">WKWebView</span> <span class="o">*</span><span class="n">wkWebView</span> <span class="o">=</span> <span class="p">[[</span><span class="n">WKWebView</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFrame:</span><span class="n">self</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">bounds</span><span class="p">];</span>
+		<span class="n">wkWebView</span><span class="p">.</span><span class="n">navigationDelegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+		<span class="n">wkWebView</span><span class="p">.</span><span class="n">UIDelegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+		<span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">view</span> <span class="nl">addSubview:</span><span class="n">wkWebView</span><span class="p">];</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">webView</span> <span class="o">=</span> <span class="n">wkWebView</span><span class="p">;</span>
+	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+		<span class="c1">// iOS7以下の場合</span>
+		<span class="n">UIWebView</span> <span class="o">*</span><span class="n">uiWebView</span> <span class="o">=</span> <span class="p">[[</span><span class="n">UIWebView</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFrame:</span><span class="n">self</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">bounds</span><span class="p">];</span>
+		<span class="n">uiWebView</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+		<span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">view</span> <span class="nl">addSubview:</span><span class="n">uiWebView</span><span class="p">];</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">webView</span> <span class="o">=</span> <span class="n">uiWebView</span><span class="p">;</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="cp">#pragma mark - UIWebViewDelegate</span>
+
+<span class="c1">// ページの読込みが開始されたときに呼び出される処理</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webViewDidStartLoad:</span><span class="p">(</span><span class="n">UIWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="p">{</span>
+	<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;webViewDidStartLoad&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// ページを読み終わった後に呼び出される処理</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webViewDidFinishLoad:</span><span class="p">(</span><span class="n">UIWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="p">{</span>
+	<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;webViewDidFinishLoad&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// エラーが発生したときに呼び出される処理</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">UIWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">didFailLoadWithError:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span> <span class="p">{</span>
+	<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;didFailLoadWithError&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// ページ遷移する前に呼び出される処理</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">UIWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">shouldStartLoadWithRequest:</span><span class="p">(</span><span class="n">NSURLRequest</span> <span class="o">*</span><span class="p">)</span><span class="nv">request</span> <span class="nf">navigationType:</span><span class="p">(</span><span class="n">UIWebViewNavigationType</span><span class="p">)</span><span class="nv">navigationType</span> <span class="p">{</span>
+	<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;shouldStartLoadWithRequest&quot;</span><span class="p">);</span>
+
+	<span class="kt">BOOL</span> <span class="n">flag</span> <span class="o">=</span> <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">checkRedirectURI:</span><span class="n">request</span><span class="p">];</span>
+
+	<span class="k">if</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span> <span class="p">{</span>
+		<span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">getAccessToken:</span><span class="n">request</span> <span class="nl">completionHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">){</span>
+			<span class="c1">// 処理が終了したら呼び出される</span>
+			<span class="k">if</span><span class="p">(</span><span class="n">accessToken</span><span class="p">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+				<span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+				<span class="p">[</span><span class="n">defaults</span> <span class="nl">setBool:</span><span class="n">YES</span> <span class="nl">forKey:</span><span class="s">@&quot;isLogin&quot;</span><span class="p">];</span>
+				<span class="p">[</span><span class="n">defaults</span> <span class="n">synchronize</span><span class="p">];</span>
+			<span class="p">}</span>
+			<span class="p">[</span><span class="n">webView</span> <span class="n">removeFromSuperview</span><span class="p">];</span>
+		<span class="p">}];</span>
+
+		<span class="c1">// ページ遷移しない</span>
+		<span class="k">return</span> <span class="n">NO</span><span class="p">;</span>
+	<span class="p">}</span>
+
+	<span class="c1">// ページ遷移する</span>
+	<span class="k">return</span> <span class="n">YES</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cp">#pragma mark - WKNavigationDelegate</span>
+
+<span class="c1">// ページの読込みが開始されたときに呼び出される処理</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">WKWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">didStartProvisionalNavigation:</span><span class="p">(</span><span class="n">WKNavigation</span> <span class="o">*</span><span class="p">)</span><span class="nv">navigation</span>
+<span class="p">{</span>
+	<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;didStartProvisionalNavigation&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// ページを読み終わった後に呼び出される処理</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">WKWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">didFinishNavigation:</span><span class="p">(</span><span class="n">WKNavigation</span> <span class="o">*</span><span class="p">)</span><span class="nv">navigation</span>
+<span class="p">{</span>
+	<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;didFinishNavigation&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// エラーが発生したときに呼び出される処理</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">WKWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">didFailProvisionalNavigation:</span><span class="p">(</span><span class="n">WKNavigation</span> <span class="o">*</span><span class="p">)</span><span class="nv">navigation</span> <span class="nf">withError:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span>
+<span class="p">{</span>
+	<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;didFailProvisionalNavigation&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// ページ遷移する前に呼び出される処理</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">webView:</span><span class="p">(</span><span class="n">WKWebView</span> <span class="o">*</span><span class="p">)</span><span class="nv">webView</span> <span class="nf">decidePolicyForNavigationAction:</span><span class="p">(</span><span class="n">WKNavigationAction</span> <span class="o">*</span><span class="p">)</span><span class="nv">navigationAction</span> <span class="nf">decisionHandler:</span><span class="p">(</span><span class="kt">void</span> <span class="p">(</span><span class="o">^</span><span class="p">)(</span><span class="n">WKNavigationActionPolicy</span><span class="p">))</span><span class="nv">decisionHandler</span> <span class="p">{</span>
+
+	<span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;decidePolicyForNavigationAction&quot;</span><span class="p">);</span>
+	<span class="n">NSURLRequest</span> <span class="o">*</span><span class="n">request</span> <span class="o">=</span> <span class="n">navigationAction</span><span class="p">.</span><span class="n">request</span><span class="p">;</span>
+
+	<span class="kt">BOOL</span> <span class="n">flag</span> <span class="o">=</span> <span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">checkRedirectURI:</span><span class="n">request</span><span class="p">];</span>
+
+	<span class="k">if</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span> <span class="p">{</span>
+		<span class="p">[[</span><span class="n">OAuth2Client</span> <span class="n">sharedInstance</span><span class="p">]</span> <span class="nl">getAccessToken:</span><span class="n">request</span> <span class="nl">completionHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">){</span>
+			<span class="c1">// 処理が終了したら呼び出される</span>
+			<span class="k">if</span><span class="p">(</span><span class="n">accessToken</span><span class="p">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+				<span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+				<span class="p">[</span><span class="n">defaults</span> <span class="nl">setBool:</span><span class="n">YES</span> <span class="nl">forKey:</span><span class="s">@&quot;isLogin&quot;</span><span class="p">];</span>
+				<span class="p">[</span><span class="n">defaults</span> <span class="n">synchronize</span><span class="p">];</span>
+			<span class="p">}</span>
+			<span class="p">[</span><span class="n">webView</span> <span class="n">removeFromSuperview</span><span class="p">];</span>
+		<span class="p">}];</span>
+
+		<span class="c1">// ページ遷移しない</span>
+		<span class="n">decisionHandler</span><span class="p">(</span><span class="n">WKNavigationActionPolicyCancel</span><span class="p">);</span>
+	<span class="p">}</span>
+	
+	<span class="c1">// ページ遷移する</span>
+	<span class="n">decisionHandler</span><span class="p">(</span><span class="n">WKNavigationActionPolicyAllow</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">@end</span>
+</pre></div>

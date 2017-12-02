@@ -1,0 +1,629 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Google Sign-In SDK for Androidを使ってみよう！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="Google Sign-in SDKを使ったOAuth認証をやってみよう！ さて、本日はGoogle Sign-in SDKのAndroidでの使い方について見ていきたいと思います。
+Androidの場合、Google製のため、親和性は元々高いのですが、推奨されているGoogle Sign-in &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2015/11/08/google-sign-in-android/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Google Sign-In SDK for Androidを使ってみよう！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-11-08T12:20:00+09:00" pubdate data-updated="true">Nov 8<span>th</span>, 2015</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h4>Google Sign-in SDKを使ったOAuth認証をやってみよう！</h4>
+
+<p>さて、本日はGoogle Sign-in SDKのAndroidでの使い方について見ていきたいと思います。<br/>
+Androidの場合、Google製のため、親和性は元々高いのですが、推奨されているGoogle Sign-in SDKを使うことでより快適なコーディングやUXを提供できるのではと期待しています。</p>
+
+<p>因みに、本書執筆時の環境は下記です。<br/>
+* 端末: Nexus6<br/>
+* OS: Android6.0<br/>
+* IDE: Android Studio 1.5 preview2</p>
+
+<p>では、早速、使い方を見ていきましょう。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>Google Developers ConsoleでOAuth認証に必要な項目を登録しよう！</h4>
+
+<p>さて、実際にGoogle Sign-Inを始める前に、やらなければならないことがあります。<br/>
+それは<a href="https://console.developers.google.com">Google Developers Console</a>での登録作業です。(iOSと同じです。)</p>
+
+<p>まず、OAuth2.0の同意画面を作成しましょう。<br/>
+因みに、筆者は既に登録済みのOAuth2.0クライアントIDがあったため、下図のように表示されます。<br/>
+<strong>OAuth同意画面</strong> というボタンをクリックして、OAuth同意画面の作成ページに移りましょう。<br/>
+<img src="/images/google-sign-in-android-0.png" alt="認証情報の確認ページ" /></p>
+
+<p>OAuth同意画面では <strong>メールアドレス</strong> と <strong>サービス名</strong> を入力しましょう。(他は必要に応じて入力してください。)<br/>
+<img src="/images/google-sign-in-android-1.png" alt="OAuth2.0の同意画面を作成" /></p>
+
+<p>OAuth同意画面が作成できたら、認証情報を追加しましょう。<br/>
+下図のように <strong>OAuth2.0クライアントID</strong> を選択してください。<br/>
+<img src="/images/google-sign-in-android-2.png" alt="OAuth2.0クライアントIDを作成" /></p>
+
+<p>今回はAndroid用なので、下図の手順でクライアントIDを作成しましょう。<br/>
+<img src="/images/google-sign-in-android-3.png" alt="OAuth2.0クライアントISを作成2" /></p>
+
+<p>これでクライアントIDが作成されたと思います。<br/>
+作成したクライアントIDを選択すれば、下図のような情報が得られるはずです。<br/>
+ <img src="/images/google-sign-in-android-6.png" alt="Google Developer ConsoleのOAuth2.0 for iOS" /></p>
+
+<h4>Google Sign-in SDK for Androidを実装しよう</h4>
+
+<p><a href="https://developers.google.com/identity/sign-in/android/?hl=ja">Googleの公式サイト</a>に書かれていますが、英語が苦手な方向け(+自分のメモ書き)として説明していきたいと思います。</p>
+
+<p>まずは、<a href="https://developers.google.com/identity/sign-in/android/start?hl=ja">Google Sign-In for Androidのガイドページ</a>にアクセスしましょう。<br/>
+そうすると、順番に説明されていることがわかります。<br/>
+①はテストコードを手に入れるだけなので、自分のプロジェクトに組み込むなら②からはじめましょう。<br/>
+<img src="/images/google-sign-in-android-4.png" alt="GET A CONFIGURATION FILE" /></p>
+
+<p>そうすると、下図のようなページに遷移します。<br/>
+<img src="/images/google-sign-in-android-5.png" alt="Enable Google services for your app" /></p>
+
+<p>ここで、 <strong>App name</strong> にGoogle Developers Consoleのプロジェクト名を <strong>『選択』</strong> します。<br/>
+注意点として、App nameに記載されているデフォルト名を削除すると、選択可能なプロジェクト名が表示されます。<br/>
+App nameが入力した後に、 <strong>Android package name</strong> を入力しましょう。</p>
+
+<p>必要項目の入力が終わったら、Choose and configure servicesボタンを押しましょう。<br/>
+<img src="/images/google-sign-in-android-7.png" alt="Choose and configure servicesボタンを押す" /></p>
+
+<p>結果、画面が遷移します。<br/>
+<img src="/images/google-sign-in-android-8.png" alt="Configuration Fileを作成しよう" /></p>
+
+<p>画面下の方に <strong>SHA1</strong> を入力する項目があるので、これを入力して、 <strong>ENABLE GOOGLE SIGN-IN</strong> ボタンを選択しましょう。<br/>
+<img src="/images/google-sign-in-android-9.png" alt="Configuration Fileを作成しよう" /></p>
+
+<p>因みにSHA1の調べ方は下記の通りです。</p>
+
+<ol>
+<li>ターミナルで/Users/{ユーザ名}/.androidの階層に移動</li>
+<li><code>keytool -list -v -keystore "/Users/{ユーザ名}/.android/debug.keystore" -alias androiddebugkey -storepass android -keypass android</code>コマンドを入力</li>
+<li>出力結果の証明書のフィンガプリント > SHA1の値を取得</li>
+</ol>
+
+
+<p>画面下の <strong>Generate configuration files</strong> ボタンが押せるようになるので、押しましょう。<br/>
+<img src="/images/google-sign-in-android-10.png" alt="Configuration Fileを作成しよう" /></p>
+
+<p>jsonファイルのダウンロード画面が表示されるので、ダウンロードしましょう。<br/>
+<img src="/images/google-sign-in-android-11.png" alt="jsonファイルをダウンロード" /></p>
+
+<p>必要なファイルが揃ったので、自身のプロジェクトのappフォルダ配下にダウンロードした<code>google-services.json</code>を配置しましょう。</p>
+
+<p>続いて、<code>build.gradle</code>ファイルの設定にGoogle Play Services Pluginを追加しましょう。<br/>
+まずは、<code>build.gradle(Project)</code>の<code>dependencies</code>内に<code>classpath 'com.google.gms:google-services:1.5.0-beta2'</code>を追加<br/>
+次に、<code>build.gradle(app)</code>の最上部に<code>apply plugin: 'com.google.gms.google-services'</code>を追加<br/>
+そして、<code>build.gradle(app)</code>の<code>dependencies</code>内に<code>compile 'com.google.android.gms:play-services-auth:8.3.0'</code>を追加</p>
+
+<p>これで用意が整いましたので、ソースを書いていきます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// MainActivity.java</span>
+</span><span class='line'><span class="kn">package</span> <span class="o">...</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.content.Intent</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.os.Bundle</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.support.design.widget.FloatingActionButton</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.support.design.widget.Snackbar</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.support.v7.app.AppCompatActivity</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.support.v7.widget.Toolbar</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.util.Log</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.view.View</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.view.Menu</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">android.view.MenuItem</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">com.google.android.gms.auth.api.Auth</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">com.google.android.gms.auth.api.signin.GoogleSignInAccount</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">com.google.android.gms.auth.api.signin.GoogleSignInOptions</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">com.google.android.gms.auth.api.signin.GoogleSignInResult</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">com.google.android.gms.common.ConnectionResult</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">com.google.android.gms.common.SignInButton</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">com.google.android.gms.common.api.GoogleApiClient</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MainActivity</span> <span class="kd">extends</span> <span class="n">AppCompatActivity</span> <span class="kd">implements</span>
+</span><span class='line'>        <span class="n">GoogleApiClient</span><span class="o">.</span><span class="na">OnConnectionFailedListener</span><span class="o">,</span> <span class="n">View</span><span class="o">.</span><span class="na">OnClickListener</span> <span class="o">{</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">TAG</span> <span class="o">=</span> <span class="s">&quot;MainActivity&quot;</span><span class="o">;</span>
+</span><span class='line'>  <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">RC_SIGN_IN</span> <span class="o">=</span> <span class="mi">9001</span><span class="o">;</span>
+</span><span class='line'>  <span class="kd">private</span> <span class="n">GoogleApiClient</span> <span class="n">mGoogleApiClient</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onCreate</span><span class="o">(</span><span class="n">Bundle</span> <span class="n">savedInstanceState</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kd">super</span><span class="o">.</span><span class="na">onCreate</span><span class="o">(</span><span class="n">savedInstanceState</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// Button listenersの設定</span>
+</span><span class='line'>      <span class="n">findViewById</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">button_sign_in</span><span class="o">).</span><span class="na">setOnClickListener</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// Google Sign-Inの設定</span>
+</span><span class='line'>      <span class="n">GoogleSignInOptions</span> <span class="n">gso</span> <span class="o">=</span> <span class="k">new</span> <span class="n">GoogleSignInOptions</span><span class="o">.</span><span class="na">Builder</span><span class="o">(</span><span class="n">GoogleSignInOptions</span><span class="o">.</span><span class="na">DEFAULT_SIGN_IN</span><span class="o">).</span><span class="na">requestEmail</span><span class="o">().</span><span class="na">build</span><span class="o">();</span>
+</span><span class='line'>      <span class="n">mGoogleApiClient</span> <span class="o">=</span> <span class="k">new</span> <span class="n">GoogleApiClient</span><span class="o">.</span><span class="na">Builder</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
+</span><span class='line'>              <span class="o">.</span><span class="na">enableAutoManage</span><span class="o">(</span><span class="k">this</span> <span class="cm">/* FragmentActivity */</span><span class="o">,</span> <span class="k">this</span> <span class="cm">/* OnConnectionFailedListener */</span><span class="o">)</span>
+</span><span class='line'>              <span class="o">.</span><span class="na">addApi</span><span class="o">(</span><span class="n">Auth</span><span class="o">.</span><span class="na">GOOGLE_SIGN_IN_API</span><span class="o">,</span> <span class="n">gso</span><span class="o">)</span>
+</span><span class='line'>              <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// Google Sign-Inボタンの設定</span>
+</span><span class='line'>      <span class="n">SignInButton</span> <span class="n">signInButton</span> <span class="o">=</span> <span class="o">(</span><span class="n">SignInButton</span><span class="o">)</span> <span class="n">findViewById</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">button_sign_in</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">signInButton</span><span class="o">.</span><span class="na">setSize</span><span class="o">(</span><span class="n">SignInButton</span><span class="o">.</span><span class="na">SIZE_STANDARD</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">signInButton</span><span class="o">.</span><span class="na">setScopes</span><span class="o">(</span><span class="n">gso</span><span class="o">.</span><span class="na">getScopeArray</span><span class="o">());</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="o">&lt;</span><span class="err">省略</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// Sign-Inした結果を受け取る処理</span>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityResult</span><span class="o">(</span><span class="kt">int</span> <span class="n">requestCode</span><span class="o">,</span> <span class="kt">int</span> <span class="n">resultCode</span><span class="o">,</span> <span class="n">Intent</span> <span class="n">data</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kd">super</span><span class="o">.</span><span class="na">onActivityResult</span><span class="o">(</span><span class="n">requestCode</span><span class="o">,</span> <span class="n">resultCode</span><span class="o">,</span> <span class="n">data</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// Result returned from launching the Intent from GoogleSignInApi.getSignInIntent(...);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">requestCode</span> <span class="o">==</span> <span class="n">RC_SIGN_IN</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">GoogleSignInResult</span> <span class="n">result</span> <span class="o">=</span> <span class="n">Auth</span><span class="o">.</span><span class="na">GoogleSignInApi</span><span class="o">.</span><span class="na">getSignInResultFromIntent</span><span class="o">(</span><span class="n">data</span><span class="o">);</span>
+</span><span class='line'>          <span class="n">handleSignInResult</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// Sign-Inした結果を扱う処理</span>
+</span><span class='line'>  <span class="kd">private</span> <span class="kt">void</span> <span class="nf">handleSignInResult</span><span class="o">(</span><span class="n">GoogleSignInResult</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;handleSignInResult:&quot;</span> <span class="o">+</span> <span class="n">result</span><span class="o">.</span><span class="na">isSuccess</span><span class="o">());</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="na">isSuccess</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>          <span class="c1">// Signed in successfully, show authenticated UI.</span>
+</span><span class='line'>          <span class="n">GoogleSignInAccount</span> <span class="n">acct</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="na">getSignInAccount</span><span class="o">();</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>          <span class="c1">// Signed out, show unauthenticated UI.</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// Sign-In処理</span>
+</span><span class='line'>  <span class="kd">private</span> <span class="kt">void</span> <span class="nf">signIn</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Intent</span> <span class="n">signInIntent</span> <span class="o">=</span> <span class="n">Auth</span><span class="o">.</span><span class="na">GoogleSignInApi</span><span class="o">.</span><span class="na">getSignInIntent</span><span class="o">(</span><span class="n">mGoogleApiClient</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">startActivityForResult</span><span class="o">(</span><span class="n">signInIntent</span><span class="o">,</span> <span class="n">RC_SIGN_IN</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@Override</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onClick</span><span class="o">(</span><span class="n">View</span> <span class="n">v</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">switch</span> <span class="o">(</span><span class="n">v</span><span class="o">.</span><span class="na">getId</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>          <span class="k">case</span> <span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">button_sign_in</span><span class="o">:</span>
+</span><span class='line'>              <span class="n">signIn</span><span class="o">();</span>
+</span><span class='line'>              <span class="k">break</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いてレイアウトの作成</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// content_main.xml</span>
+</span><span class='line'><span class="o">&lt;</span><span class="n">com</span><span class="o">.</span><span class="na">google</span><span class="o">.</span><span class="na">android</span><span class="o">.</span><span class="na">gms</span><span class="o">.</span><span class="na">common</span><span class="o">.</span><span class="na">SignInButton</span>
+</span><span class='line'>  <span class="nl">android:</span><span class="n">id</span><span class="o">=</span><span class="s">&quot;@+id/button_sign_in&quot;</span>
+</span><span class='line'>  <span class="nl">android:</span><span class="n">layout_width</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span>
+</span><span class='line'>  <span class="nl">android:</span><span class="n">layout_height</span><span class="o">=</span><span class="s">&quot;wrap_content&quot;</span>
+</span><span class='line'>  <span class="nl">android:</span><span class="n">layout_below</span><span class="o">=</span><span class="s">&quot;@+id/textView&quot;</span>
+</span><span class='line'>  <span class="nl">android:</span><span class="n">layout_alignParentStart</span><span class="o">=</span><span class="s">&quot;true&quot;</span>
+</span><span class='line'>  <span class="nl">android:</span><span class="n">layout_marginTop</span><span class="o">=</span><span class="s">&quot;100dp&quot;</span> <span class="o">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これを実装すると下記のような画面遷移ができます。</p>
+
+<p><img src="/images/google-sign-in-android-12.png" alt="アプリ起動後の画面" /><br/>
+<img src="/images/google-sign-in-android-13.png" alt="アカウントの選択" /></p>
+
+<p>Google Sign-In SDK for Androidを使うことで、UI/UXをiOS側と合わせることもできるので、非常に良いと思います。<br/>
+ぜひ使ってみてはいかがでしょうか。</p>
+
+<p>といったところで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-11-08T12:20:00+09:00" pubdate data-updated="true">Nov 8<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/google/'>Google</a>, <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2015/11/08/google-sign-in-android/" data-via="" data-counturl="http://grandbig.github.io/blog/2015/11/08/google-sign-in-android/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/11/08/google-sign-in-update/" title="Previous Post: Google Sign-In SDK for iOSがアップデートされました！">&laquo; Google Sign-In SDK for iOSがアップデートされました！</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/11/08/kotlin-android-2/" title="Next Post: Kotlinを使ってみよう！(1)">Kotlinを使ってみよう！(1) &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/12/02/universallink/">今更だけど試してみようUniversalLink</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/11/27/iphonex-statusbar/">iPhoneXのステータスバーの高さ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/09/clean-swift-3/">Clean Swiftを勉強してみよう！(3)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/08/clean-swift-2/">Clean Swiftを勉強してみよう！(2)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/09/25/clean-swift/">Clean Swiftを勉強してみよう！(1)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (160)</a></li><li><a href='/blog/categories/swift'>swift (63)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/redux'>redux (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2015/11/08/google-sign-in-android/';
+        var disqus_url = 'http://grandbig.github.io/blog/2015/11/08/google-sign-in-android/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

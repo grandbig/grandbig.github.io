@@ -1,0 +1,87 @@
+<div class="highlight"><pre><span class="n">import</span> <span class="n">UIKit</span>
+<span class="n">import</span> <span class="n">CoreBluetooth</span>
+
+<span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">CBCentralManagerDelegate</span><span class="p">,</span> <span class="n">CBPeripheralDelegate</span> <span class="p">{</span>
+	
+	<span class="c1">// 必要なプロパティの宣言</span>
+	<span class="n">var</span> <span class="nl">cm:</span><span class="n">CBCentralManager</span><span class="o">!</span>
+	<span class="n">var</span> <span class="nl">connectPeripheral:</span><span class="n">CBPeripheral</span><span class="o">!</span>
+	<span class="n">let</span> <span class="nl">sUUID:</span><span class="n">CBUUID</span> <span class="o">=</span> <span class="n">CBUUID</span><span class="p">(</span><span class="nl">string:</span><span class="s">&quot;47EC089D-2FBB-410D-BEDF-C88730DBBD3A&quot;</span><span class="p">)</span>
+
+	<span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+
+		<span class="c1">// CBCentralManagerの初期化</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">cm</span> <span class="o">=</span> <span class="n">CBCentralManager</span><span class="p">(</span><span class="nl">delegate:</span> <span class="n">self</span><span class="p">,</span> <span class="nl">queue:</span> <span class="nb">nil</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+	<span class="p">}</span>
+
+	<span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">centralStartAction</span><span class="p">(</span><span class="nl">sender:</span> <span class="n">AnyObject</span><span class="p">)</span> <span class="p">{</span>
+		<span class="c1">// スキャン開始</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">cm</span><span class="p">.</span><span class="n">scanForPeripheralsWithServices</span><span class="p">([</span><span class="n">self</span><span class="p">.</span><span class="n">sUUID</span><span class="p">],</span> <span class="nl">options:</span> <span class="nb">nil</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="c1">// MARK: - CBCentralManagerDelegate -</span>
+	<span class="c1">// Bluetoothの状態が変化したときに通る処理</span>
+	<span class="n">func</span> <span class="n">centralManagerDidUpdateState</span><span class="p">(</span><span class="nl">central:</span> <span class="n">CBCentralManager</span><span class="p">)</span> <span class="p">{</span>
+		<span class="n">print</span><span class="p">(</span><span class="s">&quot;state: \(central.state)&quot;</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="c1">// 周辺にBLEデバイスが見つかったときに通る処</span>
+	<span class="n">func</span> <span class="n">centralManager</span><span class="p">(</span><span class="nl">central:</span> <span class="n">CBCentralManager</span><span class="p">,</span> <span class="n">didDiscoverPeripheral</span> <span class="nl">peripheral:</span> <span class="n">CBPeripheral</span><span class="p">,</span> <span class="nl">advertisementData:</span> <span class="p">[</span><span class="n">String</span> <span class="o">:</span> <span class="n">AnyObject</span><span class="p">],</span> <span class="nl">RSSI:</span> <span class="n">NSNumber</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">if</span> <span class="n">let</span> <span class="nl">uuidArray:</span><span class="p">[</span><span class="n">CBUUID</span><span class="p">]</span> <span class="o">=</span> <span class="n">advertisementData</span><span class="p">[</span><span class="s">&quot;kCBAdvDataServiceUUIDs&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="n">CBUUID</span><span class="p">]</span> <span class="p">{</span>
+			<span class="n">let</span> <span class="nl">uuid:</span><span class="n">CBUUID</span> <span class="o">=</span> <span class="n">uuidArray</span><span class="p">.</span><span class="n">first</span><span class="o">!</span>
+			<span class="k">if</span> <span class="n">uuid</span> <span class="o">==</span> <span class="n">self</span><span class="p">.</span><span class="n">sUUID</span> <span class="p">{</span>
+				<span class="c1">// Peripheralに接続</span>
+				<span class="n">self</span><span class="p">.</span><span class="n">connectPeripheral</span> <span class="o">=</span> <span class="n">peripheral</span>
+				<span class="n">self</span><span class="p">.</span><span class="n">cm</span><span class="p">.</span><span class="n">connectPeripheral</span><span class="p">(</span><span class="n">connectPeripheral</span><span class="p">,</span> <span class="nl">options:</span> <span class="nb">nil</span><span class="p">)</span>
+			<span class="p">}</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+
+	<span class="c1">// 接続が成功したときに通る処理</span>
+	<span class="n">func</span> <span class="n">centralManager</span><span class="p">(</span><span class="nl">central:</span> <span class="n">CBCentralManager</span><span class="p">,</span> <span class="n">didConnectPeripheral</span> <span class="nl">peripheral:</span> <span class="n">CBPeripheral</span><span class="p">)</span> <span class="p">{</span>
+		<span class="n">peripheral</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+		<span class="c1">// サービス探索開始</span>
+		<span class="n">peripheral</span><span class="p">.</span><span class="n">discoverServices</span><span class="p">([</span><span class="n">self</span><span class="p">.</span><span class="n">sUUID</span><span class="p">])</span>
+	<span class="p">}</span>
+
+	<span class="c1">// 接続に失敗したときに通る処理</span>
+	<span class="n">func</span> <span class="n">centralManager</span><span class="p">(</span><span class="nl">central:</span> <span class="n">CBCentralManager</span><span class="p">,</span> <span class="n">didFailToConnectPeripheral</span> <span class="nl">peripheral:</span> <span class="n">CBPeripheral</span><span class="p">,</span> <span class="nl">error:</span> <span class="n">NSError</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+		<span class="n">print</span><span class="p">(</span><span class="s">&quot;接続失敗: \(error)&quot;</span><span class="p">)</span>
+	<span class="p">}</span>
+	
+	<span class="c1">// MARK: - CBPeripheralDelegate -</span>
+	<span class="c1">// サービスの探索結果を受け取るときに通る処理</span>
+	<span class="n">func</span> <span class="n">peripheral</span><span class="p">(</span><span class="nl">peripheral:</span> <span class="n">CBPeripheral</span><span class="p">,</span> <span class="n">didDiscoverServices</span> <span class="nl">error:</span> <span class="n">NSError</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+		<span class="n">let</span> <span class="nl">services:</span><span class="p">[</span><span class="n">CBService</span><span class="p">]</span> <span class="o">=</span> <span class="n">peripheral</span><span class="p">.</span><span class="n">services</span><span class="o">!</span>
+								        
+		<span class="k">for</span> <span class="n">service</span> <span class="k">in</span> <span class="n">services</span> <span class="p">{</span>
+			<span class="n">peripheral</span><span class="p">.</span><span class="n">discoverCharacteristics</span><span class="p">([</span><span class="n">self</span><span class="p">.</span><span class="n">sUUID</span><span class="p">],</span> <span class="nl">forService:</span> <span class="n">service</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+
+	<span class="c1">// キャラクタリスティックの探索結果を受け取るときに通る処理</span>
+	<span class="n">func</span> <span class="n">peripheral</span><span class="p">(</span><span class="nl">peripheral:</span> <span class="n">CBPeripheral</span><span class="p">,</span> <span class="n">didDiscoverCharacteristicsForService</span> <span class="nl">service:</span> <span class="n">CBService</span><span class="p">,</span> <span class="nl">error:</span> <span class="n">NSError</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+		<span class="n">let</span> <span class="nl">characteristics:</span><span class="p">[</span><span class="n">CBCharacteristic</span><span class="p">]</span> <span class="o">=</span> <span class="n">service</span><span class="p">.</span><span class="n">characteristics</span><span class="o">!</span>
+							        
+		<span class="k">for</span> <span class="n">characteristic</span> <span class="k">in</span> <span class="n">characteristics</span> <span class="p">{</span>
+			<span class="n">print</span><span class="p">(</span><span class="s">&quot;properties: \(characteristic.properties)&quot;</span><span class="p">)</span>
+			<span class="n">peripheral</span><span class="p">.</span><span class="n">readValueForCharacteristic</span><span class="p">(</span><span class="n">characteristic</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+
+	<span class="c1">// データの読込み結果を取得したときに通る処理</span>
+	<span class="n">func</span> <span class="n">peripheral</span><span class="p">(</span><span class="nl">peripheral:</span> <span class="n">CBPeripheral</span><span class="p">,</span> <span class="n">didUpdateValueForCharacteristic</span> <span class="nl">characteristic:</span> <span class="n">CBCharacteristic</span><span class="p">,</span> <span class="nl">error:</span> <span class="n">NSError</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">if</span><span class="p">(</span><span class="n">error</span> <span class="o">!=</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span>
+			<span class="n">print</span><span class="p">(</span><span class="s">&quot;読込みに失敗しました。error: \(error)&quot;</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+														        
+		<span class="n">print</span><span class="p">(</span><span class="s">&quot;読込みに成功しました。service.uuid: \(characteristic.service.UUID), characteristic uuid: \(characteristic.UUID), value: \(characteristic.value)&quot;</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

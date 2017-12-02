@@ -1,0 +1,54 @@
+<div class="highlight"><pre><span class="c1">// ViewController.swift</span>
+<span class="n">import</span> <span class="n">UIKit</span>
+<span class="n">import</span> <span class="n">GoogleMaps</span>
+<span class="n">import</span> <span class="n">GooglePlaces</span>
+
+<span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">GMSMapViewDelegate</span><span class="p">,</span> <span class="n">CLLocationManagerDelegate</span> <span class="p">{</span>
+
+  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">mapView:</span> <span class="n">GMSMapView</span><span class="o">!</span>
+  <span class="n">private</span> <span class="n">var</span> <span class="nl">locationManager:</span> <span class="n">CLLocationManager</span><span class="o">?</span>
+  <span class="n">private</span> <span class="n">var</span> <span class="nl">currentLocation:</span> <span class="n">CLLocation</span><span class="o">?</span>
+  <span class="n">private</span> <span class="n">var</span> <span class="nl">placesClient:</span> <span class="n">GMSPlacesClient</span><span class="o">!</span>
+  <span class="n">private</span> <span class="n">var</span> <span class="nl">zoomLevel:</span> <span class="n">Float</span> <span class="o">=</span> <span class="mf">15.0</span>
+  <span class="c1">/// 初期描画の判断に利用</span>
+  <span class="n">private</span> <span class="n">var</span> <span class="nl">initView:</span> <span class="n">Bool</span> <span class="o">=</span> <span class="n">false</span>
+
+  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+    <span class="c1">// Do any additional setup after loading the view, typically from a nib.</span>
+
+    <span class="c1">// GoogleMapの初期化</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">mapView</span><span class="p">.</span><span class="n">isMyLocationEnabled</span> <span class="o">=</span> <span class="n">true</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">mapView</span><span class="p">.</span><span class="n">mapType</span> <span class="o">=</span> <span class="n">GMSMapViewType</span><span class="p">.</span><span class="n">normal</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">mapView</span><span class="p">.</span><span class="n">settings</span><span class="p">.</span><span class="n">compassButton</span> <span class="o">=</span> <span class="n">true</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">mapView</span><span class="p">.</span><span class="n">settings</span><span class="p">.</span><span class="n">myLocationButton</span> <span class="o">=</span> <span class="n">true</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">mapView</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+
+    <span class="c1">// 位置情報関連の初期化</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">()</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">desiredAccuracy</span> <span class="o">=</span> <span class="n">kCLLocationAccuracyBest</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">requestAlwaysAuthorization</span><span class="p">()</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">distanceFilter</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">startUpdatingLocation</span><span class="p">()</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+
+    <span class="n">self</span><span class="p">.</span><span class="n">placesClient</span> <span class="o">=</span> <span class="n">GMSPlacesClient</span><span class="p">.</span><span class="n">shared</span><span class="p">()</span>
+  <span class="p">}</span>
+
+  <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+    <span class="c1">// Dispose of any resources that can be recreated.</span>
+  <span class="p">}</span>
+
+  <span class="c1">// MARK: CLLocationManagerDelegate</span>
+  <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didUpdateLocations</span> <span class="nl">locations:</span> <span class="p">[</span><span class="n">CLLocation</span><span class="p">])</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="o">!</span><span class="n">self</span><span class="p">.</span><span class="n">initView</span> <span class="p">{</span>
+      <span class="c1">// 初期描画時のマップ中心位置の移動</span>
+      <span class="n">let</span> <span class="n">camera</span> <span class="o">=</span> <span class="n">GMSCameraPosition</span><span class="p">.</span><span class="n">camera</span><span class="p">(</span><span class="nl">withTarget:</span> <span class="p">(</span><span class="n">locations</span><span class="p">.</span><span class="n">last</span><span class="o">?</span><span class="p">.</span><span class="n">coordinate</span><span class="p">)</span><span class="o">!</span><span class="p">,</span> <span class="nl">zoom:</span> <span class="n">self</span><span class="p">.</span><span class="n">zoomLevel</span><span class="p">)</span>
+      <span class="n">self</span><span class="p">.</span><span class="n">mapView</span><span class="p">.</span><span class="n">camera</span> <span class="o">=</span> <span class="n">camera</span>
+      <span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">stopUpdatingLocation</span><span class="p">()</span>
+      <span class="n">self</span><span class="p">.</span><span class="n">initView</span> <span class="o">=</span> <span class="n">true</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

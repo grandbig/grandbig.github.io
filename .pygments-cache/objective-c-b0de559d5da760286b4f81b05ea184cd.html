@@ -1,0 +1,46 @@
+<div class="highlight"><pre><span class="c1">// VisitController.m</span>
+<span class="c1">// CMPedometerの処理</span>
+<span class="cm">/**</span>
+<span class="cm"> 歩数の計測開始処理</span>
+<span class="cm">*/</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">startPedometer</span>
+<span class="p">{</span>
+	<span class="n">self</span><span class="p">.</span><span class="n">pmp</span> <span class="o">=</span> <span class="p">[</span><span class="n">CMPedometer</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];]</span>
+	<span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">pmp</span> <span class="nl">startPedometerUpdatesFromDate:</span><span class="p">[</span><span class="n">NSDate</span> <span class="n">date</span><span class="p">]</span>
+								<span class="nl">withHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">CMPedometerData</span> <span class="o">*</span><span class="n">pedometerData</span><span class="p">,</span> <span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+									<span class="n">dispatch_async</span><span class="p">(</span><span class="n">dispatch_get_main_queue</span><span class="p">(),</span> <span class="o">^</span><span class="p">{</span>
+										<span class="c1">// step数の取得</span>
+										<span class="n">NSNumber</span> <span class="o">*</span><span class="n">step</span> <span class="o">=</span> <span class="n">pedometerData</span><span class="p">.</span><span class="n">numberOfSteps</span><span class="p">;</span>
+										<span class="n">NSInteger</span> <span class="n">stepInt</span> <span class="o">=</span> <span class="p">[</span><span class="n">step</span> <span class="n">integerValue</span><span class="p">];</span>
+
+										<span class="c1">// 距離</span>
+										<span class="n">NSNumber</span> <span class="o">*</span><span class="n">distance</span> <span class="o">=</span> <span class="n">pedometerData</span><span class="p">.</span><span class="n">distance</span><span class="p">;</span>
+										<span class="n">NSInteger</span> <span class="n">distanceInt</span> <span class="o">=</span> <span class="p">[</span><span class="n">distance</span> <span class="n">integerValue</span><span class="p">];</span>
+
+										<span class="c1">// 開始日時, 終了日時のUnixTimeを取得</span>
+										<span class="kt">double</span> <span class="n">startDateUnixTime</span> <span class="o">=</span> <span class="p">[</span><span class="n">pedometerData</span><span class="p">.</span><span class="n">startDate</span> <span class="n">timeIntervalSince1970</span><span class="p">];</span>
+										<span class="kt">double</span> <span class="n">endDateUnixTime</span> <span class="o">=</span> <span class="p">[</span><span class="n">pedometerData</span><span class="p">.</span><span class="n">endDate</span> <span class="n">timeIntervalSince1970</span><span class="p">];</span>
+
+										<span class="c1">// 日時取得のためにFormatを設定</span>
+										<span class="n">NSDateFormatter</span> <span class="o">*</span><span class="n">outputFormatter</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSDateFormatter</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
+										<span class="p">[</span><span class="n">outputFormatter</span> <span class="nl">setDateFormat:</span><span class="s">@&quot;yyyy-MM-dd HH:mm:ss&quot;</span><span class="p">];</span>
+										<span class="c1">// 開始日時, 終了日時のNSString型を取得</span>
+										<span class="n">NSString</span><span class="o">*</span> <span class="n">startDateString</span> <span class="o">=</span> <span class="p">[</span><span class="n">outputFormatter</span> <span class="nl">stringFromDate:</span><span class="n">pedometerData</span><span class="p">.</span><span class="n">startDate</span><span class="p">];</span>
+										<span class="n">NSString</span> <span class="o">*</span><span class="n">endDateString</span> <span class="o">=</span> <span class="p">[</span><span class="n">outputFormatter</span> <span class="nl">stringFromDate:</span><span class="n">pedometerData</span><span class="p">.</span><span class="n">endDate</span><span class="p">];</span>
+
+										<span class="c1">// 階段の昇降</span>
+										<span class="n">NSNumber</span> <span class="o">*</span><span class="n">floorsAscended</span> <span class="o">=</span> <span class="n">pedometerData</span><span class="p">.</span><span class="n">floorsAscended</span><span class="p">;</span>
+										<span class="n">NSNumber</span> <span class="o">*</span><span class="n">floorsDescended</span> <span class="o">=</span> <span class="n">pedometerData</span><span class="p">.</span><span class="n">floorsDescended</span><span class="p">;</span>
+										<span class="n">NSInteger</span> <span class="n">floorsAscendedInt</span> <span class="o">=</span> <span class="p">[</span><span class="n">floorsAscended</span> <span class="n">integerValue</span><span class="p">];</span>
+										<span class="n">NSInteger</span> <span class="n">floorsDescendedInt</span> <span class="o">=</span> <span class="p">[</span><span class="n">floorsDescended</span> <span class="n">integerValue</span><span class="p">];</span>
+
+										<span class="c1">// データの挿入</span>
+										<span class="p">[</span><span class="n">self</span> <span class="nl">insertMotionData:</span><span class="n">stepInt</span> <span class="nl">distance:</span><span class="n">distanceInt</span> <span class="nl">startDate:</span><span class="n">startDateString</span> <span class="nl">endDate:</span><span class="n">endDateString</span> <span class="nl">startDateUT:</span><span class="n">startDateUnixTime</span> <span class="nl">endDateUT:</span><span class="n">endDateUnixTime</span> <span class="nl">floorsAscended:</span><span class="n">floorsAscendedInt</span> <span class="nl">floorsDescended:</span><span class="n">floorsDescendedInt</span><span class="p">];</span>
+
+										<span class="c1">// ローカルプッシュ通知</span>
+										<span class="n">NSString</span> <span class="o">*</span><span class="n">message</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;Step Count Result</span><span class="se">\n\n</span><span class="s">歩数: %@</span><span class="se">\n</span><span class="s">距離: %@[m]</span><span class="se">\n</span><span class="s">開始時間: %@</span><span class="se">\n</span><span class="s">終了時間: %@</span><span class="se">\n</span><span class="s">上った回数: %@</span><span class="se">\n</span><span class="s">下りた回数: %@&quot;</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">startDateString</span><span class="p">,</span> <span class="n">endDateString</span><span class="p">,</span> <span class="n">floorsAscended</span><span class="p">,</span> <span class="n">floorsDescended</span><span class="p">];</span>
+										<span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="n">message</span> <span class="nl">soundFlag:</span><span class="n">NO</span><span class="p">];]</span>
+									<span class="p">});</span>
+								<span class="p">}];</span>
+<span class="p">}</span>
+</pre></div>

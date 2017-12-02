@@ -1,0 +1,38 @@
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">express</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;express&#39;</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">apn</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;apn&#39;</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">qs</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;qs&#39;</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">router</span> <span class="o">=</span> <span class="nx">express</span><span class="p">.</span><span class="nx">Router</span><span class="p">();</span>
+
+<span class="nx">router</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// GETパラメータからトークンを取得</span>
+  <span class="kd">var</span> <span class="nx">arr</span> <span class="o">=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">url</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">&quot;?&quot;</span><span class="p">);</span>
+  <span class="kd">var</span> <span class="nx">obj</span> <span class="o">=</span> <span class="nx">qs</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">arr</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+  <span class="kd">var</span> <span class="nx">deviceToken</span> <span class="o">=</span> <span class="nx">obj</span><span class="p">.</span><span class="nx">token</span><span class="p">;</span>
+
+  <span class="c1">// プッシュ通知の設定</span>
+  <span class="kd">var</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="nx">token</span><span class="o">:</span> <span class="p">{</span>
+      <span class="nx">key</span><span class="o">:</span> <span class="s2">&quot;./keys/AuthKey_xxxxxxxxxx.p8&quot;</span><span class="p">,</span>
+      <span class="nx">keyId</span><span class="o">:</span> <span class="s2">&quot;xxxxxxxxxx&quot;</span><span class="p">,</span>
+      <span class="nx">teamId</span><span class="o">:</span> <span class="s2">&quot;xxxxxxxxxx&quot;</span>
+    <span class="p">},</span>
+    <span class="nx">production</span><span class="o">:</span> <span class="kc">false</span>
+  <span class="p">};</span>
+
+  <span class="kd">var</span> <span class="nx">apnProvider</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">apn</span><span class="p">.</span><span class="nx">Provider</span><span class="p">(</span><span class="nx">options</span><span class="p">);</span>
+  <span class="kd">var</span> <span class="nx">note</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">apn</span><span class="p">.</span><span class="nx">Notification</span><span class="p">();</span>
+
+  <span class="nx">note</span><span class="p">.</span><span class="nx">expiry</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nb">Date</span><span class="p">.</span><span class="nx">now</span><span class="p">()</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">+</span> <span class="mi">3600</span><span class="p">;</span>
+  <span class="nx">note</span><span class="p">.</span><span class="nx">badge</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+  <span class="nx">note</span><span class="p">.</span><span class="nx">sound</span> <span class="o">=</span> <span class="s2">&quot;ping.aiff&quot;</span><span class="p">;</span>
+  <span class="nx">note</span><span class="p">.</span><span class="nx">alert</span> <span class="o">=</span> <span class="s2">&quot;プッシュ通知が届きましたよ！&quot;</span><span class="p">;</span>
+  <span class="nx">note</span><span class="p">.</span><span class="nx">topic</span> <span class="o">=</span> <span class="s2">&quot;com.xxx.NotificationSample&quot;</span><span class="p">;</span>
+
+  <span class="c1">// プッシュ送信</span>
+  <span class="nx">apnProvider</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nx">note</span><span class="p">,</span> <span class="nx">deviceToken</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span> <span class="p">(</span><span class="nx">result</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="nx">res</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="s2">&quot;respond with a resource&quot;</span><span class="p">);</span>
+  <span class="p">});</span>
+<span class="p">});</span>
+
+<span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="nx">router</span><span class="p">;</span>
+</pre></div>

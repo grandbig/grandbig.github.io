@@ -1,0 +1,41 @@
+<div class="highlight"><pre><span class="n">import</span> <span class="n">CoreLocation</span>
+<span class="n">import</span> <span class="n">Alamofire</span>
+<span class="n">import</span> <span class="n">SwiftyJSON</span>
+
+<span class="n">class</span> <span class="n">Direction</span> <span class="p">{</span>
+
+  <span class="c1">/// API Key</span>
+  <span class="n">private</span> <span class="n">var</span> <span class="nl">apiKey:</span> <span class="n">String</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+  <span class="c1">/// Geocoding APIのベースURL</span>
+  <span class="n">private</span> <span class="n">let</span> <span class="nl">baseURL:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;https://maps.googleapis.com/maps/api/directions/json?language=ja&amp;mode=walking&quot;</span>
+
+  <span class="c1">/// 初期化処理</span>
+  <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="s">&quot;key&quot;</span><span class="p">,</span> <span class="nl">ofType:</span> <span class="s">&quot;plist&quot;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s">&quot;googleWebApiKey&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="p">{</span>
+          <span class="n">self</span><span class="p">.</span><span class="n">apiKey</span> <span class="o">=</span> <span class="n">apiKey</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="cm">/**</span>
+<span class="cm">   目的地までの道順を取得</span>
+
+<span class="cm">   - parameter from: 開始地点</span>
+<span class="cm">   - parameter to: 終了地点</span>
+<span class="cm">   - parameter completion: 道順を返すcallback</span>
+<span class="cm">   */</span>
+  <span class="n">func</span> <span class="n">getRoutes</span><span class="p">(</span><span class="nl">from:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">,</span> <span class="nl">to:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">,</span> <span class="nl">completion:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">((</span><span class="n">JSON</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">let</span> <span class="n">requestURL</span> <span class="o">=</span> <span class="s">&quot;\(baseURL)&amp;key=\(String(describing: self.apiKey))&quot;</span>
+    <span class="n">let</span> <span class="n">parameters</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;origin&quot;</span><span class="o">:</span> <span class="s">&quot;\(from.latitude),\(from.longitude)&quot;</span><span class="p">,</span> <span class="s">&quot;destination&quot;</span><span class="o">:</span> <span class="s">&quot;\(to.latitude),\(to.longitude)&quot;</span><span class="p">]</span>
+    <span class="n">Alamofire</span><span class="p">.</span><span class="n">request</span><span class="p">(</span><span class="n">requestURL</span><span class="p">,</span> <span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">parameters:</span> <span class="n">parameters</span><span class="p">,</span> <span class="nl">encoding:</span> <span class="n">URLEncoding</span><span class="p">.</span><span class="k">default</span><span class="p">,</span> <span class="nl">headers:</span> <span class="nb">nil</span><span class="p">).</span><span class="n">responseJSON</span> <span class="p">{</span> <span class="n">response</span> <span class="k">in</span>
+      <span class="n">let</span> <span class="n">json</span> <span class="o">=</span> <span class="n">JSON</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">value</span> <span class="n">as</span> <span class="n">Any</span><span class="p">)</span>
+      <span class="n">let</span> <span class="n">steps</span> <span class="o">=</span> <span class="n">json</span><span class="p">[</span><span class="s">&quot;routes&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;legs&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;steps&quot;</span><span class="p">]</span>
+
+      <span class="n">completion</span><span class="p">(</span><span class="n">steps</span><span class="p">)</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

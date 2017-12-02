@@ -1,0 +1,543 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>SwiftでWebSocket! - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="socket.io公式クライアントソースを使ったサンプルの作成 先日、公開されたsocket.io公式のクライアントソースを使って、サンプルを作成したいと思います。
+公式にもサンプルコードは公開されているのですが、練習がてら試してみたいと思います。 因みに本件にはサーバ側の説明は特に書いていません &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2015/03/11/socketio-in-swift/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">SwiftでWebSocket!</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-03-11T14:30:00+09:00" pubdate data-updated="true">Mar 11<span>th</span>, 2015</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h4>socket.io公式クライアントソースを使ったサンプルの作成</h4>
+
+<p>先日、公開された<a href="https://github.com/socketio/socket.io-client-swift">socket.io公式のクライアントソース</a>を使って、サンプルを作成したいと思います。<br/>
+公式にも<a href="https://github.com/nuclearace/socket.io-client-swift-example">サンプルコード</a>は公開されているのですが、練習がてら試してみたいと思います。</p>
+
+<p>因みに本件にはサーバ側の説明は特に書いていません。<br/>
+下記、内容を試したい場合は<a href="https://github.com/grandbig/socket.io.web">GitHub: socket.io.web</a>からソースをダウンロードしてお使いください。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h5>プログラミング前の準備</h5>
+
+<p>まずは、<a href="https://github.com/square/SocketRocket">SocketRocket</a>をダウンロードしてきましょう。<br/>
+READMEに書かれている通り、SocketRocketフォルダごと、自身のフォルダにコピーします。</p>
+
+<p>続いて、下記４つのFrameworkを追加しましょう。</p>
+
+<ul>
+<li>libicucore.dylib</li>
+<li>CFNetwork.framework</li>
+<li>Security.framework</li>
+<li>Foundation.framework</li>
+</ul>
+
+
+<p>本プロジェクトはSwiftがベースであるため、このままだと、Objective-Cのクラスを読み込めません。<br/>
+そこで、 <strong>Bridge-Header</strong> ファイルを作成する必要があります。</p>
+
+<p>作成手順は下記です。</p>
+
+<ol>
+<li>プロジェクトを右クリックでAdd files to &ldquo;プロジェクト名&#8221;を選択</li>
+<li>TARGETS > Build Settings > Swift Compiler &ndash; Code Generation > Objective-C Bridging Header に作成したBridge-Headerファイルを指定</li>
+<li>作成したBridge-Headerファイルに利用したいObjective-Cファイルをimportする</li>
+</ol>
+
+
+<p>そして、socket.io公式のクライアントソースである <strong>SwiftIO</strong> を追加しましょう。</p>
+
+<p>ここまでで準備完了です。<br/>
+下記のようなプロジェクト構成になっていることを確認してください。</p>
+
+<p><img src="/images/ws_swift_1.png" alt="プロジェクト構成" /></p>
+
+<h5>プログラミング</h5>
+
+<p>さて、ここからは本格的にプログラミングを書いていきます。<br/>
+と言っても、今回作成するサンプルは<a href="http://socket.io/get-started/chat/">socket.io 公式HP > Get Started > Write a chat application</a>を途中まで作成する程度なので、少ししか書きません。</p>
+
+<p>まずは、Storyboardにテキストフィールドとボタンを設置します。</p>
+
+<p><img src="/images/ws_swift_2.png" alt="Storyboardの様子" /></p>
+
+<p>続いて、StoryboardからViewController.swiftにリンク付けします。<br/>
+その結果、下記の通りになります。<br/>
+(ついでに後々必要となる部分も実装しています。)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">UITextFieldDelegate</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// Storyboardからのリンクづけ</span>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">msgField:</span> <span class="n">UITextField</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// Delegateの設定</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">msgField</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">textFieldShouldReturn</span><span class="p">(</span><span class="nl">textField:</span> <span class="n">UITextField</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// キーボードのreturnを押下するとキーボードが閉じる処理</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">msgField</span><span class="p">.</span><span class="n">resignFirstResponder</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">return</span> <span class="n">true</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">sendMessage</span><span class="p">(</span><span class="nl">sender:</span> <span class="n">AnyObject</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// Storyboardからのリンクづけ</span>
+</span><span class='line'>      <span class="c1">// 後ほど記載</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>さて、これでほぼ大詰めです。<br/>
+WebSocket処理を書いてみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">UITextFieldDelegate</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// Storyboardからのリンクづけ</span>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">msgField:</span> <span class="n">UITextField</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// クライアント側のSocketコネクションの準備</span>
+</span><span class='line'>  <span class="n">let</span> <span class="n">socket</span> <span class="o">=</span> <span class="n">SocketIOClient</span><span class="p">(</span><span class="nl">socketURL:</span> <span class="s">&quot;localhost:3000&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// Delegateの設定</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">msgField</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// コネクションの接続</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">socket</span><span class="p">.</span><span class="n">connection</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">textFieldShouldReturn</span><span class="p">(</span><span class="nl">textField:</span> <span class="n">UITextField</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// キーボードのreturnを押下するとキーボードが閉じる処理</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">msgField</span><span class="p">.</span><span class="n">resignFirstResponder</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">return</span> <span class="n">true</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">sendMessage</span><span class="p">(</span><span class="nl">sender:</span> <span class="n">AnyObject</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// Storyboardからのリンクづけ</span>
+</span><span class='line'>      <span class="c1">// テキストフィールド内の文字列をWebSocketで送る処理</span>
+</span><span class='line'>      <span class="n">var</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">msgField</span><span class="p">.</span><span class="n">text</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">socket</span><span class="p">.</span><span class="n">emit</span><span class="p">(</span><span class="s">&quot;chat message&quot;</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>はい。これでクライアント側の実装終了です！<br/>
+上記のソースは全て<a href="https://github.com/grandbig/socket.io.ios-swift">GitHub: socket.io.ios-swift</a>にアップしていますので、ご自由にご利用ください。</p>
+
+<p>ということで本日はここまで。</p>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://socket.io/get-started/chat/">socket.io</a></li>
+<li><a href="https://github.com/socketio/socket.io-client-swift">socketio/socket.io-client-swift</a></li>
+<li><a href="http://qiita.com/n0bisuke/items/6dc990579b343475a635">SocketRocketでWebSocketを実装してみる</a></li>
+<li><a href="http://mk.hatenablog.com/entry/2014/10/16/075841">SwiftからObjective-Cのライブラリ使う</a></li>
+</ul>
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-03-11T14:30:00+09:00" pubdate data-updated="true">Mar 11<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/websocket/'>WebSocket</a>, <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/socket-dot-io/'>socket.io</a>, <a class='category' href='/blog/categories/swift/'>swift</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2015/03/11/socketio-in-swift/" data-via="" data-counturl="http://grandbig.github.io/blog/2015/03/11/socketio-in-swift/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/02/14/ios-allstars-study/" title="Previous Post: iOS オールスターズ勉強会に参加しました！">&laquo; iOS オールスターズ勉強会に参加しました！</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/03/11/facebook-tuning/" title="Next Post: Facebookのモバイルチューニングの極意を読んで...">Facebookのモバイルチューニングの極意を読んで... &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/12/02/universallink/">今更だけど試してみようUniversalLink</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/11/27/iphonex-statusbar/">iPhoneXのステータスバーの高さ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/09/clean-swift-3/">Clean Swiftを勉強してみよう！(3)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/10/08/clean-swift-2/">Clean Swiftを勉強してみよう！(2)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/09/25/clean-swift/">Clean Swiftを勉強してみよう！(1)</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (160)</a></li><li><a href='/blog/categories/swift'>swift (63)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/redux'>redux (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2015/03/11/socketio-in-swift/';
+        var disqus_url = 'http://grandbig.github.io/blog/2015/03/11/socketio-in-swift/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

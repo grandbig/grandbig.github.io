@@ -1,0 +1,66 @@
+<div class="highlight"><pre><span class="n">import</span> <span class="n">Foundation</span>
+<span class="n">import</span> <span class="n">UIKit</span>
+<span class="n">import</span> <span class="n">RxSwift</span>
+<span class="n">import</span> <span class="n">RxCocoa</span>
+
+<span class="n">let</span> <span class="n">minimalUsernameLength</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">let</span> <span class="n">minimalPasswordLength</span> <span class="o">=</span> <span class="mi">5</span>
+
+<span class="n">class</span> <span class="n">SimpleValidationViewController</span> <span class="o">:</span> <span class="n">ViewController</span> <span class="p">{</span>
+	<span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">usernameOutlet:</span> <span class="n">UITextField</span><span class="o">!</span>
+	<span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">usernameValidOutlet:</span> <span class="n">UILabel</span><span class="o">!</span>
+	<span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">passwordOutlet:</span> <span class="n">UITextField</span><span class="o">!</span>
+	<span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">passwordValidOutlet:</span> <span class="n">UILabel</span><span class="o">!</span>
+	<span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">doSomethingOutlet:</span> <span class="n">UIButton</span><span class="o">!</span>
+
+	<span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+
+		<span class="n">usernameValidOutlet</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Username has to be at least \(minimalUsernameLength) characters&quot;</span>
+		<span class="n">passwordValidOutlet</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Password has to be at least \(minimalPasswordLength) characters&quot;</span>
+
+		<span class="c1">// 注目！！</span>
+		<span class="n">let</span> <span class="n">usernameValid</span> <span class="o">=</span> <span class="n">usernameOutlet</span><span class="p">.</span><span class="n">rx_text</span>
+			<span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">$0</span><span class="p">.</span><span class="n">characters</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;=</span> <span class="n">minimalUsernameLength</span> <span class="p">}</span>
+			<span class="p">.</span><span class="n">shareReplay</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+		<span class="n">let</span> <span class="n">passwordValid</span> <span class="o">=</span> <span class="n">passwordOutlet</span><span class="p">.</span><span class="n">rx_text</span>
+			<span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">$0</span><span class="p">.</span><span class="n">characters</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;=</span> <span class="n">minimalPasswordLength</span> <span class="p">}</span>
+			<span class="p">.</span><span class="n">shareReplay</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+		<span class="n">let</span> <span class="n">everythingValid</span> <span class="o">=</span> <span class="n">Observable</span><span class="p">.</span><span class="n">combineLatest</span><span class="p">(</span><span class="n">usernameValid</span><span class="p">,</span> <span class="n">passwordValid</span><span class="p">)</span> <span class="p">{</span> <span class="n">$0</span> <span class="o">&amp;&amp;</span> <span class="n">$1</span> <span class="p">}</span>
+			<span class="p">.</span><span class="n">shareReplay</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+		<span class="n">usernameValid</span>
+			<span class="p">.</span><span class="n">bindTo</span><span class="p">(</span><span class="n">passwordOutlet</span><span class="p">.</span><span class="n">rx_enabled</span><span class="p">)</span>
+			<span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
+
+		<span class="n">usernameValid</span>
+			<span class="p">.</span><span class="n">bindTo</span><span class="p">(</span><span class="n">usernameValidOutlet</span><span class="p">.</span><span class="n">rx_hidden</span><span class="p">)</span>
+			<span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
+
+		<span class="n">passwordValid</span>
+			<span class="p">.</span><span class="n">bindTo</span><span class="p">(</span><span class="n">passwordValidOutlet</span><span class="p">.</span><span class="n">rx_hidden</span><span class="p">)</span>
+			<span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
+
+		<span class="n">everythingValid</span>
+			<span class="p">.</span><span class="n">bindTo</span><span class="p">(</span><span class="n">doSomethingOutlet</span><span class="p">.</span><span class="n">rx_enabled</span><span class="p">)</span>
+			<span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
+
+		<span class="n">doSomethingOutlet</span><span class="p">.</span><span class="n">rx_tap</span>
+			<span class="p">.</span><span class="n">subscribeNext</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="k">in</span> <span class="n">self</span><span class="o">?</span><span class="p">.</span><span class="n">showAlert</span><span class="p">()</span> <span class="p">}</span>
+			<span class="p">.</span><span class="n">addDisposableTo</span><span class="p">(</span><span class="n">disposeBag</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="n">func</span> <span class="n">showAlert</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">let</span> <span class="n">alertView</span> <span class="o">=</span> <span class="n">UIAlertView</span><span class="p">(</span>
+			<span class="nl">title:</span> <span class="s">&quot;RxExample&quot;</span><span class="p">,</span>
+			<span class="nl">message:</span> <span class="s">&quot;This is wonderful&quot;</span><span class="p">,</span>
+			<span class="nl">delegate:</span> <span class="nb">nil</span><span class="p">,</span>
+			<span class="nl">cancelButtonTitle:</span> <span class="s">&quot;OK&quot;</span>
+		<span class="p">)</span>
+
+		<span class="n">alertView</span><span class="p">.</span><span class="n">show</span><span class="p">()</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

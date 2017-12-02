@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: react, | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/react/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-12-02T19:17:09+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iOSエンジニアが苦しんだReactアニメーション]]></title>
+    <link href="http://grandbig.github.io/blog/2017/02/04/react-animation-1/"/>
+    <updated>2017-02-04T21:54:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/02/04/react-animation-1</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>少し期間が空いてしまいましたが、ブログを更新します。<br/>
+今回は理解できていれば簡単なのに、なかなか実装できなかったReactアニメーションについてです。<br/>
+これが何でかすご〜く苦労したんですね&hellip;<br/>
+筆者自身が詰まったところから紐解く形で解説を載せていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Counterサンプルにアニメーションを追加しよう！</h3>
+
+<p>まずはネタとして<a href="http://grandbig.github.io/blog/2017/01/02/redux-base-4/">前回</a>まで基礎を学ぶのに利用した<code>Counter</code>サンプルを利用します。<br/>
+元々の<code>Counter</code>サンプルとは以下のものになります。</p>
+
+<p><img src="/images/redux_base_1.png" alt="Counter Example画面" /></p>
+
+<p>実装されている機能としては下記の4つになります。</p>
+
+<ul>
+<li>「+」ボタンを選択するとClick数が+1される</li>
+<li>「-」ボタンを選択するとClick数が-1される</li>
+<li>「Increment if odd」ボタンを選択するとClick数が奇数のときのみ+1される</li>
+<li>「Increment async」ボタンを選択すると1秒後にClick数が+1される</li>
+</ul>
+
+
+<p>これに次の機能を1つ追加します。</p>
+
+<ul>
+<li>「Show Toast」ボタンを選択するとToastが表示される</li>
+<li>「Show Toast」ボタンを連打すると追加でToastが表示される</li>
+</ul>
+
+
+<p>「<strong>Toast</strong> って何だろう&hellip;!?」と思う人もいるかもしれませんので、念のため説明します。<br/>
+簡単に言うと、「ユーザにポップアップのような形で知らせるもの」です。<br/>
+Androidユーザなら必ず見たことがあるはずです。(<a href="https://developer.android.com/guide/topics/ui/notifiers/toasts.html">Android Developers Toasts</a>)</p>
+
+<p>今回目指す完成図は下記になります。</p>
+
+<p><img src="/images/redux_base_2.png" alt="機能を追加したCounter Example画面" /></p>
+
+<h4>フォルダ構成</h4>
+
+<p>まずは例によってフォルダ構成を見ていきます。</p>
+
+<p>```javascript
+counter
+├── public
+│     └── index.html
+└── src</p>
+
+<pre><code> ├── index.js
+ ├── actions
+ │     └── index.js
+ ├── reducers
+ │     └── index.js
+ ├── components
+ │     ├── Counter.js
+ │     └── Toast
+ │           ├── Toast.js
+ │           └── Toast.css
+ └── node_modules
+</code></pre>
+
+<p>```</p>
+
+<h5>Toast表示のActionを追加</h5>
+
+<p>さて、まずはToastを表示するための<code>Action</code>を追加しましょう。</p>
+
+<p>```javascript
+// actions/index.js
+import { createAction } from &lsquo;redux-actions&rsquo;;</p>
+
+<p>const INCREMENT = (&lsquo;INCREMENT&rsquo;);
+const DECREMENT = (&lsquo;DECREMENT&rsquo;);
+const SHOW_TOAST = (&lsquo;SHOW_TOAST&rsquo;);  // 追加</p>
+
+<p>export const increment = createAction(INCREMENT);
+export const decrement = createAction(DECREMENT);
+export const showToast = createAction(SHOW_TOAST);  // 追加
+```</p>
+
+<p>おわかりの通り、<code>showToast</code>がそのActionに該当します。</p>
+
+<h4>Toast表示Action発行後のReducer処理</h4>
+
+<p>続いて、<code>Reducer</code>の処理を書いていきます。<br/>
+機能要件にあった通り、ボタンを連打することで複数のToastを表示します。<br/>
+後で詳細を説明しますが、個々のToastを区別する必要があるため、固有値を付与します。</p>
+
+<p>```javascript
+// reducers/index.js
+import { handleActions } from &lsquo;redux-actions&rsquo;</p>
+
+<p>const initialState = {
+  value: 0,
+  num: 0    // 追加 (1)
+};</p>
+
+<p>export default handleActions({
+  INCREMENT: (state, action) => {</p>
+
+<pre><code>const newState = {
+  ...state,   // 追加 (2)
+  value: state.value + 1
+};
+return newState;
+</code></pre>
+
+<p>  },
+  DECREMENT: (state, action) => {</p>
+
+<pre><code>const newState = {
+  ...state,   // 追加 (2)
+  value: state.value - 1
+};
+return newState;
+</code></pre>
+
+<p>  },
+  // 以下が追加 (3)
+  SHOW_TOAST: (state, action) => {</p>
+
+<pre><code>const newState = {
+  ...state,
+  num: state.num + 1
+};
+return newState;
+</code></pre>
+
+<p>  }
+}, initialState)
+```</p>
+
+<p>それぞれ説明します。</p>
+
+<p>追加(1):<br/>
+今回は簡単のため各Toastに与えるために固有値を<code>num</code>として定義し、初期値を0とします。<br/>
+これをボタンタップ時にカウントアップして、その<code>num</code>を付与してToastを作成することで個々を区別することができます。</p>
+
+<p>追加(2):<br/>
+他のボタンをタップしたときに<code>state.num</code>がリセットされてしまわないように、<code>...state</code>を追加して、変化のない値も丸々返すようにしています。</p>
+
+<p>追加(3):<br/>
+Toast表示<code>Action</code>が<code>dispatch</code>された後に検知して、新たな<code>num</code>値を返却するために追加しました。</p>
+
+<h4>Toast Componentの作成</h4>
+
+<p>今回、最も重要な<code>Component</code>である<code>Toast Component</code>を作成していきましょう。<br/>
+Reactで簡単にアニメーションを作成可能な<code>react-addons-css-transition-group</code>の<code>ReactCSSTransitionGroup</code>を使います。</p>
+
+<p>```javascript
+// ./components/Toast/Toast.js
+import React, { Component } from &lsquo;react&rsquo;;
+import ReactCSSTransitionGroup from &lsquo;react-addons-css-transition-group&rsquo;;
+import &lsquo;./Toast.css&rsquo;;</p>
+
+<p>class Toast extends Component {</p>
+
+<p>  render() {</p>
+
+<pre><code>const { num } = this.props;
+const toast = &lt;div key={num} className="toast"&gt;Get Wild&lt;/div&gt;
+return (
+  &lt;div className="toast-group"&gt;
+    &lt;ReactCSSTransitionGroup
+      transitionName="example"
+      transitionEnterTimeout={1500}
+      transitionLeaveTimeout={1000}
+    &gt;
+    {toast}
+    &lt;/ReactCSSTransitionGroup&gt;
+  &lt;/div&gt;
+)
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>Toast.propTypes = {
+  num: React.PropTypes.number.isRequired
+}</p>
+
+<p>export default Toast
+```</p>
+
+<p><code>ReactCSSTransitionGroup Component</code>の各パラメータは次の通りの意味です。</p>
+
+<ul>
+<li>transitionName: 基本となるアニメーション対象要素の名称</li>
+<li>transitionEnterTimeout: 要素が追加された後のタイムアウト時間</li>
+<li>transitionLeaveTimeout: 要素が消えた後のタイムアウト時間？</li>
+</ul>
+
+
+<p>CSSでもアニメーションを追加するので、<code>transitionEnterTimeout</code>や<code>transitionLeaveTimeout</code>が不要なんじゃないかと思ったりしたのですが、これらをつけないとエラーが出ます。</p>
+
+<p><code>ReactCSSTransitionGroup</code>の子要素としてToast表示したいDOM要素を追加します。<br/>
+この子要素に<code>key</code>パラメータとして<code>num</code>を渡しています。<br/>
+これによってボタン連打で追加される各DOM要素が固有の要素であることを区別しています。<br/>
+<code>key</code>の重要性については、<a href="http://qiita.com/koba04/items/a4d23245d246c53cd49d">React.jsの地味だけど重要なkeyについて</a>を見ることをオススメします。</p>
+
+<p><code>key</code>に<code>num</code>を渡したいので、<code>Toast</code>の<code>propTypes</code>に<code>num: React.PropTypes.number.isRequired</code>と定義しています。</p>
+
+<p>```css
+// ./components/Toast/Toast.css
+.toast-group {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+}
+.toast {
+  background-color: #f4df42;
+  border-radius: 10px;
+  width: 200px;
+  height: 35px;
+  line-height: 35px;
+  margin: 10px;
+  text-align: center;
+}
+.toast:first-child {
+  display: none;
+}</p>
+
+<p>.example-enter {
+  opacity: 0.01;
+}</p>
+
+<p>.example-enter.example-enter-active {
+  opacity: 1;
+  transition: opacity 500ms ease-in;
+}</p>
+
+<p>.example-leave {
+  opacity: 1;
+}</p>
+
+<p>.example-leave.example-leave-active {
+  opacity: 0.01;
+  transition: opacity 300ms ease-in;
+}
+```</p>
+
+<p>アニメーションを実行するには<code>css</code>ファイルでスタイルをつけることも必要です。<br/>
+それぞれ説明します。</p>
+
+<ul>
+<li><code>.toats-group</code><br/>
+これは単にToast全体の表示位置を右上に固定したかったため追加したスタイルになります。</li>
+<li><code>.toast</code><br/>
+これはToastのデザインです。</li>
+<li><code>.toast:first-child</code><br/>
+Toast要素は必ず1つ残り続けてしまうため、1番目の要素は非表示としています。</li>
+<li><code>.example-enter</code><br/>
+Toastの表示し始めの透明度を設定しています。</li>
+<li><code>.example-enter.example-enter-active</code><br/>
+Toast表示アニメーションになります。</li>
+<li><code>.example-leave</code><br/>
+Toastの消え初めの透明度を設定しています。</li>
+<li><code>.example-leave-active</code><br/>
+Toastの非表示アニメーションになります。</li>
+</ul>
+
+
+<h4>Counter ComponentのボタンからToast表示までの流れ</h4>
+
+<p><code>Toast Component</code>の作成が完了したので、これを<code>Counter Component</code>から呼び出すように実装していきましょう。</p>
+
+<p>```javascript
+// ./components/Counter.js
+import React, { Component, PropTypes } from &lsquo;react&rsquo;;
+import Toast from &lsquo;./Toast/Toast&rsquo;;</p>
+
+<p>class Counter extends Component {
+  static propTypes = {</p>
+
+<pre><code>value: PropTypes.number,
+num: PropTypes.number.isRequired, // 追加 (1)
+onIncrement: PropTypes.func.isRequired,
+onDecrement: PropTypes.func.isRequired,
+onShowToast: PropTypes.func.isRequired  // 追加 (1)
+</code></pre>
+
+<p>  }</p>
+
+<p>  // 省略&hellip;</p>
+
+<p>  // 追加 (2)
+  showToast = () => {</p>
+
+<pre><code>this.props.onShowToast();
+</code></pre>
+
+<p>  }
+  // 追加 (3)
+  renderToast(num) {</p>
+
+<pre><code>return (
+  &lt;Toast num={num} /&gt;
+);
+</code></pre>
+
+<p>  }
+  render() {</p>
+
+<pre><code>// 追加 (4)
+const { value, onIncrement, onDecrement, onShowToast, num } = this.props
+return (
+  &lt;p&gt;
+    Clicked: {value} times
+    {' '}
+    &lt;button onClick={onIncrement}&gt;
+      +
+    &lt;/button&gt;
+    {' '}
+    &lt;button onClick={onDecrement}&gt;
+      -
+    &lt;/button&gt;
+    {' '}
+    &lt;button onClick={this.incrementIfOdd}&gt;
+      Increment if odd
+    &lt;/button&gt;
+    {' '}
+    &lt;button onClick={this.incrementAsync}&gt;
+      Increment async
+    &lt;/button&gt;
+    {' '}
+    {/* 追加 (5) */}
+    &lt;button onClick={this.showToast}&gt;
+      Show Toast
+    &lt;/button&gt;
+    {this.renderToast(num)}
+  &lt;/p&gt;
+)
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>export default Counter
+```</p>
+
+<p>1つ1つ説明します。</p>
+
+<p>追加 (1):<br/>
+<code>num</code>は<code>Reducer</code>で変更された新しい<code>state</code>の<code>num</code>を受け付けるために<code>propTypes</code>に追加しました。<br/>
+<code>onShowToast</code>はボタンクリック時に<code>Toast</code>表示アクションの実行を受け付けるために<code>propTypes</code>に追加しました。</p>
+
+<p>追加 (2):<br/>
+ボタンアクションで実行するための追加です。</p>
+
+<p>追加 (3):<br/>
+<code>Toast Component</code>の描画メソッドです。<br/>
+1つ目の要素は非表示にCSSで設定しているので、初めから描画してしまって問題ありません。</p>
+
+<p>追加 (4):<br/>
+新たに<code>propTypes</code>として追加した<code>num</code>と<code>onShowToast</code>を利用するために書いています。</p>
+
+<p>追加 (5):<br/>
+ボタンクリック処理とToast描画処理を書いています。<br/>
+Toastので位置はCSSで右上固定にしてあるので、DOM位置がどこになろうと問題ありません。</p>
+
+<h4>Store周りの修正</h4>
+
+<p>最後に<code>Store</code>周りの修正です。</p>
+
+<p>```javascript
+// ./index.js
+import React from &lsquo;react&rsquo;
+import ReactDOM from &lsquo;react-dom&rsquo;
+import { createStore, bindActionCreators } from &lsquo;redux&rsquo;
+import { Provider, connect } from &lsquo;react-redux&rsquo;
+import Counter from &lsquo;./components/Counter&rsquo;
+import { increment, decrement, showToast } from &lsquo;./actions/index&rsquo; // 追加 (1)
+import counter from &lsquo;./reducers&rsquo;</p>
+
+<p>const store = createStore(counter)
+const rootEl = document.getElementById(&lsquo;root&rsquo;)</p>
+
+<p>function mapStateToPropsContainer (state) {
+  return {</p>
+
+<pre><code>value: state.value,
+num: state.num    // 追加 (2)
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>function mapDispatchToPropsContainer (dispatch) {
+  return {</p>
+
+<pre><code>onIncrement: () =&gt; dispatch(increment()),
+onDecrement: () =&gt; dispatch(decrement()),
+onShowToast: () =&gt; dispatch(showToast())    // 追加 (3)
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>let AppContainer = connect(
+  mapStateToPropsContainer,
+  mapDispatchToPropsContainer
+)(Counter)</p>
+
+<p>const render = () => ReactDOM.render(
+  <Provider store={store}></p>
+
+<pre><code>&lt;AppContainer /&gt;
+</code></pre>
+
+<p>  </Provider>,
+  rootEl
+)
+render()
+```</p>
+
+<p>ここでは<code>mapStateToPropsContainer</code>と<code>mapDispatchToPropsContainer</code>を実装しているので、<code>Reducer</code>で新たに作成された<code>state</code>を受け取ります。<br/>
+それを適切に<code>Counter Component</code>に渡す必要があります。</p>
+
+<p>追加 (1):<br/>
+<code>Toast</code>表示アクションを<code>dispatch</code>に流し込む必要があるので、<code>showToast</code>を<code>action.js</code>から<code>import</code>しています。</p>
+
+<p>追加 (2):<br/>
+新たに生成された<code>state</code>の値を利用するために<code>mapStateToPropsContainer</code>に追記しています。</p>
+
+<p>追加 (3):<br/>
+<code>dispatch</code>に<code>Toast</code>表示アクションを流し込む設定を追記しています。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+上記実装をすることで連打によるToast表示ができるようになったはずです。<br/>
+<code>ReactCSSTransitionGroup</code>周りを新たに学ぶ必要があったものの、基本的な<code>Redux</code>のデータフローを理解していればさほど難しくないことがわかったのではないでしょうか。<br/>
+筆者は結局のところ、<code>Redux</code>のデータフロー周りで躓くことが多く、不必要に難しく感じてしまっていました。<br/>
+アニメーションはWebサイト作りにおいて、なくてはならないものなので、これを機に<code>React</code>でのアニメーション作りの基礎を身に着けたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

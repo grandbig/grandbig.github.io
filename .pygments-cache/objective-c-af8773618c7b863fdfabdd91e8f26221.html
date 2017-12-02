@@ -1,0 +1,43 @@
+<div class="highlight"><pre><span class="c1">// HotpepperAPIViewModel.swift</span>
+<span class="n">import</span> <span class="n">Foundation</span>
+<span class="n">import</span> <span class="n">ReactiveKit</span>
+<span class="n">import</span> <span class="n">Bond</span>
+<span class="n">import</span> <span class="n">SwiftyJSON</span>
+<span class="n">import</span> <span class="n">CoreLocation</span>
+
+<span class="c1">/// 通信の各状態をEnumで表現</span>
+<span class="k">enum</span> <span class="n">RequestState</span> <span class="p">{</span>
+  <span class="k">case</span> <span class="n">none</span>
+  <span class="k">case</span> <span class="n">requesting</span>
+  <span class="k">case</span> <span class="n">finish</span>
+  <span class="k">case</span> <span class="n">error</span>
+<span class="p">}</span>
+
+<span class="c1">/// HotpepperAPIのViewModelクラス</span>
+<span class="n">final</span> <span class="n">class</span> <span class="n">HotpepperAPIViewModel</span> <span class="p">{</span>
+
+  <span class="n">var</span> <span class="nl">items:</span> <span class="n">ObservableArray</span><span class="o">&lt;</span><span class="n">JSON</span><span class="o">&gt;</span> <span class="o">=</span> <span class="n">ObservableArray</span><span class="p">([])</span>
+  <span class="n">let</span> <span class="n">requestState</span> <span class="o">=</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">RequestState</span><span class="o">&gt;</span><span class="p">(.</span><span class="n">none</span><span class="p">)</span>
+  <span class="n">let</span> <span class="n">hotpepperAPI</span> <span class="o">=</span> <span class="n">HotpepperAPI</span><span class="p">.</span><span class="n">init</span><span class="p">()</span>
+
+  <span class="n">var</span> <span class="nl">finishSearchRestaurant:</span> <span class="n">Signal</span><span class="o">&lt;</span><span class="p">[</span><span class="n">JSON</span><span class="p">]</span><span class="o">?</span><span class="p">,</span> <span class="n">NoError</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">requestState</span><span class="p">.</span><span class="n">map</span><span class="p">({</span> <span class="p">(</span><span class="n">requestState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">JSON</span><span class="p">]</span><span class="o">?</span> <span class="k">in</span>
+      <span class="k">if</span> <span class="n">requestState</span> <span class="o">==</span> <span class="p">.</span><span class="n">finish</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">array</span>
+      <span class="p">}</span>
+      <span class="k">return</span> <span class="nb">nil</span>
+    <span class="p">})</span>
+  <span class="p">}</span>
+
+  <span class="n">func</span> <span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">self</span><span class="p">.</span><span class="n">requestState</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="n">RequestState</span><span class="p">.</span><span class="n">requesting</span><span class="p">)</span>
+    <span class="n">hotpepperAPI</span><span class="p">.</span><span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">coordinate</span><span class="p">,</span> <span class="nl">completion:</span> <span class="p">{</span> <span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="k">in</span>
+      <span class="n">guard</span> <span class="n">let</span> <span class="n">resultArray</span> <span class="o">=</span> <span class="n">result</span><span class="p">.</span><span class="n">array</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">return</span>
+      <span class="p">}</span>
+      <span class="n">self</span><span class="p">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">ObservableArray</span><span class="p">(</span><span class="n">resultArray</span><span class="p">)</span>
+      <span class="n">self</span><span class="p">.</span><span class="n">requestState</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="n">RequestState</span><span class="p">.</span><span class="n">finish</span><span class="p">)</span>
+    <span class="p">})</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

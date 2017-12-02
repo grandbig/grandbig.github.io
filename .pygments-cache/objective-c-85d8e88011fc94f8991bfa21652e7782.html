@@ -1,0 +1,41 @@
+<div class="highlight"><pre><span class="n">import</span> <span class="n">Foundation</span>
+<span class="n">import</span> <span class="n">CoreLocation</span>
+<span class="n">import</span> <span class="n">RxSwift</span>
+<span class="n">import</span> <span class="n">RxCocoa</span>
+
+<span class="n">class</span> <span class="n">GeolocationService</span> <span class="p">{</span>
+
+	<span class="k">static</span> <span class="n">let</span> <span class="n">instance</span> <span class="o">=</span> <span class="n">GeolocationService</span><span class="p">()</span>
+	<span class="c1">// (1)</span>
+	<span class="n">private</span> <span class="p">(</span><span class="n">set</span><span class="p">)</span> <span class="n">var</span> <span class="nl">authorized:</span> <span class="n">Driver</span><span class="o">&lt;</span><span class="n">Bool</span><span class="o">&gt;</span>
+	<span class="n">private</span> <span class="p">(</span><span class="n">set</span><span class="p">)</span> <span class="n">var</span> <span class="nl">location:</span> <span class="n">Driver</span><span class="o">&lt;</span><span class="n">CLLocationCoordinate2D</span><span class="o">&gt;</span>
+
+	<span class="n">private</span> <span class="n">let</span> <span class="n">locationManager</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">()</span>
+
+	<span class="n">private</span> <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">locationManager</span><span class="p">.</span><span class="n">distanceFilter</span> <span class="o">=</span> <span class="n">kCLDistanceFilterNone</span>
+		<span class="n">locationManager</span><span class="p">.</span><span class="n">desiredAccuracy</span> <span class="o">=</span> <span class="n">kCLLocationAccuracyBestForNavigation</span>
+
+		<span class="c1">// (2)</span>
+		<span class="n">authorized</span> <span class="o">=</span> <span class="n">Observable</span><span class="p">.</span><span class="n">deferred</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">locationManager</span><span class="p">]</span> <span class="k">in</span>
+			<span class="n">let</span> <span class="n">status</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">.</span><span class="n">authorizationStatus</span><span class="p">()</span>
+			<span class="n">guard</span> <span class="n">let</span> <span class="n">locationManager</span> <span class="o">=</span> <span class="n">locationManager</span> <span class="k">else</span> <span class="p">{</span>
+				<span class="c1">// (3)</span>
+				<span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+			<span class="p">}</span>
+			<span class="k">return</span> <span class="n">locationManager</span>
+				<span class="p">.</span><span class="n">rx_didChangeAuthorizationStatus</span>
+				<span class="p">.</span><span class="n">startWith</span><span class="p">(</span><span class="n">status</span><span class="p">)</span> <span class="c1">// (4)</span>
+			<span class="p">}</span>
+			<span class="p">.</span><span class="n">asDriver</span><span class="p">(</span><span class="nl">onErrorJustReturn:</span> <span class="n">CLAuthorizationStatus</span><span class="p">.</span><span class="n">NotDetermined</span><span class="p">)</span> <span class="c1">// (5)</span>
+			<span class="p">.</span><span class="n">map</span> <span class="p">{</span>
+				<span class="k">switch</span> <span class="n">$0</span> <span class="p">{</span>
+					<span class="k">case</span> <span class="p">.</span><span class="nl">AuthorizedAlways:</span>
+						<span class="k">return</span> <span class="n">true</span>
+					<span class="k">default</span><span class="o">:</span>
+						<span class="k">return</span> <span class="n">false</span>
+				<span class="p">}</span>
+			<span class="p">}</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</pre></div>

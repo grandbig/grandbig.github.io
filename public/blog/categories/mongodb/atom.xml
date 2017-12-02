@@ -1,0 +1,1245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: mongodb | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/mongodb/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-12-02T19:17:09+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Server Side SwiftでMongoDBと遊んでみる]]></title>
+    <link href="http://grandbig.github.io/blog/2016/12/05/swift-perfect-mongo/"/>
+    <updated>2016-12-05T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/12/05/swift-perfect-mongo</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>こちらは<a href="http://qiita.com/advent-calendar/2016/swift2">Swift その2 Advent Calendar 2016</a> 5日目の記事です。<br/>
+今年は筆者が興味を持っている <strong>Server Side Swift</strong> について書きたいと思います。
+Swiftサーバを立てるために、<a href="http://grandbig.github.io/blog/2016/10/30/swift-perfect/">以前の記事</a>でも利用した<a href="https://github.com/PerfectlySoft/Perfect">Perfect</a>を使います。</p>
+
+<p>ただ単にSwiftサーバを立てても面白くないので、提供されているMongoDB接続モジュールを利用して遊んでみようと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>SwiftによるAP・DBサーバの構築</h3>
+
+<p>早速、Perfectを用いてSwiftによるAP・DBサーバを構築しようと思います。<br/>
+基本的には<a href="https://github.com/PerfectlySoft/Perfect-MongoDB">ReadMe</a>に従えば良いのですが、丁寧に１つずつ見ていきます。</p>
+
+<h4>必要モジュールのインストール</h4>
+
+<p>流石に <strong>Homebrew</strong> はインストールされている方が多いと思いますが、入れていない方は下記コマンドで入れましょう。</p>
+
+<p><code>
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+</code></p>
+
+<p>また今回は <strong>MongoDB</strong> を利用するため、 <strong>mongodb</strong> および <strong>mongo-c</strong> をインストールする必要があります。<br/>
+mongodbに関しては、</p>
+
+<p><code>
+brew install mongodb
+</code></p>
+
+<p>でOKです。(自動起動などに関しては<a href="http://grandbig.github.io/blog/2016/11/20/brew-install-db/">こちら</a>を参照ください。)<br/>
+続いて、mongo-cは</p>
+
+<p><code>
+brew install mongo-c
+</code></p>
+
+<p>でインストール完了できるはずです。</p>
+
+<h4>xcodeprojを作成</h4>
+
+<h5>テンプレートのダウンロード</h5>
+
+<p>0からPerfectを用いてサーバを構築しても良いのですが、Perfectではテンプレートを用意してくれています。<br/>
+せっかくなので <code>git clone</code> してテンプレートをダウンロードして使いましょう。</p>
+
+<p><code>
+git clone https://github.com/PerfectlySoft/PerfectTemplate.git
+cd PerfectTemplate
+</code></p>
+
+<h5>MongoDBモジュールを利用するように編集</h5>
+
+<p><strong>Perfect-MongoDB</strong> を利用するので、<code>Package.swift</code>を編集しましょう。</p>
+
+<p>```objective-c
+import PackageDescription</p>
+
+<p>let package = Package(</p>
+
+<pre><code>name: "PerfectTemplate",
+targets: [],
+dependencies: [
+    .Package(url: "https://github.com/PerfectlySoft/Perfect-HTTPServer.git", majorVersion: 2, minor: 0),
+    .Package(url:"https://github.com/PerfectlySoft/PerfectLib.git", majorVersion: 2, minor: 0),
+    .Package(url:"https://github.com/PerfectlySoft/Perfect-MongoDB.git", majorVersion: 2, minor: 0)
+]
+</code></pre>
+
+<p>)
+```</p>
+
+<p>ReadMeでは <strong>Perfect-HTTPServer</strong> は書かれていないのですが、これを使った方が便利なので、テンプレートに残したまま進めます。</p>
+
+<h5>Packageからxcodeprojを作成</h5>
+
+<p><code>Package.swift</code>の編集が終わったら、下記コマンドを実行して<code>xcodeproj</code>ファイルを作成しましょう。</p>
+
+<p><code>
+swift package generate-xcodeproj
+</code></p>
+
+<p>そうすれば下図のような結果が得られるはずです。</p>
+
+<p><img src="/images/perfect-mongo_1.png" alt="フォルダ構成" /></p>
+
+<h4>MongoDBにデータを作成</h4>
+
+<p>サンプルを作成するためにもデータがなきゃ話になりませんよね？<br/>
+ということでデータを入れましょう。</p>
+
+<p>```
+// MongoDBにアクセス
+$ mongo</p>
+
+<p>// DBとCollectionの作成</p>
+
+<blockquote><p>use test;
+db.createCollection(&lsquo;testCollection&rsquo;);
+{ &ldquo;ok&rdquo; : 1 }</p></blockquote>
+
+<p>// DBの確認</p>
+
+<blockquote><p>show dbs;
+local  0.000GB
+test   0.000GB</p></blockquote>
+
+<p>// Collectionの確認</p>
+
+<blockquote><p>show collections
+testCollection</p></blockquote>
+
+<p>// データのインサート</p>
+
+<blockquote><p>db.testCollection.insert({name: &lsquo;takahiro&rsquo;, age: 30, hobby: &lsquo;blog&rsquo;});
+WriteResult({ &ldquo;nInserted&rdquo; : 1 })
+db.testCollection.insert({name: &lsquo;ichiro&rsquo;, age: 43, hobby: &lsquo;baseball&rsquo;});
+WriteResult({ &ldquo;nInserted&rdquo; : 1 })</p></blockquote>
+
+<p>// データの確認</p>
+
+<blockquote><p>db.testCollection.find()
+{ &ldquo;<em>id&rdquo; : ObjectId(&ldquo;58391469a8589d99c931303c&rdquo;), &ldquo;name&rdquo; : &ldquo;takahiro&rdquo;, &ldquo;age&rdquo; : 30, &ldquo;hobby&rdquo; : &ldquo;blog&rdquo; }
+{ &ldquo;</em>id&rdquo; : ObjectId(&ldquo;58392222a8589d99c931303d&rdquo;), &ldquo;name&rdquo; : &ldquo;ichiro&rdquo;, &ldquo;age&rdquo; : 43, &ldquo;hobby&rdquo; : &ldquo;baseball&rdquo; }
+```</p></blockquote>
+
+<h4>MongoDBにアクセスして全データを取得</h4>
+
+<p>データの作成も完了したので、実際にGETリクエストでMongoDBからデータを取得する処理を書いてみましょう。<br/>
+(ReadMeではPerfect-HTTPServerを利用しない方法で書かれていたため本記事とは若干異なります。)</p>
+
+<h5>テンプレートファイルの確認</h5>
+
+<p>まずは、初めから作成されている処理内容を確認します。<br/>
+説明は下記ソースコードにコメントを書いたので参照ください。</p>
+
+<p>```objective-c
+// main.swift
+import PerfectLib
+import PerfectHTTP
+import PerfectHTTPServer</p>
+
+<p>// HTTPサーバの生成
+let server = HTTPServer()</p>
+
+<p>// リクエストに対するルーティングを設定
+var routes = Routes()
+routes.add(method: .get, uri: &ldquo;/&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+// レスポンスヘッダーの設定
+response.setHeader(.contentType, value: "text/html")
+// レスポンスボディの設定
+response.appendBody(string: "&lt;html&gt;&lt;title&gt;Hello, world!&lt;/title&gt;&lt;body&gt;Hello, world!&lt;/body&gt;&lt;/html&gt;")
+// レスポンス完了処理
+response.completed()
+}
+</code></pre>
+
+<p>)</p>
+
+<p>// サーバにルーティング設定を適用
+server.addRoutes(routes)</p>
+
+<p>// ポートを設定
+server.serverPort = 8181</p>
+
+<p>// ドキュメントルートのパスを設定
+server.documentRoot = &ldquo;./webroot&rdquo;</p>
+
+<p>// arguments.swiftで定義されているメソッド
+// 更なるサーバ定義が必要な場合はここを見ましょう(SSLなど)
+configureServer(server)</p>
+
+<p>do {</p>
+
+<pre><code>// HTTPサーバの起動
+try server.start()
+</code></pre>
+
+<p>} catch PerfectError.networkError(let err, let msg) {</p>
+
+<pre><code>print("Network error thrown: \(err) \(msg)")
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記をXcodeをからRunさせた状態で <code>http://localhost:8181</code> にアクセスしてみましょう。<br/>
+Hello Worldの結果が得られるはずです。</p>
+
+<p><img src="/images/perfect-mongo_2.png" alt="Hello World" /></p>
+
+<h5>MongoDB関連処理ファイルの作成</h5>
+
+<p>続いて、MongoDBへの接続・切断やデータ取得などの処理を作成していきます。<br/>
+これは別クラスの中に書いていきましょう。</p>
+
+<p>今回はMongoDB関連の処理をハンドリングするということで<code>mongoHandler.swift</code>というファイルを作成します。<br/>
+因みにただ作成しただけでは、XcodeがCompile対象として正しく認識してくれないので、自身で設定を変えましょう。<br/>
+下図のようにTARGETSから実行ファイルを選択して、Compile Sourcesとして<code>mongoHandler.swift</code>を追加してください。</p>
+
+<p><img src="/images/perfect-mongo_3.png" alt="Compile Sourcesに追加" /></p>
+
+<p>では実際のソースを見ていきましょう。</p>
+
+<p>```objective-c
+// mongoHandler.swift</p>
+
+<p>import PerfectLib
+import PerfectHTTP
+import MongoDB</p>
+
+<p>class MongoHandler {</p>
+
+<p>  var client: MongoClient?
+  var database: MongoDatabase?
+  var collection: MongoCollection?</p>
+
+<p>  // MongoDBへの接続処理
+  fileprivate func connect() {</p>
+
+<pre><code>// コネクション確立
+client = try! MongoClient(uri: "mongodb://localhost")
+
+// testデータベースへの接続
+database = client?.getDatabase(name: "test")
+
+// testCollectionコレクションへの接続
+self.collection = database?.getCollection(name: "testCollection")
+</code></pre>
+
+<p>  }</p>
+
+<p>  // MongoDBからの切断処理
+  fileprivate func close() {</p>
+
+<pre><code>collection?.close()
+database?.close()
+client?.close()
+</code></pre>
+
+<p>  }</p>
+
+<p>  func searchAll(request: HTTPRequest, _ response: HTTPResponse) {</p>
+
+<pre><code>// MongoDBへの接続
+connect()
+// 指定コレクションが見つからない場合は処理終了
+guard let collection = self.collection else {
+  return
+}
+
+// データ全件取得のためBSONオブジェクトを初期化してクエリとして設定
+let fnd = collection.find(query: BSON())
+
+// データ格納用に配列を定義
+var arr = [String]()
+
+// 取得したデータを配列に格納する
+// fndはMongoCursor型であり、for文での繰り返し処理が可能
+for x in fnd! {
+    arr.append(x.asString)
+}
+
+// JSONStringに変換
+let returning = "{\"data\":[\(arr.joined(separator: ","))]}"
+
+// レスポンスデータとして設定
+response.appendBody(string: returning)
+// レスポンス処理完了
+response.completed()
+
+// MongoDBから切断
+close()
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>MongoDBへの接続・切断処理は共通処理となることは容易に想像できるため、切り出しました。</p>
+
+<h5>main.swiftからmongoHandler.swiftを呼び出す</h5>
+
+<p>さて、<code>main.swift</code>から<code>mongoHandler.swift</code>を呼び出してみましょう。</p>
+
+<p>```objective-c
+// main.swift
+// MongoHandlerの初期化
+let mongoHandler = MongoHandler()</p>
+
+<p>// GETリクエストでMongoDBのデータ全取得
+routes.add(method: .get, uri: &ldquo;/mongo&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+mongoHandler.searchAll(request: request, response)
+</code></pre>
+
+<p>})
+```</p>
+
+<p>これで<code>http://localhost:8181</code>にアクセスすれば下図のような結果が得られるはずです。</p>
+
+<p><img src="/images/perfect-mongo_4.png" alt="データ全件取得結果" /></p>
+
+<h4>MongoDBにアクセスして指定のクエリでデータを取得</h4>
+
+<p>全件取得の方法はわかったので、続いてクエリありの検索を実行してみましょう。<br/>
+先程述べた通り、下記のようなデータが格納されています。</p>
+
+<p>```
+// データの確認</p>
+
+<blockquote><p>db.testCollection.find()
+{ &ldquo;<em>id&rdquo; : ObjectId(&ldquo;58391469a8589d99c931303c&rdquo;), &ldquo;name&rdquo; : &ldquo;takahiro&rdquo;, &ldquo;age&rdquo; : 30, &ldquo;hobby&rdquo; : &ldquo;blog&rdquo; }
+{ &ldquo;</em>id&rdquo; : ObjectId(&ldquo;58392222a8589d99c931303d&rdquo;), &ldquo;name&rdquo; : &ldquo;ichiro&rdquo;, &ldquo;age&rdquo; : 43, &ldquo;hobby&rdquo; : &ldquo;baseball&rdquo; }
+```</p></blockquote>
+
+<p><code>name</code>、<code>age</code>、<code>hobby</code>を指定して検索するのはそんなに難しくないと思います。</p>
+
+<h5>nameを指定してデータを取得</h5>
+
+<p>わかりやすいところからと言うことで<code>name</code>を指定してデータを取得してみます。<br/>
+まずは<code>mongoHandler.swift</code>にクエリ指定のメソッドを追加しましょう。</p>
+
+<p>```objective-c
+// mongoHandler.swift
+import PerfectLib
+import PerfectHTTP
+import MongoDB</p>
+
+<p>class MongoHandler {</p>
+
+<pre><code>var client: MongoClient?
+var database: MongoDatabase?
+var collection: MongoCollection?
+
+    fileprivate func connect() {
+
+    // open a connection
+    client = try! MongoClient(uri: "mongodb://localhost")
+
+    // set database, assuming "test" exists
+    database = client?.getDatabase(name: "test")
+
+    // define collection
+    self.collection = database?.getCollection(name: "testCollection")
+}
+
+fileprivate func close() {
+    collection?.close()
+    database?.close()
+    client?.close()
+}
+
+    // searchAllメソッドは省略
+
+    // =====ここから追加========================================================
+    func search(query: BSON, request: HTTPRequest, _ response: HTTPResponse) {
+        // MongoDBへの接続
+        connect()
+
+        // 指定コレクションが見つからない場合は処理終了
+  guard let collection = self.collection else {
+      return
+  }
+
+  // クエリを指定して検索
+  let fnd = collection.find(query: query)
+
+  // データ格納用に配列を定義
+  var arr = [String]()
+
+        // 取得したデータを配列に格納する
+    // fndはMongoCursor型であり、for文での繰り返し処理が可能
+  for x in fnd! {
+      arr.append(x.asString)
+  }
+
+  // JSONStringに変換
+  let returning = "{\"data\":[\(arr.joined(separator: ","))]}"
+
+  // レスポンスデータとして設定
+  response.appendBody(string: returning)
+        // レスポンス処理完了
+  response.completed()
+
+        // MongoDBから切断
+  close()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p><code>searchAll</code>との違いは引数に<code>BSON</code>型の<code>query</code>を追加しているところです。</p>
+
+<p>続いて、<code>main.swift</code>にGETリクエストで<code>name</code>パラメータをキャッチできるように処理を追加していきましょう。</p>
+
+<p>```objective-c
+// main.swift
+import PerfectLib
+import PerfectHTTP
+import PerfectHTTPServer
+import MongoDB                  // ここを追加</p>
+
+<p>// 省略</p>
+
+<p>// nameパラメータを指定したGETリクエストのハンドリング
+routes.add(method: .get, uri: &ldquo;/mongo/name/{name}&rdquo;, handler: {
+  request, response in</p>
+
+<pre><code>// BSON型オブジェクトの初期化(クエリとして渡す)
+</code></pre>
+
+<p>  let bson = BSON()
+  defer {</p>
+
+<pre><code>    // 処理完了時にBSONオブジェクトを削除
+bson.close()
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// クエリとして渡すパラメータをセット
+</code></pre>
+
+<p>  bson.append(key: &ldquo;name&rdquo;, string: request.urlVariables[&ldquo;name&rdquo;]!)</p>
+
+<pre><code>// クエリを指定して検索
+</code></pre>
+
+<p>  mongoHandler.search(query: bson, request: request, response)
+})
+```</p>
+
+<p>これだけで準備万端です。<br/>
+<code>http://localhost:8181/name/takahiro</code>にアクセスすると下記結果が得られます。</p>
+
+<p><img src="/images/perfect-mongo_5.png" alt="nameパラメータを指定したGETリクエスト結果" />_</p>
+
+<h5>ObjectIdを指定してデータを取得</h5>
+
+<p>続いて、少しクエリの書き方に迷うかもしれない<code>ObjectId</code>を指定したデータ検索をしてみましょう。<br/>
+<code>mongoHandler.swift</code>には特に変更がありません。<br/>
+<code>main.swift</code>のみ変更していきます。</p>
+
+<p>```objective-c
+// main.swift
+import PerfectLib
+import PerfectHTTP
+import PerfectHTTPServer
+import MongoDB
+import libmongoc                // ここを追加</p>
+
+<p>// 省略</p>
+
+<p>// ObjectIdパラメータを指定したGETリクエストのハンドリング
+routes.add(method: .get, uri: &ldquo;/mongo/oid/{oid}&rdquo;, handler: {
+  request, response in</p>
+
+<pre><code>// BSON型オブジェクトの初期化(クエリとして渡す)
+</code></pre>
+
+<p>  let bson = BSON()
+  defer {</p>
+
+<pre><code>    // 処理完了時にBSONオブジェクトを削除
+bson.close()
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// bson_oid_t型のオブジェクトの初期化
+</code></pre>
+
+<p>  var oid: bson_oid_t = bson_oid_t()</p>
+
+<pre><code>// String型からbson_oid_t型に変換
+</code></pre>
+
+<p>  bson_oid_init_from_string(&amp;oid, request.urlVariables[&ldquo;oid&rdquo;])</p>
+
+<pre><code>// クエリとして渡すパラメータをセット
+</code></pre>
+
+<p>  bson.append(key: &ldquo;_id&rdquo;, oid: oid)</p>
+
+<pre><code>// クエリを指定して検索
+</code></pre>
+
+<p>  mongoHandler.search(query: bson, request: request, response)
+})
+```</p>
+
+<p>肝なのが、<code>import libmongoc</code>をしているということです。<br/>
+このライブラリの各種メソッドを利用することでServer Side Swiftから<code>ObjectId</code>を指定したデータ検索が可能になります。</p>
+
+<p>少し詳しく説明すると、<br/>
+クエリとして<code>ObjectId</code>を渡すためには<code>public func append(key k: String, oid: bson_oid_t) -&gt; Bool</code>を利用する必要があります。<br/>
+しかし、このメソッドの第二引数をよく見ると、<code>bson_oid_t</code>型となっています。</p>
+
+<p>GETリクエストの時点で<code>bson_oid_t</code>型でパラメータを渡すわけにもいかないので、  サーバサイド側で変換する必要があります。<br/>
+そのために利用するメソッドが<code>void bson_oid_init_from_string (bson_oid_t *oid, const char *str);</code>です。<br/>
+筆者もSwiftで初めて利用したのですが、このメソッドは戻り値が<code>void</code>型のため何も返ってきません。<br/>
+が、第一引数に参照渡しとして<code>bson_oid_t</code>型オブジェクトを設定することで、メソッドの処理結果が<code>oid</code>に格納されます。<br/>
+これでめでたくクエリとして<code>ObjectId</code>が設定できるわけです。</p>
+
+<p>では、<code>http://localhost:8181/oid/58392222a8589d99c931303d</code>にアクセスしてみましょう。</p>
+
+<p><img src="/images/perfect-mongo_6.png" alt="ObjectIdパラメータを指定したGETリクエスト結果" /></p>
+
+<h4>MongoDBにデータを保存</h4>
+
+<p>検索に関してはざっと見てきたので、MongoDBへの保存処理も見ていきましょう。</p>
+
+<h5>insertメソッドでデータを保存</h5>
+
+<p>保存には<code>MongoClient</code>の<code>insert</code>メソッドを利用します。<br/>
+(他にも<code>save</code>メソッドもあります。)</p>
+
+<p>まずは <code>mongoHandler.swift</code> へのメソッド追加からです。</p>
+
+<p>```objective-c
+// mongoHandler.swift
+func save(query: BSON, request: HTTPRequest, response: HTTPResponse) {</p>
+
+<pre><code>// MongoDBへの接続
+connect()
+
+// 指定コレクションが見つからない場合は処理終了
+</code></pre>
+
+<p>  guard let collection = self.collection else {</p>
+
+<pre><code>return
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// データの保存処理
+</code></pre>
+
+<p>  let insert = collection.insert(document: query) as MongoResult</p>
+
+<pre><code>// データ保存結果によって返却値を変更
+</code></pre>
+
+<p>  var returning = &ldquo;Failed&rdquo;
+  switch insert {
+  case .success:</p>
+
+<pre><code>returning = "Succeeded"
+</code></pre>
+
+<p>  default:</p>
+
+<pre><code>returning = "Failed"
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// レスポンスデータとして設定
+</code></pre>
+
+<p>  response.appendBody(string: returning)</p>
+
+<pre><code>// レスポンス処理完了
+</code></pre>
+
+<p>  response.completed()</p>
+
+<pre><code>// MongoDBから切断
+</code></pre>
+
+<p>  close()
+}
+```</p>
+
+<p>次にPOSTで届いたリクエストパラメータがJSONStringなのでDictionary型に変換します。<br/>
+その処理を <code>decode.swift</code> ファイルを新規作成して追加します。</p>
+
+<p>```objective-c
+// decode.swift
+import PerfectHTTPServer
+import PerfectLib</p>
+
+<p>func decode(postBody: String?) &ndash;> [String: Any]? {
+  do {</p>
+
+<pre><code>guard let decoded = try postBody?.jsonDecode() as? [String:Any] else {
+  return [:]
+}
+print(decoded)
+return decoded
+} catch {
+return [:]
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>そして <code>main.swift</code> にPOSTリクエストのハンドリング処理を書きます。</p>
+
+<p>```objective-c
+// main.swift
+routes.add(method: .post, uri: &ldquo;/mongo/&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+// BSON型オブジェクトの初期化(クエリとして渡す)
+</code></pre>
+
+<p>  let bson = BSON()
+  defer {</p>
+
+<pre><code>    // 処理完了時にBSONオブジェクトを削除
+bson.close()
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// JSONString型をDictionary型に変換
+</code></pre>
+
+<p>  let decodedParam = decode(postBody: request.postBodyString)</p>
+
+<pre><code>// 各パラメータ単位でBSONオブジェクトに格納
+</code></pre>
+
+<p>  for (key, value) in decodedParam! {</p>
+
+<pre><code>  switch key {
+  case "name":
+      bson.append(key: "name", string: value as! String)
+  case "age":
+      bson.append(key: "age", int32: Int32(value as! Int))
+  case "hobby":
+      bson.append(key: "hobby", string: value as! String)
+  default:
+      break
+  }
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// データ保存
+</code></pre>
+
+<p>  mongoHandler.save(query: bson, request: request, response: response)
+})
+```</p>
+
+<p>これで処理は完成です。<br/>
+ではPOSTリクエストを投げてみましょう。</p>
+
+<p><code>
+$ curl http://localhost:8181/mongo -X POST -H "Content-Type: application/json" -d '{"name":"Hanako", "age": 24, "hobby": "game"}'
+</code></p>
+
+<p>再度、MongoDBを検索してみると下記のような結果が得られるはずです。</p>
+
+<p>```
+// データの確認</p>
+
+<blockquote><p>db.testCollection.find()
+{ &ldquo;<em>id&rdquo; : ObjectId(&ldquo;58391469a8589d99c931303c&rdquo;), &ldquo;name&rdquo; : &ldquo;takahiro&rdquo;, &ldquo;age&rdquo; : 30, &ldquo;hobby&rdquo; : &ldquo;blog&rdquo; }
+{ &ldquo;</em>id&rdquo; : ObjectId(&ldquo;58392222a8589d99c931303d&rdquo;), &ldquo;name&rdquo; : &ldquo;ichiro&rdquo;, &ldquo;age&rdquo; : 43, &ldquo;hobby&rdquo; : &ldquo;baseball&rdquo; }
+{ &ldquo;_id&rdquo; : ObjectId(&ldquo;583afcaedcab265c1821fb51&rdquo;), &ldquo;name&rdquo; : &ldquo;Hanako&rdquo;, &ldquo;age&rdquo; : 24, &ldquo;hobby&rdquo; : &ldquo;game&rdquo; }
+```</p></blockquote>
+
+<p>因みに、<code>main.swift</code>でリクエストパラメータとして取得した<code>age</code>を <strong>Int32</strong> 型に変換しているのには理由があります。<br/>
+これを仮に <code>bson.append(key: "age", int: value as! Int)</code> とした場合、MongoDBには <code>NumberLong</code>として保存されてしまいます。 <br/>
+これは32bitか64bitかの違いですね。</p>
+
+<h5>insertメソッドのMongoInsertFlagについて</h5>
+
+<p>先程、<code>insert</code>メソッドを利用しましたが、実は第一引数のみ持っている <code>insert</code> メソッドを利用していました。<br/>
+実は他にも <code>public func insert(document: BSON, flag: MongoInsertFlag = .none) -&gt; Result</code> といった第二引数を持つ <code>insert</code> メソッドが存在します。</p>
+
+<p>少し気になったのでこの <code>MongoInsertFlag</code>について調べてみました。<br/>
+<code>MongoInsertFlag</code>は<code>MongoCollection.swift</code>内に <strong>enum</strong> として定義されています。</p>
+
+<p>```objective-c
+public enum MongoInsertFlag: Int {</p>
+
+<pre><code>case none
+case continueOnError
+case noValidate
+
+var mongoFlag: mongoc_insert_flags_t {
+    switch self {
+    case .none:
+        return MONGOC_INSERT_NONE
+    case .continueOnError:
+        return MONGOC_INSERT_CONTINUE_ON_ERROR
+    case .noValidate:
+        return mongoc_insert_flags_t(rawValue: MONGOC_INSERT_NO_VALIDATE)
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ここで<code>MONGOC_INSERT_NONE</code>, <code>MONGOC_INSERT_CONTINUE_ON_ERROR</code>, <code>MONGOC_INSERT_NO_VALIDATE</code>の3つがフラグとして用意されていることがわかります。<br/>
+これらはそれぞれ次のような意味とのことです。</p>
+
+<ul>
+<li><code>MONGOC_INSERT_NONE</code>
+
+<ul>
+<li>特別何もしません。</li>
+</ul>
+</li>
+<li><code>MONGOC_INSERT_CONTINUE_ON_ERROR</code>
+
+<ul>
+<li>途中でエラーが発生したとしても後続の<code>insert</code>処理がある場合は続ける</li>
+</ul>
+</li>
+<li><code>MONGOC_INSERT_NO_VALIDATE</code>
+
+<ul>
+<li>インサート前に値のバリデーションチェックをしない
+
+<ul>
+<li>MongoDBへの保存処理前にAPサーバ時点などでバリデーションチェックはした方が良い</li>
+</ul>
+</li>
+<li>これをすることで処理時間を短縮することができる</li>
+</ul>
+</li>
+</ul>
+
+
+<h4>MongoDBのデータを更新</h4>
+
+<p>MongoDBへの更新処理も見ていきましょう。</p>
+
+<h5>updateメソッドでデータを保存</h5>
+
+<p>保存には<code>MongoClient</code>の<code>update</code>メソッドを利用します。</p>
+
+<p><code>mongoHandler.swift</code>にメソッドを追加します。</p>
+
+<p>```objective-c
+// mongoHandler.swift
+func update(update: BSON, selector: BSON, request: HTTPRequest, response: HTTPResponse) {</p>
+
+<pre><code>// MongoDBへの接続
+connect()
+
+// 指定コレクションが見つからない場合は処理終了
+</code></pre>
+
+<p>  guard let collection = self.collection else {</p>
+
+<pre><code>return
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// データの更新
+</code></pre>
+
+<p>  let updated = collection.update(update: update, selector: query)</p>
+
+<pre><code>// データ更新結果によって返却値を変更
+</code></pre>
+
+<p>  var returning = &ldquo;Failed&rdquo;
+  switch updated {
+  case .success:</p>
+
+<pre><code>returning = "Succeeded"
+</code></pre>
+
+<p>  default:</p>
+
+<pre><code>returning = "Failed"
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// レスポンスデータとして設定
+</code></pre>
+
+<p>  response.appendBody(string: returning)</p>
+
+<pre><code>// レスポンス処理完了
+</code></pre>
+
+<p>  response.completed()</p>
+
+<pre><code>// MongoDBから切断
+</code></pre>
+
+<p>  close()
+}
+```</p>
+
+<p>そして <code>main.swift</code> にPUTリクエストのハンドリング処理を書きます。</p>
+
+<p>```objective-c
+// main.swift
+routes.add(method: .post, uri: &ldquo;/mongo/&rdquo;, handler: {</p>
+
+<pre><code>request, response in
+// BSON型オブジェクトの初期化(更新内容として渡す)
+</code></pre>
+
+<p>  let updateBson = BSON()</p>
+
+<pre><code>// BSON型オブジェクトの初期化(クエリとして渡す)
+let selectorBson = BSON()
+</code></pre>
+
+<p>  defer {</p>
+
+<pre><code>    // 処理完了時にBSONオブジェクトを削除
+updateBson.close()
+    selectorBson.close()
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// JSONString型をDictionary型に変換
+</code></pre>
+
+<p>  let decodedParam = decode(postBody: request.postBodyString)</p>
+
+<pre><code>// 各パラメータ単位でBSONオブジェクトに格納
+</code></pre>
+
+<p>  for (key, value) in decodedParam! {</p>
+
+<pre><code>  switch key {
+  case "name":
+      updateBson.append(key: "name", string: value as! String)
+  case "age":
+      updateBson.append(key: "age", int32: Int32(value as! Int))
+  case "hobby":
+      updateBson.append(key: "hobby", string: value as! String)
+  default:
+      break
+  }
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// データ更新
+</code></pre>
+
+<p>  mongoHandler.update(update: updateBson, query: selectorBson, request: request, response: response)
+})
+```</p>
+
+<p>基本的にはPOSTと同じ感じで処理を書くことができます。<br/>
+しかしながら気をつけなくてはいけないのが、<strong>$setが利用できない</strong> ということです。<br/>
+通常、MongoDBでは、 <strong>$setを使わないと</strong> &hellip;</p>
+
+<p>```
+// データの確認</p>
+
+<blockquote><p>db.testCollection.find();
+{ &ldquo;_id&rdquo; : ObjectId(&ldquo;583afcaedcab265c1821fb51&rdquo;), &ldquo;name&rdquo; : &ldquo;Hanako&rdquo;, &ldquo;age&rdquo; : 24, &ldquo;hobby&rdquo; : &ldquo;game&rdquo; }</p></blockquote>
+
+<p>// データの更新</p>
+
+<blockquote><p>db.testCollection.update({_id: ObjectId(&ldquo;583afcaedcab265c1821fb51&rdquo;)}, {&ldquo;hobby&rdquo;: &ldquo;go shopping&rdquo;});</p></blockquote>
+
+<p>// データの確認</p>
+
+<blockquote><p>db.testCollection.find();
+{ &ldquo;_id&rdquo; : ObjectId(&ldquo;583afcaedcab265c1821fb51&rdquo;), &ldquo;hobby&rdquo; : &ldquo;go shopping&rdquo; }
+```</p></blockquote>
+
+<p>となってしまいます。<br/>
+現状、<code>Perfect-MongoDB</code>に実装されているメソッドを見ると<code>$set</code>はないようです。<br/>
+そのため、今回はあえてPOST同様に全てのパラメータをクライアント側から下記のように投げることにしました。</p>
+
+<p><code>
+$ curl http://localhost:8181/mongo/583afcaedcab265c1821fb51 -X PUT -H "Content-Type: application/json" -d '{"name" : "Hanako", "age" : 24, "hobby": "game"}'
+</code></p>
+
+<h5>updateメソッドのMongoUpdateFlagについて</h5>
+
+<p><code>update</code>メソッドにも実は<code>MongoUpdateFlag</code>というオプションを設定できるメソッドが存在します。<br/>
+<code>MongoUpdateFlag</code>は<code>MongoInsertFlag</code>と同じく <strong>enum</strong> として定義されています。</p>
+
+<p>```objective-c
+public enum MongoUpdateFlag: Int {</p>
+
+<pre><code>case none
+case upsert
+case multiUpdate
+case noValidate
+
+var mongoFlag: mongoc_update_flags_t {
+    switch self {
+    case .none:
+        return MONGOC_UPDATE_NONE
+    case .upsert:
+        return MONGOC_UPDATE_UPSERT
+    case .multiUpdate:
+        return MONGOC_UPDATE_MULTI_UPDATE
+    case .noValidate:
+        return mongoc_update_flags_t(rawValue: MONGOC_UPDATE_NO_VALIDATE)
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>それぞれのフラグの意味は下記の通りです。</p>
+
+<ul>
+<li><code>MONGO_UPDATE_NONE</code>
+
+<ul>
+<li>特別何もしません</li>
+</ul>
+</li>
+<li><code>MONGOC_UPDATE_UPSERT</code>
+
+<ul>
+<li>検索に引っかからない場合は<code>insert</code>します</li>
+</ul>
+</li>
+<li><code>MONGOC_UPDATE_MULTI_UPDATE</code>
+
+<ul>
+<li>検索にヒットする件数が複数の場合は全て更新します</li>
+</ul>
+</li>
+<li><code>MONGOC_UPDATE_NO_VALIDATE</code>
+
+<ul>
+<li>アップデート前に値のバリデーションチェックをしません</li>
+</ul>
+</li>
+</ul>
+
+
+<h4>MongoDBのデータを削除</h4>
+
+<p>MongoDBからのデータ削除処理も見ていきましょう。</p>
+
+<h5>removeメソッドでデータを保存</h5>
+
+<p>保存には<code>MongoClient</code>の<code>remove</code>メソッドを利用します。</p>
+
+<p><code>mongoHandler.swift</code>にメソッドを追加します。</p>
+
+<p>```objective-c
+// mongoHandler.swift
+func delete(query: BSON, request: HTTPRequest, response: HTTPResponse) {</p>
+
+<pre><code>// MongoDBへの接続
+connect()
+
+// 指定コレクションが見つからない場合は処理終了
+</code></pre>
+
+<p>  guard let collection = self.collection else {</p>
+
+<pre><code>return
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// データ削除処理
+</code></pre>
+
+<p>  let removed = collection.remove(selector: query, flag: .none)</p>
+
+<pre><code>// データ削除結果によって返却値を変更
+</code></pre>
+
+<p>  var returning = &ldquo;Failed&rdquo;    <br/>
+  switch removed {
+  case .success:</p>
+
+<pre><code>returning = "Succeeded"
+</code></pre>
+
+<p>  default:</p>
+
+<pre><code>returning = "Failed"
+</code></pre>
+
+<p>  }</p>
+
+<pre><code>// レスポンスデータとして設定
+</code></pre>
+
+<p>  response.appendBody(string: returning)</p>
+
+<pre><code>// レスポンス処理完了
+</code></pre>
+
+<p>  response.completed()</p>
+
+<pre><code>// MongoDBから切断
+</code></pre>
+
+<p>  close()
+}
+```</p>
+
+<p>そして <code>main.swift</code> にDELETEリクエストのハンドリング処理を書きます。</p>
+
+<p>```objective-c
+// main.swift
+routes.add(method: .delete, uri: &ldquo;/mongo/{oid}&rdquo;, handler: {
+  request, response in</p>
+
+<pre><code>// BSON型オブジェクトの初期化(クエリとして渡す)
+</code></pre>
+
+<p>  let bson = BSON()
+  defer {</p>
+
+<pre><code>    // 処理完了時にBSONオブジェクトを削除
+bson.close()
+</code></pre>
+
+<p>  }</p>
+
+<p>  var oid: bson_oid_t = bson_oid_t()
+  bson_oid_init_from_string(&amp;oid, request.urlVariables[&ldquo;oid&rdquo;])
+  bson.append(key: &ldquo;_id&rdquo;, oid: oid)</p>
+
+<pre><code>// データ削除
+</code></pre>
+
+<p>  mongoHandler.delete(query: bson, request: request, response: response)
+})
+```</p>
+
+<p>下記のようなDELETEリクエストを投げてみればデータが削除されていることが確認できるはずです。</p>
+
+<p><code>
+$ curl http://localhost:8181/mongo/583afcaedcab265c1821fb51 -X DELETE -H "Content-Type: application/json"
+</code></p>
+
+<h5>removeメソッドのMongoRemoveFlagについて</h5>
+
+<p><code>remove</code>メソッドにも実は<code>MongoRemoveFlag</code>というオプションを設定できるメソッドが存在します。<br/>
+<code>MongoRemoveFlag</code>は<code>MongoUpdateFlag</code>と同じく <strong>enum</strong> として定義されています。</p>
+
+<p>```objective-c
+public enum MongoRemoveFlag: Int {</p>
+
+<pre><code>case none
+case singleRemove
+
+var mongoFlag: mongoc_remove_flags_t {
+    switch self {
+    case .none:
+        return MONGOC_REMOVE_NONE
+    case .singleRemove:
+        return MONGOC_REMOVE_SINGLE_REMOVE
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>フラグの意味は下記の通りです。</p>
+
+<ul>
+<li><code>MONGOC_REMOVE_NONE</code>
+
+<ul>
+<li>特に何のオプションもつけません。</li>
+<li>検索にヒットしたデータは全て削除します。</li>
+</ul>
+</li>
+<li><code>MONGOC_REMOVE_SINGLE_REMOVE</code>
+
+<ul>
+<li>初めに該当したデータ1件のみを削除します。</li>
+</ul>
+</li>
+</ul>
+
+
+<h3>まとめ</h3>
+
+<p>以上で基本的なCRUDに対応したAPサーバとDBサーバをSwiftとMongoDBで構築することができました。<br/>
+これから何かサービスでも&hellip;と思っていたら時間切れ&hellip;<br/>
+今回は一旦ここまでとしたいと思いますが、今後の展望としてはSwift製iOSアプリと連携させてiOSアプリを作成するか、もしくはReact / Reduxを使ったWebサービスと連携させたいと企んでいます。<br/>
+処理速度とかリソースの消費具合とかは全然比較もしていないのでわからないですが、Swiftによるサーバサイド構築によるメリットも今後Appleさんが？明らかにしてくれるかもしれません。</p>
+
+<p>何と言っても新しい技術や取り組みは楽しいですね！！<br/>
+と言ったところで本日はここまで。</p>
+
+<h3>参考URL</h3>
+
+<ul>
+<li><a href="http://perfect.org/docs/MongoDB.html">Perfect MongoDB Documentation</a></li>
+<li><a href="http://mongoc.org/libbson/1.3.5/bson_oid_init_from_string.html">Libbson API Reference: Bson Oid Init</a></li>
+<li><a href="http://mongoc.org/libmongoc/1.4.0/updating-document.html">Libbson API Reference: Update Document</a></li>
+<li><a href="http://mongoc.org/libmongoc/1.0.0/mongoc_insert_flags_t.html">MongoDB C Driver API Reference: Insert Flag</a></li>
+<li><a href="http://mongoc.org/libmongoc/1.2.3/mongoc_update_flags_t.html">MongoDB C Driver API Reference: Update Flag</a></li>
+<li><a href="http://mongoc.org/libmongoc/1.3.2/mongoc_remove_flags_t.html">MongoDB C Driver API Reference: Remove Flag</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HomebrewでMongoDBをインストール]]></title>
+    <link href="http://grandbig.github.io/blog/2016/11/20/brew-install-db/"/>
+    <updated>2016-11-20T00:10:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/11/20/brew-install-db</id>
+    <content type="html"><![CDATA[<h3>PC移行したことで発生したHomebrew対応し直し</h3>
+
+<p>さて、本日はMacbook Proを購入したことでブログ作成環境を移行する必要があったので、その際に気づいたことをメモしておきます。</p>
+
+<p>これまではMongoDBやMySQLなどのDB系はインストールした後に、次回、PCログイン時に自動起動させるために手動でデーモン起動設定をする必要がありました。<br/>
+しかし、今回、筆者が <strong>Homebrew</strong> で上記をインストールしてみたところ、新たな記述が出力されるようになっていました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!--more-->
+
+
+<p>```
+// MongoDBの例
+$ brew install mongodb
+==> Downloading <a href="https://homebrew.bintray.com/bottles/mongodb-3.2.11.sierra.bottle.tar.gz">https://homebrew.bintray.com/bottles/mongodb-3.2.11.sierra.bottle.tar.gz</a></p>
+
+<h6>################################################################## 100.0%</h6>
+
+<p>==> Pouring mongodb-3.2.11.sierra.bottle.tar.gz
+==> Caveats
+To have launchd start mongodb now and restart at login:
+  brew services start mongodb
+Or, if you don&rsquo;t want/need a background service you can just run:
+  mongod &mdash;config /usr/local/etc/mongod.conf
+==> Summary
+🍺  /usr/local/Cellar/mongodb/3.2.11: 18 files, 245.4M
+```</p>
+
+<p>上記が実際に出力された記述になります。<br/>
+筆者が注目したのは、 <strong>brew services start mongodb</strong> の部分です。<br/>
+これを叩けば、デーモン起動設定がされるのでは！？と思った次第です。</p>
+
+<p>では実際にコマンドを叩いてみましょう。</p>
+
+<p><code>
+$ brew services start mongodb
+==&gt; Tapping homebrew/services
+Cloning into '/usr/local/Homebrew/Library/Taps/homebrew/homebrew-services'...
+remote: Counting objects: 10, done.
+remote: Compressing objects: 100% (7/7), done.
+remote: Total 10 (delta 0), reused 6 (delta 0), pack-reused 0
+Unpacking objects: 100% (10/10), done.
+Tapped 0 formulae (37 files, 46.8K)
+==&gt; Successfully started `mongodb` (label: homebrew.mxcl.mongodb)
+</code></p>
+
+<p>起動しているか下記コマンドで確認してみます。</p>
+
+<p><code>
+$ ps aux | grep mongo
+takahiro      5468   0.2  0.2  2584528  25672   ??  S    11:24PM   0:00.22 /usr/local/opt/mongodb/bin/mongod --config /usr/local/etc/mongod.conf
+takahiro      5472   0.0  0.0  2432804   1924 s000  S+   11:24PM   0:00.00 grep mongo
+</code></p>
+
+<p>これで既に起動していることを確認できました。<br/>
+すごく便利になりましたね！</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

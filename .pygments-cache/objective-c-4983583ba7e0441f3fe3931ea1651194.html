@@ -1,0 +1,110 @@
+<div class="highlight"><pre><span class="c1">// ViewController.m</span>
+<span class="cp">#import &quot;ViewController.h&quot;</span>
+
+<span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span>
+
+<span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CLLocationManager</span> <span class="o">*</span><span class="n">locationManager</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSUUID</span> <span class="o">*</span><span class="n">proximityUUID1</span><span class="p">,</span> <span class="o">*</span><span class="n">proximityUUID2</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CLBeaconRegion</span> <span class="o">*</span><span class="n">beaconRegion1</span><span class="p">,</span> <span class="o">*</span><span class="n">beaconRegion2</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">CLBeacon</span> <span class="o">*</span><span class="n">nearestBeacon</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSString</span> <span class="o">*</span><span class="n">str</span><span class="p">;</span>
+
+<span class="k">@end</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span>
+<span class="p">{</span>
+	<span class="p">[</span><span class="n">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+	
+	<span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CLLocationManager</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
+	<span class="n">self</span><span class="p">.</span><span class="n">locationManager</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span><span class="p">;</span>
+
+	<span class="n">self</span><span class="p">.</span><span class="n">proximityUUID1</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSUUID</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithUUIDString:</span><span class="s">@&quot;8D4DB809-032F-4771-96F3-99BD5C25F924&quot;</span><span class="p">];</span>
+	<span class="n">self</span><span class="p">.</span><span class="n">beaconRegion1</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CLBeaconRegion</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithProximityUUID:</span> <span class="n">self</span><span class="p">.</span><span class="n">proximityUUID1</span> <span class="nl">identifier:</span><span class="s">@&quot;com.takahiro.ibeaconSample&quot;</span><span class="p">];</span>
+	<span class="n">self</span><span class="p">.</span><span class="n">proximityUUID2</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSUUID</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithUUIDString:</span><span class="s">@&quot;1AE93327-B172-4C5D-BBF7-F52B959FD4EB&quot;</span><span class="p">];</span>
+	<span class="n">self</span><span class="p">.</span><span class="n">beaconRegion2</span> <span class="o">=</span> <span class="p">[[</span><span class="n">CLBeaconRegion</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithProximityUUID:</span> <span class="n">self</span><span class="p">.</span><span class="n">proximityUUID1</span> <span class="nl">identifier:</span><span class="s">@&quot;com.takahiro.ibeaconSample2&quot;</span><span class="p">];</span>
+
+	<span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="n">requestAlwaysAuthorization</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="c1">// ユーザの位置情報の許可状態を確認するメソッド</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didChangeAuthorizationStatus:</span><span class="p">(</span><span class="n">CLAuthorizationStatus</span><span class="p">)</span><span class="nv">status</span>
+<span class="p">{</span>
+	<span class="k">if</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">kCLAuthorizationStatusAuthorizedAlways</span><span class="p">)</span> <span class="p">{</span>
+		<span class="c1">// Beaconのモニタリングを開始</span>
+		<span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">startMonitoringForRegion:</span><span class="n">self</span><span class="p">.</span><span class="n">beaconRegion1</span><span class="p">];</span>
+		<span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">startMonitoringForRegion:</span><span class="n">self</span><span class="p">.</span><span class="n">beaconRegion2</span><span class="p">];</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// 指定した領域に入った場合</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didEnterRegion:</span><span class="p">(</span><span class="n">CLRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
+<span class="p">{</span>
+	<span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="s">@&quot;Enter Region&quot;</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="c1">// 指定した領域から出た場合</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didExitRegion:</span><span class="p">(</span><span class="n">CLRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
+<span class="p">{</span>
+	<span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="s">@&quot;Exit Region&quot;</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="c1">// iBeacon領域内に既にいるか/いないかの判定</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didDetermineState:</span><span class="p">(</span><span class="n">CLRegionState</span><span class="p">)</span><span class="nv">state</span> <span class="nf">forRegion:</span><span class="p">(</span><span class="n">CLRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
+<span class="p">{</span>
+	<span class="k">switch</span> <span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">case</span> <span class="nl">CLRegionStateInside:</span>
+			<span class="k">if</span><span class="p">([</span><span class="n">region</span> <span class="nl">isMemberOfClass:</span><span class="p">[</span><span class="n">CLBeaconRegion</span> <span class="n">class</span><span class="p">]]</span> <span class="o">&amp;&amp;</span> <span class="p">[</span><span class="n">CLLocationManager</span> <span class="n">isRangingAvailable</span><span class="p">]){</span>
+				<span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">startRangingBeaconsInRegion:</span><span class="n">self</span><span class="p">.</span><span class="n">beaconRegion1</span><span class="p">];</span>
+				<span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">locationManager</span> <span class="nl">startRangingBeaconsInRegion:</span><span class="n">self</span><span class="p">.</span><span class="n">beaconRegion2</span><span class="p">];</span>
+			<span class="p">}</span>
+			<span class="k">break</span><span class="p">;</span>
+		<span class="k">case</span> <span class="nl">CLRegionStateOutside:</span>
+			<span class="k">if</span><span class="p">([</span><span class="n">region</span> <span class="nl">isMemberOfClass:</span><span class="p">[</span><span class="n">CLBeaconRegion</span> <span class="n">class</span><span class="p">]]</span> <span class="o">&amp;&amp;</span> <span class="p">[</span><span class="n">CLLocationManager</span> <span class="n">isRangingAvailable</span><span class="p">]){</span>
+			<span class="p">}</span>
+			<span class="k">break</span><span class="p">;</span>
+		<span class="k">case</span> <span class="nl">CLRegionStateUnknown:</span>
+			<span class="k">if</span><span class="p">([</span><span class="n">region</span> <span class="nl">isMemberOfClass:</span><span class="p">[</span><span class="n">CLBeaconRegion</span> <span class="n">class</span><span class="p">]]</span> <span class="o">&amp;&amp;</span> <span class="p">[</span><span class="n">CLLocationManager</span> <span class="n">isRangingAvailable</span><span class="p">]){</span>
+			<span class="p">}</span>
+			<span class="k">break</span><span class="p">;</span>
+		<span class="k">default</span><span class="o">:</span>
+			<span class="k">break</span><span class="p">;</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// Beacon信号を検出した場合</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">locationManager:</span><span class="p">(</span><span class="n">CLLocationManager</span> <span class="o">*</span><span class="p">)</span><span class="nv">manager</span> <span class="nf">didRangeBeacons:</span><span class="p">(</span><span class="n">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nv">beacons</span> <span class="nf">inRegion:</span><span class="p">(</span><span class="n">CLBeaconRegion</span> <span class="o">*</span><span class="p">)</span><span class="nv">region</span>
+<span class="p">{</span>
+	<span class="k">if</span> <span class="p">(</span><span class="n">beacons</span><span class="p">.</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">nearestBeacon</span> <span class="o">=</span> <span class="n">beacons</span><span class="p">.</span><span class="n">firstObject</span><span class="p">;</span>
+		<span class="n">NSString</span> <span class="o">*</span><span class="n">rangeMessage</span><span class="p">;</span>
+
+		<span class="k">switch</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">nearestBeacon</span><span class="p">.</span><span class="n">proximity</span><span class="p">)</span> <span class="p">{</span>
+			<span class="k">case</span> <span class="nl">CLProximityImmediate:</span>
+				<span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Immediate&quot;</span><span class="p">;</span>
+				<span class="k">break</span><span class="p">;</span>
+			<span class="k">case</span> <span class="nl">CLProximityNear:</span>
+				<span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Near&quot;</span><span class="p">;</span>
+				<span class="k">break</span><span class="p">;</span>
+			<span class="k">case</span> <span class="nl">CLProximityFar:</span>
+				<span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Far&quot;</span><span class="p">;</span>
+				<span class="k">break</span><span class="p">;</span>
+			<span class="k">default</span><span class="o">:</span>
+				<span class="n">rangeMessage</span> <span class="o">=</span> <span class="s">@&quot;Range Unknown&quot;</span><span class="p">;</span>
+				<span class="k">break</span><span class="p">;</span>
+		<span class="p">}</span>
+
+		<span class="n">self</span><span class="p">.</span><span class="n">str</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSString</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithFormat:</span><span class="s">@&quot;%f [m]&quot;</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">nearestBeacon</span><span class="p">.</span><span class="n">accuracy</span><span class="p">];</span>
+		<span class="p">[</span><span class="n">self</span> <span class="nl">sendLocalNotificationForMessage:</span><span class="n">self</span><span class="p">.</span><span class="n">str</span><span class="p">];</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// ローカルプッシュ</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">sendLocalNotificationForMessage:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">message</span>
+<span class="p">{</span>
+	<span class="n">UILocalNotification</span> <span class="o">*</span><span class="n">localNotification</span> <span class="o">=</span> <span class="p">[</span><span class="n">UILocalNotification</span> <span class="n">new</span><span class="p">];</span>
+	<span class="n">localNotification</span><span class="p">.</span><span class="n">alertBody</span> <span class="o">=</span> <span class="n">message</span><span class="p">;</span>
+	<span class="n">localNotification</span><span class="p">.</span><span class="n">fireDate</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSDate</span> <span class="n">date</span><span class="p">];</span>
+	<span class="n">localNotification</span><span class="p">.</span><span class="n">soundName</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+	<span class="p">[[</span><span class="n">UIApplication</span> <span class="n">sharedApplication</span><span class="p">]</span> <span class="nl">scheduleLocalNotification:</span><span class="n">localNotification</span><span class="p">];</span>
+<span class="p">}</span>
+</pre></div>

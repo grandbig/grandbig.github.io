@@ -1,0 +1,74 @@
+<div class="highlight"><pre><span class="n">import</span> <span class="n">UIKit</span>
+<span class="n">import</span> <span class="n">CoreBluetooth</span>
+
+<span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">CBPeripheralManagerDelegate</span> <span class="p">{</span>
+	
+	<span class="c1">// 必要なプロパティの宣言</span>
+	<span class="n">var</span> <span class="nl">pm:</span><span class="n">CBPeripheralManager</span><span class="o">!</span>
+	<span class="n">let</span> <span class="nl">sUUID:</span><span class="n">CBUUID</span> <span class="o">=</span> <span class="n">CBUUID</span><span class="p">(</span><span class="nl">string:</span><span class="s">&quot;47EC089D-2FBB-410D-BEDF-C88730DBBD3A&quot;</span><span class="p">)</span>
+	<span class="n">var</span> <span class="nl">characteristic:</span><span class="n">CBMutableCharacteristic</span><span class="o">!</span>
+
+	<span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+
+		<span class="c1">// CBPeripheralManagerの初期化</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">pm</span> <span class="o">=</span> <span class="n">CBPeripheralManager</span><span class="p">(</span><span class="nl">delegate:</span> <span class="n">self</span><span class="p">,</span> <span class="nl">queue:</span> <span class="nb">nil</span><span class="p">,</span> <span class="nl">options:</span> <span class="nb">nil</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+		<span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+	<span class="p">}</span>
+
+	<span class="c1">// ボタンをタップしたときに実行</span>
+	<span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">peripheralStartAction</span><span class="p">(</span><span class="nl">sender:</span> <span class="n">AnyObject</span><span class="p">)</span> <span class="p">{</span>
+		<span class="c1">// サービスの追加</span>
+		<span class="n">let</span> <span class="n">service</span> <span class="o">=</span> <span class="n">CBMutableService</span><span class="p">(</span><span class="nl">type:</span> <span class="n">self</span><span class="p">.</span><span class="n">sUUID</span><span class="p">,</span> <span class="nl">primary:</span><span class="n">true</span><span class="p">)</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">characteristic</span> <span class="o">=</span> <span class="n">CBMutableCharacteristic</span><span class="p">(</span><span class="nl">type:</span> <span class="n">sUUID</span><span class="p">,</span> <span class="nl">properties:</span> <span class="n">CBCharacteristicProperties</span><span class="p">.</span><span class="n">Read</span><span class="p">,</span> <span class="nl">value:</span> <span class="nb">nil</span><span class="p">,</span> <span class="nl">permissions:</span> <span class="n">CBAttributePermissions</span><span class="p">.</span><span class="n">ReadEncryptionRequired</span><span class="p">)</span>
+		<span class="n">service</span><span class="p">.</span><span class="n">characteristics</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">characteristic</span><span class="p">]</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">pm</span><span class="p">.</span><span class="n">addService</span><span class="p">(</span><span class="n">service</span><span class="p">)</span>
+
+		<span class="c1">// アドバタイズ開始</span>
+		<span class="n">let</span> <span class="nl">advertisementData:</span><span class="p">[</span><span class="nl">String:</span><span class="n">AnyObject</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nl">CBAdvertisementDataServiceUUIDsKey:</span> <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">sUUID</span><span class="p">],</span> <span class="nl">CBAdvertisementDataLocalNameKey:</span><span class="s">&quot;MyBlog&quot;</span><span class="p">]</span>
+		<span class="n">self</span><span class="p">.</span><span class="n">pm</span><span class="p">.</span><span class="n">startAdvertising</span><span class="p">(</span><span class="n">advertisementData</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="c1">// MARK: - CBPeripheralManagerDelegate -</span>
+	<span class="c1">// Bluetoothの状態が変化したときに通る処理</span>
+	<span class="n">func</span> <span class="n">peripheralManagerDidUpdateState</span><span class="p">(</span><span class="nl">peripheral:</span> <span class="n">CBPeripheralManager</span><span class="p">)</span> <span class="p">{</span>
+		<span class="n">print</span><span class="p">(</span><span class="s">&quot;state: \(peripheral.state)&quot;</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="c1">// アドバタイズの開始結果を取得したときに通る処理</span>
+	<span class="n">func</span> <span class="n">peripheralManagerDidStartAdvertising</span><span class="p">(</span><span class="nl">peripheral:</span> <span class="n">CBPeripheralManager</span><span class="p">,</span> <span class="nl">error:</span> <span class="n">NSError</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">if</span><span class="p">(</span><span class="n">error</span> <span class="o">!=</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span>
+			<span class="n">print</span><span class="p">(</span><span class="s">&quot;アドバタイズ開始失敗。error: \(error)&quot;</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+														        
+		<span class="n">print</span><span class="p">(</span><span class="s">&quot;アドバタイズ開始成功！&quot;</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="c1">// サービスの追加結果を取得したときに通る処理</span>
+	<span class="n">func</span> <span class="n">peripheralManager</span><span class="p">(</span><span class="nl">peripheral:</span> <span class="n">CBPeripheralManager</span><span class="p">,</span> <span class="n">didAddService</span> <span class="nl">service:</span> <span class="n">CBService</span><span class="p">,</span> <span class="nl">error:</span> <span class="n">NSError</span><span class="o">?</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">if</span><span class="p">(</span><span class="n">error</span> <span class="o">!=</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span>
+			<span class="n">print</span><span class="p">(</span><span class="s">&quot;サービスの追加に失敗しました。error: \(error)&quot;</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+														        
+		<span class="n">print</span><span class="p">(</span><span class="s">&quot;サービス追加成功&quot;</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="c1">// Readリクエストを取得したときに通る処理</span>
+	<span class="n">func</span> <span class="n">peripheralManager</span><span class="p">(</span><span class="nl">peripheral:</span> <span class="n">CBPeripheralManager</span><span class="p">,</span> <span class="n">didReceiveReadRequest</span> <span class="nl">request:</span> <span class="n">CBATTRequest</span><span class="p">)</span> <span class="p">{</span>
+					        
+		<span class="k">if</span> <span class="n">request</span><span class="p">.</span><span class="n">characteristic</span><span class="p">.</span><span class="n">UUID</span><span class="p">.</span><span class="n">isEqual</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">characteristic</span><span class="p">.</span><span class="n">UUID</span><span class="p">)</span> <span class="p">{</span>
+			<span class="c1">// プロパティで保持しているキャラクタリスティックへのReadリクエストかどうかを判定</span>
+			<span class="c1">// CBMutableCharacteristicのvalueをCBATTRequestのvalueにセット</span>
+			<span class="n">request</span><span class="p">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">characteristic</span><span class="p">.</span><span class="n">value</span>
+																			            
+			<span class="c1">// リクエストに応答</span>
+			<span class="n">self</span><span class="p">.</span><span class="n">pm</span><span class="p">.</span><span class="n">respondToRequest</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="nl">withResult:</span> <span class="n">CBATTError</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
