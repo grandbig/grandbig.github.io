@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2017-12-03T16:48:11+09:00</updated>
+  <updated>2017-12-09T17:38:39+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,311 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS10とiOS11で比較するUIStackViewのhiddenとConstraintエラー]]></title>
+    <link href="http://grandbig.github.io/blog/2017/12/10/ios11-stackview-hidden/"/>
+    <updated>2017-12-10T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/12/10/ios11-stackview-hidden</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>この記事は<a href="https://qiita.com/advent-calendar/2017/ios2">iOS2 Advent Calendar 2017</a>の10日目の記事です。</p>
+
+<p>本記事では今年発表されたiOS11で改善された <code>UIStackView</code> 周りの <code>Constraint</code> 対応について紹介したいと思います。<br/>
+<code>UIStackView</code> はiOS8以前に、開発者が <code>AutoLayout</code> を駆使して <code>View</code> と <code>View</code> 間のマージンやパディングを設定していた状況を一変させました。<br/>
+そんな便利な存在である一方で使い方に慣れるまでに時間がかかったり、なぜかうまくいかないと悩んだりすることもしばしばあることと思います。</p>
+
+<p>その中でも厄介だったのが、 <code>UIStackView</code> の子要素に <code>UIStackView</code> があり、元の <code>UIStackView</code> を非表示にすると <code>Constraint</code> エラーが発生するパターンです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>iOS10で発生するConstraintエラー</h3>
+
+<p>例えば、下図のような構成の <code>View</code> を作成する必要があったとします。</p>
+
+<p><img src="http://grandbig.github.io/images/ios11_stackview_1.png" alt="Constraintエラーが発生するパターン" /></p>
+
+<p>このレイアウトは、</p>
+
+<ul>
+<li><code>width</code> と <code>height</code> が 固定幅の <code>UIView</code> 3つを子要素として持つ <code>Child Stack View</code></li>
+<li>その <code>Child Stack View</code> と <code>UIButton</code> を子要素に持つ <code>Parent Stack View</code></li>
+</ul>
+
+
+<p>で構成されています。<br/>
+このような <code>UIStackView</code> の子要素に <code>UIStackView</code> を持つレイアウトを実装し、<br/>
+何らかの条件で『表示/非表示』を切り替える仕様があったとします。<br/>
+※今回のサンプルでは、<code>SHOW or HIDE</code> ボタンをタップ時に表示/非表示を切り替えるように実装するとします。</p>
+
+<p>その場合、非表示にしたタイミングで、iOS10では下記の <code>Constraint</code> エラーが発生します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">[</span><span class="n">LayoutConstraints</span><span class="p">]</span> <span class="n">Unable</span> <span class="n">to</span> <span class="n">simultaneously</span> <span class="n">satisfy</span> <span class="n">constraints</span><span class="p">.</span>
+</span><span class='line'>  <span class="n">Probably</span> <span class="n">at</span> <span class="n">least</span> <span class="n">one</span> <span class="n">of</span> <span class="n">the</span> <span class="n">constraints</span> <span class="k">in</span> <span class="n">the</span> <span class="n">following</span> <span class="n">list</span> <span class="n">is</span> <span class="n">one</span> <span class="n">you</span> <span class="n">don</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">want</span><span class="p">.</span>
+</span><span class='line'>  <span class="n">Try</span> <span class="nl">this:</span>
+</span><span class='line'>      <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="n">look</span> <span class="n">at</span> <span class="n">each</span> <span class="n">constraint</span> <span class="n">and</span> <span class="n">try</span> <span class="n">to</span> <span class="n">figure</span> <span class="n">out</span> <span class="n">which</span> <span class="n">you</span> <span class="n">don</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">expect</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="n">find</span> <span class="n">the</span> <span class="n">code</span> <span class="n">that</span> <span class="n">added</span> <span class="n">the</span> <span class="n">unwanted</span> <span class="n">constraint</span> <span class="n">or</span> <span class="n">constraints</span> <span class="n">and</span> <span class="n">fix</span> <span class="n">it</span><span class="p">.</span>
+</span><span class='line'><span class="p">(</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x618000095a90 UIView:0x7ffc6dc04350.height == 44   (active)&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x610000097020 &#39;UISV-canvas-connection&#39; UIStackView:0x7ffc6de08680.top == UIView:0x7ffc6df0b170.top   (active)&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x610000097980 &#39;UISV-canvas-connection&#39; V:[UIView:0x7ffc6dc04350]-(0)-|   (active, names: &#39;|&#39;:UIStackView:0x7ffc6de08680 )&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x6080000944b0 &#39;UISV-hiding&#39; UIStackView:0x7ffc6de08680.height == 0   (active)&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x6100000979d0 &#39;UISV-spacing&#39; V:[UIView:0x7ffc6df0b170]-(16)-[UIView:0x7ffc6dc088c0]   (active)&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x610000097a20 &#39;UISV-spacing&#39; V:[UIView:0x7ffc6dc088c0]-(16)-[UIView:0x7ffc6dc04350]   (active)&gt;&quot;</span>
+</span><span class='line'><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Will</span> <span class="n">attempt</span> <span class="n">to</span> <span class="n">recover</span> <span class="n">by</span> <span class="n">breaking</span> <span class="n">constraint</span>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">NSLayoutConstraint:</span><span class="mh">0x618000095a90</span> <span class="nl">UIView:</span><span class="mh">0x7ffc6dc04350</span><span class="p">.</span><span class="n">height</span> <span class="o">==</span> <span class="mi">44</span>   <span class="p">(</span><span class="n">active</span><span class="p">)</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Make</span> <span class="n">a</span> <span class="n">symbolic</span> <span class="n">breakpoint</span> <span class="n">at</span> <span class="n">UIViewAlertForUnsatisfiableConstraints</span> <span class="n">to</span> <span class="n">catch</span> <span class="n">this</span> <span class="k">in</span> <span class="n">the</span> <span class="n">debugger</span><span class="p">.</span>
+</span><span class='line'><span class="n">The</span> <span class="n">methods</span> <span class="k">in</span> <span class="n">the</span> <span class="n">UIConstraintBasedLayoutDebugging</span> <span class="n">category</span> <span class="n">on</span> <span class="n">UIView</span> <span class="n">listed</span> <span class="k">in</span> <span class="o">&lt;</span><span class="n">UIKit</span><span class="o">/</span><span class="n">UIView</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;</span> <span class="n">may</span> <span class="n">also</span> <span class="n">be</span> <span class="n">helpful</span><span class="p">.</span>
+</span><span class='line'><span class="mi">2017</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">09</span> <span class="mi">16</span><span class="o">:</span><span class="mi">46</span><span class="o">:</span><span class="mf">15.542896</span><span class="o">+</span><span class="mi">0900</span> <span class="n">FacebookManagerSample</span><span class="p">[</span><span class="mi">94864</span><span class="o">:</span><span class="mi">5445545</span><span class="p">]</span> <span class="p">[</span><span class="n">LayoutConstraints</span><span class="p">]</span> <span class="n">Unable</span> <span class="n">to</span> <span class="n">simultaneously</span> <span class="n">satisfy</span> <span class="n">constraints</span><span class="p">.</span>
+</span><span class='line'>  <span class="n">Probably</span> <span class="n">at</span> <span class="n">least</span> <span class="n">one</span> <span class="n">of</span> <span class="n">the</span> <span class="n">constraints</span> <span class="k">in</span> <span class="n">the</span> <span class="n">following</span> <span class="n">list</span> <span class="n">is</span> <span class="n">one</span> <span class="n">you</span> <span class="n">don</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">want</span><span class="p">.</span>
+</span><span class='line'>  <span class="n">Try</span> <span class="nl">this:</span>
+</span><span class='line'>      <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="n">look</span> <span class="n">at</span> <span class="n">each</span> <span class="n">constraint</span> <span class="n">and</span> <span class="n">try</span> <span class="n">to</span> <span class="n">figure</span> <span class="n">out</span> <span class="n">which</span> <span class="n">you</span> <span class="n">don</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">expect</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="n">find</span> <span class="n">the</span> <span class="n">code</span> <span class="n">that</span> <span class="n">added</span> <span class="n">the</span> <span class="n">unwanted</span> <span class="n">constraint</span> <span class="n">or</span> <span class="n">constraints</span> <span class="n">and</span> <span class="n">fix</span> <span class="n">it</span><span class="p">.</span>
+</span><span class='line'><span class="p">(</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x610000097020 &#39;UISV-canvas-connection&#39; UIStackView:0x7ffc6de08680.top == UIView:0x7ffc6df0b170.top   (active)&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x610000097980 &#39;UISV-canvas-connection&#39; V:[UIView:0x7ffc6dc04350]-(0)-|   (active, names: &#39;|&#39;:UIStackView:0x7ffc6de08680 )&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x6080000944b0 &#39;UISV-hiding&#39; UIStackView:0x7ffc6de08680.height == 0   (active)&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x6100000979d0 &#39;UISV-spacing&#39; V:[UIView:0x7ffc6df0b170]-(16)-[UIView:0x7ffc6dc088c0]   (active)&gt;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;&lt;NSLayoutConstraint:0x610000097a20 &#39;UISV-spacing&#39; V:[UIView:0x7ffc6dc088c0]-(16)-[UIView:0x7ffc6dc04350]   (active)&gt;&quot;</span>
+</span><span class='line'><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Will</span> <span class="n">attempt</span> <span class="n">to</span> <span class="n">recover</span> <span class="n">by</span> <span class="n">breaking</span> <span class="n">constraint</span>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">NSLayoutConstraint:</span><span class="mh">0x610000097a20</span> <span class="err">&#39;</span><span class="n">UISV</span><span class="o">-</span><span class="n">spacing</span><span class="err">&#39;</span> <span class="nl">V:</span><span class="p">[</span><span class="nl">UIView:</span><span class="mh">0x7ffc6dc088c0</span><span class="p">]</span><span class="o">-</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span><span class="o">-</span><span class="p">[</span><span class="nl">UIView:</span><span class="mh">0x7ffc6dc04350</span><span class="p">]</span>   <span class="p">(</span><span class="n">active</span><span class="p">)</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Make</span> <span class="n">a</span> <span class="n">symbolic</span> <span class="n">breakpoint</span> <span class="n">at</span> <span class="n">UIViewAlertForUnsatisfiableConstraints</span> <span class="n">to</span> <span class="n">catch</span> <span class="n">this</span> <span class="k">in</span> <span class="n">the</span> <span class="n">debugger</span><span class="p">.</span>
+</span><span class='line'><span class="n">The</span> <span class="n">methods</span> <span class="k">in</span> <span class="n">the</span> <span class="n">UIConstraintBasedLayoutDebugging</span> <span class="n">category</span> <span class="n">on</span> <span class="n">UIView</span> <span class="n">listed</span> <span class="k">in</span> <span class="o">&lt;</span><span class="n">UIKit</span><span class="o">/</span><span class="n">UIView</span><span class="p">.</span><span class="n">h</span><span class="o">&gt;</span> <span class="n">may</span> <span class="n">also</span> <span class="n">be</span> <span class="n">helpful</span><span class="p">.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これには2つの要因があります。</p>
+
+<ol>
+<li>子要素の <code>UIView</code> の <code>height</code> が <code>44pt</code> 固定にも関わらず、 <code>UIStackView</code> が非表示 ( = <code>height</code> が <code>0pt</code> ) になる</li>
+<li><code>UIStackView</code> 内の子要素同士は <code>16pt</code> ごとに間隔を空ける指定をしているにも関わらず、 <code>UIStackView</code> が非表示 ( = <code>height</code> が <code>0pt</code> )になる</li>
+</ol>
+
+
+<p>上記2要素を解決すれば <code>Constraint</code> エラーを解消することができます。</p>
+
+<h3>iOS10でConstraintエラーを解消する方法</h3>
+
+<p>では、具体的に <code>Constraint</code> エラーを解消してみましょう。</p>
+
+<h4>1つ目の原因の解決方法</h4>
+
+<p>先程上げた要因の1点目は <code>Storyboard</code> 上で解決可能です。</p>
+
+<p><img src="http://grandbig.github.io/images/ios11_stackview_2.png" alt="Storyboard上でConstraintの指定を変更する" /></p>
+
+<p>親の <code>UIStackView</code> が非表示になることで、子要素の <code>UIView</code> が <code>0pt</code> になる可能性があるので、<code>Constraint</code> の <code>Priority</code> を <code>999</code> 以下にします。<br/>
+これは、デフォルトの <code>Priority</code> が <code>1000</code> だからです。</p>
+
+<h4>2つ目の原因の解決方法</h4>
+
+<p>続いて要点の2点目の解決方法です。<br/>
+<code>Child Stack View</code> が非表示になることで、3つの子要素の <code>UIView</code> も強制的に非表示になってしまいます。<br/>
+しかし、 <code>Child Stack View</code> は3つの子要素である <code>UIView</code> に <code>16pt</code> の間隔を空けるように指定しています。<br/>
+これを解消するためには、親要素が非表示になるときに合わせて子要素も非表示にする必要があります。<br/>
+※あくまでも <code>UIStackView</code> 内に <code>UIStackView</code> を持つ場合に発生し、 <code>UIStackView</code> 単体の場合は発生しません。</p>
+
+<p>具体的に実装した解決方法は以下です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - IBOutlets</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">stackView:</span> <span class="n">UIStackView</span><span class="o">!</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">childrenView1:</span> <span class="n">UIView</span><span class="o">!</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">childrenView2:</span> <span class="n">UIView</span><span class="o">!</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">childrenView3:</span> <span class="n">UIView</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="n">isHidden</span> <span class="o">=</span> <span class="n">false</span>  <span class="c1">// 現在の表示・非表示の状態を保持</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>        <span class="c1">// Do any additional setup after loading the view, typically from a nib.</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>        <span class="c1">// Dispose of any resources that can be recreated.</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - IBActions</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">private</span> <span class="n">func</span> <span class="n">onTappedButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">UIButton</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// ボタンタップ時に表示・非表示の切り替え</span>
+</span><span class='line'>        <span class="n">showOrHideSubView</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="n">ViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">showOrHideSubView</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">isHidden</span> <span class="p">{</span>
+</span><span class='line'>            <span class="c1">// 表示する場合</span>
+</span><span class='line'>            <span class="c1">// 自身を表示</span>
+</span><span class='line'>            <span class="n">stackView</span><span class="p">.</span><span class="n">isHidden</span> <span class="o">=</span> <span class="n">false</span>
+</span><span class='line'>            <span class="c1">// 子要素を表示</span>
+</span><span class='line'>            <span class="n">stackView</span><span class="p">.</span><span class="n">subviews</span><span class="p">.</span><span class="n">forEach</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">$0</span><span class="p">.</span><span class="n">isHidden</span> <span class="o">=</span> <span class="n">false</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="c1">// 表示・非表示状態の更新</span>
+</span><span class='line'>            <span class="n">isHidden</span> <span class="o">=</span> <span class="n">false</span>
+</span><span class='line'>            <span class="k">return</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="c1">// 非表示にする場合</span>
+</span><span class='line'>        <span class="c1">// 自身を非表示</span>
+</span><span class='line'>        <span class="n">stackView</span><span class="p">.</span><span class="n">isHidden</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>        <span class="c1">// 子要素を非表示</span>
+</span><span class='line'>        <span class="n">stackView</span><span class="p">.</span><span class="n">subviews</span><span class="p">.</span><span class="n">forEach</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">$0</span><span class="p">.</span><span class="n">isHidden</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="c1">// 表示・非表示状態の更新</span>
+</span><span class='line'>        <span class="n">isHidden</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記2点の改修を加えた上でiOS10で実行すると <code>Constraint</code> エラーが発生していないことがわかると思います。</p>
+
+<h3>iOS11でどうなるか&hellip;</h3>
+
+<p>ではでは、iOS11ではどうなっているのかというと&hellip;<br/>
+なんとiOS10で必要だった2つの手段を取らずとも自動的に <code>Constraint</code> エラーが解決されています！！<br/>
+いちいち <code>@999</code> つけたり、 <code>subViews</code> を <code>hidden</code> にしなくて良いのは手間がかからず非常に助かりますね！</p>
+
+<h3>まとめ</h3>
+
+<p>如何でしたでしょうか？<br/>
+少々短めな紹介記事になってしまいましたが、地味ながら開発者が喜ぶ改善がされているiOSは改めて素晴らしいですね。<br/>
+これからもバシバシ <code>UIStackView</code> を利用する気になってきますね！<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Facebook APIで試すCodable]]></title>
@@ -7638,164 +7943,6 @@ UIテストのために利用しています。</li>
 たまに必要性を感じる内容であることもあって、一度まとめてみようと思い、書いてみました。<br/>
 今の世の中なら、用途にあったOSSライブラリもたくさんあると思うので手法は3つには限らないでしょうね。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Swift3でUIImageを任意の角度で回転させる方法について]]></title>
-    <link href="http://grandbig.github.io/blog/2017/06/11/uiimagerotate-swift3/"/>
-    <updated>2017-06-11T22:43:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/06/11/uiimagerotate-swift3</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>以前、<a href="http://grandbig.github.io/blog/2014/03/13/uiimagerotate/">UIImageを任意の角度で回転させる方法について</a>を書きましたが、今回はそのSwift3版です。<br/>
-Objective-Cで書いた方法と基本的には同じではあるのですが、そのままの書き方が使えるわけではないため覚えておいて損はないはず！</p>
-
-<p>では早速見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>UIImageの回転方法</h3>
-
-<p>Objective-Cでは下記のように回転させていました。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 元の画像。ここではtest.pngという画像があるとします。</span>
-</span><span class='line'><span class="n">UIImage</span> <span class="o">*</span><span class="n">image</span> <span class="o">=</span> <span class="p">[</span><span class="n">UIImage</span> <span class="nl">imageNamed:</span><span class="s">@&quot;test.png&quot;</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">CGSize</span> <span class="n">imgSize</span> <span class="o">=</span> <span class="p">{</span><span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="p">,</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="p">};</span>
-</span><span class='line'><span class="c1">// Contextを開く</span>
-</span><span class='line'><span class="n">UIGraphicsBeginImageContext</span><span class="p">(</span><span class="n">imgSize</span><span class="p">);</span>
-</span><span class='line'><span class="n">CGContextRef</span> <span class="n">context</span> <span class="o">=</span> <span class="n">UIGraphicsGetCurrentContext</span><span class="p">();</span>
-</span><span class='line'><span class="c1">// 回転の中心点を移動</span>
-</span><span class='line'><span class="n">CGContextTranslateCTM</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="o">/</span><span class="mi">2</span><span class="p">);</span>
-</span><span class='line'><span class="c1">// Y軸方向を補正</span>
-</span><span class='line'><span class="n">CGContextScaleCTM</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// ラジアンに変換(45°回転させたい場合)</span>
-</span><span class='line'><span class="kt">float</span> <span class="n">radian</span> <span class="o">=</span> <span class="mi">45</span> <span class="o">*</span> <span class="n">M_PI</span> <span class="o">/</span> <span class="mi">180</span><span class="p">;</span>
-</span><span class='line'><span class="n">CGContextRotateCTM</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">radian</span><span class="p">);</span>
-</span><span class='line'><span class="c1">// 回転画像の描画</span>
-</span><span class='line'><span class="n">CGContextDrawImage</span><span class="p">(</span><span class="n">UIGraphicsGetCurrentContext</span><span class="p">(),</span> <span class="n">CGRectMake</span><span class="p">(</span><span class="o">-</span><span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="p">,</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="p">),</span> <span class="n">image</span><span class="p">.</span><span class="n">CGImage</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Contextを閉じる</span>
-</span><span class='line'><span class="n">UIImage</span> <span class="o">*</span><span class="n">rotatedImage</span> <span class="o">=</span> <span class="n">UIGraphicsGetImageFromCurrentImageContext</span><span class="p">();</span>
-</span><span class='line'><span class="n">UIGraphicsEndImageContext</span><span class="p">();</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// UIImageViewに回転後の画像を設定</span>
-</span><span class='line'><span class="n">UIImageView</span> <span class="o">*</span><span class="n">imageView</span> <span class="o">=</span> <span class="p">[[</span><span class="n">UIImageView</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">];</span>
-</span><span class='line'><span class="n">imageView</span><span class="p">.</span><span class="n">image</span> <span class="o">=</span> <span class="n">rotatedImage</span><span class="p">;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これをSwift3で書き直すと以下のようになります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 元の画像。ここではtest.pngという画像があるとします。</span>
-</span><span class='line'><span class="n">let</span> <span class="n">image</span> <span class="o">=</span> <span class="n">UIImage</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">named:</span> <span class="s">&quot;test&quot;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">let</span> <span class="n">imgSize</span> <span class="o">=</span> <span class="n">CGSize</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">width:</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="p">,</span> <span class="nl">height:</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="p">)</span>
-</span><span class='line'><span class="c1">// Contextを開く</span>
-</span><span class='line'><span class="n">UIGraphicsBeginImageContextWithOptions</span><span class="p">(</span><span class="n">imgSize</span><span class="p">,</span> <span class="n">false</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
-</span><span class='line'><span class="n">let</span> <span class="nl">context:</span> <span class="n">CGContext</span> <span class="o">=</span> <span class="n">UIGraphicsGetCurrentContext</span><span class="p">()</span><span class="o">!</span>
-</span><span class='line'><span class="c1">// 回転の中心点を移動</span>
-</span><span class='line'><span class="n">context</span><span class="p">.</span><span class="n">translateBy</span><span class="p">(</span><span class="nl">x:</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="nl">y:</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
-</span><span class='line'><span class="c1">// Y軸方向を補正</span>
-</span><span class='line'><span class="n">context</span><span class="p">.</span><span class="n">scaleBy</span><span class="p">(</span><span class="nl">x:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="nl">y:</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// ラジアンに変換(45°回転させたい場合)</span>
-</span><span class='line'><span class="n">let</span> <span class="nl">radian:</span> <span class="n">CGFloat</span> <span class="o">=</span> <span class="mi">45</span> <span class="o">*</span> <span class="n">CGFloat</span><span class="p">(</span><span class="n">Double</span><span class="p">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">/</span> <span class="mf">180.0</span>
-</span><span class='line'><span class="n">context</span><span class="p">.</span><span class="n">rotate</span><span class="p">(</span><span class="nl">by:</span> <span class="n">radian</span><span class="p">)</span>
-</span><span class='line'><span class="c1">// 回転画像の描画</span>
-</span><span class='line'><span class="n">context</span><span class="p">.</span><span class="n">draw</span><span class="p">(</span><span class="n">image</span><span class="p">.</span><span class="n">cgImage</span><span class="o">!</span><span class="p">,</span> <span class="k">in</span><span class="o">:</span> <span class="n">CGRect</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">x:</span> <span class="o">-</span><span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="nl">y:</span> <span class="o">-</span><span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="nl">width:</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="p">,</span> <span class="nl">height:</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="p">))</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Contextを閉じる</span>
-</span><span class='line'><span class="n">let</span> <span class="nl">rotatedImage:</span> <span class="n">UIImage</span> <span class="o">=</span> <span class="n">UIGraphicsGetImageFromCurrentImageContext</span><span class="p">()</span><span class="o">!</span>
-</span><span class='line'><span class="n">UIGraphicsEndImageContext</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// UIImageViewに回転後の画像を設定</span>
-</span><span class='line'><span class="n">let</span> <span class="n">imageView</span> <span class="o">=</span> <span class="n">UIImageView</span><span class="p">.</span><span class="n">init</span><span class="p">()</span>
-</span><span class='line'><span class="n">imageView</span><span class="p">.</span><span class="n">image</span> <span class="o">=</span> <span class="n">rotatedImage</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>まとめ</h3>
-
-<p>さていかがでしたでしょうか？<br/>
-基本的な回転の流れは変わりませんね。<br/>
-ただ、Swift3で書いた方が心なしか自然なメソッドで書けている気がするのは筆者だけですかね&hellip;<br/>
-ということで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

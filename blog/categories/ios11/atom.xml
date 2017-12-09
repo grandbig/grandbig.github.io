@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: ios11 | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/ios11/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2017-12-09T17:38:39+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iOS10とiOS11で比較するUIStackViewのhiddenとConstraintエラー]]></title>
+    <link href="http://grandbig.github.io/blog/2017/12/10/ios11-stackview-hidden/"/>
+    <updated>2017-12-10T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/12/10/ios11-stackview-hidden</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>この記事は<a href="https://qiita.com/advent-calendar/2017/ios2">iOS2 Advent Calendar 2017</a>の10日目の記事です。</p>
+
+<p>本記事では今年発表されたiOS11で改善された <code>UIStackView</code> 周りの <code>Constraint</code> 対応について紹介したいと思います。<br/>
+<code>UIStackView</code> はiOS8以前に、開発者が <code>AutoLayout</code> を駆使して <code>View</code> と <code>View</code> 間のマージンやパディングを設定していた状況を一変させました。<br/>
+そんな便利な存在である一方で使い方に慣れるまでに時間がかかったり、なぜかうまくいかないと悩んだりすることもしばしばあることと思います。</p>
+
+<p>その中でも厄介だったのが、 <code>UIStackView</code> の子要素に <code>UIStackView</code> があり、元の <code>UIStackView</code> を非表示にすると <code>Constraint</code> エラーが発生するパターンです。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>iOS10で発生するConstraintエラー</h3>
+
+<p>例えば、下図のような構成の <code>View</code> を作成する必要があったとします。</p>
+
+<p><img src="/images/ios11_stackview_1.png" alt="Constraintエラーが発生するパターン" /></p>
+
+<p>このレイアウトは、</p>
+
+<ul>
+<li><code>width</code> と <code>height</code> が 固定幅の <code>UIView</code> 3つを子要素として持つ <code>Child Stack View</code></li>
+<li>その <code>Child Stack View</code> と <code>UIButton</code> を子要素に持つ <code>Parent Stack View</code></li>
+</ul>
+
+
+<p>で構成されています。<br/>
+このような <code>UIStackView</code> の子要素に <code>UIStackView</code> を持つレイアウトを実装し、<br/>
+何らかの条件で『表示/非表示』を切り替える仕様があったとします。<br/>
+※今回のサンプルでは、<code>SHOW or HIDE</code> ボタンをタップ時に表示/非表示を切り替えるように実装するとします。</p>
+
+<p>その場合、非表示にしたタイミングで、iOS10では下記の <code>Constraint</code> エラーが発生します。</p>
+
+<p>```objective-c
+[LayoutConstraints] Unable to simultaneously satisfy constraints.</p>
+
+<pre><code>Probably at least one of the constraints in the following list is one you don't want.
+Try this:
+    (1) look at each constraint and try to figure out which you don't expect;
+    (2) find the code that added the unwanted constraint or constraints and fix it.
+</code></pre>
+
+<p>(</p>
+
+<pre><code>"&lt;NSLayoutConstraint:0x618000095a90 UIView:0x7ffc6dc04350.height == 44   (active)&gt;",
+"&lt;NSLayoutConstraint:0x610000097020 'UISV-canvas-connection' UIStackView:0x7ffc6de08680.top == UIView:0x7ffc6df0b170.top   (active)&gt;",
+"&lt;NSLayoutConstraint:0x610000097980 'UISV-canvas-connection' V:[UIView:0x7ffc6dc04350]-(0)-|   (active, names: '|':UIStackView:0x7ffc6de08680 )&gt;",
+"&lt;NSLayoutConstraint:0x6080000944b0 'UISV-hiding' UIStackView:0x7ffc6de08680.height == 0   (active)&gt;",
+"&lt;NSLayoutConstraint:0x6100000979d0 'UISV-spacing' V:[UIView:0x7ffc6df0b170]-(16)-[UIView:0x7ffc6dc088c0]   (active)&gt;",
+"&lt;NSLayoutConstraint:0x610000097a20 'UISV-spacing' V:[UIView:0x7ffc6dc088c0]-(16)-[UIView:0x7ffc6dc04350]   (active)&gt;"
+</code></pre>
+
+<p>)</p>
+
+<p>Will attempt to recover by breaking constraint
+&lt;NSLayoutConstraint:0x618000095a90 UIView:0x7ffc6dc04350.height == 44   (active)></p>
+
+<p>Make a symbolic breakpoint at UIViewAlertForUnsatisfiableConstraints to catch this in the debugger.
+The methods in the UIConstraintBasedLayoutDebugging category on UIView listed in &lt;UIKit/UIView.h> may also be helpful.
+2017-12-09 16:46:15.542896+0900 FacebookManagerSample[94864:5445545] [LayoutConstraints] Unable to simultaneously satisfy constraints.</p>
+
+<pre><code>Probably at least one of the constraints in the following list is one you don't want.
+Try this:
+    (1) look at each constraint and try to figure out which you don't expect;
+    (2) find the code that added the unwanted constraint or constraints and fix it.
+</code></pre>
+
+<p>(</p>
+
+<pre><code>"&lt;NSLayoutConstraint:0x610000097020 'UISV-canvas-connection' UIStackView:0x7ffc6de08680.top == UIView:0x7ffc6df0b170.top   (active)&gt;",
+"&lt;NSLayoutConstraint:0x610000097980 'UISV-canvas-connection' V:[UIView:0x7ffc6dc04350]-(0)-|   (active, names: '|':UIStackView:0x7ffc6de08680 )&gt;",
+"&lt;NSLayoutConstraint:0x6080000944b0 'UISV-hiding' UIStackView:0x7ffc6de08680.height == 0   (active)&gt;",
+"&lt;NSLayoutConstraint:0x6100000979d0 'UISV-spacing' V:[UIView:0x7ffc6df0b170]-(16)-[UIView:0x7ffc6dc088c0]   (active)&gt;",
+"&lt;NSLayoutConstraint:0x610000097a20 'UISV-spacing' V:[UIView:0x7ffc6dc088c0]-(16)-[UIView:0x7ffc6dc04350]   (active)&gt;"
+</code></pre>
+
+<p>)</p>
+
+<p>Will attempt to recover by breaking constraint
+&lt;NSLayoutConstraint:0x610000097a20 &lsquo;UISV-spacing&rsquo; V:[UIView:0x7ffc6dc088c0]&ndash;(16)&ndash;[UIView:0x7ffc6dc04350]   (active)></p>
+
+<p>Make a symbolic breakpoint at UIViewAlertForUnsatisfiableConstraints to catch this in the debugger.
+The methods in the UIConstraintBasedLayoutDebugging category on UIView listed in &lt;UIKit/UIView.h> may also be helpful.
+```</p>
+
+<p>これには2つの要因があります。</p>
+
+<ol>
+<li>子要素の <code>UIView</code> の <code>height</code> が <code>44pt</code> 固定にも関わらず、 <code>UIStackView</code> が非表示 ( = <code>height</code> が <code>0pt</code> ) になる</li>
+<li><code>UIStackView</code> 内の子要素同士は <code>16pt</code> ごとに間隔を空ける指定をしているにも関わらず、 <code>UIStackView</code> が非表示 ( = <code>height</code> が <code>0pt</code> )になる</li>
+</ol>
+
+
+<p>上記2要素を解決すれば <code>Constraint</code> エラーを解消することができます。</p>
+
+<h3>iOS10でConstraintエラーを解消する方法</h3>
+
+<p>では、具体的に <code>Constraint</code> エラーを解消してみましょう。</p>
+
+<h4>1つ目の原因の解決方法</h4>
+
+<p>先程上げた要因の1点目は <code>Storyboard</code> 上で解決可能です。</p>
+
+<p><img src="/images/ios11_stackview_2.png" alt="Storyboard上でConstraintの指定を変更する" /></p>
+
+<p>親の <code>UIStackView</code> が非表示になることで、子要素の <code>UIView</code> が <code>0pt</code> になる可能性があるので、<code>Constraint</code> の <code>Priority</code> を <code>999</code> 以下にします。<br/>
+これは、デフォルトの <code>Priority</code> が <code>1000</code> だからです。</p>
+
+<h4>2つ目の原因の解決方法</h4>
+
+<p>続いて要点の2点目の解決方法です。<br/>
+<code>Child Stack View</code> が非表示になることで、3つの子要素の <code>UIView</code> も強制的に非表示になってしまいます。<br/>
+しかし、 <code>Child Stack View</code> は3つの子要素である <code>UIView</code> に <code>16pt</code> の間隔を空けるように指定しています。<br/>
+これを解消するためには、親要素が非表示になるときに合わせて子要素も非表示にする必要があります。<br/>
+※あくまでも <code>UIStackView</code> 内に <code>UIStackView</code> を持つ場合に発生し、 <code>UIStackView</code> 単体の場合は発生しません。</p>
+
+<p>具体的に実装した解決方法は以下です。</p>
+
+<p>```objective-c
+import UIKit</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>// MARK: - IBOutlets
+@IBOutlet private var stackView: UIStackView!
+@IBOutlet private var childrenView1: UIView!
+@IBOutlet private var childrenView2: UIView!
+@IBOutlet private var childrenView3: UIView!
+
+// MARK: - Properties
+private var isHidden = false  // 現在の表示・非表示の状態を保持
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+    // Do any additional setup after loading the view, typically from a nib.
+
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+    // Dispose of any resources that can be recreated.
+}
+
+// MARK: - IBActions
+@IBAction private func onTappedButton(_ sender: UIButton) {
+    // ボタンタップ時に表示・非表示の切り替え
+    showOrHideSubView()
+}
+</code></pre>
+
+<p>}</p>
+
+<p>extension ViewController {</p>
+
+<pre><code>func showOrHideSubView() {
+    if isHidden {
+        // 表示する場合
+        // 自身を表示
+        stackView.isHidden = false
+        // 子要素を表示
+        stackView.subviews.forEach {
+            $0.isHidden = false
+        }
+        // 表示・非表示状態の更新
+        isHidden = false
+        return
+    }
+    // 非表示にする場合
+    // 自身を非表示
+    stackView.isHidden = true
+    // 子要素を非表示
+    stackView.subviews.forEach {
+        $0.isHidden = true
+    }
+    // 表示・非表示状態の更新
+    isHidden = true
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記2点の改修を加えた上でiOS10で実行すると <code>Constraint</code> エラーが発生していないことがわかると思います。</p>
+
+<h3>iOS11でどうなるか&hellip;</h3>
+
+<p>ではでは、iOS11ではどうなっているのかというと&hellip;<br/>
+なんとiOS10で必要だった2つの手段を取らずとも自動的に <code>Constraint</code> エラーが解決されています！！<br/>
+いちいち <code>@999</code> つけたり、 <code>subViews</code> を <code>hidden</code> にしなくて良いのは手間がかからず非常に助かりますね！</p>
+
+<h3>まとめ</h3>
+
+<p>如何でしたでしょうか？<br/>
+少々短めな紹介記事になってしまいましたが、地味ながら開発者が喜ぶ改善がされているiOSは改めて素晴らしいですね。<br/>
+これからもバシバシ <code>UIStackView</code> を利用する気になってきますね！<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
