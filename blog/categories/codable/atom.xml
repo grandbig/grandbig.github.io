@@ -1,0 +1,697 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: codable | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/codable/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2018-04-23T00:52:35+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Swift4.1で利便性が向上したCodable]]></title>
+    <link href="http://grandbig.github.io/blog/2018/04/23/codable-swift4-1/"/>
+    <updated>2018-04-23T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/04/23/codable-swift4-1</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回はSwift4.1でさらに利便性が向上した <code>Codable</code> について紹介したいと思います。<br/>
+Swift4で登場した <code>Codable</code> ですが、何がより便利になったかというと、 <strong>スネークケース</strong> から <strong>キャメルケース</strong> への変換処理です。</p>
+
+<p>早速、実例を交えて何が変わったのか見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>スネークケースからキャメルケースへの変換処理</h3>
+
+<p>まずは、説明のために扱うAPIについて説明したいと思います。</p>
+
+<h4>サンプルとして利用するAPIについて</h4>
+
+<p>今回は、 <a href="https://developers.google.com/places/web-service/?hl=ja">Google Places API</a>を元に説明します。<br/>
+<code>Google Places API</code> で返却されるレスポンスの一例は以下の通りです。</p>
+
+<p><img src="/images/swift4_1_codable.png" alt="Google Places APIのレスポンスの一部" /></p>
+
+<h4>Swift4での対応方法</h4>
+
+<p>これまでのSwift4では以下のようにスネークケースからキャメルケースへの対応をしていました。</p>
+
+<p>```objective-c
+public struct Place: Codable {</p>
+
+<pre><code>public var id: String
+public var placeId: String
+public var name: String
+...
+
+private enum CodingKeys: String, CodingKey {
+    case id
+    case placeId = "place_id"
+    case name
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記のように、自身で <code>CodingKey</code> プロトコルに準拠した <code>CodingKeys</code> を定義していました。</p>
+
+<h4>Swift4.1での対応方法</h4>
+
+<p>スネークケースからキャメルケースへの変換はほぼほぼ確実に発生しうる命名規則と考えられるので対応したのでしょうか？<br/>
+Swift4.1では実に簡単に対応できます。</p>
+
+<p>```objective-c
+public struct Place: Codable {</p>
+
+<pre><code>public var id: String
+public var placeId: String
+public var name: String
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Swift4.1では <code>CodingKeys</code> 内で設定する必要がありません。<br/>
+サーバレスポンスの変換前に以下の1行を追加するだけで自動で判断してくれるようになりました。</p>
+
+<p>```objective-c
+// Moyaを利用したAPIレスポンスを扱う例
+// 今回はMoyaが説明のメインではないため、深くは説明しない
+provider.request(.places(lat: lat, lng: lng)) { result in</p>
+
+<pre><code>switch result {
+case .success(let response):
+    do {
+        let decoder = JSONDecoder()
+
+        // 下記を追加
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // 上記を追加
+
+        let places = try decoder.decode(Places.self, from: response.data)
+        print("places: \(places)")
+    } catch {
+        print("error: 変換エラー")
+    }
+case .failure(let error):
+    print("error: \(error)")
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>オマケ：Google Places APIでCodableを利用する</h3>
+
+<p>今回説明するにあたって定義した <code>Google Places API</code> 用の <code>Codable</code> を折角なので書いておきたいと思います。</p>
+
+<p>```objective-c
+import Foundation</p>
+
+<p>public struct Location: Codable {</p>
+
+<pre><code>public var lat: Double
+public var lng: Double
+</code></pre>
+
+<p>}</p>
+
+<p>public struct Viewport: Codable {</p>
+
+<pre><code>public var northeast: Location
+public var southwest: Location
+</code></pre>
+
+<p>}</p>
+
+<p>public struct Geometry: Codable {</p>
+
+<pre><code>public var viewport: Viewport
+public var location: Location
+</code></pre>
+
+<p>}</p>
+
+<p>public struct OpeningHours: Codable {</p>
+
+<pre><code>public var weekdayText: [String]
+public var openNow: Bool
+</code></pre>
+
+<p>}</p>
+
+<p>public struct Photos: Codable {</p>
+
+<pre><code>public var photoReference: String
+public var width: Double
+public var height: Double
+public var htmlAttributions: [String]
+</code></pre>
+
+<p>}</p>
+
+<p>public struct Place: Codable {</p>
+
+<pre><code>public var id: String
+public var placeId: String
+public var name: String
+public var icon: String
+public var rating: Double?
+public var scope: String
+public var vicinity: String
+public var reference: String
+public var priceLevel: Int?
+public var types: [String]
+public var geometry: Geometry
+public var openingHours: OpeningHours?
+public var photos: [Photos]?
+</code></pre>
+
+<p>}</p>
+
+<p>public struct Places: Codable {</p>
+
+<pre><code>public var places: [Place]
+public var status: String
+public var htmlAttributions: [String]
+
+private enum CodingKeys: String, CodingKey {
+    case places = "results"
+    case status
+    case htmlAttributions
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+オープンソース化された効果なのか、Swiftも現場で必要とされる使われ方にどんどん適応していっている感じがしますね。<br/>
+今後に更なる期待を寄せつつ、本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Facebook APIで試すCodable]]></title>
+    <link href="http://grandbig.github.io/blog/2017/12/03/facebook-and-codable/"/>
+    <updated>2017-12-03T15:30:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2017/12/03/facebook-and-codable</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>こちらは <a href="https://qiita.com/advent-calendar/2017/swift2">Swift その2 Advent Calendar 2017</a> の3日目の記事です。<br/>
+今年の後半戦から久々に業務にてiOSアプリを開発することが決まっていたため、実に1年半ぶりにSwiftを扱うことになりました。</p>
+
+<p>Swift4を積極的に利用していた際に、便利と名高い <code>Codable</code> に触れる機会があったため、<br/>
+本記事では実際に使ってみた <code>Codable</code> の例を書きたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Codableとは</h3>
+
+<p>これまで <code>JSON</code> をパースするためには、<br/>
+<code>JSONSerialization</code> や <code>SwiftyJSON</code> などのOSSライブラリを利用して値を取り出す形で書いていたことと思います。</p>
+
+<p>```objective-c
+// これまでの例</p>
+
+<p>import SwiftyJSON</p>
+
+<p>// レスポンスデータ用の構造体
+struct Restaurant {</p>
+
+<pre><code>var id: String
+var name: String
+var latitude: Double
+var longitude: Double
+</code></pre>
+
+<p>}</p>
+
+<p>// データ取得クラス
+class HogeHoge {</p>
+
+<pre><code>func fetchData() {
+
+  // 省略 (API等でデータを取得)
+
+  do {
+      let json = try JSON(data: response.data)
+
+      // APIから返却されたjsonデータが以下だったとします。
+      // {
+      //    "id": "1"
+      //    "name": "hogehoge"
+      //    "latitude": "37"
+      //    "longitude": "135"
+      // }
+
+      let id = json["id"].string ?? "ID不明"
+      let name = json["name"].string ?? "ショップ名不明"
+      let latitude = json["latitude"].string ?? "0"
+      let longitude = json["longitude"].string ?? "0"
+      let restaurant = Restaurant(id: id, name: name, latitude: latitude, longitude: longitude)
+  } catch {
+      ...
+  }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記のように、 <code>SwiftyJSON</code> を利用して <code>JSON</code> 化したオブジェクトから、<br/>
+<code>let id = json["id"].string</code> や <code>let name = json["name"].string</code> のように返却レスポンスである <code>Restaurant</code> に自身でマッピングする必要がありました。
+これがなんと、 <code>Codable</code> を利用することで、毎回のように書いていたマッピング処理が簡素化されるようです。</p>
+
+<h3>実際の利用例</h3>
+
+<p>今回はFacebookログインによる認証処理が機能の1つとして必要でした。<br/>
+また、Facebookの <code>Graph API</code> を叩いて幾つかのプロフィール情報を取得するのですが、<br/>
+その中で <code>gender</code> の項目のみ「Facebookが返却する値」と「こちらのシステムが担保する <code>gender</code> の値」が異なっていました。</p>
+
+<p>形式の違いは以下の通りです。<br/>
+まずは、Facebookが返却するgenderの値です。</p>
+
+<p><code>objective-c
+男性の場合 → "male"
+女性の場合 → "female"
+</code></p>
+
+<p>続いて必要だった形式です。</p>
+
+<p><code>objective-c
+男性の場合 → 0
+女性の場合 → 1
+</code></p>
+
+<p>もちろん上記違いがあったとしても <code>Codable</code> は利用可能ですので、実際に書いてみました。<br/>
+※ Facebookログインを利用するための前準備は <a href="http://grandbig.github.io/blog/2016/05/14/facebook-login-for-swift/">SwiftでFacebookログインを始めよう！</a> を参考にしてください。</p>
+
+<h4>システム固有の性別のEnumの定義</h4>
+
+<p>```objective-c
+// 性別のEnum定義
+public enum Gender: Int {</p>
+
+<pre><code>case male
+case female
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Codableに準拠する構造体の定義</h4>
+
+<p>```objective-c
+// Facebookから取得するユーザ情報の構造体 (Codableに準拠)
+public struct FacebookUserProfile: Codable {</p>
+
+<pre><code>public var id: String     // FacebookID
+public var email: String? // Facebookに登録されているメールアドレス
+public var gender: Gender // Facebookに登録されている性別
+
+// APIとアプリ間でありがちなプロパティ名の違いをココで吸収できる
+// 今回は全て同じなので問題なし
+private enum CodingKeys: String, CodingKey {
+    case id = "id"
+    case email
+    case gender
+}
+
+// デコード処理をカスタマイズ
+public init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try values.decode(String.self, forKey: .id)
+    self.email = try values.decodeIfPresent(String.self, forKey: .email)
+
+    // APIから取得した性別の値をこちらのシステムの形式に変更する
+    let genderString = try values.decode(String.self, forKey: .gender)
+    if genderString == "male" {
+        self.gender = .male
+    } else {
+        self.gender = .female
+    }
+}
+
+// エンコード処理をカスタマイズ
+public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encodeIfPresent(email, forKey: .email)
+
+    // システム固有の形式をAPIから取得した形式に戻す
+    if gender == .male {
+        try container.encode("male", forKey: .gender)
+    } else {
+        try container.encode("female", forKey: .gender)
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>JSONDecoderの拡張定義</h4>
+
+<p>少々困ったのが、Facebookの <code>Graph API</code> から返却される <code>response</code> を <code>data</code> 型に変換するメソッドが予め用意されていないことでした。<br/>
+毎回、 <code>JSONSerialization</code> を利用する処理を1行加えるのも手間なので、以下のように拡張メソッドを用意することにしました。</p>
+
+<p>```objective-c
+extension JSONDecoder {</p>
+
+<pre><code>// Any型をdecode可能なメソッドを追加
+public func decode&lt;T: Decodable&gt;(_ type: T.Type,
+                                 withJSONObject object: Any,
+                                 options opt: JSONSerialization.WritingOptions = []) throws -&gt; T {
+
+    let data = try JSONSerialization.data(withJSONObject: object, options: opt)
+    return try decode(T.self, from: data)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Facebook Graph APIによるプロフィール情報取得処理</h4>
+
+<p>準備は整ったので、実際に <code>Graph API</code> を叩く部分の処理を実装します。</p>
+
+<p>```objective-c
+import Foundation
+import PromiseKit
+import FacebookCore
+import FacebookLogin</p>
+
+<p>public final class FacebookManager {</p>
+
+<pre><code>public static let shared = FacebookManager()
+private init() {
+}
+
+enum FacebookError: Error {
+    case cancel       // Facebook認証をキャンセルした場合
+    case apiError     // APIからエラーが返却された場合
+    case decodeError  // デコード処理に失敗した場合
+}
+
+public enum FacebookUserField: String {
+    case id = "id"
+    case email = "email"
+    case gender = "gender"
+}
+
+/// Facebookからユーザのプロフィール情報を取得する
+///
+/// - Parameter facebookUserFields: 取得するプロフィール情報の指定
+/// - Returns: ユーザのプロフィール情報
+public func getUserProfile(facebookUserFields: [FacebookUserField] = [.id, .email, .gender]) -&gt; Promise&lt;FacebookUserProfile&gt; {
+
+    let promise = Promise&lt;FacebookUserProfile&gt; { fulfill, reject in
+        let fields = facebookUserFields.map { $0.rawValue }
+        let field = fields.joined(separator: ",")
+
+        GraphRequest(graphPath: "me",
+                     parameters: ["fields": field],
+                     accessToken: AccessToken.current,
+                     httpMethod: .GET,
+                     apiVersion: .defaultVersion).start { response, result in
+
+                        switch result {
+                        case .success(let response):
+                            do {
+                                let decoder = JSONDecoder()
+                                let profile = try decoder.decode(FacebookUserProfile.self,
+                                                                 withJSONObject: response.dictionaryValue as Any)
+                                _ = fulfill(profile)
+                            } catch {
+                                _ = reject(FacebookError.decodeError)
+                            }
+                        case .failed(let error):
+                            print(error.localizedDescription)
+                            _ = reject(FacebookError.apiError)
+                        }
+        }
+    }
+
+    return promise
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記の通り、 <code>let profile = try decoder.decode(...)</code> だけで済んでいますね。<br/>
+今回は1つのメソッドしか書いていませんが同様のレスポンスを持つ複数メソッドを定義する必要がある場合などにより効力を発揮しそうな気がします。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+<code>Codable</code> は今後更なる進化も予定されていると聞きますし、楽しみな機能の1つですね。<br/>
+筆者も引き続き積極的にSwift4の機能を利用していきたいと思います。</p>
+
+<p>最後にソースコード全体を載せておきます。<br/>
+(説明上、関係のないところは割愛していたので&hellip;)</p>
+
+<p>```objective-c
+import Foundation
+import PromiseKit
+import FacebookCore
+import FacebookLogin</p>
+
+<p>public enum Gender: Int {</p>
+
+<pre><code>case male
+case female
+</code></pre>
+
+<p>}</p>
+
+<p>public struct FacebookUserProfile: Codable {</p>
+
+<pre><code>public var id: String
+public var email: String?
+public var gender: Gender
+
+private enum CodingKeys: String, CodingKey {
+    case id
+    case email
+    case gender
+}
+
+public init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try values.decode(String.self, forKey: .id)
+    self.email = try values.decodeIfPresent(String.self, forKey: .email)
+    let genderString = try values.decode(String.self, forKey: .gender)
+    if genderString == "male" {
+        self.gender = .male
+    } else {
+        self.gender = .female
+    }
+}
+
+public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encodeIfPresent(email, forKey: .email)
+
+    if gender == .male {
+        try container.encode("male", forKey: .gender)
+    } else {
+        try container.encode("female", forKey: .gender)
+    }
+}
+</code></pre>
+
+<p>}</p>
+
+<p>public final class FacebookManager {</p>
+
+<pre><code>public static let shared = FacebookManager()
+private init() {
+}
+
+enum FacebookError: Error {
+    case cancel
+    case apiError
+    case decodeError
+}
+
+public enum FacebookPermission: String {
+    case email = "email"
+    case publicProfile = "public_profile"
+}
+
+public enum FacebookUserField: String {
+    case id = "id"
+    case email = "email"
+    case gender = "gender"
+}
+
+public func application(_ application: UIApplication, didFinishLaunchingWithOptions: [UIApplicationLaunchOptionsKey: Any]?) {
+
+    SDKApplicationDelegate.shared.application(application, didFinishLaunchingWithOptions: didFinishLaunchingWithOptions)
+}
+
+public func application(_ app: UIApplication,
+                        open url: URL,
+                        options: [UIApplicationOpenURLOptionsKey: Any] = [:]) -&gt; Bool {
+
+    return SDKApplicationDelegate.shared.application(app, open: url, options: options)
+}
+
+public func isLoggedIn() -&gt; Bool {
+    return AccessToken.current != nil
+}
+
+public func login(_ viewController: UIViewController,
+                  permissions: [FacebookPermission] = [.email, .publicProfile]) -&gt; Promise&lt;String&gt; {
+
+    if isLoggedIn() {
+        logout()
+    }
+
+    let promise = Promise&lt;String&gt; { fulfill, reject in
+        var readPermissions = [ReadPermission]()
+        permissions.forEach {
+            readPermissions.append(ReadPermission.custom($0.rawValue))
+        }
+
+        LoginManager().logIn(readPermissions: readPermissions,
+                             viewController: viewController,
+                             completion: { result in
+
+                                switch result {
+                                case .success(_, _, let accessToken):
+                                    _ = fulfill(accessToken.authenticationToken)
+                                case .cancelled:
+                                    let error = FacebookError.cancel
+                                    _ = reject(error)
+                                case .failed(let error):
+                                    _ = reject(error)
+                                }
+        })
+    }
+
+    return promise
+}
+
+public func logout() {
+    LoginManager().logOut()
+}
+
+/// Facebookからユーザのプロフィール情報を取得する
+///
+/// - Parameter facebookUserFields: 取得するプロフィール情報の指定
+/// - Returns: ユーザのプロフィール情報
+public func getUserProfile(facebookUserFields: [FacebookUserField] = [.id, .email, .gender]) -&gt; Promise&lt;FacebookUserProfile&gt; {
+
+    let promise = Promise&lt;FacebookUserProfile&gt; { fulfill, reject in
+        let fields = facebookUserFields.map { $0.rawValue }
+        let field = fields.joined(separator: ",")
+
+        GraphRequest(graphPath: "me",
+                     parameters: ["fields": field],
+                     accessToken: AccessToken.current,
+                     httpMethod: .GET,
+                     apiVersion: .defaultVersion).start { response, result in
+
+                        switch result {
+                        case .success(let response):
+                            do {
+                                let decoder = JSONDecoder()
+                                let profile = try decoder.decode(FacebookUserProfile.self,
+                                                                 withJSONObject: response.dictionaryValue as Any)
+                                _ = fulfill(profile)
+                            } catch {
+                                _ = reject(FacebookError.decodeError)
+                            }
+                        case .failed(let error):
+                            print(error.localizedDescription)
+                            _ = reject(FacebookError.apiError)
+                        }
+        }
+    }
+
+    return promise
+}
+</code></pre>
+
+<p>}</p>
+
+<p>extension JSONDecoder {</p>
+
+<pre><code>// Any型をdecode可能なメソッドを追加
+public func decode&lt;T: Decodable&gt;(_ type: T.Type,
+                                 withJSONObject object: Any,
+                                 options opt: JSONSerialization.WritingOptions = []) throws -&gt; T {
+
+    let data = try JSONSerialization.data(withJSONObject: object, options: opt)
+    return try decode(T.self, from: data)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
