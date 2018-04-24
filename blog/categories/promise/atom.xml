@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: promise | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/promise/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2018-04-25T00:51:01+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[PromiseKitを使ってみよう！(2)]]></title>
+    <link href="http://grandbig.github.io/blog/2018/04/24/swift-promisekit-2/"/>
+    <updated>2018-04-24T23:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/04/24/swift-promisekit-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は久しぶりに<a href="https://github.com/mxcl/PromiseKit">PromiseKit</a>について書きたいと思います。<br/>
+今から約2年前に<a href="http://grandbig.github.io/blog/2016/04/09/c/">PromiseKitを使ってみよう！</a>で少し触れていたのですが、<br/>
+最近業務で扱うことも増えてきたので改めて書き留めておこうと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Promiseとは</h3>
+
+<p><code>PromiseKit</code> に記載されている内容を訳すと(若干、意訳してますが&hellip;)、</p>
+
+<ul>
+<li>シンプルな非同期プログラミングを実現できる</li>
+<li>上記によって、開発者がより重要な課題に集中することができる</li>
+<li>学習ハードルが低いため、マスターすることが簡単である</li>
+<li>可読性の高いコードが実現できるため、チーム開発にも向いている</li>
+</ul>
+
+
+<p>といった感じです。<br/>
+これを見る限り、非常に期待できますよね。<br/>
+では、具体的な使い方を見ていきましょう。</p>
+
+<h3>アラートでの利用例</h3>
+
+<p><code>UIAlertViewController</code> を利用した時に、通常は以下のように <code>completion</code> を引数に持って実装するかと思います。</p>
+
+<p>```objective-c
+internal func showConfirm(title: String,</p>
+
+<pre><code>                      message: String,
+                      okCompletion: @escaping (() -&gt; Void),
+                      cancelCompletion: @escaping (() -&gt; Void)) {
+let alert = UIAlertController.init(title: title, message: message, preferredStyle: UIAlertControllerStyle.alert)
+let okAction = UIAlertAction.init(title: "OK", style: UIAlertActionStyle.default) { _ in
+    okCompletion()
+}
+let cancelAction = UIAlertAction.init(title: "キャンセル", style: UIAlertActionStyle.cancel) { _ in
+    cancelCompletion()
+}
+alert.addAction(okAction)
+alert.addAction(cancelAction)
+present(alert, animated: true, completion: nil)
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これだと引数が多くなってしまいますし、呼び出し側でも下記のように書くことになります。</p>
+
+<p>```objective-c
+self.showConfirm(title: &ldquo;確認&rdquo;, message: &ldquo;OKとキャンセルどちらをタップしますか&rdquo;, okCompletion: {</p>
+
+<pre><code>// OKボタンをクリックした場合に呼び出される
+</code></pre>
+
+<p>}) {</p>
+
+<pre><code>// キャンセルボタンをクリックした場合に呼び出される
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これを <code>PromiseKit</code> を使って書くとどうなるでしょうか？<br/>
+まずは、アラートのメソッドは下記のように書けます。</p>
+
+<p>```objective-c
+import PromiseKit</p>
+
+<p>internal enum AlertError: Error {</p>
+
+<pre><code>case cancel
+</code></pre>
+
+<p>}</p>
+
+<p>internal func showConfirm(title: String, message: String) &ndash;> Promise<Void> {</p>
+
+<pre><code>let (promise, resolver) = Promise&lt;Void&gt;.pending()
+
+let alert = UIAlertController.init(title: title, message: message, preferredStyle: UIAlertControllerStyle.alert)
+let okAction = UIAlertAction.init(title: R.string.common.ok(), style: UIAlertActionStyle.default) { _ in
+    resolver.fulfill(Void())
+}
+let cancelAction = UIAlertAction.init(title: R.string.common.cancel(), style: UIAlertActionStyle.cancel) { _ in
+    resolver.reject(AlertError.cancel)
+}
+alert.addAction(okAction)
+alert.addAction(cancelAction)
+present(alert, animated: true, completion: nil)
+
+return promise
+</code></pre>
+
+<p>}
+```</p>
+
+<p>呼び出し側では、</p>
+
+<p>```objective-c
+import PromiseKit</p>
+
+<p>firstly {
+  showConfirm(title: &ldquo;確認&rdquo;, message: &ldquo;OKとキャンセルどちらをタップしますか&rdquo;)
+}.done { _ in</p>
+
+<pre><code>// OKをタップした場合に呼び出される処理
+</code></pre>
+
+<p>}.catch { [weak self] error in</p>
+
+<pre><code>// キャンセルをタップした場合に呼び出される処理
+</code></pre>
+
+<p>}
+```</p>
+
+<p>と書くことができ、ネストも浅くなるし、非常にわかりやすく後続の処理を書くことができます。</p>
+
+<h3>API呼び出しの利用例</h3>
+
+<p>続いて、API呼び出しの場合の利用例を見ていきましょう。<br/>
+今回API通信処理では <a href="https://github.com/Moya/Moya">Moya</a> を利用します。<br/>
+また、叩くAPIは <a href="https://developers.google.com/places/?hl=ja">Google Places API</a> を利用します。</p>
+
+<p>まずは <code>Moya</code> の書き方ですが、</p>
+
+<p>```objective-c
+import Foundation
+import Moya
+import PromiseKit</p>
+
+<p>// APIエラーの定義
+internal enum APIError: Error {</p>
+
+<pre><code>case cancel
+case apiError(description: String)
+case decodeError
+</code></pre>
+
+<p>}</p>
+
+<p>internal enum SampleAPITarget {</p>
+
+<pre><code>case places(lat: Double, lng: Double)
+</code></pre>
+
+<p>}</p>
+
+<p>extension SampleAPITarget: TargetType {</p>
+
+<pre><code>/// API Key
+private var apiKey: String {
+    // 以下はGoogleのAPIキーをkey.plistで保持していると仮定した処理です。
+    guard let path = Bundle.main.path(forResource: "key", ofType: "plist") else {
+        fatalError("key.plistが見つかりません")
+    }
+
+    guard let dic = NSDictionary(contentsOfFile: path) as? [String: Any] else {
+        fatalError("key.plistの中身が想定通りではありません")
+    }
+
+    guard let apiKey = dic["googleApiKey"] as? String else {
+        fatalError("Google APIのKeyが設定されていません")
+    }
+
+    return apiKey
+}
+
+// ベースURLを文字列で定義
+private var _baseURL: String {
+    return "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+}
+
+public var baseURL: URL {
+    return URL(string: _baseURL)!
+}
+
+// enumの値に対応したパスを指定
+public var path: String {
+    switch self {
+    case .places:
+        return ""
+    }
+}
+
+// enumの値に対応したHTTPメソッドを指定
+public var method: Moya.Method {
+    switch self {
+    case .places:
+        return .get
+    }
+}
+
+// スタブデータの設定
+public var sampleData: Data {
+    switch self {
+    case .places:
+        return "Stub data".data(using: String.Encoding.utf8)!
+    }
+}
+
+// パラメータの設定
+var task: Task {
+    switch self {
+    case .places(let lat, let lng):
+        return .requestParameters(parameters: [
+            R.string.common.keyFileName(): apiKey,
+            R.string.common.locationKeyName(): "\(lat),\(lng)",
+            R.string.common.radiusKeyName(): 500
+            ], encoding: URLEncoding.default)
+    }
+}
+
+// ヘッダーの設定
+var headers: [String: String]? {
+    switch self {
+    case .places:
+        return nil
+    }
+}
+</code></pre>
+
+<p>}</p>
+
+<p>class SampleAPI {</p>
+
+<pre><code>private var provider: MoyaProvider&lt;SampleAPITarget&gt;!
+
+/// イニシャライザ
+init() {
+    provider = MoyaProvider&lt;SampleAPITarget&gt;()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のように書きます。<br/>
+( <code>Moya</code> はUnitテストが書きやすいので良いんですよね〜という話はまた後日&hellip; )</p>
+
+<p>では、本題の <code>PromiseKit</code> を用いたAPI通信処理です。<br/>
+先程の <code>SampleAPI</code> クラスにメソッドを追加してみます。</p>
+
+<p>```objective-c
+class SampleAPI {</p>
+
+<pre><code>private var provider: MoyaProvider&lt;SampleAPITarget&gt;!
+
+/// イニシャライザ
+init() {
+    provider = MoyaProvider&lt;SampleAPITarget&gt;()
+}
+
+// Placeの定義は
+// https://grandbig.github.io/blog/2018/04/23/codable-swift4-1/
+// の『オマケ：Google Places APIでCodableを利用する』を参照のこと
+func fetchPlaces(lat: Double, lng: Double) -&gt; Promise&lt;[Place]&gt; {
+    let (promise, resolver) = Promise&lt;[Place]&gt;.pending()
+
+    provider.request(.places(lat: lat, lng: lng)) { result in
+        switch result {
+        case .success(let response):
+            do {
+                let decoder = JSONDecoder()
+                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                let places = try decoder.decode(Places.self, from: response.data)
+
+                resolver.fulfill(places.results)
+            } catch {
+                resolver.reject(APIError.decodeError)
+            }
+        case .failure(let error):
+            resolver.reject(APIError.apiError(description: error.localizedDescription))
+        }
+    }
+
+    return promise
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記のように定義できます。<br/>
+これを呼び出すときは、</p>
+
+<p>```objective-c
+var worker = SampleAPI()</p>
+
+<p>firstly {</p>
+
+<pre><code>worker.fetchPlaces(lat: latitude, lng: longitude)
+</code></pre>
+
+<p>}.done { [weak self] results in</p>
+
+<pre><code>guard let strongSelf = self else { return }
+print(results)
+</code></pre>
+
+<p>}.catch { [weak self] error in</p>
+
+<pre><code>guard let strongSelf = self else { return }
+print(error.localizedDescription)
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のように書くことができます。<br/>
+こちらも縦に浅いネストで読むことができるため、可読性が高いと言えますね。</p>
+
+<h3>PromiseKitの公式Readme</h3>
+
+<p><code>PromiseKit</code> のドキュメントは非常に丁寧なので、これを読むだけでも理解を相当深められると思います。</p>
+
+<ul>
+<li><a href="https://github.com/mxcl/PromiseKit/blob/master/Documentation/GettingStarted.md">GettingStarted</a></li>
+<li><a href="https://github.com/mxcl/PromiseKit/blob/master/Documentation/CommonPatterns.md">CommonPatterns</a></li>
+</ul>
+
+
+<p>を読んでおけばOKかと。<br/>
+(上記の話も別機会でかければと思います。)</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか？<br/>
+筆者は割りと <code>completion</code> で書くのが好きだったのですが、 <code>PromiseKit</code> に慣れていくと、その良さにどんどん気づいていくことができました。<br/>
+リトライ処理は遅延実行も簡単に対応できたりするので、ぜひ使ってみることをオススメします。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[PromiseKitを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/04/09/swift-promisekit/"/>
+    <updated>2016-04-09T23:07:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/04/09/swift-promisekit</id>
+    <content type="html"><![CDATA[<h4>SwiftでPromiseライブラリを使ってみよう</h4>
+
+<p>さて、前回から引き続きSwiftでのPromiseライブラリについて見ていきたいと思います。<br/>
+今回はPromiseライブラリのSwift界隈で有名な <strong>PromiseKit</strong> について見ていきます。</p>
+
+<h4>PromiseKitのインストール</h4>
+
+<p>早速、 <strong>PromiseKit</strong> の導入について紹介します。<br/>
+筆者の場合、Xcode7.3を利用しているため、Swift2.2を扱うことになります。<br/>
+<a href="https://github.com/mxcl/PromiseKit">GitHub</a>で紹介されている下記の導入方法では <strong>2.2.1</strong> がインストールされます。<br/>
+しかし、このバージョンはSwift2.2に対応していないため、エラーが発生します。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<p>```objective-c
+use_frameworks!</p>
+
+<p>pod &ldquo;PromiseKit&rdquo;, &ldquo;~>2.0&rdquo;
+```</p>
+
+<p><a href="http://promisekit.org/">PromiseKitの公式ドキュメントページ</a>を見ると、Newsの項目でバージョン <strong>3.1.0</strong> でSwift2.2に対応したと書かれています。<br/>
+そこで、今回は、</p>
+
+<p>```objective-c
+use_frameworks!</p>
+
+<p>pod &ldquo;PromiseKit&rdquo;, &ldquo;3.1.0&rdquo;
+```</p>
+
+<p>とすることで、Xcode7.3でも問題なく、PromiseKitを扱えるようにしました。</p>
+
+<h4>PromiseKitで非同期処理を直列に書いてみよう</h4>
+
+<p>前回のBrightFutureで紹介した処理をPromiseKitで書いてみようと思います。<br/>
+まずは、非同期処理をPromiseKitを使って定義します。</p>
+
+<p>```objective-c
+func p(msg: String) &ndash;> Promise<String>{</p>
+
+<pre><code>let promise = Promise&lt;String&gt; { (fulfill, reject) in
+    let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+    dispatch_async(queue, {
+        sleep(1)
+        dispatch_sync(dispatch_get_main_queue(), {
+            print(msg)
+            fulfill(msg)
+        })
+    })
+}
+
+return promise
+</code></pre>
+
+<p>}
+```</p>
+
+<p>では、これを呼び出してみましょう。</p>
+
+<p>```objective-c
+p(&ldquo;Hello&rdquo;).then { (msg1) &ndash;> Promise<String> in</p>
+
+<pre><code>return p("Good Evening")
+</code></pre>
+
+<p>}.then { (msg2) &ndash;> Promise<String> in</p>
+
+<pre><code>return p("Good Bye")
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ネストが浅い状態で複数の非同期処理を書くことができました。<br/>
+また、BrightFutureと大きな違いはなく書くことできました。</p>
+
+<h4>PromiseKitで非同期処理を並列に書いてみよう</h4>
+
+<p>続いて、複数の非同期処理を並列に実行する場合を考えてみます。<br/>
+順番に処理をする必要がなく、処理が完了したものから反映していきたい場合などに使いますね。</p>
+
+<p>非同期処理自体は先程と同じものを使います。<br/>
+では、並列に処理を呼び出してみましょう。</p>
+
+<p>```objective-c
+// 実行したい非同期処理を定義
+let p1 = ps.p_promiseKit(&ldquo;Method1&rdquo;)
+let p2 = ps.p_promiseKit(&ldquo;Method2&rdquo;)
+let p3 = ps.p_promiseKit(&ldquo;Method3&rdquo;)</p>
+
+<p>// まとめて非同期処理を実行
+when([p1, p2, p3]).then { (result: [String]) &ndash;> AnyPromise in</p>
+
+<pre><code>return AnyPromise(bound: Promise())
+</code></pre>
+
+<p>}
+```</p>
+
+<p>先に書いた直列処理では、1秒間隔でログが出力されたかと思います。<br/>
+ここでは同時に実行したため、ほぼ同時に3つのログが出力されたはずです。</p>
+
+<p>さて如何だったでしょうか？<br/>
+SwiftでもPromiseライブラリはたくさん出てきました。<br/>
+<a href="https://github.com/Thomvis/BrightFutures">BrightFuture</a>, <a href="https://github.com/mxcl/PromiseKit">PromiseKit</a>, <a href="https://github.com/ReactKit/SwiftTask">SwiftTask</a>のいずれを利用するかは開発者の判断になるかと思います。<br/>
+個人的にはPromiseKitはGitHub上に似た名称のブランチがたくさんあるのをどうにかして欲しいなと思ってたりします笑</p>
+
+<p>また、時間があるときにPromiseを使って何かやりたいと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

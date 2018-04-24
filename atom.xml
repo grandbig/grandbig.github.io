@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2018-04-23T12:36:32+09:00</updated>
+  <updated>2018-04-25T00:49:26+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,524 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[PromiseKitを使ってみよう！(2)]]></title>
+    <link href="http://grandbig.github.io/blog/2018/04/24/swift-promisekit-2/"/>
+    <updated>2018-04-24T23:51:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/04/24/swift-promisekit-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は久しぶりに<a href="https://github.com/mxcl/PromiseKit">PromiseKit</a>について書きたいと思います。<br/>
+今から約2年前に<a href="http://grandbig.github.io/blog/2016/04/09/c/">PromiseKitを使ってみよう！</a>で少し触れていたのですが、<br/>
+最近業務で扱うことも増えてきたので改めて書き留めておこうと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Promiseとは</h3>
+
+<p><code>PromiseKit</code> に記載されている内容を訳すと(若干、意訳してますが&hellip;)、</p>
+
+<ul>
+<li>シンプルな非同期プログラミングを実現できる</li>
+<li>上記によって、開発者がより重要な課題に集中することができる</li>
+<li>学習ハードルが低いため、マスターすることが簡単である</li>
+<li>可読性の高いコードが実現できるため、チーム開発にも向いている</li>
+</ul>
+
+
+<p>といった感じです。<br/>
+これを見る限り、非常に期待できますよね。<br/>
+では、具体的な使い方を見ていきましょう。</p>
+
+<h3>アラートでの利用例</h3>
+
+<p><code>UIAlertViewController</code> を利用した時に、通常は以下のように <code>completion</code> を引数に持って実装するかと思います。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">internal</span> <span class="n">func</span> <span class="nf">showConfirm</span><span class="p">(</span><span class="nl">title:</span> <span class="n">String</span><span class="p">,</span>
+</span><span class='line'>                          <span class="nl">message:</span> <span class="n">String</span><span class="p">,</span>
+</span><span class='line'>                          <span class="nl">okCompletion:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">(()</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">),</span>
+</span><span class='line'>                          <span class="nl">cancelCompletion:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">(()</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">alert</span> <span class="o">=</span> <span class="n">UIAlertController</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">title:</span> <span class="n">title</span><span class="p">,</span> <span class="nl">message:</span> <span class="n">message</span><span class="p">,</span> <span class="nl">preferredStyle:</span> <span class="n">UIAlertControllerStyle</span><span class="p">.</span><span class="n">alert</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">okAction</span> <span class="o">=</span> <span class="n">UIAlertAction</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">title:</span> <span class="s">&quot;OK&quot;</span><span class="p">,</span> <span class="nl">style:</span> <span class="n">UIAlertActionStyle</span><span class="p">.</span><span class="k">default</span><span class="p">)</span> <span class="p">{</span> <span class="n">_</span> <span class="k">in</span>
+</span><span class='line'>        <span class="n">okCompletion</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">cancelAction</span> <span class="o">=</span> <span class="n">UIAlertAction</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">title:</span> <span class="s">&quot;キャンセル&quot;</span><span class="p">,</span> <span class="nl">style:</span> <span class="n">UIAlertActionStyle</span><span class="p">.</span><span class="n">cancel</span><span class="p">)</span> <span class="p">{</span> <span class="n">_</span> <span class="k">in</span>
+</span><span class='line'>        <span class="n">cancelCompletion</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">alert</span><span class="p">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">okAction</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">alert</span><span class="p">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">cancelAction</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">present</span><span class="p">(</span><span class="n">alert</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">true</span><span class="p">,</span> <span class="nl">completion:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これだと引数が多くなってしまいますし、呼び出し側でも下記のように書くことになります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">self</span><span class="p">.</span><span class="n">showConfirm</span><span class="p">(</span><span class="nl">title:</span> <span class="s">&quot;確認&quot;</span><span class="p">,</span> <span class="nl">message:</span> <span class="s">&quot;OKとキャンセルどちらをタップしますか&quot;</span><span class="p">,</span> <span class="nl">okCompletion:</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// OKボタンをクリックした場合に呼び出される</span>
+</span><span class='line'><span class="p">})</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// キャンセルボタンをクリックした場合に呼び出される</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これを <code>PromiseKit</code> を使って書くとどうなるでしょうか？<br/>
+まずは、アラートのメソッドは下記のように書けます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">PromiseKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">internal</span> <span class="k">enum</span> <span class="nl">AlertError:</span> <span class="n">Error</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">cancel</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">internal</span> <span class="n">func</span> <span class="n">showConfirm</span><span class="p">(</span><span class="nl">title:</span> <span class="n">String</span><span class="p">,</span> <span class="nl">message:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Promise</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="p">(</span><span class="n">promise</span><span class="p">,</span> <span class="n">resolver</span><span class="p">)</span> <span class="o">=</span> <span class="n">Promise</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">&gt;</span><span class="p">.</span><span class="n">pending</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">let</span> <span class="n">alert</span> <span class="o">=</span> <span class="n">UIAlertController</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">title:</span> <span class="n">title</span><span class="p">,</span> <span class="nl">message:</span> <span class="n">message</span><span class="p">,</span> <span class="nl">preferredStyle:</span> <span class="n">UIAlertControllerStyle</span><span class="p">.</span><span class="n">alert</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">okAction</span> <span class="o">=</span> <span class="n">UIAlertAction</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">title:</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">ok</span><span class="p">(),</span> <span class="nl">style:</span> <span class="n">UIAlertActionStyle</span><span class="p">.</span><span class="k">default</span><span class="p">)</span> <span class="p">{</span> <span class="n">_</span> <span class="k">in</span>
+</span><span class='line'>        <span class="n">resolver</span><span class="p">.</span><span class="n">fulfill</span><span class="p">(</span><span class="n">Void</span><span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">cancelAction</span> <span class="o">=</span> <span class="n">UIAlertAction</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">title:</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">cancel</span><span class="p">(),</span> <span class="nl">style:</span> <span class="n">UIAlertActionStyle</span><span class="p">.</span><span class="n">cancel</span><span class="p">)</span> <span class="p">{</span> <span class="n">_</span> <span class="k">in</span>
+</span><span class='line'>        <span class="n">resolver</span><span class="p">.</span><span class="n">reject</span><span class="p">(</span><span class="n">AlertError</span><span class="p">.</span><span class="n">cancel</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">alert</span><span class="p">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">okAction</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">alert</span><span class="p">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">cancelAction</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">present</span><span class="p">(</span><span class="n">alert</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">true</span><span class="p">,</span> <span class="nl">completion:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">promise</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>呼び出し側では、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">PromiseKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">firstly</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">showConfirm</span><span class="p">(</span><span class="nl">title:</span> <span class="s">&quot;確認&quot;</span><span class="p">,</span> <span class="nl">message:</span> <span class="s">&quot;OKとキャンセルどちらをタップしますか&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="p">}.</span><span class="n">done</span> <span class="p">{</span> <span class="n">_</span> <span class="k">in</span>
+</span><span class='line'>    <span class="c1">// OKをタップした場合に呼び出される処理</span>
+</span><span class='line'><span class="p">}.</span><span class="n">catch</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">error</span> <span class="k">in</span>
+</span><span class='line'>    <span class="c1">// キャンセルをタップした場合に呼び出される処理</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>と書くことができ、ネストも浅くなるし、非常にわかりやすく後続の処理を書くことができます。</p>
+
+<h3>API呼び出しの利用例</h3>
+
+<p>続いて、API呼び出しの場合の利用例を見ていきましょう。<br/>
+今回API通信処理では <a href="https://github.com/Moya/Moya">Moya</a> を利用します。<br/>
+また、叩くAPIは <a href="https://developers.google.com/places/?hl=ja">Google Places API</a> を利用します。</p>
+
+<p>まずは <code>Moya</code> の書き方ですが、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Moya</span>
+</span><span class='line'><span class="n">import</span> <span class="n">PromiseKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// APIエラーの定義</span>
+</span><span class='line'><span class="n">internal</span> <span class="k">enum</span> <span class="nl">APIError:</span> <span class="n">Error</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">cancel</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">apiError</span><span class="p">(</span><span class="nl">description:</span> <span class="n">String</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">decodeError</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">internal</span> <span class="k">enum</span> <span class="n">SampleAPITarget</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">places</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">Double</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">Double</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="nl">SampleAPITarget:</span> <span class="n">TargetType</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// API Key</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">apiKey:</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// 以下はGoogleのAPIキーをkey.plistで保持していると仮定した処理です。</span>
+</span><span class='line'>        <span class="n">guard</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="s">&quot;key&quot;</span><span class="p">,</span> <span class="nl">ofType:</span> <span class="s">&quot;plist&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">fatalError</span><span class="p">(</span><span class="s">&quot;key.plistが見つかりません&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">guard</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">fatalError</span><span class="p">(</span><span class="s">&quot;key.plistの中身が想定通りではありません&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">guard</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s">&quot;googleApiKey&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">fatalError</span><span class="p">(</span><span class="s">&quot;Google APIのKeyが設定されていません&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="n">apiKey</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// ベースURLを文字列で定義</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">_baseURL:</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="s">&quot;https://maps.googleapis.com/maps/api/place/nearbysearch/json&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">baseURL:</span> <span class="n">URL</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">URL</span><span class="p">(</span><span class="nl">string:</span> <span class="n">_baseURL</span><span class="p">)</span><span class="o">!</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// enumの値に対応したパスを指定</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">path:</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="nl">places:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// enumの値に対応したHTTPメソッドを指定</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">method:</span> <span class="n">Moya</span><span class="p">.</span><span class="n">Method</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="nl">places:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="p">.</span><span class="n">get</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// スタブデータの設定</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">sampleData:</span> <span class="n">Data</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="nl">places:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="s">&quot;Stub data&quot;</span><span class="p">.</span><span class="n">data</span><span class="p">(</span><span class="nl">using:</span> <span class="n">String</span><span class="p">.</span><span class="n">Encoding</span><span class="p">.</span><span class="n">utf8</span><span class="p">)</span><span class="o">!</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// パラメータの設定</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">task:</span> <span class="n">Task</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="n">places</span><span class="p">(</span><span class="n">let</span> <span class="n">lat</span><span class="p">,</span> <span class="n">let</span> <span class="n">lng</span><span class="p">)</span><span class="o">:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="p">.</span><span class="n">requestParameters</span><span class="p">(</span><span class="nl">parameters:</span> <span class="p">[</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">keyFileName</span><span class="p">()</span><span class="o">:</span> <span class="n">apiKey</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">locationKeyName</span><span class="p">()</span><span class="o">:</span> <span class="s">&quot;\(lat),\(lng)&quot;</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">radiusKeyName</span><span class="p">()</span><span class="o">:</span> <span class="mi">500</span>
+</span><span class='line'>                <span class="p">],</span> <span class="nl">encoding:</span> <span class="n">URLEncoding</span><span class="p">.</span><span class="k">default</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// ヘッダーの設定</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">headers:</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">String</span><span class="p">]</span><span class="o">?</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="nl">places:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="nb">nil</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="n">SampleAPI</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">provider:</span> <span class="n">MoyaProvider</span><span class="o">&lt;</span><span class="n">SampleAPITarget</span><span class="o">&gt;!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// イニシャライザ</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">provider</span> <span class="o">=</span> <span class="n">MoyaProvider</span><span class="o">&lt;</span><span class="n">SampleAPITarget</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のように書きます。<br/>
+( <code>Moya</code> はUnitテストが書きやすいので良いんですよね〜という話はまた後日&hellip; )</p>
+
+<p>では、本題の <code>PromiseKit</code> を用いたAPI通信処理です。<br/>
+先程の <code>SampleAPI</code> クラスにメソッドを追加してみます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">class</span> <span class="n">SampleAPI</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">provider:</span> <span class="n">MoyaProvider</span><span class="o">&lt;</span><span class="n">SampleAPITarget</span><span class="o">&gt;!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// イニシャライザ</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">provider</span> <span class="o">=</span> <span class="n">MoyaProvider</span><span class="o">&lt;</span><span class="n">SampleAPITarget</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Placeの定義は</span>
+</span><span class='line'>    <span class="c1">// https://grandbig.github.io/blog/2018/04/23/codable-swift4-1/</span>
+</span><span class='line'>    <span class="c1">// の『オマケ：Google Places APIでCodableを利用する』を参照のこと</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">fetchPlaces</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">Double</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Promise</span><span class="o">&lt;</span><span class="p">[</span><span class="n">Place</span><span class="p">]</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="p">(</span><span class="n">promise</span><span class="p">,</span> <span class="n">resolver</span><span class="p">)</span> <span class="o">=</span> <span class="n">Promise</span><span class="o">&lt;</span><span class="p">[</span><span class="n">Place</span><span class="p">]</span><span class="o">&gt;</span><span class="p">.</span><span class="n">pending</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">provider</span><span class="p">.</span><span class="n">request</span><span class="p">(.</span><span class="n">places</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">lat</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">lng</span><span class="p">))</span> <span class="p">{</span> <span class="n">result</span> <span class="k">in</span>
+</span><span class='line'>            <span class="k">switch</span> <span class="n">result</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">case</span> <span class="p">.</span><span class="n">success</span><span class="p">(</span><span class="n">let</span> <span class="n">response</span><span class="p">)</span><span class="o">:</span>
+</span><span class='line'>                <span class="k">do</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="n">let</span> <span class="n">decoder</span> <span class="o">=</span> <span class="n">JSONDecoder</span><span class="p">()</span>
+</span><span class='line'>                    <span class="n">decoder</span><span class="p">.</span><span class="n">keyDecodingStrategy</span> <span class="o">=</span> <span class="p">.</span><span class="n">convertFromSnakeCase</span>
+</span><span class='line'>                    <span class="n">let</span> <span class="n">places</span> <span class="o">=</span> <span class="n">try</span> <span class="n">decoder</span><span class="p">.</span><span class="n">decode</span><span class="p">(</span><span class="n">Places</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">from:</span> <span class="n">response</span><span class="p">.</span><span class="n">data</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>                    <span class="n">resolver</span><span class="p">.</span><span class="n">fulfill</span><span class="p">(</span><span class="n">places</span><span class="p">.</span><span class="n">results</span><span class="p">)</span>
+</span><span class='line'>                <span class="p">}</span> <span class="n">catch</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="n">resolver</span><span class="p">.</span><span class="n">reject</span><span class="p">(</span><span class="n">APIError</span><span class="p">.</span><span class="n">decodeError</span><span class="p">)</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>            <span class="k">case</span> <span class="p">.</span><span class="n">failure</span><span class="p">(</span><span class="n">let</span> <span class="n">error</span><span class="p">)</span><span class="o">:</span>
+</span><span class='line'>                <span class="n">resolver</span><span class="p">.</span><span class="n">reject</span><span class="p">(</span><span class="n">APIError</span><span class="p">.</span><span class="n">apiError</span><span class="p">(</span><span class="nl">description:</span> <span class="n">error</span><span class="p">.</span><span class="n">localizedDescription</span><span class="p">))</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="n">promise</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記のように定義できます。<br/>
+これを呼び出すときは、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">var</span> <span class="n">worker</span> <span class="o">=</span> <span class="n">SampleAPI</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">firstly</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">worker</span><span class="p">.</span><span class="n">fetchPlaces</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">latitude</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">longitude</span><span class="p">)</span>
+</span><span class='line'><span class="p">}.</span><span class="n">done</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">results</span> <span class="k">in</span>
+</span><span class='line'>    <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+</span><span class='line'><span class="p">}.</span><span class="n">catch</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">error</span> <span class="k">in</span>
+</span><span class='line'>    <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="n">error</span><span class="p">.</span><span class="n">localizedDescription</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のように書くことができます。<br/>
+こちらも縦に浅いネストで読むことができるため、可読性が高いと言えますね。</p>
+
+<h3>PromiseKitの公式Readme</h3>
+
+<p><code>PromiseKit</code> のドキュメントは非常に丁寧なので、これを読むだけでも理解を相当深められると思います。</p>
+
+<ul>
+<li><a href="https://github.com/mxcl/PromiseKit/blob/master/Documentation/GettingStarted.md">GettingStarted</a></li>
+<li><a href="https://github.com/mxcl/PromiseKit/blob/master/Documentation/CommonPatterns.md">CommonPatterns</a></li>
+</ul>
+
+
+<p>を読んでおけばOKかと。<br/>
+(上記の話も別機会でかければと思います。)</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか？<br/>
+筆者は割りと <code>completion</code> で書くのが好きだったのですが、 <code>PromiseKit</code> に慣れていくと、その良さにどんどん気づいていくことができました。<br/>
+リトライ処理は遅延実行も簡単に対応できたりするので、ぜひ使ってみることをオススメします。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[レバテック キャリアにて本ブログが紹介されました！]]></title>
@@ -6937,257 +7455,6 @@ iOSでファットになりがちな <code>ViewController</code> を <code>View<
 
 <p>さて、如何でしたでしょうか？<br/>
 画像取得/キャッシュ関連のOSSライブラリは多種多様なものが出ており、好き嫌いもあるかもしれませんが、筆者は通信ライブラリに<code>Alamofire</code>を使うことが多いため、<code>AlamofireImage</code>も嫌いではないんですよね。<br/>
-と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[方向音痴メモ ver1.0の紹介]]></title>
-    <link href="http://grandbig.github.io/blog/2017/07/23/helpsenseofdirection-ver-1/"/>
-    <updated>2017-07-23T11:27:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/07/23/helpsenseofdirection-ver-1</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>本日はついこの間まで趣味で開発していたアプリについて紹介したいと思います。<br/>
-それは<a href="https://itunes.apple.com/us/app/%E6%96%B9%E5%90%91%E9%9F%B3%E7%97%B4%E3%83%A1%E3%83%A2/id1260288529?mt=8&amp;ign-mpt=uo%3D2">方向音痴メモ</a>というアプリです。<br/>
-(仕事終わりに1時間ちびちびと開発していたこともあって、)製作期間は1ヶ月もかかってしまいました。<br/>
-全然大した機能があるわけでもないのに&hellip;。</p>
-
-<p>今回の開発を通して学んだこともあるため、記録として本記事を書こうと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>アプリの紹介</h3>
-
-<p>アプリの機能から紹介したいと思います。<br/>
-まず、アイコンはこちらになります。</p>
-
-<p><img src="http://grandbig.github.io/images/HelpSenseOfDirection_icon.jpg" alt="方向音痴メモのアイコン" /></p>
-
-<h4>アプリのコンセプト</h4>
-
-<p>このアプリのターゲットはアプリの名にもある通り『方向音痴な人』です。<br/>
-このターゲットを助けるために筆者は下記が必要だと考えました。</p>
-
-<ul>
-<li>道に迷った時に、通った場所の記憶を蘇らせるためのメモを残せる</li>
-<li>メモは「その場所の概要」や「その場所の画像」を記録できるようにする</li>
-</ul>
-
-
-<p>上記を実装したのが、今回のアプリになります。</p>
-
-<h4>アプリの使い方</h4>
-
-<p>ではアプリの使い方を見ていきましょう。<br/>
-今回はアプリ起動時にチュートリアルを見れるようにしたため、そのチュートリアルの指示に従って進めば簡単だと思います。</p>
-
-<h5>基本的な使い方</h5>
-
-<p>チュートリアルを進むことで、下記のように、基本的な使い方を知ることができます。</p>
-
-<p><img src="http://grandbig.github.io/images/HelpSenseOfDirection_tutorial_1.jpg" alt="チュートリアル１" /><br/>
-<img src="http://grandbig.github.io/images/HelpSenseOfDirection_tutorial_2.jpg" alt="チュートリアル２" /><br/>
-<img src="http://grandbig.github.io/images/HelpSenseOfDirection_tutorial_3.jpg" alt="チュートリアル３" /></p>
-
-<h5>不要なポイントの削除</h5>
-
-<p>誤ってポイントを作成してしまうこともあると思います。<br/>
-そんなときには下記のように不要なポイントを削除してしまいましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/HelpSenseOfDirection_tutorial_4.jpg" alt="不要なポイントの削除" /></p>
-
-<h5>ポイントの全削除</h5>
-
-<p>配置したポイントを一気に削除することもできます。</p>
-
-<p><img src="http://grandbig.github.io/images/HelpSenseOfDirection_tutorial_5.jpg" alt="ポイントの全削除" /></p>
-
-<h5>チュートリアルをもう一度見る</h5>
-
-<p>初回起動時にチュートリアルを見たものの、使い方を忘れてしまうこともあるでしょう。<br/>
-そんな時用にチュートリアルをもう一度見る機能を用意しています。</p>
-
-<p><img src="http://grandbig.github.io/images/HelpSenseOfDirection_tutorial_6.jpg" alt="チュートリアルをもう一度見る" /></p>
-
-<h3>アプリの実装</h3>
-
-<p>続いて実装面に関して触れます。<br/>
-実コードは<a href="https://github.com/grandbig/HelpSenseOfDirection">GitHub: HelpSenseOfDirection</a>を参照頂ければと思います。</p>
-
-<h4>プロジェクト構成</h4>
-
-<p>Xcode上のプロジェクト構成は下記の通りです。<br/>
-今回もMVCで実装しています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">HelpSenseOfDirection</span>
-</span><span class='line'><span class="err">├──</span> <span class="n">Enum</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="n">MarkerType</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">├──</span> <span class="n">Model</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">CustomGMSMarker</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">Direction</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">Geocoding</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">RealmMarker</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">RealmMarkerManager</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="n">Marker</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">├──</span> <span class="n">View</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">MarkerInfoContentsView</span><span class="p">.</span><span class="n">xib</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">MarkerInfoContentsView</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">UIPlaceHolderTextView</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="n">CustomCell</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">├──</span> <span class="n">ViewController</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">AnnotationViewController</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">CreateMarkerViewController</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">ViewController</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">ViewController</span><span class="o">+</span><span class="n">CLLocationManager</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">ViewController</span><span class="o">+</span><span class="n">GMSMapView</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">ViewController</span><span class="o">+</span><span class="n">SpotlightControllerView</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">├──</span> <span class="n">SettingViewController</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="n">SlideMenuViewController</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">├──</span> <span class="n">AppDelegate</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">└──</span> <span class="n">Main</span><span class="p">.</span><span class="n">storyboard</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>利用ライブラリ</h4>
-
-<p>今回利用したライブラリは下記になります。</p>
-
-<ul>
-<li><a href="https://github.com/realm/realm-cocoa/tree/master/RealmSwift">Realm / RealmSwift</a><br/>
-足跡のデータを端末内部に保存するために利用しています。</li>
-<li><a href="https://developers.google.com/maps/documentation/ios-sdk/?hl=ja">Google Maps SDK for iOS</a><br/>
-今回はAppleデフォルトではなく、Google Mapsを利用しています。</li>
-<li><a href="https://github.com/Alamofire/Alamofire">Alamofire</a><br/>
-Google Directions APIやGeocoding APIを利用する際にネットワーク通信が必要なので利用しています。</li>
-<li><a href="https://github.com/SwiftyJSON/SwiftyJSON">SwiftyJSON</a><br/>
-APIレスポンスとしてJSON方式で取得するので扱いやすさのために導入しています。</li>
-<li><a href="https://github.com/yukiasai/Gecco">Gecco</a><br/>
-チュートリアル表示用に利用しています。</li>
-</ul>
-
-
-<h4>各クラスの説明</h4>
-
-<p>今回も少々クラス説明を書いておきたいと思います。</p>
-
-<h5>Enum/MarkerType.swift</h5>
-
-<p>今回のアプリでは <strong>スタート地点/ゴール地点/途中ポイント地点</strong> の3種類の地点にマーカを設置する必要があるため、<code>Enum</code>としてパターンを定義しています。<br/>
-デフォルトは最も多く設置するであろう <strong>途中ポイント地点</strong> である <code>MarkerType.point</code> としています。<br/>
-因みに <code>SwiftLint</code> の設定で <code>Enum</code> の <code>case</code> 定義は <strong>小文字始まり</strong> としているため、それぞれ <code>start/point/goal</code> としています。</p>
-
-<h5>Model/CustomGMSMarker.swift</h5>
-
-<p>Google Maps SDK for iOSでは <code>GMSMarker</code> クラスが用意されています。<br/>
-今回のアプリでは、</p>
-
-<ul>
-<li>スタート地点/ゴール地点/途中ポイント地点とタイプ別でマーカを設置する</li>
-<li><code>Realm</code>に<code>ID</code>を採番してマーカ情報を保存する</li>
-<li>マーカをタップしたときに<code>InfoWindow</code>に表示する地点情報を<code>ID</code>を元に<code>Realm</code>から取得する</li>
-</ul>
-
-
-<p>という処理が必要であるため、通常の <code>GMSMarker</code> クラスでは機能が足りません。<br/>
-よってプロパティに<code>id</code>と<code>type</code>を追加した <code>CustomGMSMarker</code> を作成しました。</p>
-
-<h5>Model/Direction.swift, Model/Geocoding.swift</h5>
-
-<p>こちらはGoogle Maps SDK for iOSだけではカバーできない機能があるため、<br/>
-<code>Google Directions API</code>や<code>Google Geocoding API</code>を利用します。<br/>
-そのためのクラスになります。</p>
-
-<h5>Model/Marker.swift</h5>
-
-<p>これは少々わかりにくいクラスになってしまいました。<br/>
-と言うのも、<code>ViewController.swift</code>の<code>putMarker</code>のメソッドの引数を減らすためだけに作成したクラスだからです。<br/>
-各種で<code>Marker</code>というワードを利用していることもあって非常にわかりにくいですね&hellip;</p>
-
-<h5>Model/RealmMarker.swift</h5>
-
-<p><code>RealmSwift</code>を利用しているので、保存するモデルの形式です。</p>
-
-<h5>Model/RealmMarkerManager.swift</h5>
-
-<p><code>RealmSwift</code>を用いてデータの保存/取得/削除などを管理するクラスです。</p>
-
-<h5>View/MarkerInfoContentsView.swift</h5>
-
-<p>マップにプロットするマーカをタップしたときに表示する<code>InfoWindow</code>に当たります。</p>
-
-<h5>View/UIPlaceHolderTextView.swift</h5>
-
-<p>こちらは<code>InfoWindow</code>内に<code>UITextView</code>が必要だったのですが、<code>UILabel</code>同様に<code>placeholder</code>を表示したかったため利用しています。<br/>
-<a href="http://qiita.com/matsuhisa_h/items/5f4877e8ec89729de824">UITextViewでのPlaceHolder（プレースホルダ）をSwiftで実装する方法</a>からほぼほぼ拝借させて頂きました。</p>
-
-<h5>View/CustomCell.swift</h5>
-
-<p>チュートリアルを再度閲覧できるように設定画面に<code>UISwitch</code>つきの<code>Cell</code>を用意する必要があったため、作成しました。</p>
-
-<h5>ViewController/ViewController+◯◯.swift</h5>
-
-<p>さて今回は<code>ViewController+CLLocationManager.swift</code>のように幾つかファイルを分けています。<br/>
-理由としては、<code>ViewController</code>が肥大化することで最大行数が<code>SwiftLint</code>のデフォルト値を超過してしまったためです。<br/>
-簡単のために<code>delegate</code>系を別ファイルとして切り出しました。</p>
-
-<h3>まとめ</h3>
-
-<p>さて、如何でしたでしょうか？<br/>
-正直、iOSアプリを開発する際のプロジェクト構成やアーキテクチャには迷いがあります。<br/>
-今は個人で1ヶ月程度で開発成果を残していくことが目的になっているため、慣れているMVC形式での開発で進めてしまっています。<br/>
-ただ、チーム開発やモダンな開発のことを考えるともう少しチャレンジを入れてみたいと思っています。</p>
-
-<p>引き続き別アプリの開発を進めているので、徐々に新しい要素を追加してブログ記事に残せていければと思います。<br/>
 と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
