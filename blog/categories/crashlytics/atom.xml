@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: crashlytics | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/crashlytics/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2018-04-30T15:46:22+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Crashlyticsが作成するエラーファイルを見てみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2018/04/29/crashlytics/"/>
+    <updated>2018-04-29T17:44:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/04/29/crashlytics</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は<a href="https://fabric.io/home">Fabric</a>のメイン機能である <code>Crashlytics</code> について紹介したいと思います。<br/>
+筆者が初めて <code>Crashlytics</code> を利用したのは、もう数年前になるでしょうか。<br/>
+それこそ、当時は <code>Fabric</code> という名称ではなく、本当にただの <code>Crashlytics</code> というサービス名だったんですよね。</p>
+
+<p>あの頃は、クラッシュレポートを溜める独自サービスが大量生産されていたのではないでしょうか？<br/>
+そんな市場に風穴を開けたのが、 <code>Crashlytics</code> でした。<br/>
+なんてったって、無料なんですから、使わない手はなかったわけです。<br/>
+更に今や <code>Firebase</code> だったり、<code>fastlane</code> だったりと連携しちゃうわけですからね。</p>
+
+<p>前置きはこのくらいにして、<br/>
+今回は <code>Crashlytics</code> の <code>crash()</code> や <code>recordError()</code> について少々調べたことを書き留めておきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Crashlyticsの導入</h3>
+
+<p>まずは、<code>Crashlytics</code>の導入ですね。<br/>
+<a href="https://fabric.io/kits/ios/crashlytics/install">公式ページ</a>に従って進めれば簡単に準備ができることでしょう。<br/>
+注意点としては、<code>Fabric</code> のダッシュボードでクラッシュレポート数や内容を見るために、<code>dSYM</code>ファイルをアップロードする必要があるということくらいです。</p>
+
+<p>その手順を見ていきましょう。</p>
+
+<p>① Xcode > PROJECT or TARGET > Build Settings > Build Options > Debug Information Formatの設定を変更する</p>
+
+<p>開発版では<code>Debug</code>モードで<code>Run</code>していることもあると思うので、<br/>
+その場合は下図のように <code>DWARF with dSYM File</code> に変更しましょう。</p>
+
+<p><img src="/images/crashlytics_5.png" alt="Debug Information FormatをDWARF with dSYM Fileに変更する" /></p>
+
+<p>② Xcode > Product > Archive を実行する</p>
+
+<p>③ dSYMをDownloadする</p>
+
+<p>Organizer Windowが自動で表示されるため、dSYMファイルをダウンロードしましょう。<br/>
+Archive Informationの『Download dSYMs&hellip;』を選択するか、<br/>
+もしくは下図のように該当アプリを右クリックして『Show in Finder』を選択して直接Downloadしましょう。</p>
+
+<p><img src="/images/crashlytics_6.png" alt="Show in Finderを選択する" /></p>
+
+<p>④ Show in Findeで開いたフォルダのdSYMsフォルダをzip化しましょう。</p>
+
+<p><img src="/images/crashlytics_7.png" alt="dSYMsフォルダをzip化する" /></p>
+
+<p>⑤ dSYMs.zipをFabric管理画面からUploadしましょう。</p>
+
+<p>Settings > APPs > 該当アプリ > Missing DSYMs からDrag&amp;Dropでアップロードできます。</p>
+
+<p><img src="/images/crashlytics_8.png" alt="dSYMs.zipのアップロード" /></p>
+
+<p>これでクラッシュ後に、アプリを再起動して送信されたレポートを<code>Fabric</code>管理画面から確認することができます。</p>
+
+<h3>crash()で生成されるファイル</h3>
+
+<p><code>Crashlytics</code>で最も利用されているであろうクラッシュ時のレポート送信ですが、<br/>
+一体、何を送っているのでしょうか？</p>
+
+<p>今回は調査のために、わざとクラッシュさせて、アプリ内の『どこに』『何が』保存されているのか見てみました。</p>
+
+<h4>crash()メソッドの呼び出し</h4>
+
+<p>以下のようにボタンタップしたら、クラッシュするようにしてみましょう。</p>
+
+<p>```objective-c
+// ViewController.swift
+@IBAction func tappedCrashButton(_ sender: Any) {</p>
+
+<pre><code>Crashlytics.sharedInstance().crash()
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>クラッシュで生成されるファイルの確認方法</h4>
+
+<p>クラッシュ後の生成ファイルの確認方法は以下です。</p>
+
+<p>① アプリを起動してボタンタップでクラッシュさせます。<br/>
+このとき重要なのが、『デバッグ状態にはせずにクラッシュさせる』ということです。<br/>
+(どうもXcodeに接続したデバッグ状態だと、うまく記録されないようです。)</p>
+
+<p>② 端末をMacに繋ぐ</p>
+
+<p>③ Xcode > Window > Devices and Simulators を選択する<br/>
+これにより以下のようなWindowが表示されます。<br/>
+<img src="/images/crashlytics_1.png" alt="Devices and Simulators Window" /></p>
+
+<p>④ Downloadしたいアプリ内ファイルを選択して「Download Container&hellip;」を選択する<br/>
+<img src="/images/crashlytics_2.png" alt="Download Container...を選択する" /></p>
+
+<p>⑤ 自動でDownload先フォルダが表示されるので、該当ファイルを右クリックして、「パッケージの内容を表示」を選択する<br/>
+<img src="/images/crashlytics_3.png" alt="Downloadファイルの内容を表示する" /></p>
+
+<p>⑥ クラッシュログを確認する</p>
+
+<p><code>
+xxxxxx.xcappdata/AppData/Library/Caches/com.crashlytics.data/&lt;BundleID&gt;/v3/active/xxxxxxxxxxx/match_exception.clsrecord
+</code></p>
+
+<p>がそれに該当します。</p>
+
+<p><img src="/images/crashlytics_4.png" alt="クラッシュログの格納場所" /></p>
+
+<h4>クラッシュログの中身</h4>
+
+<p>中身を見てみると、</p>
+
+<p>```objective-c
+{
+  &ldquo;mach_exception&rdquo;:{</p>
+
+<pre><code>"exception":6,
+"codes":[1,4332784292],
+"name":"EXC_BREAKPOINT",
+"code_name":null,
+"original_ports":1,
+"time":1525070032
+</code></pre>
+
+<p>  }
+}
+{
+  &ldquo;threads&rdquo;:[
+  {</p>
+
+<pre><code>"registers":{
+  "x0":7851893440,"x1":4337440564,"x2":4431287584,"x3":7651498240,"x4":7651498240,"x5":7651498240,"x6":7516198016,"x7":5305,"x8":7851893440,"x9":0,"x10":80378702350618752,"x11":18714625,"x12":18714368,"x13":0,"x14":18714625,"x15":18714816,"x16":6457744324,"x17":4332784292,"x18":0,"x19":7651498240,"x20":4431355264,"x21":4337440648,"x22":4431355264,"x23":4431355264,"x24":7516197984,"x25":0,"x26":6639092750,"x27":1,"x28":7854100944,"fp":6134339024,"sp":6134338992,"lr":4332705516,"pc":4332784292,"cpsr":1610612736
+},
+"stacktrace":[4332784292,4332705516,4332705636,6626567880,6627752100,6626592636,6627860956,6627105352,6627059960,6627054136,6635318284,6635327928,6635328792,6635299416,6461387780,6461385772,6461376412,6460460456,6493892640,6628104076,4332687252,6454763456],
+</code></pre>
+
+<p>  &ldquo;crashed&rdquo;:true</p>
+
+<pre><code>},
+</code></pre>
+
+<p>  {</p>
+
+<pre><code>"registers":{
+  "x0":256,"x1":6136048512,"x2":1,"x3":0,"x4":9991,"x5":0,"x6":0,"x7":0,"x8":7852716416,"x9":1,"x10":7852716472,"x11":236223201281,"x12":0,"x13":0,"x14":1,"x15":7,"x16":368,"x17":48,"x18":0,"x19":6136049664,"x20":7852716416,"x21":33,"x22":1,"x23":7303651328,"x24":7303651328,"x25":0,"x26":7,"x27":2164260864,"x28":1,"fp":6136048352,"sp":6136048192,"lr":6457704116,"pc":6456008068,"cpsr":1073741824
+},
+"stacktrace":[6456008068,6457704116,6457703176]
+</code></pre>
+
+<p>  }
+  &hellip;
+  ]
+}
+{&ldquo;runtime&rdquo;:{&ldquo;objc_selector&rdquo;:&ldquo;&rdquo;,&ldquo;crash_info_entries&rdquo;:[]}}
+{&ldquo;dispatch_queue_names&rdquo;:[&ldquo;com.apple.main-thread&rdquo;,&ldquo;&rdquo;,&ldquo;&rdquo;,&ldquo;&rdquo;,&ldquo;&rdquo;,&ldquo;&rdquo;,&ldquo;&rdquo;,&ldquo;&rdquo;,&ldquo;&rdquo;]}
+{&ldquo;thread_names&rdquo;:[&ldquo;&rdquo;,&ldquo;&rdquo;,&ldquo;com.apple.uikit.eventfetch-thread&rdquo;,&ldquo;&rdquo;,&ldquo;com.twitter.crashlytics.ios.MachExceptionServer&rdquo;,&ldquo;&rdquo;,&ldquo;com.google.Maps.LabelingBehavior&rdquo;,&ldquo;com.apple.NSURLConnectionLoader&rdquo;,&ldquo;&rdquo;]}
+{&ldquo;process_stats&rdquo;:{&ldquo;active&rdquo;:1085800448,&ldquo;inactive&rdquo;:460079104,&ldquo;wired&rdquo;:669319168,&ldquo;freeMem&rdquo;:116162560,&ldquo;free_mem&rdquo;:116162560,&ldquo;virtual&rdquo;:2060877824,&ldquo;resident&rdquo;:1085800448,&ldquo;user_time&rdquo;:337647,&ldquo;sys_time&rdquo;:0}}
+{&ldquo;storage&rdquo;:{&ldquo;free&rdquo;:206087524352,&ldquo;total&rdquo;:255937040384}}
+```</p>
+
+<p>のようになっています。<br/>
+これがいい具合に <code>Fabric</code> 管理画面に表示されるわけですね。</p>
+
+<h3>recordError()で生成されるファイル</h3>
+
+<p>クラッシュではないけども、原因調査のためにレポート送信したい時があると思います。<br/>
+そんなときは <code>recordError()</code> メソッドを利用します。</p>
+
+<h4>recordError()メソッドの呼び出し</h4>
+
+<p>以下のようにボタンをタップしたら、レポートを送信するようにしてみましょう。</p>
+
+<p>```objective-c
+// ViewController.swift
+@IBAction func tappedCrashButton(_ sender: Any) {</p>
+
+<pre><code>let error = NSError(domain: "takahiro test", code: 1001, userInfo: nil)
+Crashlytics.sharedInstance().recordError(error)
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>recordError()で生成されるファイルの確認方法</h4>
+
+<p><code>recordError()</code> 実行後の生成ファイル確認方法は、基本的にはクラッシュ時と同じです。<br/>
+ただし、クラッシュ時に生成されるファイルとファイル名が異なります。<br/>
+<code>recordError()</code> では <code>error_a.clsrecord</code> といったファイルが生成されます。</p>
+
+<h4>recordError()で記録したファイルの中身</h4>
+
+<p>記録内容は以下の通りです。<br/>
+何を格納するかで中身はもう少し変わりそうですね。</p>
+
+<p><code>objective-c
+{"error":{"domain":"74616b616869726f2074657374","code":1001,"time":1524979041,"stacktrace":[4299168744,4299051336,4298970328,4298970672,6639789768,6640973988,6639814524,6641082844,6640327240,6640281848,6640276024,6648540172,6648549816,6648550680,6648521304,6474609668,6474607660,6474598300,6473682344,6507114528,6641325964,4298951872,6467985344]}}
+{"error":{"domain":"74616b616869726f2074657374","code":1001,"time":1524979043,"stacktrace":[4299168744,4299051336,4298970328,4298970672,6639789768,6640973988,6639814524,6641082844,6640327240,6640281848,6640276024,6648540172,6648549816,6648521304,6474609668,6474607660,6474598300,6473682344,6507114528,6641325964,4298951872,6467985344]}}
+{"error":{"domain":"74616b616869726f2074657374","code":1001,"time":1524979046,"stacktrace":[4299168744,4299051336,4298970328,4298970672,6639789768,6640973988,6639814524,6641082844,6640327240,6640281848,6640276024,6648540172,6648549816,6648521304,6474609668,6474607660,6474598300,6473682344,6507114528,6641325964,4298951872,6467985344]}}
+{"error":{"domain":"74616b616869726f2074657374","code":1001,"time":1524979048,"stacktrace":[4299168744,4299051336,4298970328,4298970672,6639789768,6640973988,6639814524,6641082844,6640327240,6640281848,6640276024,6648540172,6648549816,6648521304,6474609668,6474607660,6474598300,6473682344,6507114528,6641325964,4298951872,6467985344]}}
+</code></p>
+
+<h4>recordError()の注意点</h4>
+
+<p>今回、<code>recordError()</code>を利用していて気づいた点が以下の通りです。</p>
+
+<ul>
+<li>短時間に複数回タップしてもアプリ内のファイルにエラーログとして記録されない</li>
+<li>アプリ内に記録されたエラーログが全て<code>Fabric</code>管理画面に記録されるわけではない</li>
+</ul>
+
+
+<p>どういったフィルタがかかっているのかまではわからないのですが、なんでもかんでも記録されるわけではないようです&hellip;</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+今回たまたま中身を探ってみる機会があったので見てみましたが、きっと普段は気にしなくて良い内容なのだと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

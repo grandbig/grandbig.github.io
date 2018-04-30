@@ -1,0 +1,569 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Crashlyticsが作成するエラーファイルを見てみよう！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに 今回はFabricのメイン機能である Crashlytics について紹介したいと思います。
+筆者が初めて Crashlytics を利用したのは、もう数年前になるでしょうか。
+それこそ、当時は Fabric という名称ではなく、本当にただの Crashlytics &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2018/04/29/crashlytics/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Crashlyticsが作成するエラーファイルを見てみよう！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-04-29T17:44:00+09:00" pubdate data-updated="true">Apr 29<span>th</span>, 2018</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>今回は<a href="https://fabric.io/home">Fabric</a>のメイン機能である <code>Crashlytics</code> について紹介したいと思います。<br/>
+筆者が初めて <code>Crashlytics</code> を利用したのは、もう数年前になるでしょうか。<br/>
+それこそ、当時は <code>Fabric</code> という名称ではなく、本当にただの <code>Crashlytics</code> というサービス名だったんですよね。</p>
+
+<p>あの頃は、クラッシュレポートを溜める独自サービスが大量生産されていたのではないでしょうか？<br/>
+そんな市場に風穴を開けたのが、 <code>Crashlytics</code> でした。<br/>
+なんてったって、無料なんですから、使わない手はなかったわけです。<br/>
+更に今や <code>Firebase</code> だったり、<code>fastlane</code> だったりと連携しちゃうわけですからね。</p>
+
+<p>前置きはこのくらいにして、<br/>
+今回は <code>Crashlytics</code> の <code>crash()</code> や <code>recordError()</code> について少々調べたことを書き留めておきたいと思います。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Crashlyticsの導入</h3>
+
+<p>まずは、<code>Crashlytics</code>の導入ですね。<br/>
+<a href="https://fabric.io/kits/ios/crashlytics/install">公式ページ</a>に従って進めれば簡単に準備ができることでしょう。<br/>
+注意点としては、<code>Fabric</code> のダッシュボードでクラッシュレポート数や内容を見るために、<code>dSYM</code>ファイルをアップロードする必要があるということくらいです。</p>
+
+<p>その手順を見ていきましょう。</p>
+
+<p>① Xcode > PROJECT or TARGET > Build Settings > Build Options > Debug Information Formatの設定を変更する</p>
+
+<p>開発版では<code>Debug</code>モードで<code>Run</code>していることもあると思うので、<br/>
+その場合は下図のように <code>DWARF with dSYM File</code> に変更しましょう。</p>
+
+<p><img src="/images/crashlytics_5.png" alt="Debug Information FormatをDWARF with dSYM Fileに変更する" /></p>
+
+<p>② Xcode > Product > Archive を実行する</p>
+
+<p>③ dSYMをDownloadする</p>
+
+<p>Organizer Windowが自動で表示されるため、dSYMファイルをダウンロードしましょう。<br/>
+Archive Informationの『Download dSYMs&hellip;』を選択するか、<br/>
+もしくは下図のように該当アプリを右クリックして『Show in Finder』を選択して直接Downloadしましょう。</p>
+
+<p><img src="/images/crashlytics_6.png" alt="Show in Finderを選択する" /></p>
+
+<p>④ Show in Findeで開いたフォルダのdSYMsフォルダをzip化しましょう。</p>
+
+<p><img src="/images/crashlytics_7.png" alt="dSYMsフォルダをzip化する" /></p>
+
+<p>⑤ dSYMs.zipをFabric管理画面からUploadしましょう。</p>
+
+<p>Settings > APPs > 該当アプリ > Missing DSYMs からDrag&amp;Dropでアップロードできます。</p>
+
+<p><img src="/images/crashlytics_8.png" alt="dSYMs.zipのアップロード" /></p>
+
+<p>これでクラッシュ後に、アプリを再起動して送信されたレポートを<code>Fabric</code>管理画面から確認することができます。</p>
+
+<h3>crash()で生成されるファイル</h3>
+
+<p><code>Crashlytics</code>で最も利用されているであろうクラッシュ時のレポート送信ですが、<br/>
+一体、何を送っているのでしょうか？</p>
+
+<p>今回は調査のために、わざとクラッシュさせて、アプリ内の『どこに』『何が』保存されているのか見てみました。</p>
+
+<h4>crash()メソッドの呼び出し</h4>
+
+<p>以下のようにボタンタップしたら、クラッシュするようにしてみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">tappedCrashButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">Crashlytics</span><span class="p">.</span><span class="n">sharedInstance</span><span class="p">().</span><span class="n">crash</span><span class="p">()</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>クラッシュで生成されるファイルの確認方法</h4>
+
+<p>クラッシュ後の生成ファイルの確認方法は以下です。</p>
+
+<p>① アプリを起動してボタンタップでクラッシュさせます。<br/>
+このとき重要なのが、『デバッグ状態にはせずにクラッシュさせる』ということです。<br/>
+(どうもXcodeに接続したデバッグ状態だと、うまく記録されないようです。)</p>
+
+<p>② 端末をMacに繋ぐ</p>
+
+<p>③ Xcode > Window > Devices and Simulators を選択する<br/>
+これにより以下のようなWindowが表示されます。<br/>
+<img src="/images/crashlytics_1.png" alt="Devices and Simulators Window" /></p>
+
+<p>④ Downloadしたいアプリ内ファイルを選択して「Download Container&hellip;」を選択する<br/>
+<img src="/images/crashlytics_2.png" alt="Download Container...を選択する" /></p>
+
+<p>⑤ 自動でDownload先フォルダが表示されるので、該当ファイルを右クリックして、「パッケージの内容を表示」を選択する<br/>
+<img src="/images/crashlytics_3.png" alt="Downloadファイルの内容を表示する" /></p>
+
+<p>⑥ クラッシュログを確認する</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">xxxxxx</span><span class="p">.</span><span class="n">xcappdata</span><span class="o">/</span><span class="n">AppData</span><span class="o">/</span><span class="n">Library</span><span class="o">/</span><span class="n">Caches</span><span class="o">/</span><span class="n">com</span><span class="p">.</span><span class="n">crashlytics</span><span class="p">.</span><span class="n">data</span><span class="o">/&lt;</span><span class="n">BundleID</span><span class="o">&gt;/</span><span class="n">v3</span><span class="o">/</span><span class="n">active</span><span class="o">/</span><span class="n">xxxxxxxxxxx</span><span class="o">/</span><span class="n">match_exception</span><span class="p">.</span><span class="n">clsrecord</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>がそれに該当します。</p>
+
+<p><img src="/images/crashlytics_4.png" alt="クラッシュログの格納場所" /></p>
+
+<h4>クラッシュログの中身</h4>
+
+<p>中身を見てみると、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="s">&quot;mach_exception&quot;</span><span class="o">:</span><span class="p">{</span>
+</span><span class='line'>    <span class="s">&quot;exception&quot;</span><span class="o">:</span><span class="mi">6</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;codes&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">4332784292</span><span class="p">],</span>
+</span><span class='line'>    <span class="s">&quot;name&quot;</span><span class="o">:</span><span class="s">&quot;EXC_BREAKPOINT&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;code_name&quot;</span><span class="o">:</span><span class="n">null</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;original_ports&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
+</span><span class='line'>    <span class="s">&quot;time&quot;</span><span class="o">:</span><span class="mi">1525070032</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="s">&quot;threads&quot;</span><span class="o">:</span><span class="p">[</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>    <span class="s">&quot;registers&quot;</span><span class="o">:</span><span class="p">{</span>
+</span><span class='line'>      <span class="s">&quot;x0&quot;</span><span class="o">:</span><span class="mi">7851893440</span><span class="p">,</span><span class="s">&quot;x1&quot;</span><span class="o">:</span><span class="mi">4337440564</span><span class="p">,</span><span class="s">&quot;x2&quot;</span><span class="o">:</span><span class="mi">4431287584</span><span class="p">,</span><span class="s">&quot;x3&quot;</span><span class="o">:</span><span class="mi">7651498240</span><span class="p">,</span><span class="s">&quot;x4&quot;</span><span class="o">:</span><span class="mi">7651498240</span><span class="p">,</span><span class="s">&quot;x5&quot;</span><span class="o">:</span><span class="mi">7651498240</span><span class="p">,</span><span class="s">&quot;x6&quot;</span><span class="o">:</span><span class="mi">7516198016</span><span class="p">,</span><span class="s">&quot;x7&quot;</span><span class="o">:</span><span class="mi">5305</span><span class="p">,</span><span class="s">&quot;x8&quot;</span><span class="o">:</span><span class="mi">7851893440</span><span class="p">,</span><span class="s">&quot;x9&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x10&quot;</span><span class="o">:</span><span class="mi">80378702350618752</span><span class="p">,</span><span class="s">&quot;x11&quot;</span><span class="o">:</span><span class="mi">18714625</span><span class="p">,</span><span class="s">&quot;x12&quot;</span><span class="o">:</span><span class="mi">18714368</span><span class="p">,</span><span class="s">&quot;x13&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x14&quot;</span><span class="o">:</span><span class="mi">18714625</span><span class="p">,</span><span class="s">&quot;x15&quot;</span><span class="o">:</span><span class="mi">18714816</span><span class="p">,</span><span class="s">&quot;x16&quot;</span><span class="o">:</span><span class="mi">6457744324</span><span class="p">,</span><span class="s">&quot;x17&quot;</span><span class="o">:</span><span class="mi">4332784292</span><span class="p">,</span><span class="s">&quot;x18&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x19&quot;</span><span class="o">:</span><span class="mi">7651498240</span><span class="p">,</span><span class="s">&quot;x20&quot;</span><span class="o">:</span><span class="mi">4431355264</span><span class="p">,</span><span class="s">&quot;x21&quot;</span><span class="o">:</span><span class="mi">4337440648</span><span class="p">,</span><span class="s">&quot;x22&quot;</span><span class="o">:</span><span class="mi">4431355264</span><span class="p">,</span><span class="s">&quot;x23&quot;</span><span class="o">:</span><span class="mi">4431355264</span><span class="p">,</span><span class="s">&quot;x24&quot;</span><span class="o">:</span><span class="mi">7516197984</span><span class="p">,</span><span class="s">&quot;x25&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x26&quot;</span><span class="o">:</span><span class="mi">6639092750</span><span class="p">,</span><span class="s">&quot;x27&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;x28&quot;</span><span class="o">:</span><span class="mi">7854100944</span><span class="p">,</span><span class="s">&quot;fp&quot;</span><span class="o">:</span><span class="mi">6134339024</span><span class="p">,</span><span class="s">&quot;sp&quot;</span><span class="o">:</span><span class="mi">6134338992</span><span class="p">,</span><span class="s">&quot;lr&quot;</span><span class="o">:</span><span class="mi">4332705516</span><span class="p">,</span><span class="s">&quot;pc&quot;</span><span class="o">:</span><span class="mi">4332784292</span><span class="p">,</span><span class="s">&quot;cpsr&quot;</span><span class="o">:</span><span class="mi">1610612736</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>    <span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">4332784292</span><span class="p">,</span><span class="mi">4332705516</span><span class="p">,</span><span class="mi">4332705636</span><span class="p">,</span><span class="mi">6626567880</span><span class="p">,</span><span class="mi">6627752100</span><span class="p">,</span><span class="mi">6626592636</span><span class="p">,</span><span class="mi">6627860956</span><span class="p">,</span><span class="mi">6627105352</span><span class="p">,</span><span class="mi">6627059960</span><span class="p">,</span><span class="mi">6627054136</span><span class="p">,</span><span class="mi">6635318284</span><span class="p">,</span><span class="mi">6635327928</span><span class="p">,</span><span class="mi">6635328792</span><span class="p">,</span><span class="mi">6635299416</span><span class="p">,</span><span class="mi">6461387780</span><span class="p">,</span><span class="mi">6461385772</span><span class="p">,</span><span class="mi">6461376412</span><span class="p">,</span><span class="mi">6460460456</span><span class="p">,</span><span class="mi">6493892640</span><span class="p">,</span><span class="mi">6628104076</span><span class="p">,</span><span class="mi">4332687252</span><span class="p">,</span><span class="mi">6454763456</span><span class="p">],</span>
+</span><span class='line'>  <span class="s">&quot;crashed&quot;</span><span class="o">:</span><span class="n">true</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>    <span class="s">&quot;registers&quot;</span><span class="o">:</span><span class="p">{</span>
+</span><span class='line'>      <span class="s">&quot;x0&quot;</span><span class="o">:</span><span class="mi">256</span><span class="p">,</span><span class="s">&quot;x1&quot;</span><span class="o">:</span><span class="mi">6136048512</span><span class="p">,</span><span class="s">&quot;x2&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;x3&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x4&quot;</span><span class="o">:</span><span class="mi">9991</span><span class="p">,</span><span class="s">&quot;x5&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x6&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x7&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x8&quot;</span><span class="o">:</span><span class="mi">7852716416</span><span class="p">,</span><span class="s">&quot;x9&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;x10&quot;</span><span class="o">:</span><span class="mi">7852716472</span><span class="p">,</span><span class="s">&quot;x11&quot;</span><span class="o">:</span><span class="mi">236223201281</span><span class="p">,</span><span class="s">&quot;x12&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x13&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x14&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;x15&quot;</span><span class="o">:</span><span class="mi">7</span><span class="p">,</span><span class="s">&quot;x16&quot;</span><span class="o">:</span><span class="mi">368</span><span class="p">,</span><span class="s">&quot;x17&quot;</span><span class="o">:</span><span class="mi">48</span><span class="p">,</span><span class="s">&quot;x18&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x19&quot;</span><span class="o">:</span><span class="mi">6136049664</span><span class="p">,</span><span class="s">&quot;x20&quot;</span><span class="o">:</span><span class="mi">7852716416</span><span class="p">,</span><span class="s">&quot;x21&quot;</span><span class="o">:</span><span class="mi">33</span><span class="p">,</span><span class="s">&quot;x22&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;x23&quot;</span><span class="o">:</span><span class="mi">7303651328</span><span class="p">,</span><span class="s">&quot;x24&quot;</span><span class="o">:</span><span class="mi">7303651328</span><span class="p">,</span><span class="s">&quot;x25&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x26&quot;</span><span class="o">:</span><span class="mi">7</span><span class="p">,</span><span class="s">&quot;x27&quot;</span><span class="o">:</span><span class="mi">2164260864</span><span class="p">,</span><span class="s">&quot;x28&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;fp&quot;</span><span class="o">:</span><span class="mi">6136048352</span><span class="p">,</span><span class="s">&quot;sp&quot;</span><span class="o">:</span><span class="mi">6136048192</span><span class="p">,</span><span class="s">&quot;lr&quot;</span><span class="o">:</span><span class="mi">6457704116</span><span class="p">,</span><span class="s">&quot;pc&quot;</span><span class="o">:</span><span class="mi">6456008068</span><span class="p">,</span><span class="s">&quot;cpsr&quot;</span><span class="o">:</span><span class="mi">1073741824</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>    <span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">6456008068</span><span class="p">,</span><span class="mi">6457704116</span><span class="p">,</span><span class="mi">6457703176</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="p">]</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="p">{</span><span class="s">&quot;runtime&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;objc_selector&quot;</span><span class="o">:</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;crash_info_entries&quot;</span><span class="o">:</span><span class="p">[]}}</span>
+</span><span class='line'><span class="p">{</span><span class="s">&quot;dispatch_queue_names&quot;</span><span class="o">:</span><span class="p">[</span><span class="s">&quot;com.apple.main-thread&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">]}</span>
+</span><span class='line'><span class="p">{</span><span class="s">&quot;thread_names&quot;</span><span class="o">:</span><span class="p">[</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;com.apple.uikit.eventfetch-thread&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;com.twitter.crashlytics.ios.MachExceptionServer&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;com.google.Maps.LabelingBehavior&quot;</span><span class="p">,</span><span class="s">&quot;com.apple.NSURLConnectionLoader&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">]}</span>
+</span><span class='line'><span class="p">{</span><span class="s">&quot;process_stats&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;active&quot;</span><span class="o">:</span><span class="mi">1085800448</span><span class="p">,</span><span class="s">&quot;inactive&quot;</span><span class="o">:</span><span class="mi">460079104</span><span class="p">,</span><span class="s">&quot;wired&quot;</span><span class="o">:</span><span class="mi">669319168</span><span class="p">,</span><span class="s">&quot;freeMem&quot;</span><span class="o">:</span><span class="mi">116162560</span><span class="p">,</span><span class="s">&quot;free_mem&quot;</span><span class="o">:</span><span class="mi">116162560</span><span class="p">,</span><span class="s">&quot;virtual&quot;</span><span class="o">:</span><span class="mi">2060877824</span><span class="p">,</span><span class="s">&quot;resident&quot;</span><span class="o">:</span><span class="mi">1085800448</span><span class="p">,</span><span class="s">&quot;user_time&quot;</span><span class="o">:</span><span class="mi">337647</span><span class="p">,</span><span class="s">&quot;sys_time&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">}}</span>
+</span><span class='line'><span class="p">{</span><span class="s">&quot;storage&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;free&quot;</span><span class="o">:</span><span class="mi">206087524352</span><span class="p">,</span><span class="s">&quot;total&quot;</span><span class="o">:</span><span class="mi">255937040384</span><span class="p">}}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のようになっています。<br/>
+これがいい具合に <code>Fabric</code> 管理画面に表示されるわけですね。</p>
+
+<h3>recordError()で生成されるファイル</h3>
+
+<p>クラッシュではないけども、原因調査のためにレポート送信したい時があると思います。<br/>
+そんなときは <code>recordError()</code> メソッドを利用します。</p>
+
+<h4>recordError()メソッドの呼び出し</h4>
+
+<p>以下のようにボタンをタップしたら、レポートを送信するようにしてみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">tappedCrashButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">error</span> <span class="o">=</span> <span class="n">NSError</span><span class="p">(</span><span class="nl">domain:</span> <span class="s">&quot;takahiro test&quot;</span><span class="p">,</span> <span class="nl">code:</span> <span class="mi">1001</span><span class="p">,</span> <span class="nl">userInfo:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">Crashlytics</span><span class="p">.</span><span class="n">sharedInstance</span><span class="p">().</span><span class="n">recordError</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>recordError()で生成されるファイルの確認方法</h4>
+
+<p><code>recordError()</code> 実行後の生成ファイル確認方法は、基本的にはクラッシュ時と同じです。<br/>
+ただし、クラッシュ時に生成されるファイルとファイル名が異なります。<br/>
+<code>recordError()</code> では <code>error_a.clsrecord</code> といったファイルが生成されます。</p>
+
+<h4>recordError()で記録したファイルの中身</h4>
+
+<p>記録内容は以下の通りです。<br/>
+何を格納するかで中身はもう少し変わりそうですね。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">{</span><span class="s">&quot;error&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;domain&quot;</span><span class="o">:</span><span class="s">&quot;74616b616869726f2074657374&quot;</span><span class="p">,</span><span class="s">&quot;code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="p">,</span><span class="s">&quot;time&quot;</span><span class="o">:</span><span class="mi">1524979041</span><span class="p">,</span><span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">4299168744</span><span class="p">,</span><span class="mi">4299051336</span><span class="p">,</span><span class="mi">4298970328</span><span class="p">,</span><span class="mi">4298970672</span><span class="p">,</span><span class="mi">6639789768</span><span class="p">,</span><span class="mi">6640973988</span><span class="p">,</span><span class="mi">6639814524</span><span class="p">,</span><span class="mi">6641082844</span><span class="p">,</span><span class="mi">6640327240</span><span class="p">,</span><span class="mi">6640281848</span><span class="p">,</span><span class="mi">6640276024</span><span class="p">,</span><span class="mi">6648540172</span><span class="p">,</span><span class="mi">6648549816</span><span class="p">,</span><span class="mi">6648550680</span><span class="p">,</span><span class="mi">6648521304</span><span class="p">,</span><span class="mi">6474609668</span><span class="p">,</span><span class="mi">6474607660</span><span class="p">,</span><span class="mi">6474598300</span><span class="p">,</span><span class="mi">6473682344</span><span class="p">,</span><span class="mi">6507114528</span><span class="p">,</span><span class="mi">6641325964</span><span class="p">,</span><span class="mi">4298951872</span><span class="p">,</span><span class="mi">6467985344</span><span class="p">]}}</span>
+</span><span class='line'><span class="p">{</span><span class="s">&quot;error&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;domain&quot;</span><span class="o">:</span><span class="s">&quot;74616b616869726f2074657374&quot;</span><span class="p">,</span><span class="s">&quot;code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="p">,</span><span class="s">&quot;time&quot;</span><span class="o">:</span><span class="mi">1524979043</span><span class="p">,</span><span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">4299168744</span><span class="p">,</span><span class="mi">4299051336</span><span class="p">,</span><span class="mi">4298970328</span><span class="p">,</span><span class="mi">4298970672</span><span class="p">,</span><span class="mi">6639789768</span><span class="p">,</span><span class="mi">6640973988</span><span class="p">,</span><span class="mi">6639814524</span><span class="p">,</span><span class="mi">6641082844</span><span class="p">,</span><span class="mi">6640327240</span><span class="p">,</span><span class="mi">6640281848</span><span class="p">,</span><span class="mi">6640276024</span><span class="p">,</span><span class="mi">6648540172</span><span class="p">,</span><span class="mi">6648549816</span><span class="p">,</span><span class="mi">6648521304</span><span class="p">,</span><span class="mi">6474609668</span><span class="p">,</span><span class="mi">6474607660</span><span class="p">,</span><span class="mi">6474598300</span><span class="p">,</span><span class="mi">6473682344</span><span class="p">,</span><span class="mi">6507114528</span><span class="p">,</span><span class="mi">6641325964</span><span class="p">,</span><span class="mi">4298951872</span><span class="p">,</span><span class="mi">6467985344</span><span class="p">]}}</span>
+</span><span class='line'><span class="p">{</span><span class="s">&quot;error&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;domain&quot;</span><span class="o">:</span><span class="s">&quot;74616b616869726f2074657374&quot;</span><span class="p">,</span><span class="s">&quot;code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="p">,</span><span class="s">&quot;time&quot;</span><span class="o">:</span><span class="mi">1524979046</span><span class="p">,</span><span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">4299168744</span><span class="p">,</span><span class="mi">4299051336</span><span class="p">,</span><span class="mi">4298970328</span><span class="p">,</span><span class="mi">4298970672</span><span class="p">,</span><span class="mi">6639789768</span><span class="p">,</span><span class="mi">6640973988</span><span class="p">,</span><span class="mi">6639814524</span><span class="p">,</span><span class="mi">6641082844</span><span class="p">,</span><span class="mi">6640327240</span><span class="p">,</span><span class="mi">6640281848</span><span class="p">,</span><span class="mi">6640276024</span><span class="p">,</span><span class="mi">6648540172</span><span class="p">,</span><span class="mi">6648549816</span><span class="p">,</span><span class="mi">6648521304</span><span class="p">,</span><span class="mi">6474609668</span><span class="p">,</span><span class="mi">6474607660</span><span class="p">,</span><span class="mi">6474598300</span><span class="p">,</span><span class="mi">6473682344</span><span class="p">,</span><span class="mi">6507114528</span><span class="p">,</span><span class="mi">6641325964</span><span class="p">,</span><span class="mi">4298951872</span><span class="p">,</span><span class="mi">6467985344</span><span class="p">]}}</span>
+</span><span class='line'><span class="p">{</span><span class="s">&quot;error&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;domain&quot;</span><span class="o">:</span><span class="s">&quot;74616b616869726f2074657374&quot;</span><span class="p">,</span><span class="s">&quot;code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="p">,</span><span class="s">&quot;time&quot;</span><span class="o">:</span><span class="mi">1524979048</span><span class="p">,</span><span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">4299168744</span><span class="p">,</span><span class="mi">4299051336</span><span class="p">,</span><span class="mi">4298970328</span><span class="p">,</span><span class="mi">4298970672</span><span class="p">,</span><span class="mi">6639789768</span><span class="p">,</span><span class="mi">6640973988</span><span class="p">,</span><span class="mi">6639814524</span><span class="p">,</span><span class="mi">6641082844</span><span class="p">,</span><span class="mi">6640327240</span><span class="p">,</span><span class="mi">6640281848</span><span class="p">,</span><span class="mi">6640276024</span><span class="p">,</span><span class="mi">6648540172</span><span class="p">,</span><span class="mi">6648549816</span><span class="p">,</span><span class="mi">6648521304</span><span class="p">,</span><span class="mi">6474609668</span><span class="p">,</span><span class="mi">6474607660</span><span class="p">,</span><span class="mi">6474598300</span><span class="p">,</span><span class="mi">6473682344</span><span class="p">,</span><span class="mi">6507114528</span><span class="p">,</span><span class="mi">6641325964</span><span class="p">,</span><span class="mi">4298951872</span><span class="p">,</span><span class="mi">6467985344</span><span class="p">]}}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>recordError()の注意点</h4>
+
+<p>今回、<code>recordError()</code>を利用していて気づいた点が以下の通りです。</p>
+
+<ul>
+<li>短時間に複数回タップしてもアプリ内のファイルにエラーログとして記録されない</li>
+<li>アプリ内に記録されたエラーログが全て<code>Fabric</code>管理画面に記録されるわけではない</li>
+</ul>
+
+
+<p>どういったフィルタがかかっているのかまではわからないのですが、なんでもかんでも記録されるわけではないようです&hellip;</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+今回たまたま中身を探ってみる機会があったので見てみましたが、きっと普段は気にしなくて良い内容なのだと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-04-29T17:44:00+09:00" pubdate data-updated="true">Apr 29<span>th</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/crashlytics/'>crashlytics</a>, <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/swift/'>swift</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2018/04/29/crashlytics/" data-via="" data-counturl="http://grandbig.github.io/blog/2018/04/29/crashlytics/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/04/24/swift-promisekit-2/" title="Previous Post: PromiseKitを使ってみよう！(2)">&laquo; PromiseKitを使ってみよう！(2)</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/04/29/crashlytics/">Crashlyticsが作成するエラーファイルを見てみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/04/24/swift-promisekit-2/">PromiseKitを使ってみよう！(2)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/04/23/levtech-blog/">レバテック キャリアにて本ブログが紹介されました！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/04/23/codable-swift4-1/">Swift4.1で利便性が向上したCodable</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/04/07/git-flow/">新年度を迎えたからこそ考えよう『ブランチルール』</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (166)</a></li><li><a href='/blog/categories/swift'>swift (70)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/redux'>redux (6)</a></li><li><a href='/blog/categories/xcode'>xcode (6)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2018/04/29/crashlytics/';
+        var disqus_url = 'http://grandbig.github.io/blog/2018/04/29/crashlytics/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
