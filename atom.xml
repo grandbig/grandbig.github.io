@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2018-04-30T15:45:26+09:00</updated>
+  <updated>2018-05-03T01:07:54+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,233 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[ぐるなびレストラン検索APIで困ったCodable]]></title>
+    <link href="http://grandbig.github.io/blog/2018/05/03/gurunavi-api-codable/"/>
+    <updated>2018-05-03T00:37:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/05/03/gurunavi-api-codable</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、今回は <code>Codable</code> で困った話です。<br/>
+<a href="http://api.gnavi.co.jp/api/manual/restsearch/">ぐるなびレストラン検索API</a>を利用する機会がありまして、<br/>
+どうせなら <code>Codable</code> を使ってキレイに書こうと思ったが&hellip;という話になります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>ぐるなびレストラン検索APIのレスポンスについて</h3>
+
+<p>ほとんどの場合は何も考えずに <code>Codable</code> が適用できたのですが、<code>image_url</code>だけ困りました。<br/>
+と言うのも返却されるレスポンスに以下の違いがあったためです。</p>
+
+<p>実際にAPIを叩いて頂くと&hellip;</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 値がある場合</span>
+</span><span class='line'><span class="n">image_url</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nl">shop_image1:</span> <span class="n">http</span><span class="err">\</span><span class="o">:</span><span class="err">\</span><span class="o">/</span><span class="err">\</span><span class="o">/</span><span class="n">xxxxxxx</span><span class="p">,</span>
+</span><span class='line'>    <span class="nl">shop_image2:</span> <span class="n">http</span><span class="err">\</span><span class="o">:</span><span class="err">\</span><span class="o">/</span><span class="err">\</span><span class="o">/</span><span class="n">xxxxxxx</span><span class="p">,</span>
+</span><span class='line'>    <span class="nl">qrcode:</span> <span class="n">http</span><span class="err">\</span><span class="o">:</span><span class="err">\</span><span class="o">/</span><span class="err">\</span><span class="o">/</span><span class="n">xxxxxxx</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 値がない場合</span>
+</span><span class='line'><span class="n">image_url</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nl">shop_image1:</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>    <span class="nl">shop_image2:</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>    <span class="nl">qrcode:</span> <span class="n">http</span><span class="err">\</span><span class="o">:</span><span class="err">\</span><span class="o">/</span><span class="err">\</span><span class="o">/</span><span class="n">xxxxxxx</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>といった感じになっていることがわかると思います。</p>
+
+<h3>Codableをどこまで利用するべきか</h3>
+
+<p>筆者が下した結論としては、全てを <code>Codable</code> だけで賄うのは難しいということです。<br/>
+なぜなら <code>Codable</code> は <code>Any</code> 型を扱えないからです。<br/>
+ではどうすれば良いかと言うと&hellip;</p>
+
+<ul>
+<li><code>SwiftyJSON</code>を使う</li>
+<li><code>Codable</code> と <code>SwiftyJSON</code> を使う</li>
+</ul>
+
+
+<p>ことが考えられるかと思います。</p>
+
+<p>せっかくなので、<code>Codable</code> と <code>SwiftyJSON</code> を両方使ってみた場合を見ていきましょう。</p>
+
+<p>まず<code>Codable</code>の定義です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">Restaurant:</span> <span class="n">Codable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="kt">id</span><span class="o">:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">nameKana:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">address:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">url:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">tel:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">latitude:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">longitude:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">urlMobile:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">shopImage1:</span> <span class="n">String</span><span class="o">?</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">shopImage2:</span> <span class="n">String</span><span class="o">?</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">Restaurants:</span> <span class="n">Codable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">rest:</span> <span class="p">[</span><span class="n">Restaurant</span><span class="p">]</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">totalHitCount:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">hitPerPage:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">pageOffset:</span> <span class="n">String</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、<code>SwiftyJSON</code>をどのように使ったかというと&hellip;<br/>
+(以下、処理の抜粋です。)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">Alamofire</span><span class="p">.</span><span class="n">request</span><span class="p">(</span><span class="n">requestURL</span><span class="p">,</span> <span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">parameters:</span> <span class="n">parameters</span><span class="p">,</span> <span class="nl">encoding:</span> <span class="n">URLEncoding</span><span class="p">.</span><span class="k">default</span><span class="p">,</span> <span class="nl">headers:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">.</span><span class="n">response</span> <span class="p">{</span> <span class="n">response</span> <span class="k">in</span>
+</span><span class='line'>        <span class="k">do</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">var</span> <span class="n">result</span> <span class="o">=</span> <span class="n">Restaurants</span><span class="p">(</span><span class="nl">rest:</span> <span class="p">[],</span> <span class="nl">totalHitCount:</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="nl">hitPerPage:</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="nl">pageOffset:</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">guard</span> <span class="n">let</span> <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="p">.</span><span class="n">data</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                <span class="k">return</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">rest</span> <span class="o">=</span> <span class="n">JSON</span><span class="p">(</span><span class="n">data</span><span class="p">)[</span><span class="s">&quot;rest&quot;</span><span class="p">]</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">decoder</span> <span class="o">=</span> <span class="n">JSONDecoder</span><span class="p">()</span>
+</span><span class='line'>            <span class="n">decoder</span><span class="p">.</span><span class="n">keyDecodingStrategy</span> <span class="o">=</span> <span class="p">.</span><span class="n">convertFromSnakeCase</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">restaurants</span> <span class="o">=</span> <span class="n">try</span> <span class="n">decoder</span><span class="p">.</span><span class="n">decode</span><span class="p">(</span><span class="n">Restaurants</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">from:</span> <span class="n">data</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">guard</span> <span class="n">let</span> <span class="n">array</span> <span class="o">=</span> <span class="n">rest</span><span class="p">.</span><span class="n">array</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">completion</span><span class="p">(</span><span class="n">restaurants</span><span class="p">)</span>
+</span><span class='line'>                <span class="k">return</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="k">for</span> <span class="n">elem</span> <span class="k">in</span> <span class="n">array</span> <span class="p">{</span>
+</span><span class='line'>                <span class="k">for</span> <span class="n">restaurant</span> <span class="k">in</span> <span class="n">restaurants</span><span class="p">.</span><span class="n">rest</span> <span class="n">where</span> <span class="n">restaurant</span><span class="p">.</span><span class="kt">id</span> <span class="o">==</span> <span class="n">elem</span><span class="p">[</span><span class="s">&quot;id&quot;</span><span class="p">].</span><span class="n">string</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="n">var</span> <span class="n">convertedRestaurant</span> <span class="o">=</span> <span class="n">restaurant</span>
+</span><span class='line'>                    <span class="n">convertedRestaurant</span><span class="p">.</span><span class="n">shopImage1</span> <span class="o">=</span> <span class="n">elem</span><span class="p">[</span><span class="s">&quot;image_url&quot;</span><span class="p">][</span><span class="s">&quot;shop_image1&quot;</span><span class="p">].</span><span class="n">string</span>
+</span><span class='line'>                    <span class="n">convertedRestaurant</span><span class="p">.</span><span class="n">shopImage2</span> <span class="o">=</span> <span class="n">elem</span><span class="p">[</span><span class="s">&quot;image_url&quot;</span><span class="p">][</span><span class="s">&quot;shop_image2&quot;</span><span class="p">].</span><span class="n">string</span>
+</span><span class='line'>                    <span class="n">result</span><span class="p">.</span><span class="n">rest</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">convertedRestaurant</span><span class="p">)</span>
+</span><span class='line'>                    <span class="k">break</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">completion</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span> <span class="n">catch</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">print</span><span class="p">(</span><span class="s">&quot;error&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ただ、これは<code>for</code>文をぶん回して照らし合わせて<code>Codable</code>の形に充てがいたいがために書いているので、処理効率が良いかは別の話ですね&hellip;<br/>
+APIで取得できた件数が少なければ大した話ではありませんが&hellip;。<br/>
+(大量件数が取得されるケースでは、むしろ少数に減らすことができないか検討すべきでしょう。)</p>
+
+<h3>まとめ</h3>
+
+<p>さて、今回は<code>Codable</code>を利用しようと思って困った話を書いてみました。<br/>
+今回のAPIの返却値は特殊な感じもするので、今後Swiftが対応していくようになるとは思えないのですが、<br/>
+もしかしたらもう少し書きやすくなることもあるかもしれません。</p>
+
+<p>逆に、iOSアプリ向けにAPIを新規開発するときは、上記のような事情も踏まえて開発すると困ることが少ないのではと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Crashlyticsが作成するエラーファイルを見てみよう！]]></title>
@@ -6878,483 +7105,6 @@ Firebaseの導入で<code>Core</code>ライブラリはインストールでき�
 <ul>
 <li><a href="http://himaratsu.hatenablog.com/entry/ios/customview">カスタムViewをNibから初期化し、IBDesignableとIBInspectableで便利に使う</a></li>
 <li><a href="http://qiita.com/taketomato/items/7bf3f1dc2690c76079fb">xib 化した UITableViewCell を使うときの Tips</a></li>
-</ul>
-
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Bond, SwiftBondを使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/07/31/swiftbond-1/"/>
-    <updated>2017-07-31T20:17:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/07/31/swiftbond-1</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>さて、今回はiOSで <code>MVVM</code> アーキテクチャで重宝されている<a href="https://github.com/ReactiveKit/Bond">ReactiveKit/Bond</a>(SwiftBond)について勉強したいと思います。<br/>
-趣味で個人iOSアプリを作成する分にはそこまで大規模アプリになることも少ないとは思うものの、仕事で大人数で1つのアプリを開発することは当然あることでしょう。<br/>
-そんなときに備えて知識を向上させたいと思います。<br/>
-(今まで <code>MVC</code> で済んできたこともあり、良い機会なので <code>MVVM</code> を勉強したいと思っています。)</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>MVVMとは</h3>
-
-<p>まず、 <code>MVVM</code> とはそもそも何なのでしょうか？<br/>
-<code>MVVM</code> とは <code>Model View ViewModel</code> の略です。</p>
-
-<p><a href="https://ja.wikipedia.org/wiki/Model_View_ViewModel">Wikipedia</a>を見ると、それぞれ</p>
-
-<ul>
-<li><code>Model</code>
-
-<ul>
-<li>そのアプリケーションが扱う領域のデータと手続き (ビジネスロジック)を表現する要素</li>
-<li>データの格納に永続的な記憶の仕組み(データベース)やサーバ側との通信ロジックなど</li>
-</ul>
-</li>
-<li><code>View</code>
-
-<ul>
-<li>ユーザに見せるためのアウトプット描画およびユーザ入力を受け取る(UIへの入力とUIからの出力を担当する)要素</li>
-<li>データバインディング機構を通して自動的に描画</li>
-<li><code>View</code> そのものに複雑なロジックや状態を持たない</li>
-</ul>
-</li>
-<li><code>ViewModel</code>
-
-<ul>
-<li>Viewを描画するための状態の保持と、Viewから受け取った入力を適切な形に変換してModelに伝達する役目を持つ</li>
-</ul>
-</li>
-</ul>
-
-
-<p>と書かれています。<br/>
-他の方のブログ記事を見ても、上記からそう遠くはない印象です。</p>
-
-<h3>Bond, SwiftBondとは</h3>
-
-<p><code>Bond</code> は昔は <code>SwiftBond</code> と呼ばれていたようですが、今はGitHub上でも <code>ReactiveKit</code> の一部として提供されているようです。<br/>
-元々、 <code>SwiftBond</code> も <code>ReactiveKit</code> も開発者は同じなので、どこかのタイミングで取り込まれたんですかね&hellip;。<br/>
-この <code>Bond</code> を <code>MVVM</code> で言うところのデータバインディング機構を実現するために利用します。</p>
-
-<h3>サンプルを作ってみよう</h3>
-
-<p>今回のサンプルで扱う機能は下記です。</p>
-
-<ul>
-<li>Google　Mapに現在地周辺のレストランをマッピングする</li>
-<li>レストラン情報はホットペッパーAPIの周辺レストラン検索APIから取得する</li>
-</ul>
-
-
-<p>続いてXcode上のフォルダ構成は下記にします。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">SampleApp</span>
-</span><span class='line'><span class="err">├──</span> <span class="n">Model</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="n">HotpepperAPI</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">├──</span> <span class="n">ViewModel</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="n">HotpepperAPIViewModel</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">├──</span> <span class="n">View</span>
-</span><span class='line'><span class="err">│</span>    <span class="err">└──</span> <span class="n">ViewController</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">├──</span> <span class="n">AppDelegate</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'><span class="err">└──</span> <span class="n">Main</span><span class="p">.</span><span class="n">storyboard</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>また、今回は <code>Google Maps SDK for iOS</code> と ホットペッパーのAPIを利用します。<br/>
-これらのAPIキーを公式案内を元に取得して、 <code>Info.plist</code> と同じ階層に作成した <code>key.plist</code> に追加します。</p>
-
-<p><img src="http://grandbig.github.io/images/swiftbond_1.png" alt="ホットペッパーAPIキー" /></p>
-
-<p>さて下準備は済んだので、各ファイルの実装を見ていきましょう。</p>
-
-<h4>AppDelegate.swift</h4>
-
-<p><code>Google Maps SDK for iOS</code> を利用するために <code>AppDelegate.swift</code> に下記処理を実装します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">GoogleMaps</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
-</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">window:</span> <span class="n">UIWindow</span><span class="o">?</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span> <span class="n">didFinishLaunchingWithOptions</span> <span class="nl">launchOptions:</span> <span class="p">[</span><span class="nl">UIApplicationLaunchOptionsKey:</span> <span class="n">Any</span><span class="p">]</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">// Override point for customization after application launch.</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">if</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="s">&quot;key&quot;</span><span class="p">,</span> <span class="nl">ofType:</span> <span class="s">&quot;plist&quot;</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">if</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s">&quot;googleMapsApiKey&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="p">{</span>
-</span><span class='line'>          <span class="n">GMSServices</span><span class="p">.</span><span class="n">provideAPIKey</span><span class="p">(</span><span class="n">apiKey</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">return</span> <span class="n">true</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="p">...</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>HotpepperAPI.swift</h4>
-
-<p>ホットペッパーのグルメサーチAPIを利用する <code>Model</code> ファイルです。<br/>
-今回はサンプルということもあって、ほとんど複雑な処理はありません。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// HotpepperAPI.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Alamofire</span>
-</span><span class='line'><span class="n">import</span> <span class="n">SwiftyJSON</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/**</span>
-</span><span class='line'><span class="cm"> ホットペッパーAPI</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="n">class</span> <span class="n">HotpepperAPI</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">/// API Key</span>
-</span><span class='line'>  <span class="n">private</span> <span class="n">var</span> <span class="nl">apiKey:</span> <span class="n">String</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
-</span><span class='line'>  <span class="c1">/// ホットペッパーAPIのベースURL</span>
-</span><span class='line'>  <span class="n">private</span> <span class="n">let</span> <span class="nl">baseURL:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;https://webservice.recruit.co.jp/hotpepper/gourmet/v1/&quot;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">/// 初期化処理</span>
-</span><span class='line'>  <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">if</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="s">&quot;key&quot;</span><span class="p">,</span> <span class="nl">ofType:</span> <span class="s">&quot;plist&quot;</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">if</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s">&quot;hotpepperApiKey&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="p">{</span>
-</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">apiKey</span> <span class="o">=</span> <span class="n">apiKey</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="cm">/**</span>
-</span><span class='line'><span class="cm">   ホットペッパーグルメサーチAPI</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">   - parameter coordinate: 位置</span>
-</span><span class='line'><span class="cm">   - parameter completion: レストラン情報を返却するcallback</span>
-</span><span class='line'><span class="cm">   */</span>
-</span><span class='line'>  <span class="n">func</span> <span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">,</span> <span class="nl">completion:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">((</span><span class="n">JSON</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">))</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">parameters</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;key&quot;</span><span class="o">:</span> <span class="n">self</span><span class="p">.</span><span class="n">apiKey</span><span class="p">,</span> <span class="s">&quot;format&quot;</span><span class="o">:</span> <span class="s">&quot;json&quot;</span><span class="p">,</span> <span class="s">&quot;lat&quot;</span><span class="o">:</span> <span class="n">coordinate</span><span class="p">.</span><span class="n">latitude</span><span class="p">,</span> <span class="s">&quot;lng&quot;</span><span class="o">:</span> <span class="n">coordinate</span><span class="p">.</span><span class="n">longitude</span><span class="p">,</span> <span class="s">&quot;range&quot;</span><span class="o">:</span> <span class="mi">2</span><span class="p">]</span> <span class="n">as</span> <span class="p">[</span><span class="n">String</span> <span class="o">:</span> <span class="n">Any</span><span class="p">]</span>
-</span><span class='line'>    <span class="n">Alamofire</span><span class="p">.</span><span class="n">request</span><span class="p">(</span><span class="n">baseURL</span><span class="p">,</span> <span class="nl">method:</span> <span class="p">.</span><span class="n">get</span><span class="p">,</span> <span class="nl">parameters:</span> <span class="n">parameters</span><span class="p">,</span> <span class="nl">encoding:</span> <span class="n">URLEncoding</span><span class="p">.</span><span class="k">default</span><span class="p">,</span> <span class="nl">headers:</span> <span class="nb">nil</span><span class="p">).</span><span class="n">responseJSON</span> <span class="p">{</span> <span class="n">response</span> <span class="k">in</span>
-</span><span class='line'>      <span class="n">let</span> <span class="n">json</span> <span class="o">=</span> <span class="n">JSON</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="n">result</span><span class="p">.</span><span class="n">value</span> <span class="n">as</span> <span class="n">Any</span><span class="p">)</span>
-</span><span class='line'>      <span class="n">let</span> <span class="n">result</span> <span class="o">=</span> <span class="n">json</span><span class="p">[</span><span class="s">&quot;results&quot;</span><span class="p">][</span><span class="s">&quot;shop&quot;</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="n">completion</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>HotpepperAPIViewModel.swift</h4>
-
-<p><code>Model</code>である<code>HotpepperAPI.swift</code>と<code>View</code>である<code>ViewController.swift</code>を繋ぐ<code>ViewModel</code>ファイルです。<br/>
-<code>View</code>からの入力受付を想定して<code>searchRestaurant</code>メソッドを用意しています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// HotpepperAPIViewModel.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">ReactiveKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Bond</span>
-</span><span class='line'><span class="n">import</span> <span class="n">SwiftyJSON</span>
-</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">/// 通信の各状態をEnumで表現</span>
-</span><span class='line'><span class="k">enum</span> <span class="n">RequestState</span> <span class="p">{</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">none</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">requesting</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">finish</span>
-</span><span class='line'>  <span class="k">case</span> <span class="n">error</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">/// HotpepperAPIのViewModelクラス</span>
-</span><span class='line'><span class="n">final</span> <span class="n">class</span> <span class="n">HotpepperAPIViewModel</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">items:</span> <span class="n">ObservableArray</span><span class="o">&lt;</span><span class="n">JSON</span><span class="o">&gt;</span> <span class="o">=</span> <span class="n">ObservableArray</span><span class="p">([])</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">requestState</span> <span class="o">=</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">RequestState</span><span class="o">&gt;</span><span class="p">(.</span><span class="n">none</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">let</span> <span class="n">hotpepperAPI</span> <span class="o">=</span> <span class="n">HotpepperAPI</span><span class="p">.</span><span class="n">init</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">finishSearchRestaurant:</span> <span class="n">Signal</span><span class="o">&lt;</span><span class="p">[</span><span class="n">JSON</span><span class="p">]</span><span class="o">?</span><span class="p">,</span> <span class="n">NoError</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">requestState</span><span class="p">.</span><span class="n">map</span><span class="p">({</span> <span class="p">(</span><span class="n">requestState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">JSON</span><span class="p">]</span><span class="o">?</span> <span class="k">in</span>
-</span><span class='line'>      <span class="k">if</span> <span class="n">requestState</span> <span class="o">==</span> <span class="p">.</span><span class="n">finish</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">array</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="k">return</span> <span class="nb">nil</span>
-</span><span class='line'>    <span class="p">})</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">func</span> <span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">CLLocationCoordinate2D</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">requestState</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="n">RequestState</span><span class="p">.</span><span class="n">requesting</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">hotpepperAPI</span><span class="p">.</span><span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">coordinate</span><span class="p">,</span> <span class="nl">completion:</span> <span class="p">{</span> <span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="k">in</span>
-</span><span class='line'>      <span class="n">guard</span> <span class="n">let</span> <span class="n">resultArray</span> <span class="o">=</span> <span class="n">result</span><span class="p">.</span><span class="n">array</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">return</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">ObservableArray</span><span class="p">(</span><span class="n">resultArray</span><span class="p">)</span>
-</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">requestState</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="n">RequestState</span><span class="p">.</span><span class="n">finish</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">})</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記では、<code>searchRestaurant</code>の中で先程紹介した<code>Model</code>の<code>HotpepperAPI</code>クラスにアクセスしてサーバ通信を委託しています。<br/>
-また、返却された値を受け取って<code>requestState</code>の状態を変えることが、<code>finishSearchRestaurant</code>の処理のトリガーになっています。<br/>
-<code>finishSearchRestaurant</code>では、<code>RequestState</code>の状態が<code>finish</code>になったときのみ正しい値を返却し、それ以外は<code>nil</code>を返却しています。</p>
-
-<h4>ViewController.swift</h4>
-
-<p>最後に <code>View</code> に当たる <code>ViewController.swift</code> について見ていきます。<br/>
-iOSでファットになりがちな <code>ViewController</code> を <code>View</code> の定義に則って実装していくというのがキーになります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">GoogleMaps</span>
-</span><span class='line'><span class="n">import</span> <span class="n">SwiftyJSON</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">/// マップビュー</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">mapView:</span> <span class="n">GMSMapView</span><span class="o">!</span>
-</span><span class='line'>  <span class="c1">/// 検索ボタン</span>
-</span><span class='line'>  <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">searchButton:</span> <span class="n">UIButton</span><span class="o">!</span>
-</span><span class='line'>  <span class="c1">/// 現在地</span>
-</span><span class='line'>  <span class="n">internal</span> <span class="n">var</span> <span class="nl">currentLocation:</span> <span class="n">CLLocationCoordinate2D</span><span class="o">?</span>
-</span><span class='line'>  <span class="c1">/// ViewModel</span>
-</span><span class='line'>  <span class="n">internal</span> <span class="n">var</span> <span class="n">hotpepperAPIVM</span> <span class="o">=</span> <span class="n">HotpepperAPIViewModel</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// データバインディング機構の設定処理</span>
-</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">setUpBind</span><span class="p">()</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="p">...</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">private</span> <span class="n">func</span> <span class="n">setUpBond</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">// 検索ボタンをタップ(.touchUpInside)したときに呼び出される処理</span>
-</span><span class='line'>    <span class="n">_</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">searchButton</span><span class="p">.</span><span class="n">reactive</span><span class="p">.</span><span class="n">tap</span><span class="p">.</span><span class="n">observeNext</span> <span class="p">{</span> <span class="n">_</span> <span class="k">in</span>
-</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">hotpepperAPIVM</span><span class="p">.</span><span class="n">searchRestaurant</span><span class="p">(</span><span class="nl">coordinate:</span> <span class="n">self</span><span class="p">.</span><span class="n">currentLocation</span><span class="o">!</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="c1">// finishSearchRestaurantから値が返却されるときに呼び出される処理</span>
-</span><span class='line'>    <span class="n">_</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">hotpepperAPIVM</span><span class="p">.</span><span class="n">finishSearchRestaurant</span><span class="p">.</span><span class="n">ignoreNil</span><span class="p">().</span><span class="n">observeNext</span><span class="p">(</span><span class="nl">with:</span> <span class="p">{</span> <span class="p">(</span><span class="n">searchShops</span><span class="p">)</span> <span class="k">in</span>
-</span><span class='line'>      <span class="k">for</span> <span class="n">searchShop</span> <span class="k">in</span> <span class="n">searchShops</span> <span class="p">{</span>
-</span><span class='line'>        <span class="c1">// Google Mapへのマッピング処理</span>
-</span><span class='line'>        <span class="c1">// 省略</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>    <span class="p">})</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>上記のように実装することで、データバインディング機構を <code>View</code> に実装することができます。<br/>
-ポイントは上記ソース内コメントに書いた通りですが、筆者が苦戦したのは、</p>
-
-<ul>
-<li><code>_ =</code> から始めなかったためSwift3の静的解析で怒られた</li>
-<li><code>observeNext</code> 内で <code>nil</code> 判定してしまっていたが、 <code>ignoreNil</code> という便利なものがある</li>
-</ul>
-
-
-<p>の2点です。</p>
-
-<h3>まとめ</h3>
-
-<p>さて如何でしたでしょうか？<br/>
-筆者的にもまだまだ理解しきれていないところがあり、引き続き勉強する必要があると感じています。<br/>
-特にエラーハンドリング周りでは <code>ReactiveKit</code> を利用することで、<br/>
-うまく書けるようになるのではという期待感があるのでもう少し見ていきたいと思っています。<br/>
-と言ったところで本日はここまで。</p>
-
-<p>参考</p>
-
-<ul>
-<li><a href="http://qiita.com/hachinobu/items/27a92d480db24511559a">SwiftBondの魅力 ~実用サンプル編~</a></li>
-<li><a href="http://qiita.com/susieyy/items/2af5321b287b8d2f49f6">MVVMをベースに複雑な振る舞いをしっかり把握できるアプリ開発</a></li>
-<li><a href="http://qiita.com/ko2ic/items/44c18b07c7f337dfb06b">SwiftBondをSwift3対応するためにv5にマイグレーションする</a></li>
-<li><a href="https://www.raywenderlich.com/149753/bond-tutorial-bindings-swift">Bond Tutorial: Bindings in Swift</a></li>
-<li><a href="https://github.com/ReactiveKit/ReactiveKit">ReactiveKit/ReactiveKit</a></li>
 </ul>
 
 

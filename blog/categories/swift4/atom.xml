@@ -4,7 +4,7 @@
   <title><![CDATA[Category: swift4 | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/swift4/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2018-04-30T15:46:22+09:00</updated>
+  <updated>2018-05-03T01:08:57+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,178 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[ぐるなびレストラン検索APIで困ったCodable]]></title>
+    <link href="http://grandbig.github.io/blog/2018/05/03/gurunavi-api-codable/"/>
+    <updated>2018-05-03T00:37:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/05/03/gurunavi-api-codable</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて、今回は <code>Codable</code> で困った話です。<br/>
+<a href="http://api.gnavi.co.jp/api/manual/restsearch/">ぐるなびレストラン検索API</a>を利用する機会がありまして、<br/>
+どうせなら <code>Codable</code> を使ってキレイに書こうと思ったが&hellip;という話になります。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>ぐるなびレストラン検索APIのレスポンスについて</h3>
+
+<p>ほとんどの場合は何も考えずに <code>Codable</code> が適用できたのですが、<code>image_url</code>だけ困りました。<br/>
+と言うのも返却されるレスポンスに以下の違いがあったためです。</p>
+
+<p>実際にAPIを叩いて頂くと&hellip;</p>
+
+<p>```objective-c
+// 値がある場合
+image_url {</p>
+
+<pre><code>shop_image1: http\:\/\/xxxxxxx,
+shop_image2: http\:\/\/xxxxxxx,
+qrcode: http\:\/\/xxxxxxx
+</code></pre>
+
+<p>}</p>
+
+<p>// 値がない場合
+image_url {</p>
+
+<pre><code>shop_image1: {
+},
+shop_image2: {
+},
+qrcode: http\:\/\/xxxxxxx
+</code></pre>
+
+<p>}
+```</p>
+
+<p>といった感じになっていることがわかると思います。</p>
+
+<h3>Codableをどこまで利用するべきか</h3>
+
+<p>筆者が下した結論としては、全てを <code>Codable</code> だけで賄うのは難しいということです。<br/>
+なぜなら <code>Codable</code> は <code>Any</code> 型を扱えないからです。<br/>
+ではどうすれば良いかと言うと&hellip;</p>
+
+<ul>
+<li><code>SwiftyJSON</code>を使う</li>
+<li><code>Codable</code> と <code>SwiftyJSON</code> を使う</li>
+</ul>
+
+
+<p>ことが考えられるかと思います。</p>
+
+<p>せっかくなので、<code>Codable</code> と <code>SwiftyJSON</code> を両方使ってみた場合を見ていきましょう。</p>
+
+<p>まず<code>Codable</code>の定義です。</p>
+
+<p>```objective-c
+public struct Restaurant: Codable {</p>
+
+<pre><code>public var id: String
+public var name: String
+public var nameKana: String
+public var address: String
+public var url: String
+public var tel: String
+public var latitude: String
+public var longitude: String
+public var urlMobile: String
+public var shopImage1: String?
+public var shopImage2: String?
+</code></pre>
+
+<p>}</p>
+
+<p>public struct Restaurants: Codable {</p>
+
+<pre><code>public var rest: [Restaurant]
+public var totalHitCount: String
+public var hitPerPage: String
+public var pageOffset: String
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いて、<code>SwiftyJSON</code>をどのように使ったかというと&hellip;<br/>
+(以下、処理の抜粋です。)</p>
+
+<p>```objective-c
+Alamofire.request(requestURL, method: .get, parameters: parameters, encoding: URLEncoding.default, headers: nil)</p>
+
+<pre><code>.response { response in
+    do {
+        var result = Restaurants(rest: [], totalHitCount: "", hitPerPage: "", pageOffset: "")
+
+        guard let data = response.data else {
+            return
+        }
+        let rest = JSON(data)["rest"]
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let restaurants = try decoder.decode(Restaurants.self, from: data)
+        guard let array = rest.array else {
+            completion(restaurants)
+            return
+        }
+        for elem in array {
+            for restaurant in restaurants.rest where restaurant.id == elem["id"].string {
+                var convertedRestaurant = restaurant
+                convertedRestaurant.shopImage1 = elem["image_url"]["shop_image1"].string
+                convertedRestaurant.shopImage2 = elem["image_url"]["shop_image2"].string
+                result.rest.append(convertedRestaurant)
+                break
+            }
+        }
+
+        completion(result)
+    } catch {
+        print("error")
+    }
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ただ、これは<code>for</code>文をぶん回して照らし合わせて<code>Codable</code>の形に充てがいたいがために書いているので、処理効率が良いかは別の話ですね&hellip;<br/>
+APIで取得できた件数が少なければ大した話ではありませんが&hellip;。<br/>
+(大量件数が取得されるケースでは、むしろ少数に減らすことができないか検討すべきでしょう。)</p>
+
+<h3>まとめ</h3>
+
+<p>さて、今回は<code>Codable</code>を利用しようと思って困った話を書いてみました。<br/>
+今回のAPIの返却値は特殊な感じもするので、今後Swiftが対応していくようになるとは思えないのですが、<br/>
+もしかしたらもう少し書きやすくなることもあるかもしれません。</p>
+
+<p>逆に、iOSアプリ向けにAPIを新規開発するときは、上記のような事情も踏まえて開発すると困ることが少ないのではと思います。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Swift4.1で利便性が向上したCodable]]></title>
