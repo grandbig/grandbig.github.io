@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2018-06-23T12:19:08+09:00</updated>
+  <updated>2018-06-30T12:20:27+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,1089 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[ReSwiftを勉強してみよう！(3) ~ 非同期通信処理の場合 ~]]></title>
+    <link href="http://grandbig.github.io/blog/2018/06/30/reswift-3/"/>
+    <updated>2018-06-30T11:11:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/06/30/reswift-3</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は久しぶりに<a href="https://github.com/ReSwift/ReSwift">ReSwift</a>について書きたいと思います。<br/>
+これまで以下のように <code>ReSwift</code> について勉強してきました。</p>
+
+<ul>
+<li><a href="https://grandbig.github.io/blog/2016/09/03/reswift-1/">ReSwiftを勉強してみよう！(1)</a><br/>
+<code>CounterSample</code> を見ながら <code>ReSwift</code> の基本的な考え方</li>
+<li><a href="https://grandbig.github.io/blog/2016/12/06/reswift-2/">ReSwiftを勉強してみよう！(2)</a><br/>
+<code>ReSwiftRouter</code> を用いた画面切り替えの場合の書き方</li>
+</ul>
+
+
+<p>3回目の今回は非同期通信処理がある場合の <code>ReSwift</code> の利用方法について見ていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>サンプルの説明</h3>
+
+<p>まずはサンプルアプリの要件を説明します。</p>
+
+<ul>
+<li>Googleマップ上でユーザの現在地を表示</li>
+<li>ユーザの現在地周辺のレストランを検索</li>
+<li>その検索結果をGoogleマップにプロット</li>
+</ul>
+
+
+<p>今回、ユーザの現在地周辺のレストラン検索には、<a href="https://developers.google.com/places/?hl=ja">Google Places API</a>を利用します。<br/>
+実際のイメージは以下の通りです。</p>
+
+<p><img src="http://grandbig.github.io/images/reswift_3_1.png" alt="今回のサンプルアプリ" /></p>
+
+<h3>実装の説明</h3>
+
+<p>続いて、具体的な実装について説明したいと思います。<br/>
+1つ1つ見ていきましょう。</p>
+
+<h4>API処理周り</h4>
+
+<p><code>ReSwift</code> とは直接関係ありませんが、今回の非同期通信処理の根源となるAPI処理周りについて先に書いておきます。<br/>
+<a href="https://github.com/Moya/Moya">Moya</a>を利用して<a href="https://developers.google.com/places/?hl=ja">Google Places API</a>を叩けるようにします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// GooglePlacesAPI</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Moya</span>
+</span><span class='line'><span class="n">import</span> <span class="n">PromiseKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">GooglePlaces</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">internal</span> <span class="k">enum</span> <span class="n">GooglePlacesAPITarget</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">hospitals</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">Double</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">Double</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">restaurants</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">Double</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">Double</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">internal</span> <span class="k">enum</span> <span class="nl">APIError:</span> <span class="n">Error</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">cancel</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">apiError</span><span class="p">(</span><span class="nl">description:</span> <span class="n">String</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">decodeError</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">internal</span> <span class="k">enum</span> <span class="nl">GooglePlacesError:</span> <span class="n">Error</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">cancel</span>
+</span><span class='line'>    <span class="k">case</span> <span class="n">notFoundError</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">protocol</span> <span class="n">GooglePlacesAPIProtocol</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">fetchHospitals</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">Double</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Promise</span><span class="o">&lt;</span><span class="p">[</span><span class="n">Place</span><span class="p">]</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">fetchRestaurants</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">Double</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Promise</span><span class="o">&lt;</span><span class="p">[</span><span class="n">Place</span><span class="p">]</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">fetchPhoto</span><span class="p">(</span><span class="nl">placeId:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Promise</span><span class="o">&lt;</span><span class="n">UIImage</span><span class="o">?&gt;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="nl">GooglePlacesAPITarget:</span> <span class="n">TargetType</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// API Key</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">apiKey:</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">guard</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">keyFileName</span><span class="p">(),</span>
+</span><span class='line'>                                          <span class="nl">ofType:</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">plistExtension</span><span class="p">())</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                                            <span class="n">fatalError</span><span class="p">(</span><span class="s">&quot;key.plistが見つかりません&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">guard</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">fatalError</span><span class="p">(</span><span class="s">&quot;key.plistの中身が想定通りではありません&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">guard</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">googleApiKeyName</span><span class="p">()]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">fatalError</span><span class="p">(</span><span class="s">&quot;Google APIのKeyが設定されていません&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="n">apiKey</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// ベースURLを文字列で定義</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">_baseURL:</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="n">hospitals</span><span class="p">,</span> <span class="p">.</span><span class="nl">restaurants:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">url</span><span class="p">.</span><span class="n">googlePlacesApiPlaceUrl</span><span class="p">()</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">baseURL:</span> <span class="n">URL</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">URL</span><span class="p">(</span><span class="nl">string:</span> <span class="n">_baseURL</span><span class="p">)</span><span class="o">!</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// enumの値に対応したパスを指定</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">path:</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="n">hospitals</span><span class="p">,</span> <span class="p">.</span><span class="nl">restaurants:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// enumの値に対応したHTTPメソッドを指定</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">method:</span> <span class="n">Moya</span><span class="p">.</span><span class="n">Method</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="n">hospitals</span><span class="p">,</span> <span class="p">.</span><span class="nl">restaurants:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="p">.</span><span class="n">get</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// スタブデータの設定</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">sampleData:</span> <span class="n">Data</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="n">hospitals</span><span class="p">,</span> <span class="p">.</span><span class="nl">restaurants:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="s">&quot;Stub data&quot;</span><span class="p">.</span><span class="n">data</span><span class="p">(</span><span class="nl">using:</span> <span class="n">String</span><span class="p">.</span><span class="n">Encoding</span><span class="p">.</span><span class="n">utf8</span><span class="p">)</span><span class="o">!</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// パラメータの設定</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">task:</span> <span class="n">Task</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="n">let</span> <span class="p">.</span><span class="n">hospitals</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">lng</span><span class="p">)</span><span class="o">:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="p">.</span><span class="n">requestParameters</span><span class="p">(</span><span class="nl">parameters:</span> <span class="p">[</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">keyFileName</span><span class="p">()</span><span class="o">:</span> <span class="n">apiKey</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">locationKeyName</span><span class="p">()</span><span class="o">:</span> <span class="s">&quot;\(lat),\(lng)&quot;</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">radiusKeyName</span><span class="p">()</span><span class="o">:</span> <span class="mi">1500</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">typeKeyName</span><span class="p">()</span><span class="o">:</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">hospitalTypeValueName</span><span class="p">()</span>
+</span><span class='line'>                <span class="p">],</span> <span class="nl">encoding:</span> <span class="n">URLEncoding</span><span class="p">.</span><span class="k">default</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">case</span> <span class="n">let</span> <span class="p">.</span><span class="n">restaurants</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">lng</span><span class="p">)</span><span class="o">:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="p">.</span><span class="n">requestParameters</span><span class="p">(</span><span class="nl">parameters:</span> <span class="p">[</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">keyFileName</span><span class="p">()</span><span class="o">:</span> <span class="n">apiKey</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">locationKeyName</span><span class="p">()</span><span class="o">:</span> <span class="s">&quot;\(lat),\(lng)&quot;</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">radiusKeyName</span><span class="p">()</span><span class="o">:</span> <span class="mi">1500</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">typeKeyName</span><span class="p">()</span><span class="o">:</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">common</span><span class="p">.</span><span class="n">restaurantTypeValueName</span><span class="p">()</span>
+</span><span class='line'>                <span class="p">],</span> <span class="nl">encoding:</span> <span class="n">URLEncoding</span><span class="p">.</span><span class="k">default</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// ヘッダーの設定</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">headers:</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">String</span><span class="p">]</span><span class="o">?</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">self</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="n">hospitals</span><span class="p">,</span> <span class="p">.</span><span class="nl">restaurants:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="nb">nil</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">GooglePlacesAPI:</span> <span class="n">GooglePlacesAPIProtocol</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">provider:</span> <span class="n">MoyaProvider</span><span class="o">&lt;</span><span class="n">GooglePlacesAPITarget</span><span class="o">&gt;!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// イニシャライザ</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">provider</span> <span class="o">=</span> <span class="n">MoyaProvider</span><span class="o">&lt;</span><span class="n">GooglePlacesAPITarget</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: CRUD operations</span>
+</span><span class='line'>    <span class="c1">/// 指定の緯度、経度から一定範囲内のレストランを検索する処理</span>
+</span><span class='line'>    <span class="c1">///</span>
+</span><span class='line'>    <span class="c1">/// - Returns: レストランのプレイス情報</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">fetchRestaurants</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">Double</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Promise</span><span class="o">&lt;</span><span class="p">[</span><span class="n">Place</span><span class="p">]</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="p">(</span><span class="n">promise</span><span class="p">,</span> <span class="n">resolver</span><span class="p">)</span> <span class="o">=</span> <span class="n">Promise</span><span class="o">&lt;</span><span class="p">[</span><span class="n">Place</span><span class="p">]</span><span class="o">&gt;</span><span class="p">.</span><span class="n">pending</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">provider</span><span class="p">.</span><span class="n">request</span><span class="p">(.</span><span class="n">restaurants</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">lat</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">lng</span><span class="p">))</span> <span class="p">{</span> <span class="n">result</span> <span class="k">in</span>
+</span><span class='line'>            <span class="k">switch</span> <span class="n">result</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">case</span> <span class="p">.</span><span class="n">success</span><span class="p">(</span><span class="n">let</span> <span class="n">response</span><span class="p">)</span><span class="o">:</span>
+</span><span class='line'>                <span class="k">do</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="n">let</span> <span class="n">decoder</span> <span class="o">=</span> <span class="n">JSONDecoder</span><span class="p">()</span>
+</span><span class='line'>                    <span class="n">decoder</span><span class="p">.</span><span class="n">keyDecodingStrategy</span> <span class="o">=</span> <span class="p">.</span><span class="n">convertFromSnakeCase</span>
+</span><span class='line'>                    <span class="n">let</span> <span class="n">places</span> <span class="o">=</span> <span class="n">try</span> <span class="n">decoder</span><span class="p">.</span><span class="n">decode</span><span class="p">(</span><span class="n">Places</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">from:</span> <span class="n">response</span><span class="p">.</span><span class="n">data</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>                    <span class="n">resolver</span><span class="p">.</span><span class="n">fulfill</span><span class="p">(</span><span class="n">places</span><span class="p">.</span><span class="n">results</span><span class="p">)</span>
+</span><span class='line'>                <span class="p">}</span> <span class="n">catch</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="n">resolver</span><span class="p">.</span><span class="n">reject</span><span class="p">(</span><span class="n">APIError</span><span class="p">.</span><span class="n">decodeError</span><span class="p">)</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>            <span class="k">case</span> <span class="p">.</span><span class="n">failure</span><span class="p">(</span><span class="n">let</span> <span class="n">error</span><span class="p">)</span><span class="o">:</span>
+</span><span class='line'>                <span class="n">resolver</span><span class="p">.</span><span class="n">reject</span><span class="p">(</span><span class="n">APIError</span><span class="p">.</span><span class="n">apiError</span><span class="p">(</span><span class="nl">description:</span> <span class="n">error</span><span class="p">.</span><span class="n">localizedDescription</span><span class="p">))</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="n">promise</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>例によって取得したデータを利用しやすくするために <code>Codable</code> を使います。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Places.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">Location:</span> <span class="n">Codable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">lat:</span> <span class="n">Double</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">lng:</span> <span class="n">Double</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">Viewport:</span> <span class="n">Codable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">northeast:</span> <span class="n">Location</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">southwest:</span> <span class="n">Location</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">Geometry:</span> <span class="n">Codable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">viewport:</span> <span class="n">Viewport</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">location:</span> <span class="n">Location</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">OpeningHours:</span> <span class="n">Codable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">weekdayText:</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span><span class="o">?</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">openNow:</span> <span class="n">Bool</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">Photos:</span> <span class="n">Codable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">photoReference:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">width:</span> <span class="n">Double</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">height:</span> <span class="n">Double</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">htmlAttributions:</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">Place:</span> <span class="n">Codable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="kt">id</span><span class="o">:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">placeId:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">icon:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">rating:</span> <span class="n">Double</span><span class="o">?</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">scope:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">vicinity:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">reference:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">priceLevel:</span> <span class="n">Int</span><span class="o">?</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">types:</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">geometry:</span> <span class="n">Geometry</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">openingHours:</span> <span class="n">OpeningHours</span><span class="o">?</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">photos:</span> <span class="p">[</span><span class="n">Photos</span><span class="p">]</span><span class="o">?</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="nl">Places:</span> <span class="n">Codable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">results:</span> <span class="p">[</span><span class="n">Place</span><span class="p">]</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">status:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">htmlAttributions:</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>State</h4>
+
+<p>さて、 <code>ReSwift</code> の <code>State</code> から見ていきましょう。<br/>
+<code>State</code> はアプリの状態を表現する役割を担います。<br/>
+状態はパラメータの値で正常かどうかを判断できる作りにします。</p>
+
+<p>具体的には、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppState.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">AppState:</span> <span class="n">StateType</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="n">mapState</span> <span class="o">=</span> <span class="n">MapState</span><span class="p">(</span><span class="nl">places:</span> <span class="p">[],</span> <span class="nl">error:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">MapState:</span> <span class="n">StateType</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">places:</span> <span class="p">[</span><span class="n">Place</span><span class="p">]</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">error:</span> <span class="n">Error</span><span class="o">?</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>といった感じです。</p>
+
+<ul>
+<li>アプリに複数状態が存在する場合を考慮して <code>AppState</code> 内に各状態を持たせます。</li>
+<li>それぞれの状態内に成功パターン/失敗パターンを識別できるようにパラメータを持たせます。</li>
+</ul>
+
+
+<h4>Action</h4>
+
+<p><code>Action</code> はまさにアプリにどういった状況を起こさせたいか (つまり、アクション)を意味する役割を担います。<br/>
+具体的には、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppAction.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">PromiseKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="n">MapState</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="nl">RequestRestaurantsAction:</span> <span class="n">Action</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">struct</span> <span class="nl">SuccessRestaurantsAction:</span> <span class="n">Action</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="nl">response:</span> <span class="p">[</span><span class="n">Place</span><span class="p">]</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">struct</span> <span class="nl">APIErrorAction:</span> <span class="n">Action</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="nl">error:</span> <span class="n">Error</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">static</span> <span class="n">func</span> <span class="n">fetchRestaurantsAction</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">Double</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Store</span><span class="o">&lt;</span><span class="n">AppState</span><span class="o">&gt;</span><span class="p">.</span><span class="n">AsyncActionCreator</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="p">{</span> <span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">store</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span> <span class="k">in</span>
+</span><span class='line'>            <span class="n">firstly</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">GooglePlacesAPI</span><span class="p">().</span><span class="n">fetchRestaurants</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">lat</span><span class="p">,</span> <span class="nl">lng:</span> <span class="n">lng</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">}.</span><span class="n">done</span> <span class="p">{</span> <span class="n">results</span> <span class="k">in</span>
+</span><span class='line'>                <span class="n">callback</span> <span class="p">{</span><span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="k">in</span> <span class="n">SuccessRestaurantsAction</span><span class="p">(</span><span class="nl">response:</span> <span class="n">results</span><span class="p">)}</span>
+</span><span class='line'>            <span class="p">}.</span><span class="n">catch</span> <span class="p">{</span> <span class="n">error</span> <span class="k">in</span>
+</span><span class='line'>                <span class="n">callback</span> <span class="p">{</span><span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="k">in</span> <span class="n">APIErrorAction</span><span class="p">(</span><span class="nl">error:</span> <span class="n">error</span><span class="p">)}</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>という感じです。<br/>
+今回の肝となる非同期通信処理ですが、 <code>ReSwift</code> の <code>AsyncActionCreator</code> を利用しています。<br/>
+これを使うことで、非同期通信処理後に適切な <code>Action</code> を返却できるようになっています。</p>
+
+<h4>Reducer</h4>
+
+<p>渡されてきた <code>Action</code> と<code>State</code> から新規 <code>State</code> を作成し、返却する役割を担います。<br/>
+状態変化のロジックを担っているとも言えますね。<br/>
+具体的には、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppReducer.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">func</span> <span class="n">appReducer</span><span class="p">(</span><span class="nl">action:</span> <span class="n">Action</span><span class="p">,</span> <span class="nl">state:</span> <span class="n">AppState</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AppState</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="n">state</span> <span class="o">=</span> <span class="n">state</span> <span class="o">??</span> <span class="n">AppState</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">state</span><span class="p">.</span><span class="n">mapState</span> <span class="o">=</span> <span class="n">MapState</span><span class="p">.</span><span class="n">fetchRestaurantsReducer</span><span class="p">(</span><span class="nl">action:</span> <span class="n">action</span><span class="p">,</span> <span class="nl">state:</span> <span class="n">state</span><span class="p">.</span><span class="n">mapState</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">state</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="n">MapState</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">public</span> <span class="k">static</span> <span class="n">func</span> <span class="n">fetchRestaurantsReducer</span><span class="p">(</span><span class="nl">action:</span> <span class="n">Action</span><span class="p">,</span> <span class="nl">state:</span> <span class="n">MapState</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MapState</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">var</span> <span class="n">state</span> <span class="o">=</span> <span class="n">state</span> <span class="o">??</span> <span class="n">MapState</span><span class="p">(</span><span class="nl">places:</span> <span class="p">[],</span> <span class="nl">error:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">action</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="n">let</span> <span class="n">action</span> <span class="n">as</span> <span class="nl">SuccessRestaurantsAction:</span>
+</span><span class='line'>            <span class="n">state</span><span class="p">.</span><span class="n">places</span> <span class="o">=</span> <span class="n">action</span><span class="p">.</span><span class="n">response</span>
+</span><span class='line'>        <span class="k">case</span> <span class="n">let</span> <span class="n">action</span> <span class="n">as</span> <span class="nl">APIErrorAction:</span>
+</span><span class='line'>            <span class="n">state</span><span class="p">.</span><span class="n">error</span> <span class="o">=</span> <span class="n">action</span><span class="p">.</span><span class="n">error</span>
+</span><span class='line'>        <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>            <span class="k">break</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="n">state</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のようになります。</p>
+
+<ul>
+<li>複数状態が必要なアプリに対応できるように <code>appReducer</code> を用意します。</li>
+<li>特定の状態でしか利用しない <code>Action</code> が当然出てきますが、そこは <code>switch</code> 文で判断します。</li>
+</ul>
+
+
+<h4>Store</h4>
+
+<p><code>Store</code> は</p>
+
+<ul>
+<li>アプリ内で必ず1つの存在 (つまりシングルトン)</li>
+<li>アプリの状態を管理する</li>
+<li>Stateを更新するためのdispatchを提供する
+
+<ul>
+<li>言い換えればdispatch(action)をすることでStoreにStateの変更を知らせられる</li>
+</ul>
+</li>
+<li>Stateの状態を追えるようにsubscribeを提供する
+
+<ul>
+<li>言い換えればsubscribe(listener)をすることでlistenerはgetStateを通してStateの状態を取得できる</li>
+</ul>
+</li>
+</ul>
+
+
+<p>というものです。<br/>
+具体的には、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">GoogleMaps</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Storeの定義</span>
+</span><span class='line'><span class="n">let</span> <span class="n">mainStore</span> <span class="o">=</span> <span class="n">Store</span><span class="o">&lt;</span><span class="n">AppState</span><span class="o">&gt;</span><span class="p">(</span>
+</span><span class='line'>    <span class="nl">reducer:</span> <span class="n">appReducer</span><span class="p">,</span>
+</span><span class='line'>    <span class="nl">state:</span> <span class="nb">nil</span>
+</span><span class='line'><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">window:</span> <span class="n">UIWindow</span><span class="o">?</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span>
+</span><span class='line'>                     <span class="n">didFinishLaunchingWithOptions</span> <span class="nl">launchOptions:</span> <span class="p">[</span><span class="nl">UIApplicationLaunchOptionsKey:</span> <span class="n">Any</span><span class="p">]</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// Override point for customization after application launch.</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// ここでGoogleマップの設定</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">path</span> <span class="o">=</span> <span class="n">Bundle</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">path</span><span class="p">(</span><span class="nl">forResource:</span> <span class="s">&quot;key&quot;</span><span class="p">,</span> <span class="nl">ofType:</span> <span class="s">&quot;plist&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">let</span> <span class="n">dic</span> <span class="o">=</span> <span class="n">NSDictionary</span><span class="p">(</span><span class="nl">contentsOfFile:</span> <span class="n">path</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="nl">String:</span> <span class="n">Any</span><span class="p">]</span> <span class="p">{</span>
+</span><span class='line'>                <span class="k">if</span> <span class="n">let</span> <span class="n">apiKey</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="s">&quot;googleApiKey&quot;</span><span class="p">]</span> <span class="n">as</span><span class="o">?</span> <span class="n">String</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="n">GMSServices</span><span class="p">.</span><span class="n">provideAPIKey</span><span class="p">(</span><span class="n">apiKey</span><span class="p">)</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>となります。<br/>
+ここはお決まりの書き方になります。</p>
+
+<h4>ユーザアクション〜結果反映まで</h4>
+
+<p>最後にユーザがアクションしてから、結果を <code>View</code> として反映する部分の処理を見ていきます。<br/>
+基本的には <code>ViewController.swift</code> に書いていきます。</p>
+
+<p>全文を載せると、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">GoogleMaps</span>
+</span><span class='line'><span class="n">import</span> <span class="n">ReSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - IBOutlets</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">mapView:</span> <span class="n">GMSMapView</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">locationManager:</span> <span class="n">CLLocationManager</span><span class="o">?</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="nl">zoomLevel:</span> <span class="n">Float</span> <span class="o">=</span> <span class="mf">16.0</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">currentLocation:</span> <span class="n">CLLocationCoordinate2D</span><span class="o">?</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">initView:</span> <span class="n">Bool</span> <span class="o">=</span> <span class="n">false</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>        <span class="c1">// Do any additional setup after loading the view, typically from a nib.</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// GoogleMapの初期化</span>
+</span><span class='line'>        <span class="n">mapView</span><span class="p">.</span><span class="n">isMyLocationEnabled</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>        <span class="n">mapView</span><span class="p">.</span><span class="n">mapType</span> <span class="o">=</span> <span class="n">GMSMapViewType</span><span class="p">.</span><span class="n">normal</span>
+</span><span class='line'>        <span class="n">mapView</span><span class="p">.</span><span class="n">settings</span><span class="p">.</span><span class="n">compassButton</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>        <span class="n">mapView</span><span class="p">.</span><span class="n">settings</span><span class="p">.</span><span class="n">myLocationButton</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>        <span class="n">mapView</span><span class="p">.</span><span class="n">settings</span><span class="p">.</span><span class="n">compassButton</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>        <span class="n">mapView</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 位置情報関連の初期化</span>
+</span><span class='line'>        <span class="n">locationManager</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">desiredAccuracy</span> <span class="o">=</span> <span class="n">kCLLocationAccuracyBest</span>
+</span><span class='line'>        <span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">requestWhenInUseAuthorization</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">startUpdatingLocation</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">locationManager</span><span class="o">?</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// subscribe to state changes</span>
+</span><span class='line'>        <span class="n">mainStore</span><span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">self</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>        <span class="c1">// Dispose of any resources that can be recreated.</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - IBActions</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">tappedSearchButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">mainStore</span><span class="p">.</span><span class="n">dispatch</span><span class="p">(</span><span class="n">MapState</span><span class="p">.</span><span class="n">fetchRestaurantsAction</span><span class="p">(</span><span class="nl">lat:</span> <span class="n">mapView</span><span class="p">.</span><span class="n">myLocation</span><span class="o">?</span><span class="p">.</span><span class="n">coordinate</span><span class="p">.</span><span class="n">latitude</span> <span class="o">??</span> <span class="mi">0</span><span class="p">,</span>
+</span><span class='line'>                                                           <span class="nl">lng:</span> <span class="n">mapView</span><span class="p">.</span><span class="n">myLocation</span><span class="o">?</span><span class="p">.</span><span class="n">coordinate</span><span class="p">.</span><span class="n">longitude</span> <span class="o">??</span> <span class="mi">0</span><span class="p">))</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// MARK: - Other</span>
+</span><span class='line'><span class="n">extension</span> <span class="n">ViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// GoogleMapにマーカをプロットする</span>
+</span><span class='line'>    <span class="c1">///</span>
+</span><span class='line'>    <span class="c1">/// - Parameter place: プロットする場所情報</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">func</span> <span class="n">putMarker</span><span class="p">(</span><span class="nl">place:</span> <span class="n">Place</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">marker</span> <span class="o">=</span> <span class="n">GMSMarker</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">marker</span><span class="p">.</span><span class="n">position</span> <span class="o">=</span> <span class="n">CLLocationCoordinate2D</span><span class="p">(</span><span class="nl">latitude:</span> <span class="n">place</span><span class="p">.</span><span class="n">geometry</span><span class="p">.</span><span class="n">location</span><span class="p">.</span><span class="n">lat</span><span class="p">,</span> <span class="nl">longitude:</span> <span class="n">place</span><span class="p">.</span><span class="n">geometry</span><span class="p">.</span><span class="n">location</span><span class="p">.</span><span class="n">lng</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">marker</span><span class="p">.</span><span class="n">icon</span> <span class="o">=</span> <span class="n">UIImage</span><span class="p">(</span><span class="nl">named:</span> <span class="s">&quot;RestaurantIcon&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">marker</span><span class="p">.</span><span class="n">appearAnimation</span> <span class="o">=</span> <span class="n">GMSMarkerAnimation</span><span class="p">.</span><span class="n">pop</span>
+</span><span class='line'>        <span class="n">marker</span><span class="p">.</span><span class="n">map</span> <span class="o">=</span> <span class="n">mapView</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// MARK: - StoreSubscriber</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">ViewController:</span> <span class="n">StoreSubscriber</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">typealias</span> <span class="n">StoreSubscriberStateType</span> <span class="o">=</span> <span class="n">AppState</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">newState</span><span class="p">(</span><span class="nl">state:</span> <span class="n">AppState</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// when the state changes, the UI is updated to reflect the current state</span>
+</span><span class='line'>        <span class="n">guard</span> <span class="n">let</span> <span class="n">error</span> <span class="o">=</span> <span class="n">state</span><span class="p">.</span><span class="n">mapState</span><span class="p">.</span><span class="n">error</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">places</span> <span class="o">=</span> <span class="n">state</span><span class="p">.</span><span class="n">mapState</span><span class="p">.</span><span class="n">places</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">places</span><span class="p">.</span><span class="n">count</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">mapView</span><span class="p">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span class='line'>                <span class="k">return</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">places</span><span class="p">.</span><span class="n">forEach</span> <span class="p">{</span> <span class="p">(</span><span class="n">place</span><span class="p">)</span> <span class="k">in</span>
+</span><span class='line'>                <span class="n">putMarker</span><span class="p">(</span><span class="nl">place:</span> <span class="n">place</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="k">return</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;error: \(error.localizedDescription)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// MARK: - GMSMapViewDelegate</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">ViewController:</span> <span class="n">GMSMapViewDelegate</span> <span class="p">{</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// MARK: - CLLocationManagerDelegate</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">ViewController:</span> <span class="n">CLLocationManagerDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didChangeAuthorization</span> <span class="nl">status:</span> <span class="n">CLAuthorizationStatus</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">status</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="nl">notDetermined:</span>
+</span><span class='line'>            <span class="k">break</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="k">restricted</span><span class="p">,</span> <span class="p">.</span><span class="nl">denied:</span>
+</span><span class='line'>            <span class="k">break</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="nl">authorizedWhenInUse:</span>
+</span><span class='line'>            <span class="k">break</span>
+</span><span class='line'>        <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>            <span class="k">break</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didUpdateLocations</span> <span class="nl">locations:</span> <span class="p">[</span><span class="n">CLLocation</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// 現在地の更新</span>
+</span><span class='line'>        <span class="n">currentLocation</span> <span class="o">=</span> <span class="n">locations</span><span class="p">.</span><span class="n">last</span><span class="o">?</span><span class="p">.</span><span class="n">coordinate</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="o">!</span><span class="n">initView</span> <span class="p">{</span>
+</span><span class='line'>            <span class="c1">// 初期描画時のマップ中心位置の移動</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">camera</span> <span class="o">=</span> <span class="n">GMSCameraPosition</span><span class="p">.</span><span class="n">camera</span><span class="p">(</span><span class="nl">withTarget:</span> <span class="n">currentLocation</span><span class="o">!</span><span class="p">,</span> <span class="nl">zoom:</span> <span class="n">zoomLevel</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">mapView</span><span class="p">.</span><span class="n">camera</span> <span class="o">=</span> <span class="n">camera</span>
+</span><span class='line'>            <span class="n">initView</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didFailWithError</span> <span class="nl">error:</span> <span class="n">Error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">!</span><span class="n">CLLocationManager</span><span class="p">.</span><span class="n">locationServicesEnabled</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>            <span class="c1">// 端末の位置情報がOFFになっている場合</span>
+</span><span class='line'>            <span class="c1">// アラートはデフォルトで表示されるので内部で用意はしない</span>
+</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">currentLocation</span> <span class="o">=</span> <span class="nb">nil</span>
+</span><span class='line'>            <span class="k">return</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">CLLocationManager</span><span class="p">.</span><span class="n">authorizationStatus</span><span class="p">()</span> <span class="o">!=</span> <span class="n">CLAuthorizationStatus</span><span class="p">.</span><span class="n">authorizedWhenInUse</span> <span class="p">{</span>
+</span><span class='line'>            <span class="c1">// アプリの位置情報許可をOFFにしている場合</span>
+</span><span class='line'>            <span class="k">return</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>になります。<br/>
+ポイントは、</p>
+
+<ul>
+<li>ユーザアクション時に <code>mainStore.dispatch</code> メソッドを実行すること
+
+<ul>
+<li>これにより、どんなアクションが発生したのかを <code>Reducer</code> に伝え、 <code>State</code> を再生成することができるようになります。</li>
+</ul>
+</li>
+<li><code>StoreSubscriber</code> プロトコルに対応すること
+
+<ul>
+<li>これにより状態が変化した際に、 <code>newState</code> が呼び出されるため、変化後の状態を<code>View</code>に反映させることができるようになります。</li>
+</ul>
+</li>
+</ul>
+
+
+<p>の2点になります。</p>
+
+<p>今回は、<code>newState</code> 内で<a href="https://developers.google.com/places/?hl=ja">Google Places API</a>で取得した結果をGoogleマップに反映させる処理を書いています。<br/>
+( エラーは <code>print</code> 文にしているだけですが&hellip; )</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+<code>ReSwift</code> も役割の明確化および細分化をすることで、チーム開発でのアーキテクチャの属人化を防ぐことができるように思います。<br/>
+もちろん学習時間が必要になるなどのハードルは存在しますが、人の入れ替わりが激しい業界では、特に必要となるのではないでしょうか。</p>
+
+<p>筆者も引き続き、いろいろなパターンで <code>ReSwift</code> を試していきたいと思います。
+今回利用したサンプルは<a href="https://github.com/grandbig/ReSwiftSample">ReSwiftSample</a>としてアップしていますので、ぜひご覧ください。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[FacebookのGraph API v3から分離されたuser_genderについて見てみる]]></title>
@@ -7377,262 +8460,6 @@ iPhoneX: 44.0pt</p>
 3年以上前に<a href="https://grandbig.github.io/blog/2014/02/22/silentremotenotification/">Silent Remote Notificationを試そう！</a>で利用したりしていたのですが、今見るといろいろと変わっているなと改めて感じました。<br/>
 今更ではありますが、これも一つ勉強になったと思い、<code>Firebase</code>に没頭していこうかなと&hellip;笑<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Firebase NotificationをiOSで使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2017/09/18/firebase-notification/"/>
-    <updated>2017-09-18T00:45:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2017/09/18/firebase-notification</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>今回はFirebase Notificationについて見ていきたいと思います。<br/>
-一昔前であれば、プロダクトごとにNotificationの仕組みを作り込んだり、共通基盤としてNotificationプロジェクトを推進していたりといった会社が多かった気がします。<br/>
-また、未だにリッチなNotificationのプロダクトを生業として利益を上げている会社もあるので、それだけNotificationの仕組みは自作ではなくあるものを使いたいという需要が大きいのでしょう。<br/>
-しかしながら、Firebaseの登場により、Notificationプロダクト市場もより加熱化しているのではないでしょうか。</p>
-
-<p>筆者的にはGoogleが出す、それも無料のプロダクトであるわけなので、使わない手はないと思うわけです。<br/>
-なんて偉そうなことを言いつつ、FireabseによるNotificationの仕組みを利用したことがなかったので、今回試しに使ってみることにしました。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>Firebaseの導入</h3>
-
-<p>こちらの内容は<a href="https://grandbig.github.io/blog/2017/05/14/firebase-ios/">以前書いた記事</a>に任せたいと思います。</p>
-
-<h3>APNs証明書の作成</h3>
-
-<p>こちらに関しては、様々なサイトにて説明がされているので、そちらを見るなどした方が早いので省きます。<br/>
-例えば <a href="http://qiita.com/natsumo/items/d5cc1d0be427ca3af1cb#6-apns%E7%94%A8%E8%A8%BC%E6%98%8E%E6%9B%B8cer%E3%81%AE%E4%BD%9C%E6%88%90">プッシュ通知に必要な証明書の作り方2017</a>など参考にすると良いでしょう。</p>
-
-<h3>Firebase Notificationの利用</h3>
-
-<p>さて、本題です。<br/>
-Firebase Notificationを利用するための手順について説明します。</p>
-
-<p>① 作成したAPNs証明書をダウンロードする<br/>
-先程作成したAPNs証明書はキーチェーンに登録していると思います。<br/>
-(Apple Developer Programで作成したAPNs証明書は必ずDLしてキーチェーンに登録しましょう。)<br/>
-キーチェーンを開いて、該当の証明書をダウンロードします。</p>
-
-<p>該当のAPNs証明書は <code>Apple Development IOS Push Services: xxxxx</code> のようになっているものです。<br/>
-<img src="http://grandbig.github.io/images/firebase_notificcation_ios_1.png" alt="キーチェーンを開く" /></p>
-
-<p>右クリックして書き出すを選択します。<br/>
-<img src="http://grandbig.github.io/images/firebase_notificcation_ios_2.png" alt="証明書を書き出す" /></p>
-
-<p>ファイル名とパスワードをつけて保存します。<br/>
-<img src="http://grandbig.github.io/images/firebase_notificcation_ios_3.png" alt="ファイル名とパスワードの付け方" /></p>
-
-<p>② ダウンロードしたAPNs証明書をFirebaseに登録する</p>
-
-<p>FirebaseのConsoleを開き、設定画面に遷移します。<br/>
-<img src="http://grandbig.github.io/images/firebase_notificcation_ios_4.png" alt="Firebase Consoleの設定画面" /></p>
-
-<p>クラウドメッセージングタブを開き、APNs証明書をアップロードします。<br/>
-<img src="http://grandbig.github.io/images/firebase_notificcation_ios_5.png" alt="Firebase Console クラウドメッセージングタブ" /></p>
-
-<p>③ Firebaseの必要ライブラリを導入する<br/>
-Firebaseの導入で<code>Core</code>ライブラリはインストールできているかもしれませんが、Notificationでは<code>Messaging</code>が必要になります。<br/>
-よって、<code>Podfile</code>を下記のように修正して、<code>pod update</code>をする必要があります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp"># Podfile</span>
-</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">target</span> <span class="s">&quot;NotificationSample&quot;</span> <span class="k">do</span>
-</span><span class='line'>  <span class="err">#</span> <span class="n">Normal</span> <span class="n">libraries</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Firebase</span><span class="o">/</span><span class="n">Core</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Firebase</span><span class="o">/</span><span class="n">Messaging</span><span class="err">&#39;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">abstract_target</span> <span class="err">&#39;</span><span class="n">Tests</span><span class="err">&#39;</span> <span class="k">do</span>
-</span><span class='line'>    <span class="n">inherit</span><span class="o">!</span> <span class="o">:</span><span class="n">search_paths</span>
-</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;NotificationSampleTests&quot;</span>
-</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;NotificationSampleUITests&quot;</span>
-</span><span class='line'>  <span class="n">end</span>
-</span><span class='line'><span class="n">end</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>④ ソースコードにFirebase Notificationが利用できるように実装する<br/>
-続いて、ソースコードの設定です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Firebase</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UserNotifications</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
-</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span><span class="p">,</span> <span class="n">UNUserNotificationCenterDelegate</span><span class="p">,</span> <span class="n">MessagingDelegate</span> <span class="p">{</span>
-</span><span class='line'>  <span class="n">var</span> <span class="nl">window:</span> <span class="n">UIWindow</span><span class="o">?</span>
-</span><span class='line'>  <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span> <span class="n">didFinishLaunchingWithOptions</span> <span class="nl">launchOptions:</span> <span class="p">[</span><span class="nl">UIApplicationLaunchOptionsKey:</span> <span class="n">Any</span><span class="p">]</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">// リモート通知 (iOS10に対応)</span>
-</span><span class='line'>    <span class="n">let</span> <span class="nl">authOptions:</span> <span class="n">UNAuthorizationOptions</span> <span class="o">=</span> <span class="p">[.</span><span class="n">alert</span><span class="p">,</span> <span class="p">.</span><span class="n">badge</span><span class="p">,</span> <span class="p">.</span><span class="n">sound</span><span class="p">]</span>
-</span><span class='line'>    <span class="n">UNUserNotificationCenter</span><span class="p">.</span><span class="n">current</span><span class="p">().</span><span class="n">requestAuthorization</span><span class="p">(</span>
-</span><span class='line'>      <span class="nl">options:</span> <span class="n">authOptions</span><span class="p">,</span>
-</span><span class='line'>      <span class="nl">completionHandler:</span> <span class="p">{</span><span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="k">in</span> <span class="p">})</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// UNUserNotificationCenterDelegateの設定</span>
-</span><span class='line'>    <span class="n">UNUserNotificationCenter</span><span class="p">.</span><span class="n">current</span><span class="p">().</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
-</span><span class='line'>    <span class="c1">// FCMのMessagingDelegateの設定</span>
-</span><span class='line'>    <span class="n">Messaging</span><span class="p">.</span><span class="n">messaging</span><span class="p">().</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// リモートプッシュの設定</span>
-</span><span class='line'>    <span class="n">application</span><span class="p">.</span><span class="n">registerForRemoteNotifications</span><span class="p">()</span>
-</span><span class='line'>    <span class="c1">// Firebase初期設定</span>
-</span><span class='line'>    <span class="n">FirebaseApp</span><span class="p">.</span><span class="n">configure</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// アプリ起動時にFCMのトークンを取得し、表示する</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">token</span> <span class="o">=</span> <span class="n">Messaging</span><span class="p">.</span><span class="n">messaging</span><span class="p">().</span><span class="n">fcmToken</span>
-</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="s">&quot;FCM token: \(token ?? &quot;&quot;)&quot;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">return</span> <span class="n">true</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">// 省略</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">func</span> <span class="n">userNotificationCenter</span><span class="p">(</span><span class="n">_</span> <span class="nl">center:</span> <span class="n">UNUserNotificationCenter</span><span class="p">,</span>
-</span><span class='line'>                                <span class="n">willPresent</span> <span class="nl">notification:</span> <span class="n">UNNotification</span><span class="p">,</span>
-</span><span class='line'>                                <span class="n">withCompletionHandler</span> <span class="nl">completionHandler:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">(</span><span class="n">UNNotificationPresentationOptions</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="s">&quot;フロントでプッシュ通知受け取ったよ&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">func</span> <span class="n">messaging</span><span class="p">(</span><span class="n">_</span> <span class="nl">messaging:</span> <span class="n">Messaging</span><span class="p">,</span> <span class="n">didRefreshRegistrationToken</span> <span class="nl">fcmToken:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="s">&quot;Firebase registration token: \(fcmToken)&quot;</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>たったのこれだけでプッシュ通知の受信ができるようになります。</p>
-
-<h3>Firebase Notificationを利用する</h3>
-
-<p>設定が完了したため、Firebaseからプッシュ通知を送ってみましょう。</p>
-
-<p>方法は簡単です。</p>
-
-<p>① 左メニューから <code>Notification</code> を選択する<br/>
-② 「新しいメッセージ」を選択する<br/>
-③ 必要項目を入力して「メッセージを送る」を選択する</p>
-
-<p><img src="http://grandbig.github.io/images/firebase_notificcation_ios_6.png" alt="Firebase Consoleからプッシュ通知を送る" /></p>
-
-<p>これにより、下図のようにプッシュが届くことを確認できます。<br/>
-<img src="http://grandbig.github.io/images/firebase_notificcation_ios_7.png" alt="端末にプッシュ通知が届く" /></p>
-
-<h3>FirebaseにAPNs Keyを登録する方法</h3>
-
-<p>さて、上記まででは、APNs証明書を作成して、Firebaseに登録する方法を説明しましたが、実はAPNs証明書よりも <code>APNs Key</code> というものの利用を推奨されています。<br/>
-なので、こちらの方法も説明しておきます。</p>
-
-<p>作成方法はいたって簡単です。</p>
-
-<p>① Apple Developer Programの左メニューから<code>Keys &gt; All</code>を選択する<br/>
-② 「＋」ボタンで新規作成する<br/>
-③ Keyの名称を設定する<br/>
-④ Service種別として<code>APNs</code>を選択する<br/>
-⑤ Continueボタンを選択して作成する</p>
-
-<p><img src="http://grandbig.github.io/images/firebase_notificcation_ios_8.png" alt="APNs Keyの作成方法" /></p>
-
-<p>上記で作成した<code>APNs Key</code>をFirebase Console上で設定します。</p>
-
-<p>Firebase Console > 設定 > クラウドメッセージング > iOSアプリの設定から<code>APNs認証キー</code>に設定します。</p>
-
-<p><img src="http://grandbig.github.io/images/firebase_notificcation_ios_9.png" alt="APNs認証キーを設定" /></p>
-
-<p>因みに、設定時に利用するIDはそれぞれ下記から取得します。</p>
-
-<p><img src="http://grandbig.github.io/images/firebase_notificcation_ios_10.png" alt="キーID" /><br/>
-<img src="http://grandbig.github.io/images/firebase_notificcation_ios_11.png" alt="App ID Prefix" /></p>
-
-<h3>まとめ</h3>
-
-<p>さて如何でしたでしょうか？<br/>
-まだまだFirebase Console上からプッシュできるNotificationにも制限があるようですが、複雑なことをしない例えば「一斉お知らせ機能」のような形で利用するのであれば非常に良いのではないでしょうか？<br/>
-今後もバージョンアップして使いやすくなることを期待しつつ、本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
