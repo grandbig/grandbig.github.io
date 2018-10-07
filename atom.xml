@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2018-10-04T23:07:42+09:00</updated>
+  <updated>2018-10-07T13:32:03+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,958 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[GeolocationSampleから学ぶdelegateのRx対応]]></title>
+    <link href="http://grandbig.github.io/blog/2018/10/06/rx-delegate/"/>
+    <updated>2018-10-06T11:16:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/10/06/rx-delegate</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p><code>RxSwift</code> を利用して <code>MVVM</code> アーキテクチャでアプリを開発することがあるでしょう。<br/>
+その際に、ボタンタップやネットワーク通信であれば、何もやらずとも <code>RxSwift</code> が対応してくれていたり、 <code>RxSwift</code> に対応しているライブラリがあったりします。</p>
+
+<p>しかし、デフォルトでは <code>RxSwift</code> に対応していない場合も当然あります。<br/>
+ではそんなとき、どのようにして対応すれば良いでしょうか。</p>
+
+<p>今日は、 <code>delegate</code> の <code>Rx</code> 対応について公式サンプルの <code>GeolocationSample</code> を元に説明してみたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>delegateのRx対応方法</h3>
+
+<p>早速具体的に方法を見ていきましょう。<br/>
+今回は公式サンプルの <code>GeolocationSample</code> を元に、 <code>CLLocationManagerDelegate</code> を <code>Rx</code> に対応させる方法を説明します。</p>
+
+<h4>DelegateProxyとDelegateProxyTypeへの対応</h4>
+
+<p><code>delegate</code> の <code>Rx</code> 対応でまず必要なことは</p>
+
+<ul>
+<li><code>DelegateProxy</code> クラスを継承するクラスを作成すること</li>
+<li><code>DelegateProxyType</code> プロトコルを継承するクラスを作成すること</li>
+</ul>
+
+
+<p>です。<br/>
+ここでは上記2つの条件を満たした <code>RxCLLocationManagerDelegateProxy</code> クラスを作ることとします。</p>
+
+<h5>DelegateProxyの説明</h5>
+
+<p><code>DelegateProxy.swift</code> を見てみると、下記のように定義されています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// DelegateProxy.swift</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// Base class for `DelegateProxyType` protocol.</span>
+</span><span class='line'><span class="c1">///</span>
+</span><span class='line'><span class="c1">/// This implementation is not thread safe and can be used only from one thread (Main thread).</span>
+</span><span class='line'><span class="n">open</span> <span class="n">class</span> <span class="n">DelegateProxy</span><span class="o">&lt;</span><span class="nl">P:</span> <span class="n">AnyObject</span><span class="p">,</span> <span class="n">D</span><span class="o">&gt;:</span> <span class="n">_RXDelegateProxy</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">typealias</span> <span class="n">ParentObject</span> <span class="o">=</span> <span class="n">P</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">typealias</span> <span class="n">Delegate</span> <span class="o">=</span> <span class="n">D</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>この <code>DelegateProxy</code> は <code>DelegateProxyType</code> プロトコルのベースクラスと説明されています。<br/>
+<code>DelegateProxy</code> はジェネリッククラスであり、2つのパラメータ <code>P</code> と <code>D</code> を持ちます。</p>
+
+<p>ここで、 <code>P</code> と <code>D</code> について説明します。</p>
+
+<ul>
+<li><code>D</code> :<br/>
+<code>Rx</code> に対応させたい <code>delegate</code> を指定します<br/>
+<code>D</code> は <code>Delegate</code> の頭文字と思われます</li>
+<li><code>P</code> :<br/>
+<code>delegate</code> である <code>D</code> をプロパティとして持つオブジェクトを指定します<br/>
+<code>P</code> は <code>ParentObject</code> の頭文字と思われます</li>
+</ul>
+
+
+<p>今回の場合は、<br/>
+<code>DelegateProxy&lt;CLLocationManager, CLLocationManagerDelegate&gt;</code> になります。</p>
+
+<h5>DelegateProxyTypeの説明</h5>
+
+<p><code>DelegateProxyType.swift</code> の中身を見てみると、下記のように説明されています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// DelegateProxyType.swift</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm">`DelegateProxyType` protocol enables using both normal delegates and Rx observable sequences with</span>
+</span><span class='line'><span class="cm">views that can have only one delegate/datasource registered.</span>
+</span><span class='line'><span class="cm">...</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">*/</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>意訳すると、<br/>
+<code>DelegateProxyType</code> は <code>delegate</code> と <code>Rx</code> との紐付けを実現するプロトコル<br/>
+であることを指しています。</p>
+
+<p>方式は図示化されていますので、見てみると何となく理解できると思います。<br/>
+図では <code>UIScrollViewDelegate</code> を例に説明されています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="o">+-------------------------------------------+</span>
+</span><span class='line'><span class="o">|</span>                                           <span class="o">|</span>
+</span><span class='line'><span class="o">|</span> <span class="n">UIView</span> <span class="n">subclass</span> <span class="p">(</span><span class="n">UIScrollView</span><span class="p">)</span>            <span class="o">|</span>
+</span><span class='line'><span class="o">|</span>                                           <span class="o">|</span>
+</span><span class='line'><span class="o">+-----------+-------------------------------+</span>
+</span><span class='line'>            <span class="o">|</span>
+</span><span class='line'>            <span class="o">|</span> <span class="n">Delegate</span>
+</span><span class='line'>            <span class="o">|</span>
+</span><span class='line'>            <span class="o">|</span>
+</span><span class='line'><span class="o">+-----------</span><span class="n">v</span><span class="o">-------------------------------+</span>
+</span><span class='line'><span class="o">|</span>                                           <span class="o">|</span>
+</span><span class='line'><span class="o">|</span> <span class="n">Delegate</span> <span class="n">proxy</span> <span class="o">:</span> <span class="n">DelegateProxyType</span>        <span class="o">+-----+----&gt;</span>  <span class="n">Observable</span><span class="o">&lt;</span><span class="n">T1</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">|</span>                <span class="p">,</span> <span class="n">UIScrollViewDelegate</span>     <span class="o">|</span>     <span class="o">|</span>
+</span><span class='line'><span class="o">+-----------+-------------------------------+</span>     <span class="o">+----&gt;</span>  <span class="n">Observable</span><span class="o">&lt;</span><span class="n">T2</span><span class="o">&gt;</span>
+</span><span class='line'>            <span class="o">|</span>                                     <span class="o">|</span>
+</span><span class='line'>            <span class="o">|</span>                                     <span class="o">+----&gt;</span>  <span class="n">Observable</span><span class="o">&lt;</span><span class="n">T3</span><span class="o">&gt;</span>
+</span><span class='line'>            <span class="o">|</span>                                     <span class="o">|</span>
+</span><span class='line'>            <span class="o">|</span> <span class="n">forwards</span> <span class="n">events</span>                     <span class="o">|</span>
+</span><span class='line'>            <span class="o">|</span> <span class="n">to</span> <span class="n">custom</span> <span class="n">delegate</span>                  <span class="o">|</span>
+</span><span class='line'>            <span class="o">|</span>                                     <span class="n">v</span>
+</span><span class='line'><span class="o">+-----------</span><span class="n">v</span><span class="o">-------------------------------+</span>
+</span><span class='line'><span class="o">|</span>                                           <span class="o">|</span>
+</span><span class='line'><span class="o">|</span> <span class="n">Custom</span> <span class="n">delegate</span> <span class="p">(</span><span class="n">UIScrollViewDelegate</span><span class="p">)</span>    <span class="o">|</span>
+</span><span class='line'><span class="o">|</span>                                           <span class="o">|</span>
+</span><span class='line'><span class="o">+-------------------------------------------+</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>また <code>DelegateProxyType</code> は以下3つの <code>static</code> メソッドを定義しているため、<br/>
+<code>DelegateProxyType</code> を継承すると、必ずこの3つのメソッドを持つ必要があります。</p>
+
+<ul>
+<li><code>registerKnownImplementations</code><br/>
+このメソッドの中で必ず <code>DelegateProxySubclass.register()</code> を実行します。<br/>
+これをすることで自身で定義した <code>DelegateProxy</code> の継承クラスを登録することができます。</li>
+<li><code>currentDelegate</code><br/>
+<code>ParentObject</code> の持つ <code>delegate</code> を返却する処理を書きます。</li>
+<li><code>setCurrentDelegate</code><br/>
+<code>ParentObject</code> に持つべき <code>delegate</code> を設定する処理を書きます。</li>
+</ul>
+
+
+<p>特に特殊なことをしない場合は、<br/>
+<code>delegate</code> をプロパティとして持つオブジェクトである <code>ParentObject</code>に<br/>
+<code>HasDelegate</code> プロトコルを継承させます。 　</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">extension</span> <span class="nl">CLLocationManager:</span> <span class="n">HasDelegate</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">typealias</span> <span class="n">Delegate</span> <span class="o">=</span> <span class="n">CLLocationManagerDelegate</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これにより、 <code>currentDelegate</code> と <code>setCurrentDelegate</code> を省略することができます。</p>
+
+<h5>対応したコードを書いてみる</h5>
+
+<p>基本的な説明は以上として、実際にコードに起こしてみましょう。<br/>
+まずは結果から。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>      <span class="c1">// ここは必須</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>      <span class="c1">// ここは必須</span>
+</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span> <span class="c1">//  CLLocationManagerDelegateはCoreLocation内に定義されています</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// currentDelegateとsetCurrentDelegateの役割を担います</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">CLLocationManager:</span> <span class="n">HasDelegate</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">typealias</span> <span class="n">Delegate</span> <span class="o">=</span> <span class="n">CLLocationManagerDelegate</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// DelegateProxy, DelegateProxyType, CLLocationManagerDelegateを継承</span>
+</span><span class='line'><span class="c1">// DelegateをRxに対応させるために、元となるDelegateも継承が必須です</span>
+</span><span class='line'><span class="n">public</span> <span class="n">class</span> <span class="nl">RxCLLocationManagerDelegateProxy:</span> <span class="n">DelegateProxy</span><span class="o">&lt;</span><span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">CLLocationManagerDelegate</span><span class="o">&gt;</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">DelegateProxyType</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">CLLocationManagerDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 初期化処理</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">init</span><span class="p">(</span><span class="nl">locationManager:</span> <span class="n">CLLocationManager</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">parentObject:</span> <span class="n">locationManager</span><span class="p">,</span> <span class="nl">delegateProxy:</span> <span class="n">RxCLLocationManagerDelegateProxy</span><span class="p">.</span><span class="n">self</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 必須のstaticメソッド</span>
+</span><span class='line'>    <span class="n">public</span> <span class="k">static</span> <span class="n">func</span> <span class="n">registerKnownImplementations</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// 説明(1)</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="k">register</span> <span class="p">{</span> <span class="p">(</span><span class="n">locationManager</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RxCLLocationManagerDelegateProxy</span> <span class="k">in</span>
+</span><span class='line'>            <span class="n">RxCLLocationManagerDelegateProxy</span><span class="p">(</span><span class="nl">locationManager:</span> <span class="n">locationManager</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(2)</span>
+</span><span class='line'>    <span class="n">internal</span> <span class="n">lazy</span> <span class="n">var</span> <span class="n">didUpdateLocationsSubject</span> <span class="o">=</span> <span class="n">PublishSubject</span><span class="o">&lt;</span><span class="p">[</span><span class="n">CLLocation</span><span class="p">]</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">internal</span> <span class="n">lazy</span> <span class="n">var</span> <span class="n">didFailWithErrorSubject</span> <span class="o">=</span> <span class="n">PublishSubject</span><span class="o">&lt;</span><span class="n">Error</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(3)</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didUpdateLocations</span> <span class="nl">locations:</span> <span class="p">[</span><span class="n">CLLocation</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">_forwardToDelegate</span><span class="o">?</span><span class="p">.</span><span class="n">locationManager</span><span class="p">(</span><span class="n">manager</span><span class="p">,</span> <span class="nl">didUpdateLocations:</span> <span class="n">locations</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">didUpdateLocationsSubject</span><span class="p">.</span><span class="n">onNext</span><span class="p">(</span><span class="n">locations</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didFailWithError</span> <span class="nl">error:</span> <span class="n">Error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">_forwardToDelegate</span><span class="o">?</span><span class="p">.</span><span class="n">locationManager</span><span class="p">(</span><span class="n">manager</span><span class="p">,</span> <span class="nl">didFailWithError:</span> <span class="n">error</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">didFailWithErrorSubject</span><span class="p">.</span><span class="n">onNext</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(4)</span>
+</span><span class='line'>    <span class="n">deinit</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">didUpdateLocationsSubject</span><span class="p">.</span><span class="n">on</span><span class="p">(.</span><span class="n">completed</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">didFailWithErrorSubject</span><span class="p">.</span><span class="n">on</span><span class="p">(.</span><span class="n">completed</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記ソースコードを一部補足説明します。</p>
+
+<h6>説明(1)</h6>
+
+<p><code>registerKnownImplementations</code> で説明した通り <code>register</code> メソッドを実行しています。<br/>
+<code>register</code> メソッドは、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">/// Store DelegateProxy subclass to factory.</span>
+</span><span class='line'><span class="c1">/// When make &#39;Rx*DelegateProxy&#39; subclass, call &#39;Rx*DelegateProxySubclass.register(for:_)&#39; 1 time, or use it in DelegateProxyFactory</span>
+</span><span class='line'><span class="c1">/// &#39;Rx*DelegateProxy&#39; can have one subclass implementation per concrete ParentObject type.</span>
+</span><span class='line'><span class="c1">/// Should call it from concrete DelegateProxy type, not generic.</span>
+</span><span class='line'><span class="n">public</span> <span class="k">static</span> <span class="n">func</span> <span class="k">register</span><span class="o">&lt;</span><span class="n">Parent</span><span class="o">&gt;</span><span class="p">(</span><span class="nl">make:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">(</span><span class="n">Parent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">factory</span><span class="p">.</span><span class="n">extend</span><span class="p">(</span><span class="nl">make:</span> <span class="n">make</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>と定義されています。</p>
+
+<p>クロージャの引数に <code>ParentObject</code> を必要とし、<br/>
+そのクラス自身を戻り値を必要としているため、<br/>
+<code>ParentObject</code> として <code>locationManager</code> を渡し、<br/>
+それを元に初期化した <code>RxCLLocationManagerDelegateProxy</code> オブジェクトを戻り値として渡しています。</p>
+
+<p>ここは説明のため省略書きしませんでしたが、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="k">static</span> <span class="n">func</span> <span class="nf">registerKnownImplementations</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="k">register</span> <span class="p">{</span> <span class="n">RxCLLocationManagerDelegateProxy</span><span class="p">(</span><span class="nl">locationManager:</span> <span class="n">$0</span><span class="p">)</span> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>とも当然書けます。</p>
+
+<h6>説明(2)</h6>
+
+<p><code>PublishSubject</code> 型のプロパティを2つ定義しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">internal</span> <span class="n">lazy</span> <span class="n">var</span> <span class="n">didUpdateLocationsSubject</span> <span class="o">=</span> <span class="n">PublishSubject</span><span class="o">&lt;</span><span class="p">[</span><span class="n">CLLocation</span><span class="p">]</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'><span class="n">internal</span> <span class="n">lazy</span> <span class="n">var</span> <span class="n">didFailWithErrorSubject</span> <span class="o">=</span> <span class="n">PublishSubject</span><span class="o">&lt;</span><span class="n">Error</span><span class="o">&gt;</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これは説明(3)にも関わるのですが、<br/>
+<code>delegate</code> メソッドが呼び出されて処理が実行されたことを <code>Subscriber</code> に伝えるために定義が必要となります。</p>
+
+<h6>説明(3)</h6>
+
+<p><code>delegate</code> メソッドを <code>Rx</code> で対応するための方法が、まさにココで直接的に書かれています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="n">func</span> <span class="nf">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didUpdateLocations</span> <span class="nl">locations:</span> <span class="p">[</span><span class="n">CLLocation</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">_forwardToDelegate</span><span class="o">?</span><span class="p">.</span><span class="n">locationManager</span><span class="p">(</span><span class="n">manager</span><span class="p">,</span> <span class="nl">didUpdateLocations:</span> <span class="n">locations</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">didUpdateLocationsSubject</span><span class="p">.</span><span class="n">onNext</span><span class="p">(</span><span class="n">locations</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>今回は、 <code>didUpdateLocations</code> で取得した <code>locations</code> の情報を <code>Rx</code> 連携させるために、上記のように記述しています。<br/>
+先程説明した <code>PublishSubject</code> が <code>Subscriber</code> にメソッドの実行タイミングでデータを伝える方法ですが、<br/>
+<code>didUpdateLocationsSubject.onNext(locations)</code> で実行しています。</p>
+
+<p><code>_forwardToDelegate?.locationManager(manager, didUpdateLocations: locations)</code> はメモリ観点から<br/>
+<code>delegate</code> を引き続き利用していることを伝えるために利用しているように見えます。</p>
+
+<h6>説明(4)</h6>
+
+<p>最後に <code>deinit</code> 内で実行している処理ですが、<br/>
+<code>deinit</code> が呼ばれるということは初期化したオブジェクトが破棄される時なので、イベントが送られることはないはずです。<br/>
+よって <code>PublishSubject</code> からイベント送信完了を知らせるように実装しましょう。</p>
+
+<h4>ReactiveへのCLLocationManagerの適応</h4>
+
+<p>事前準備が整ったため、実際に <code>CLLocationManager</code> を <code>Rx</code> 適応させてみます。</p>
+
+<p><code>RxSwift</code> では下記のように書くことで拡張できる仕組みを用意しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// CLLocationManager+Rx.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="n">Reactive</span> <span class="n">where</span> <span class="nl">Base:</span> <span class="n">CLLocationManager</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これが可能な理由は <code>Reactive.swift</code> を見てみると良いでしょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">public</span> <span class="k">struct</span> <span class="n">Reactive</span><span class="o">&lt;</span><span class="n">Base</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">/// Base object to extend.</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">let</span> <span class="nl">base:</span> <span class="n">Base</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// Creates extensions with base object.</span>
+</span><span class='line'>    <span class="c1">///</span>
+</span><span class='line'>    <span class="c1">/// - parameter base: Base object.</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">init</span><span class="p">(</span><span class="n">_</span> <span class="nl">base:</span> <span class="n">Base</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">base</span> <span class="o">=</span> <span class="n">base</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>そして、拡張した後にやることは下記です。</p>
+
+<ul>
+<li><code>delegate</code> のラッパーを生成する</li>
+<li>各 <code>delegate</code> メソッドに対応したラッパープロパティを生成する</li>
+<li>キャストメソッドを用意する</li>
+</ul>
+
+
+<p>1つずつ説明していきましょう。</p>
+
+<h5>delegateのラッパーを生成する</h5>
+
+<p>このラッパーは <code>delegate</code> を <code>DelegateProxy</code> 型として定義します。<br/>
+この <code>delegate</code> はもちろん <code>readOnly</code> で値の取得のみできるものとします。<br/>
+<code>DelegateProxy</code> の取得は <code>DelegateProxyType</code> プロトコルの <code>proxy</code> メソッドを利用します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm">Reactive wrapper for `delegate`.</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">For more information take a look at `DelegateProxyType` protocol documentation.</span>
+</span><span class='line'><span class="cm">*/</span>
+</span><span class='line'><span class="n">public</span> <span class="n">var</span> <span class="nl">delegate:</span> <span class="n">DelegateProxy</span><span class="o">&lt;</span><span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">CLLocationManagerDelegate</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">RxCLLocationManagerDelegateProxy</span><span class="p">.</span><span class="n">proxy</span><span class="p">(</span><span class="k">for</span><span class="o">:</span> <span class="n">base</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>各delegateメソッドに対応したラッパープロパティを生成する</h5>
+
+<p><code>RxCLLocationManagerDelegateProxy</code> で <code>didUpdateLocations</code> と <code>didFailWithError</code> の <code>delegate</code> メソッドに対応しました。<br/>
+これらのメソッドに対応したラッパープロパティは以下のように実装します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// MARK: Responding to Location Events</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> Reactive wrapper for `delegate` message.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'> <span class="n">public</span> <span class="n">var</span> <span class="nl">didUpdateLocations:</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[</span><span class="n">CLLocation</span><span class="p">]</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">RxCLLocationManagerDelegateProxy</span><span class="p">.</span><span class="n">proxy</span><span class="p">(</span><span class="k">for</span><span class="o">:</span> <span class="n">base</span><span class="p">).</span><span class="n">didUpdateLocationsSubject</span><span class="p">.</span><span class="n">asObservable</span><span class="p">()</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> Reactive wrapper for `delegate` message.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="n">public</span> <span class="n">var</span> <span class="nl">didFailWithError:</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Error</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">RxCLLocationManagerDelegateProxy</span><span class="p">.</span><span class="n">proxy</span><span class="p">(</span><span class="k">for</span><span class="o">:</span> <span class="n">base</span><span class="p">).</span><span class="n">didFailWithErrorSubject</span><span class="p">.</span><span class="n">asObservable</span><span class="p">()</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これらも <code>readOnly</code> で値のみを <code>Observable</code> 型で取得できるように定義しています。</p>
+
+<h5>キャストメソッドを用意する</h5>
+
+<p>キャストメソッドを用意する理由は、<br/>
+あるメソッドの処理の完了タイミングで何らかの処理を実行させたい<br/>
+<code>methodInvoked</code> を利用するときに必要になります。</p>
+
+<p>処理は下記の通りです。<br/>
+<code>Optional</code> 型の場合とそうでない場合が必要になる可能性がありますので、2種類用意しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">fileprivate</span> <span class="n">func</span> <span class="n">castOrThrow</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="n">_</span> <span class="nl">resultType:</span> <span class="n">T</span><span class="p">.</span><span class="n">Type</span><span class="p">,</span> <span class="n">_</span> <span class="nl">object:</span> <span class="n">Any</span><span class="p">)</span> <span class="n">throws</span> <span class="o">-&gt;</span> <span class="n">T</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">guard</span> <span class="n">let</span> <span class="n">returnValue</span> <span class="o">=</span> <span class="n">object</span> <span class="n">as</span><span class="o">?</span> <span class="n">T</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">throw</span> <span class="n">RxCocoaError</span><span class="p">.</span><span class="n">castingError</span><span class="p">(</span><span class="nl">object:</span> <span class="n">object</span><span class="p">,</span> <span class="nl">targetType:</span> <span class="n">resultType</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">returnValue</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">fileprivate</span> <span class="n">func</span> <span class="n">castOptionalOrThrow</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="n">_</span> <span class="nl">resultType:</span> <span class="n">T</span><span class="p">.</span><span class="n">Type</span><span class="p">,</span> <span class="n">_</span> <span class="nl">object:</span> <span class="n">Any</span><span class="p">)</span> <span class="n">throws</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="o">?</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">NSNull</span><span class="p">().</span><span class="n">isEqual</span><span class="p">(</span><span class="n">object</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="nb">nil</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">guard</span> <span class="n">let</span> <span class="n">returnValue</span> <span class="o">=</span> <span class="n">object</span> <span class="n">as</span><span class="o">?</span> <span class="n">T</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">throw</span> <span class="n">RxCocoaError</span><span class="p">.</span><span class="n">castingError</span><span class="p">(</span><span class="nl">object:</span> <span class="n">object</span><span class="p">,</span> <span class="nl">targetType:</span> <span class="n">resultType</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">returnValue</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>今回の場合、端末の位置情報を利用するので、 <code>CLLocationManagerDelegate</code> の <code>didChangeAuthorization</code> のハンドリングが必須になります。<br/>
+この <code>delegate</code> メソッドは定期的に繰り返し利用する必要はありません。<br/>
+状態が変わって、その情報を必要となったタイミングでだけ利用できれば良いのです。<br/>
+よって <code>methodInvoked</code> を利用してプロパティを定義します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// MARK: Responding to Authorization Changes</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> Reactive wrapper for `delegate` message.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="n">public</span> <span class="n">var</span> <span class="nl">didChangeAuthorizationStatus:</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">CLAuthorizationStatus</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">delegate</span><span class="p">.</span><span class="n">methodInvoked</span><span class="p">(</span><span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">CLLocationManagerDelegate</span><span class="p">.</span><span class="n">locationManager</span><span class="p">(</span><span class="nl">_:didChangeAuthorization:</span><span class="p">)))</span>
+</span><span class='line'>        <span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">a</span> <span class="k">in</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">number</span> <span class="o">=</span> <span class="n">try</span> <span class="n">castOrThrow</span><span class="p">(</span><span class="n">NSNumber</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">CLAuthorizationStatus</span><span class="p">(</span><span class="nl">rawValue:</span> <span class="n">Int32</span><span class="p">(</span><span class="n">number</span><span class="p">.</span><span class="n">intValue</span><span class="p">))</span> <span class="o">??</span> <span class="p">.</span><span class="n">notDetermined</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以上で必要な対応は全て完了です。</p>
+
+<h3>Rxに対応したdelegateの使い方</h3>
+
+<p>自作した <code>Rx</code> 対応後の <code>delegate</code> を利用する例も見ていきましょう。</p>
+
+<h4>処理ロジックの実装</h4>
+
+<p>公式サンプルでは処理ロジックに相当する <code>GeolocationService.swift</code> を下記のように実装しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// GeolocationService.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="n">GeolocationService</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">static</span> <span class="n">let</span> <span class="n">instance</span> <span class="o">=</span> <span class="n">GeolocationService</span><span class="p">()</span>
+</span><span class='line'>    <span class="c1">// 説明(1)</span>
+</span><span class='line'>    <span class="n">private</span> <span class="p">(</span><span class="n">set</span><span class="p">)</span> <span class="n">var</span> <span class="nl">authorized:</span> <span class="n">Driver</span><span class="o">&lt;</span><span class="n">Bool</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">private</span> <span class="p">(</span><span class="n">set</span><span class="p">)</span> <span class="n">var</span> <span class="nl">location:</span> <span class="n">Driver</span><span class="o">&lt;</span><span class="n">CLLocationCoordinate2D</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">locationManager</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">private</span> <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">locationManager</span><span class="p">.</span><span class="n">distanceFilter</span> <span class="o">=</span> <span class="n">kCLDistanceFilterNone</span>
+</span><span class='line'>        <span class="n">locationManager</span><span class="p">.</span><span class="n">desiredAccuracy</span> <span class="o">=</span> <span class="n">kCLLocationAccuracyBestForNavigation</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 説明(2)</span>
+</span><span class='line'>        <span class="n">authorized</span> <span class="o">=</span> <span class="n">Observable</span><span class="p">.</span><span class="n">deferred</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">locationManager</span><span class="p">]</span> <span class="k">in</span>
+</span><span class='line'>                <span class="n">let</span> <span class="n">status</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">.</span><span class="n">authorizationStatus</span><span class="p">()</span>
+</span><span class='line'>                <span class="n">guard</span> <span class="n">let</span> <span class="n">locationManager</span> <span class="o">=</span> <span class="n">locationManager</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">locationManager</span>
+</span><span class='line'>                    <span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">didChangeAuthorizationStatus</span>
+</span><span class='line'>                    <span class="p">.</span><span class="n">startWith</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">asDriver</span><span class="p">(</span><span class="nl">onErrorJustReturn:</span> <span class="n">CLAuthorizationStatus</span><span class="p">.</span><span class="n">notDetermined</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">map</span> <span class="p">{</span>
+</span><span class='line'>                <span class="k">switch</span> <span class="n">$0</span> <span class="p">{</span>
+</span><span class='line'>                <span class="k">case</span> <span class="p">.</span><span class="nl">authorizedAlways:</span>
+</span><span class='line'>                    <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>                <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>                    <span class="k">return</span> <span class="n">false</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 説明(3)</span>
+</span><span class='line'>        <span class="n">location</span> <span class="o">=</span> <span class="n">locationManager</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">didUpdateLocations</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">asDriver</span><span class="p">(</span><span class="nl">onErrorJustReturn:</span> <span class="p">[])</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">flatMap</span> <span class="p">{</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">$0</span><span class="p">.</span><span class="n">last</span><span class="p">.</span><span class="n">map</span><span class="p">(</span><span class="n">Driver</span><span class="p">.</span><span class="n">just</span><span class="p">)</span> <span class="o">??</span> <span class="n">Driver</span><span class="p">.</span><span class="n">empty</span><span class="p">()</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">$0</span><span class="p">.</span><span class="n">coordinate</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">locationManager</span><span class="p">.</span><span class="n">requestAlwaysAuthorization</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">locationManager</span><span class="p">.</span><span class="n">startUpdatingLocation</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>1つずつ説明していきましょう。</p>
+
+<h5>説明(1)</h5>
+
+<p>今回のサンプルは、</p>
+
+<ul>
+<li>位置情報の利用を許可したら、画面が切り替わる</li>
+<li>取得した最新の位置情報を画面に表示する</li>
+</ul>
+
+
+<p>という、データ結果を画面に直接反映させる処理が含まれています。<br/>
+よって、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">private</span> <span class="p">(</span><span class="n">set</span><span class="p">)</span> <span class="n">var</span> <span class="nl">authorized:</span> <span class="n">Driver</span><span class="o">&lt;</span><span class="n">Bool</span><span class="o">&gt;</span>
+</span><span class='line'><span class="n">private</span> <span class="p">(</span><span class="n">set</span><span class="p">)</span> <span class="n">var</span> <span class="nl">location:</span> <span class="n">Driver</span><span class="o">&lt;</span><span class="n">CLLocationCoordinate2D</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のように <code>Driver</code> として定義しています。</p>
+
+<h5>説明(2)</h5>
+
+<p><code>authorized</code> は <code>delegate</code> メソッドである <code>didChangeAuthorization</code> が呼び出されたタイミングで値が変更される必要があります。 <br/>
+今回は、<br/>
+<code>Subscribe</code> するまでは <code>Observable</code> を生成せずに、 <code>Subscribe</code> されたタイミングで <code>Observable</code> を返す <code>Observable</code> を生成する<br/>
+<code>deferred</code> メソッドを利用しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">authorized</span> <span class="o">=</span> <span class="n">Observable</span><span class="p">.</span><span class="n">deferred</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">locationManager</span><span class="p">]</span> <span class="k">in</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">status</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">.</span><span class="n">authorizationStatus</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">guard</span> <span class="n">let</span> <span class="n">locationManager</span> <span class="o">=</span> <span class="n">locationManager</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="c1">// didChangeAuthorizationStatusからauthorizedの値を取得</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">locationManager</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">didChangeAuthorizationStatus</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">startWith</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="c1">// エラーが発生した場合は .notDetermined で返却する</span>
+</span><span class='line'>    <span class="p">.</span><span class="n">asDriver</span><span class="p">(</span><span class="nl">onErrorJustReturn:</span> <span class="n">CLAuthorizationStatus</span><span class="p">.</span><span class="n">notDetermined</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">.</span><span class="n">map</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// .authorizedAlwaysの場合のみauthorizedにtrueを格納する</span>
+</span><span class='line'>        <span class="k">switch</span> <span class="n">$0</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">case</span> <span class="p">.</span><span class="nl">authorizedAlways:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>        <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">false</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>説明(3)</h5>
+
+<p>最新の位置情報を取得したタイミングで通知します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">location</span> <span class="o">=</span> <span class="n">locationManager</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">didUpdateLocations</span>
+</span><span class='line'>    <span class="c1">// エラーが発生した場合は、空配列で返却する</span>
+</span><span class='line'>    <span class="p">.</span><span class="n">asDriver</span><span class="p">(</span><span class="nl">onErrorJustReturn:</span> <span class="p">[])</span>
+</span><span class='line'>    <span class="c1">// 位置情報が格納されている場合はその値を、位置情報がない場合は空を返却する</span>
+</span><span class='line'>    <span class="p">.</span><span class="n">flatMap</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">$0</span><span class="p">.</span><span class="n">last</span><span class="p">.</span><span class="n">map</span><span class="p">(</span><span class="n">Driver</span><span class="p">.</span><span class="n">just</span><span class="p">)</span> <span class="o">??</span> <span class="n">Driver</span><span class="p">.</span><span class="n">empty</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="c1">// CLLocationCoordinate2Dの値を返却する</span>
+</span><span class='line'>    <span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">$0</span><span class="p">.</span><span class="n">coordinate</span> <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Viewロジックの実装</h4>
+
+<p>サンプルでは下記のように実装しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// GeolocationViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 説明(1)</span>
+</span><span class='line'><span class="n">private</span> <span class="n">extension</span> <span class="n">Reactive</span> <span class="n">where</span> <span class="nl">Base:</span> <span class="n">UILabel</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">coordinates:</span> <span class="n">Binder</span><span class="o">&lt;</span><span class="n">CLLocationCoordinate2D</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">Binder</span><span class="p">(</span><span class="n">base</span><span class="p">)</span> <span class="p">{</span> <span class="n">label</span><span class="p">,</span> <span class="n">location</span> <span class="k">in</span>
+</span><span class='line'>            <span class="n">label</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;Lat: \(location.latitude)</span><span class="se">\n</span><span class="s">Lon: \(location.longitude)&quot;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">GeolocationViewController:</span> <span class="n">ViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">noGeolocationView:</span> <span class="n">UIView</span><span class="o">!</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">button:</span> <span class="n">UIButton</span><span class="o">!</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">private</span> <span class="n">var</span> <span class="nl">button2:</span> <span class="n">UIButton</span><span class="o">!</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">label:</span> <span class="n">UILabel</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">view</span><span class="p">.</span><span class="n">addSubview</span><span class="p">(</span><span class="n">noGeolocationView</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">let</span> <span class="n">geolocationService</span> <span class="o">=</span> <span class="n">GeolocationService</span><span class="p">.</span><span class="n">instance</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 説明(2)</span>
+</span><span class='line'>        <span class="n">geolocationService</span><span class="p">.</span><span class="n">authorized</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">drive</span><span class="p">(</span><span class="n">noGeolocationView</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">isHidden</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 説明(3)</span>
+</span><span class='line'>        <span class="n">geolocationService</span><span class="p">.</span><span class="n">location</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">drive</span><span class="p">(</span><span class="n">label</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">coordinates</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">...</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>1つずつ説明していきましょう。</p>
+
+<h5>説明(1)</h5>
+
+<p>画面に位置情報を表示するために <code>UILabel</code> を独自に <code>Rx</code> に対応させています。<br/>
+これは <code>CLLocationManager</code> を拡張した方法と同じですね。</p>
+
+<h5>説明(2)</h5>
+
+<p><code>authorized</code> が <code>true</code> の場合に <code>noGeolocationView</code> を非表示にするよう実装しています。</p>
+
+<h5>説明(3)</h5>
+
+<p>取得できた最新の位置情報を説明(1)で拡張した機能を利用して <code>UILabel</code> に表示するようにしています。</p>
+
+<p>以上で <code>Rx</code> に対応させた <code>delegate</code> を利用することができました。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか。<br/>
+形式に沿って実装をすることで簡単に拡張することはできますが、<br/>
+実装1つ1つを理解することでより深く <code>RxSwift</code> を現場で活用できるかと思います。</p>
+
+<p>まだまだ筆者も理解が乏しいところがあるので、もっと深く勉強を続けていきたいと思います。<br/>
+ということで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Swiftの基礎を理解しよう！(3) ~ コーディングテストから用途を見る ~ ]]></title>
@@ -28,6 +980,18 @@
 <p><code>Swift</code> もとうとう <code>4.2</code> にまで上がってきていますし、<br/>
 iOSアプリの新規開発はほぼ <code>Swift</code> を利用する世の中になっていると思いますので、<br/>
 改めて見直して損はないでしょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
 
 <!-- more -->
 
@@ -5403,129 +6367,6 @@ Swift4.1では実に簡単に対応できます。</p>
 <p>意外に <code>UITextField</code> のカスタマイズってするんですよね〜<br/>
 今後も利用するシーンが多いと思うので覚えておかなきゃ。<br/>
 本日は以上。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[UITableViewで任意のスクロール位置に移動させる方法]]></title>
-    <link href="http://grandbig.github.io/blog/2018/01/28/tableview-scroll/"/>
-    <updated>2018-01-28T21:01:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2018/01/28/tableview-scroll</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>最近、開発していて微妙にハマった <code>UITableView</code> を <code>reloadData</code> 後に、スクロール位置を移動させる方法についてメモしておきたいと思います。<br/>
-<code>UITableView</code> で一覧表示をするアプリを開発している際に、<br/>
-新規データに更新後、スクロール位置を変更したい場合があるかと思います。<br/>
-その方法について書いていきます。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>スクロール位置を変更させる方法</h3>
-
-<p>ざっとググってみるだけで幾つか方法が見つかると思います。</p>
-
-<p>例えば&hellip;</p>
-
-<ul>
-<li><code>self.tableView.contentOffset = CGPoint(x: 0, y: -self.tableView.contentInset.top)</code> を設定する</li>
-<li><code>self.tableView.scrollRectToVisible(CGRect(x: 0, y: 0, width: 1, height: 1), animated: false)</code> を設定する</li>
-<li><code>self.tableView.scrollToRow(at: indexPath, at: UITableViewScrollPosition.top, animated: false)</code> を設定する</li>
-</ul>
-
-
-<p>これらを以下のように実行してみても想定通りにスクロール位置が動いてくれません。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">/// UITableViewのデータ更新処理</span>
-</span><span class='line'><span class="c1">///</span>
-</span><span class='line'><span class="c1">/// - Parameters:</span>
-</span><span class='line'><span class="c1">///   - data: 更新したいデータ</span>
-</span><span class='line'><span class="n">func</span> <span class="nf">configure</span><span class="p">(</span><span class="nl">data:</span> <span class="p">[</span><span class="n">Int</span><span class="p">])</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">// データ更新処理など実行 (今回は省略)</span>
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">tableView</span><span class="p">.</span><span class="n">reloadData</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">let</span> <span class="n">indexPath</span> <span class="o">=</span> <span class="n">IndexPath</span><span class="p">(</span><span class="nl">row:</span> <span class="mi">0</span><span class="p">,</span> <span class="nl">section:</span> <span class="mi">0</span><span class="p">)</span>
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">tableView</span><span class="p">.</span><span class="n">scrollToRow</span><span class="p">(</span><span class="nl">at:</span> <span class="n">indexPath</span><span class="p">,</span> <span class="nl">at:</span> <span class="n">UITableViewScrollPosition</span><span class="p">.</span><span class="n">top</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">false</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>これは <code>reloadData()</code> が実行されて、描画が完了する前に次の <code>scrollToRow</code> が実行されているからだと思われます。</p>
-
-<p>これをどうやって解決すれば良いかと言うと&hellip;<br/>
-データ更新後の <code>UITableView</code> が描画された後にスクロール位置が変わるように、タイミングをずらしてやる必要があります。<br/>
-こんな感じで&hellip;</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">/// UITableViewのデータ更新処理</span>
-</span><span class='line'><span class="c1">///</span>
-</span><span class='line'><span class="c1">/// - Parameters:</span>
-</span><span class='line'><span class="c1">///   - data: 更新したいデータ</span>
-</span><span class='line'><span class="n">func</span> <span class="nf">configure</span><span class="p">(</span><span class="nl">data:</span> <span class="p">[</span><span class="n">Int</span><span class="p">])</span> <span class="p">{</span>
-</span><span class='line'>  <span class="c1">// データ更新処理など実行 (今回は省略)</span>
-</span><span class='line'>  <span class="n">self</span><span class="p">.</span><span class="n">tableView</span><span class="p">.</span><span class="n">reloadData</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">DispatchQueue</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">async</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">indexPath</span> <span class="o">=</span> <span class="n">IndexPath</span><span class="p">(</span><span class="nl">row:</span> <span class="mi">0</span><span class="p">,</span> <span class="nl">section:</span> <span class="mi">0</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">self</span><span class="p">.</span><span class="n">tableView</span><span class="p">.</span><span class="n">scrollToRow</span><span class="p">(</span><span class="nl">at:</span> <span class="n">indexPath</span><span class="p">,</span> <span class="nl">at:</span> <span class="n">UITableViewScrollPosition</span><span class="p">.</span><span class="n">top</span><span class="p">,</span> <span class="nl">animated:</span> <span class="n">false</span><span class="p">)</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>恐らく <code>reloadData</code> 実行指示の中にメインスレッドで実行する処理がキューとして溜められているはずです。<br/>
-その後に実行される <code>scrollToRow</code> を <code>DispatchQueue.main.async</code> 内で実行することで、メインスレッドのキューに処理を追加しています。<br/>
-こうすれば <code>reloadData</code> が終わった後に <code>UI</code> 処理を続けて実行できるというわけですね。</p>
-
-<h3>まとめ</h3>
-
-<p>今回の考え方は他の処理でも利用できるところがある気がするので覚えておいて損はないはず！<br/>
-と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
