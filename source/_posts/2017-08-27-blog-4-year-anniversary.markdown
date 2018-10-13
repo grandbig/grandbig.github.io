@@ -15,6 +15,12 @@ categories: blog
 * アクセス数の多い記事を紹介
 * 広告収入の推移
 
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
 <!-- more -->
 
 #### アクセス数の推移

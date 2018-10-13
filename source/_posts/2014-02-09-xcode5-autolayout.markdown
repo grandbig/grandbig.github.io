@@ -3,7 +3,7 @@ layout: post
 title: "Xcode5でAuto Layoutを使おう"
 date: 2014-02-09 17:25
 comments: true
-categories: xcode AutoLayout
+categories: xcode autolayout
 ---
 
 ###Auto Layoutで『iOS6・iOS7』と『3.5-inch・4-inch』対応

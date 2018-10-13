@@ -3,7 +3,7 @@ layout: post
 title: "PromiseKitを使ってみよう！"
 date: 2016-04-09 23:07
 comments: true
-categories: ios swift
+categories: ios swift promise
 ---
 
 ####SwiftでPromiseライブラリを使ってみよう
@@ -50,7 +50,7 @@ func p(msg: String) -> Promise<String>{
 
 	let promise = Promise<String> { (fulfill, reject) in
 		let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
-		dispatch_async(queue, { 
+		dispatch_async(queue, {
 			sleep(1)
 			dispatch_sync(dispatch_get_main_queue(), {
 				print(msg)
@@ -58,7 +58,7 @@ func p(msg: String) -> Promise<String>{
 			})
 		})
 	}
-													        
+
 	return promise
 }
 ```

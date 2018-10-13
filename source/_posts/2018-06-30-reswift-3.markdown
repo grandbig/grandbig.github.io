@@ -1,0 +1,589 @@
+---
+layout: post
+title: "ReSwiftを勉強してみよう！(3) ~ 非同期通信処理の場合 ~"
+date: 2018-06-30 11:11
+comments: true
+categories: redux ios swift
+---
+
+### はじめに
+今回は久しぶりに[ReSwift](https://github.com/ReSwift/ReSwift)について書きたいと思います。  
+これまで以下のように `ReSwift` について勉強してきました。  
+
+* [ReSwiftを勉強してみよう！(1)](https://grandbig.github.io/blog/2016/09/03/reswift-1/)  
+`CounterSample` を見ながら `ReSwift` の基本的な考え方  
+* [ReSwiftを勉強してみよう！(2)](https://grandbig.github.io/blog/2016/12/06/reswift-2/)  
+`ReSwiftRouter` を用いた画面切り替えの場合の書き方  
+
+3回目の今回は非同期通信処理がある場合の `ReSwift` の利用方法について見ていきたいと思います。
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### サンプルの説明
+まずはサンプルアプリの要件を説明します。  
+
+* Googleマップ上でユーザの現在地を表示  
+* ユーザの現在地周辺のレストランを検索  
+* その検索結果をGoogleマップにプロット  
+
+今回、ユーザの現在地周辺のレストラン検索には、[Google Places API](https://developers.google.com/places/?hl=ja)を利用します。  
+実際のイメージは以下の通りです。  
+
+![今回のサンプルアプリ](/images/reswift_3_1.png)  
+
+### 実装の説明
+続いて、具体的な実装について説明したいと思います。  
+1つ1つ見ていきましょう。  
+
+#### API処理周り
+`ReSwift` とは直接関係ありませんが、今回の非同期通信処理の根源となるAPI処理周りについて先に書いておきます。  
+[Moya](https://github.com/Moya/Moya)を利用して[Google Places API](https://developers.google.com/places/?hl=ja)を叩けるようにします。
+
+```objective-c
+// GooglePlacesAPI
+import Foundation
+import Moya
+import PromiseKit
+import GooglePlaces
+
+internal enum GooglePlacesAPITarget {
+    case hospitals(lat: Double, lng: Double)
+    case restaurants(lat: Double, lng: Double)
+}
+
+internal enum APIError: Error {
+    case cancel
+    case apiError(description: String)
+    case decodeError
+}
+
+internal enum GooglePlacesError: Error {
+    case cancel
+    case notFoundError
+}
+
+protocol GooglePlacesAPIProtocol {
+
+    func fetchHospitals(lat: Double, lng: Double) -> Promise<[Place]>
+    func fetchRestaurants(lat: Double, lng: Double) -> Promise<[Place]>
+    func fetchPhoto(placeId: String) -> Promise<UIImage?>
+}
+
+extension GooglePlacesAPITarget: TargetType {
+
+    /// API Key
+    private var apiKey: String {
+        guard let path = Bundle.main.path(forResource: R.string.common.keyFileName(),
+                                          ofType: R.string.common.plistExtension()) else {
+                                            fatalError("key.plistが見つかりません")
+        }
+
+        guard let dic = NSDictionary(contentsOfFile: path) as? [String: Any] else {
+            fatalError("key.plistの中身が想定通りではありません")
+        }
+
+        guard let apiKey = dic[R.string.common.googleApiKeyName()] as? String else {
+            fatalError("Google APIのKeyが設定されていません")
+        }
+
+        return apiKey
+    }
+
+    // ベースURLを文字列で定義
+    private var _baseURL: String {
+        switch self {
+        case .hospitals, .restaurants:
+            return R.string.url.googlePlacesApiPlaceUrl()
+        }
+
+    }
+
+    public var baseURL: URL {
+        return URL(string: _baseURL)!
+    }
+
+    // enumの値に対応したパスを指定
+    public var path: String {
+        switch self {
+        case .hospitals, .restaurants:
+            return ""
+        }
+    }
+
+    // enumの値に対応したHTTPメソッドを指定
+    public var method: Moya.Method {
+        switch self {
+        case .hospitals, .restaurants:
+            return .get
+        }
+    }
+
+    // スタブデータの設定
+    public var sampleData: Data {
+        switch self {
+        case .hospitals, .restaurants:
+            return "Stub data".data(using: String.Encoding.utf8)!
+        }
+    }
+
+    // パラメータの設定
+    var task: Task {
+        switch self {
+        case let .hospitals(lat, lng):
+            return .requestParameters(parameters: [
+                R.string.common.keyFileName(): apiKey,
+                R.string.common.locationKeyName(): "\(lat),\(lng)",
+                R.string.common.radiusKeyName(): 1500,
+                R.string.common.typeKeyName(): R.string.common.hospitalTypeValueName()
+                ], encoding: URLEncoding.default)
+        case let .restaurants(lat, lng):
+            return .requestParameters(parameters: [
+                R.string.common.keyFileName(): apiKey,
+                R.string.common.locationKeyName(): "\(lat),\(lng)",
+                R.string.common.radiusKeyName(): 1500,
+                R.string.common.typeKeyName(): R.string.common.restaurantTypeValueName()
+                ], encoding: URLEncoding.default)
+        }
+    }
+
+    // ヘッダーの設定
+    var headers: [String: String]? {
+        switch self {
+        case .hospitals, .restaurants:
+            return nil
+        }
+    }
+}
+
+class GooglePlacesAPI: GooglePlacesAPIProtocol {
+    private var provider: MoyaProvider<GooglePlacesAPITarget>!
+
+    /// イニシャライザ
+    init() {
+        provider = MoyaProvider<GooglePlacesAPITarget>()
+    }
+
+    // MARK: CRUD operations
+    /// 指定の緯度、経度から一定範囲内のレストランを検索する処理
+    ///
+    /// - Returns: レストランのプレイス情報
+    func fetchRestaurants(lat: Double, lng: Double) -> Promise<[Place]> {
+        let (promise, resolver) = Promise<[Place]>.pending()
+
+        provider.request(.restaurants(lat: lat, lng: lng)) { result in
+            switch result {
+            case .success(let response):
+                do {
+                    let decoder = JSONDecoder()
+                    decoder.keyDecodingStrategy = .convertFromSnakeCase
+                    let places = try decoder.decode(Places.self, from: response.data)
+
+                    resolver.fulfill(places.results)
+                } catch {
+                    resolver.reject(APIError.decodeError)
+                }
+            case .failure(let error):
+                resolver.reject(APIError.apiError(description: error.localizedDescription))
+            }
+        }
+
+        return promise
+    }
+}
+```
+
+例によって取得したデータを利用しやすくするために `Codable` を使います。  
+
+```objective-c
+// Places.swift
+import Foundation
+
+public struct Location: Codable {
+
+    public var lat: Double
+    public var lng: Double
+}
+
+public struct Viewport: Codable {
+
+    public var northeast: Location
+    public var southwest: Location
+}
+
+public struct Geometry: Codable {
+
+    public var viewport: Viewport
+    public var location: Location
+}
+
+public struct OpeningHours: Codable {
+
+    public var weekdayText: [String]?
+    public var openNow: Bool
+}
+
+public struct Photos: Codable {
+
+    public var photoReference: String
+    public var width: Double
+    public var height: Double
+    public var htmlAttributions: [String]
+}
+
+public struct Place: Codable {
+
+    public var id: String
+    public var placeId: String
+    public var name: String
+    public var icon: String
+    public var rating: Double?
+    public var scope: String
+    public var vicinity: String
+    public var reference: String
+    public var priceLevel: Int?
+    public var types: [String]
+    public var geometry: Geometry
+    public var openingHours: OpeningHours?
+    public var photos: [Photos]?
+}
+
+public struct Places: Codable {
+
+    public var results: [Place]
+    public var status: String
+    public var htmlAttributions: [String]
+}
+```
+
+#### State
+さて、 `ReSwift` の `State` から見ていきましょう。  
+`State` はアプリの状態を表現する役割を担います。  
+状態はパラメータの値で正常かどうかを判断できる作りにします。  
+
+具体的には、  
+
+```objective-c
+// AppState.swift
+import ReSwift
+
+struct AppState: StateType {
+    var mapState = MapState(places: [], error: nil)
+}
+
+struct MapState: StateType {
+    var places: [Place]
+    var error: Error?
+}
+```
+
+といった感じです。  
+
+* アプリに複数状態が存在する場合を考慮して `AppState` 内に各状態を持たせます。  
+* それぞれの状態内に成功パターン/失敗パターンを識別できるようにパラメータを持たせます。  
+
+#### Action
+`Action` はまさにアプリにどういった状況を起こさせたいか (つまり、アクション)を意味する役割を担います。  
+具体的には、  
+
+```objective-c
+// AppAction.swift
+import ReSwift
+import PromiseKit
+
+extension MapState {
+    struct RequestRestaurantsAction: Action {
+    }
+
+    struct SuccessRestaurantsAction: Action {
+        let response: [Place]
+    }
+
+    struct APIErrorAction: Action {
+        let error: Error
+    }
+
+    static func fetchRestaurantsAction(lat: Double, lng: Double) -> Store<AppState>.AsyncActionCreator {
+        return { (state, store, callback) in
+            firstly {
+                GooglePlacesAPI().fetchRestaurants(lat: lat, lng: lng)
+            }.done { results in
+                callback {_, _ in SuccessRestaurantsAction(response: results)}
+            }.catch { error in
+                callback {_, _ in APIErrorAction(error: error)}
+            }
+        }
+    }
+}
+```
+
+という感じです。  
+今回の肝となる非同期通信処理ですが、 `ReSwift` の `AsyncActionCreator` を利用しています。  
+これを使うことで、非同期通信処理後に適切な `Action` を返却できるようになっています。  
+
+#### Reducer
+渡されてきた `Action` と`State` から新規 `State` を作成し、返却する役割を担います。  
+状態変化のロジックを担っているとも言えますね。  
+具体的には、  
+
+```objective-c
+// AppReducer.swift
+import ReSwift
+
+func appReducer(action: Action, state: AppState?) -> AppState {
+    var state = state ?? AppState()
+
+    state.mapState = MapState.fetchRestaurantsReducer(action: action, state: state.mapState)
+
+    return state
+}
+
+extension MapState {
+    public static func fetchRestaurantsReducer(action: Action, state: MapState?) -> MapState {
+        var state = state ?? MapState(places: [], error: nil)
+
+        switch action {
+        case let action as SuccessRestaurantsAction:
+            state.places = action.response
+        case let action as APIErrorAction:
+            state.error = action.error
+        default:
+            break
+        }
+
+        return state
+    }
+}
+```
+
+のようになります。  
+
+* 複数状態が必要なアプリに対応できるように `appReducer` を用意します。  
+* 特定の状態でしか利用しない `Action` が当然出てきますが、そこは `switch` 文で判断します。  
+
+#### Store
+`Store` は
+
+* アプリ内で必ず1つの存在 (つまりシングルトン)  
+* アプリの状態を管理する  
+* Stateを更新するためのdispatchを提供する  
+  * 言い換えればdispatch(action)をすることでStoreにStateの変更を知らせられる
+* Stateの状態を追えるようにsubscribeを提供する  
+  * 言い換えればsubscribe(listener)をすることでlistenerはgetStateを通してStateの状態を取得できる
+
+というものです。  
+具体的には、  
+
+```objective-c
+// AppDelegate.swift
+import UIKit
+import ReSwift
+import GoogleMaps
+
+// Storeの定義
+let mainStore = Store<AppState>(
+    reducer: appReducer,
+    state: nil
+)
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+
+    var window: UIWindow?
+
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
+        // Override point for customization after application launch.
+
+        // ここでGoogleマップの設定
+        if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
+            if let dic = NSDictionary(contentsOfFile: path) as? [String: Any] {
+                if let apiKey = dic["googleApiKey"] as? String {
+                    GMSServices.provideAPIKey(apiKey)
+                }
+            }
+        }
+
+        return true
+    }
+    ...
+}
+```
+
+となります。  
+ここはお決まりの書き方になります。  
+
+#### ユーザアクション〜結果反映まで
+最後にユーザがアクションしてから、結果を `View` として反映する部分の処理を見ていきます。  
+基本的には `ViewController.swift` に書いていきます。  
+
+全文を載せると、  
+
+```objective-c
+import UIKit
+import GoogleMaps
+import ReSwift
+
+class ViewController: UIViewController {
+
+    // MARK: - IBOutlets
+    @IBOutlet weak var mapView: GMSMapView!
+
+    // MARK: - Properties
+    private var locationManager: CLLocationManager?
+    private let zoomLevel: Float = 16.0
+    private var currentLocation: CLLocationCoordinate2D?
+    private var initView: Bool = false
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Do any additional setup after loading the view, typically from a nib.
+
+        // GoogleMapの初期化
+        mapView.isMyLocationEnabled = true
+        mapView.mapType = GMSMapViewType.normal
+        mapView.settings.compassButton = true
+        mapView.settings.myLocationButton = true
+        mapView.settings.compassButton = true
+        mapView.delegate = self
+
+        // 位置情報関連の初期化
+        locationManager = CLLocationManager()
+        locationManager?.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager?.requestWhenInUseAuthorization()
+        locationManager?.startUpdatingLocation()
+        locationManager?.delegate = self
+
+        // subscribe to state changes
+        mainStore.subscribe(self)
+    }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        // Dispose of any resources that can be recreated.
+    }
+
+    // MARK: - IBActions
+    @IBAction func tappedSearchButton(_ sender: Any) {
+        mainStore.dispatch(MapState.fetchRestaurantsAction(lat: mapView.myLocation?.coordinate.latitude ?? 0,
+                                                           lng: mapView.myLocation?.coordinate.longitude ?? 0))
+    }
+}
+
+// MARK: - Other
+extension ViewController {
+
+    /// GoogleMapにマーカをプロットする
+    ///
+    /// - Parameter place: プロットする場所情報
+    private func putMarker(place: Place) {
+        let marker = GMSMarker()
+        marker.position = CLLocationCoordinate2D(latitude: place.geometry.location.lat, longitude: place.geometry.location.lng)
+        marker.icon = UIImage(named: "RestaurantIcon")
+        marker.appearAnimation = GMSMarkerAnimation.pop
+        marker.map = mapView
+    }
+}
+
+// MARK: - StoreSubscriber
+extension ViewController: StoreSubscriber {
+    typealias StoreSubscriberStateType = AppState
+
+    func newState(state: AppState) {
+        // when the state changes, the UI is updated to reflect the current state
+        guard let error = state.mapState.error else {
+            let places = state.mapState.places
+            if places.count == 0 {
+                mapView.clear()
+                return
+            }
+
+            places.forEach { (place) in
+                putMarker(place: place)
+            }
+            return
+        }
+        print("error: \(error.localizedDescription)")
+    }
+}
+
+// MARK: - GMSMapViewDelegate
+extension ViewController: GMSMapViewDelegate {
+}
+
+// MARK: - CLLocationManagerDelegate
+extension ViewController: CLLocationManagerDelegate {
+
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        switch status {
+        case .notDetermined:
+            break
+        case .restricted, .denied:
+            break
+        case .authorizedWhenInUse:
+            break
+        default:
+            break
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        // 現在地の更新
+        currentLocation = locations.last?.coordinate
+
+        if !initView {
+            // 初期描画時のマップ中心位置の移動
+            let camera = GMSCameraPosition.camera(withTarget: currentLocation!, zoom: zoomLevel)
+            mapView.camera = camera
+            initView = true
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        if !CLLocationManager.locationServicesEnabled() {
+            // 端末の位置情報がOFFになっている場合
+            // アラートはデフォルトで表示されるので内部で用意はしない
+            self.currentLocation = nil
+            return
+        }
+        if CLLocationManager.authorizationStatus() != CLAuthorizationStatus.authorizedWhenInUse {
+            // アプリの位置情報許可をOFFにしている場合
+            return
+        }
+    }
+}
+```
+
+になります。  
+ポイントは、  
+
+* ユーザアクション時に `mainStore.dispatch` メソッドを実行すること  
+  * これにより、どんなアクションが発生したのかを `Reducer` に伝え、 `State` を再生成することができるようになります。  
+* `StoreSubscriber` プロトコルに対応すること  
+  * これにより状態が変化した際に、 `newState` が呼び出されるため、変化後の状態を`View`に反映させることができるようになります。  
+
+の2点になります。  
+
+今回は、`newState` 内で[Google Places API](https://developers.google.com/places/?hl=ja)で取得した結果をGoogleマップに反映させる処理を書いています。  
+( エラーは `print` 文にしているだけですが... )  
+
+### まとめ
+さて如何でしたでしょうか？  
+`ReSwift` も役割の明確化および細分化をすることで、チーム開発でのアーキテクチャの属人化を防ぐことができるように思います。  
+もちろん学習時間が必要になるなどのハードルは存在しますが、人の入れ替わりが激しい業界では、特に必要となるのではないでしょうか。  
+
+筆者も引き続き、いろいろなパターンで `ReSwift` を試していきたいと思います。
+今回利用したサンプルは[ReSwiftSample](https://github.com/grandbig/ReSwiftSample)としてアップしていますので、ぜひご覧ください。  
+
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
