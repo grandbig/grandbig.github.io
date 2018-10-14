@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rx | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/rx/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2018-10-13T13:27:38+09:00</updated>
+  <updated>2018-10-14T23:34:52+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,337 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[カスタムDelegateのRx対応]]></title>
+    <link href="http://grandbig.github.io/blog/2018/10/14/popuppickerview-rx/"/>
+    <updated>2018-10-14T22:52:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/10/14/popuppickerview-rx</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>先日、<a href="https://grandbig.github.io/blog/2018/10/06/rx-delegate/">GeolocationSampleから学ぶdelegateのRx対応</a>を紹介しました。<br/>
+今回は<a href="https://grandbig.github.io/blog/2018/10/13/popuppickerview/">下からニュッと出るPickerを作ろう！</a>で作成した <code>PickerView</code> に実装されている <code>Delegate</code> を <code>Rx</code> 対応させたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>PickerViewクラスの確認</h3>
+
+<p>まずは、元となる <code>PickerView</code> クラスを提示します。</p>
+
+<p>```objective-c
+import Foundation
+import UIKit</p>
+
+<p>/// ピッカービュー
+public class PickerView: UIView {</p>
+
+<pre><code>// MARK: - IBOutlets
+@IBOutlet weak var toolBar: UIToolbar!
+@IBOutlet weak var picker: UIPickerView!
+
+// MARK: - Static Properties
+static private let screenWidth = UIScreen.main.bounds.size.width
+static private let screenHeight = UIScreen.main.bounds.size.height
+static private let defaultPickerHeight: CGFloat = 260.0
+static private let duration = 0.2
+
+// MARK: - Properties
+public weak var delegate: PickerViewDelegate?
+private var selectItems = [String]()
+private var selectedRowIndex: Int = 0
+
+// MARK: - Initial Methods
+required init(frame: CGRect = CGRect(x: 0, y: screenHeight, width: screenWidth, height: defaultPickerHeight),
+              selectItems: [String]) {
+    var frame = frame
+    if let safeAreaTopInsets = UIApplication.shared.keyWindow?.safeAreaInsets.top, safeAreaTopInsets &gt; CGFloat(0.0) {
+        // iPhoneX , XS, XS MAX, XRの場合はUIPickerViewの高さを調整する
+        frame = CGRect(x: 0, y: frame.origin.y, width: frame.size.width, height: (frame.size.height + 100.0))
+    }
+    super.init(frame: frame)
+    self.selectItems = selectItems
+    self.xibViewSet()
+}
+
+required init?(coder aDecoder: NSCoder) {
+    super.init(coder: aDecoder)!
+    self.xibViewSet()
+}
+
+internal func xibViewSet() {
+    if let view = R.nib.pickerView.firstView(owner: self) {
+        view.frame = self.bounds
+        self.addSubview(view)
+
+        picker.delegate = self
+        picker.dataSource = self
+        picker.showsSelectionIndicator = true
+    }
+}
+
+// MARK: - Picker Move Function
+// PickerViewを表示する
+func showPickerView() {
+    let pickerViewWidth = self.frame.size.width
+    let pickerViewHeight = self.frame.size.height
+    let pickerViewYPosition = PickerView.screenHeight - pickerViewHeight
+    UIView.animate(withDuration: PickerView.duration) {
+        self.frame = CGRect.init(x: 0, y: pickerViewYPosition, width: pickerViewWidth, height: pickerViewHeight)
+    }
+}
+
+// PickerViewを非表示にする
+func hiddenPickerView() {
+    let pickerViewWidth = self.frame.size.width
+    let pickerViewHeight = self.frame.size.height
+    UIView.animate(withDuration: PickerView.duration) {
+        self.frame = CGRect.init(x: 0, y: PickerView.screenHeight, width: pickerViewWidth, height: pickerViewHeight)
+    }
+}
+
+// MARK: - IBActions
+@IBAction func cancelSelection(_ sender: Any) {
+    delegate?.closePickerView()
+    hiddenPickerView()
+}
+
+@IBAction func doneSelection(_ sender: Any) {
+    delegate?.selectedItem(index: selectedRowIndex, title: selectItems[selectedRowIndex])
+    hiddenPickerView()
+}
+</code></pre>
+
+<p>}</p>
+
+<p>/// MARK: &ndash; UIPickerViewDelegate
+extension PickerView: UIPickerViewDelegate {</p>
+
+<pre><code>public func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -&gt; String? {
+    return selectItems[row]
+}
+
+public func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+    selectedRowIndex = row
+}
+</code></pre>
+
+<p>}</p>
+
+<p>/// MARK: &ndash; UIPickerViewDataSource
+extension PickerView: UIPickerViewDataSource {</p>
+
+<pre><code>public func numberOfComponents(in pickerView: UIPickerView) -&gt; Int {
+    return 1
+}
+
+public func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -&gt; Int {
+    return selectItems.count
+}
+</code></pre>
+
+<p>}</p>
+
+<p>/// MARK: &ndash; PickerViewDelegate
+@objc
+public protocol PickerViewDelegate: class {</p>
+
+<pre><code>func selectedItem(index: Int, title: String)
+func closePickerView()
+</code></pre>
+
+<p>}
+```</p>
+
+<p>では早速 <code>Rx</code> 対応させていきましょう。</p>
+
+<h3>DelegateProxyとDelegateProxyTypeへの対応</h3>
+
+<p>基本的には、 <code>CLLocationManagerDelegate</code> と同じです。<br/>
+<code>DelegateProxy</code> と <code>DelegateProxyType</code> を継承したクラスを実装します。</p>
+
+<p>```objective-c
+import Foundation
+import RxSwift
+import RxCocoa</p>
+
+<p>// 説明(1)
+extension PickerView: HasDelegate {</p>
+
+<pre><code>public typealias Delegate = PickerViewDelegate
+</code></pre>
+
+<p>}</p>
+
+<p>public class RxPickerViewDelegateProxy: DelegateProxy&lt;PickerView, PickerViewDelegate>,</p>
+
+<pre><code>DelegateProxyType,
+PickerViewDelegate {
+
+public init(pickerView: PickerView) {
+    super.init(parentObject: pickerView, delegateProxy: RxPickerViewDelegateProxy.self)
+}
+
+// 説明(2)
+public static func registerKnownImplementations() {
+    self.register { RxPickerViewDelegateProxy(pickerView: $0) }
+}
+
+// 説明(3)
+internal lazy var selectedItemSubject = PublishSubject&lt;(Int, String)&gt;()
+internal lazy var closePickerViewSubject = PublishSubject&lt;Void&gt;()
+
+// 説明(4)
+public func selectedItem(index: Int, title: String) {
+    selectedItemSubject.onNext((index, title))
+}
+
+public func closePickerView() {
+    closePickerViewSubject.onNext(Void())
+}
+
+// 説明(5)
+deinit {
+    self.selectedItemSubject.on(.completed)
+    self.closePickerViewSubject.on(.completed)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>細かく見ていきましょう。</p>
+
+<h4>説明(1)</h4>
+
+<p><code>currentDelegate</code> および <code>setCurrentDelegate</code> に対応する代わりに、 <code>HasDelegate</code> を継承させましょう。</p>
+
+<h4>説明(2)</h4>
+
+<p>自身で定義した <code>DelegateProxy</code> の継承クラスを登録するために、 <code>registerKnownImplementations</code> 内で <code>DelegateProxySubclass.register()</code> を実行します。</p>
+
+<h4>説明(3)</h4>
+
+<p><code>delegate</code> メソッドが呼び出されて処理が実行されたことを <code>Subscriber</code> に伝えるために、 <code>PublishSubject</code> 型のプロパティを用意します。</p>
+
+<h4>説明(4)</h4>
+
+<p><code>PickerViewDelegate</code> の <code>selectedItem(index:title:)</code> と <code>closePickerView()</code> メソッドは必須メソッドです。<br/>
+<code>RxPickerViewDelegateProxy</code> はもちろん <code>PickerViewDelegate</code> も継承しますので、上記2つのメソッドを定義する必要があります。</p>
+
+<p>これが呼び出されたタイミングで <code>Subscriber</code> に伝えるために、 <code>PublishSubject.onNext(element:)</code> を実行します。</p>
+
+<h4>説明(5)</h4>
+
+<p><code>deinit</code> が呼ばれるタイミングで、初期化したオブジェクトが破棄されるので、<br/>
+<code>PublishSubject</code> からイベント送信完了を知らせるように実装しましょう。</p>
+
+<h3>ReactiveへのPickerViewの適応</h3>
+
+<p>これも <code>CLLocationManager</code> と適応方法は同じです。<br/>
+まずは、全体像から&hellip;</p>
+
+<p>```objective-c
+// PickerView+Rx.swift
+import Foundation
+import RxSwift
+import RxCocoa</p>
+
+<p>extension Reactive where Base: PickerView {</p>
+
+<pre><code>// 説明(1)
+public var delegate: DelegateProxy&lt;PickerView, PickerViewDelegate&gt; {
+    return RxPickerViewDelegateProxy.proxy(for: base)
+}
+
+// 説明(2)
+public var selectedItem: Observable&lt;(Int, String)&gt; {
+    return RxPickerViewDelegateProxy.proxy(for: base).selectedItemSubject.asObservable()
+}
+
+public var closePickerView: Observable&lt;Void&gt; {
+    return RxPickerViewDelegateProxy.proxy(for: base).closePickerViewSubject.asObservable()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>1つずつ説明します。</p>
+
+<h4>説明(1)</h4>
+
+<p><code>delegate</code> を <code>DelegateProxy</code> 型として定義します。<br/>
+<code>DelegateProxy</code> の取得は <code>DelegateProxyType</code> プロトコルの <code>proxy</code> メソッドを利用します。</p>
+
+<h4>説明(2)</h4>
+
+<p>各 <code>delegate</code> メソッドが実行されたことを補足(監視)するために <code>Observable</code> 型の <code>selectedItem</code> と <code>closePickerView</code> を用意します。</p>
+
+<h3>利用方法</h3>
+
+<p>では、早速利用してみましょう。</p>
+
+<p>```objective-c
+// ViewController.swift</p>
+
+<p>private let disposeBag = DisposeBag()</p>
+
+<p>private func bind() {
+  pickerView?.rx.selectedItem</p>
+
+<pre><code>  .asObservable()
+  .subscribe({ [weak self] event in
+      // Subscriberとして補足した情報を取得
+      guard let strongSelf = self else { return }
+      guard let index = event.element?.0 else { return }
+      guard let title = event.element?.1 else { return }
+
+      Observable.just(index, title)
+          // ViewModelにsampleActionが定義されているとします
+          .bind(to: strongSelf.viewModel.sampleAction)
+          .disposed(by: strongSelf.disposeBag)
+          })
+          .disposed(by: disposeBag)
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記のような形で <code>ViewController</code> にて <code>Subscriber</code> としてアクションを補足し、 <code>ViewModel</code> に伝えることができるでしょう。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか？<br/>
+1つ1つの意味を理解することはもちろん大切ですが、<br/>
+何だか型にはまって書き方を覚えれば、自身で <code>Rx</code> 対応が簡単にできる気がしてきますね。</p>
+
+<p><code>Rx</code> の癖が強いが故に、慣れれば利用しやすいということなのでしょう。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[GeolocationSampleから学ぶdelegateのRx対応]]></title>

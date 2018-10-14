@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2018-10-13T13:27:38+09:00</updated>
+  <updated>2018-10-14T23:33:10+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,511 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[カスタムDelegateのRx対応]]></title>
+    <link href="http://grandbig.github.io/blog/2018/10/14/popuppickerview-rx/"/>
+    <updated>2018-10-14T22:52:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/10/14/popuppickerview-rx</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>先日、<a href="https://grandbig.github.io/blog/2018/10/06/rx-delegate/">GeolocationSampleから学ぶdelegateのRx対応</a>を紹介しました。<br/>
+今回は<a href="https://grandbig.github.io/blog/2018/10/13/popuppickerview/">下からニュッと出るPickerを作ろう！</a>で作成した <code>PickerView</code> に実装されている <code>Delegate</code> を <code>Rx</code> 対応させたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>PickerViewクラスの確認</h3>
+
+<p>まずは、元となる <code>PickerView</code> クラスを提示します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// ピッカービュー</span>
+</span><span class='line'><span class="n">public</span> <span class="n">class</span> <span class="nl">PickerView:</span> <span class="n">UIView</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - IBOutlets</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">toolBar:</span> <span class="n">UIToolbar</span><span class="o">!</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">picker:</span> <span class="n">UIPickerView</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Static Properties</span>
+</span><span class='line'>    <span class="k">static</span> <span class="n">private</span> <span class="n">let</span> <span class="n">screenWidth</span> <span class="o">=</span> <span class="n">UIScreen</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">bounds</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span>
+</span><span class='line'>    <span class="k">static</span> <span class="n">private</span> <span class="n">let</span> <span class="n">screenHeight</span> <span class="o">=</span> <span class="n">UIScreen</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">bounds</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span>
+</span><span class='line'>    <span class="k">static</span> <span class="n">private</span> <span class="n">let</span> <span class="nl">defaultPickerHeight:</span> <span class="n">CGFloat</span> <span class="o">=</span> <span class="mf">260.0</span>
+</span><span class='line'>    <span class="k">static</span> <span class="n">private</span> <span class="n">let</span> <span class="n">duration</span> <span class="o">=</span> <span class="mf">0.2</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">delegate:</span> <span class="n">PickerViewDelegate</span><span class="o">?</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="n">selectItems</span> <span class="o">=</span> <span class="p">[</span><span class="n">String</span><span class="p">]()</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">selectedRowIndex:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Initial Methods</span>
+</span><span class='line'>    <span class="n">required</span> <span class="n">init</span><span class="p">(</span><span class="nl">frame:</span> <span class="n">CGRect</span> <span class="o">=</span> <span class="n">CGRect</span><span class="p">(</span><span class="nl">x:</span> <span class="mi">0</span><span class="p">,</span> <span class="nl">y:</span> <span class="n">screenHeight</span><span class="p">,</span> <span class="nl">width:</span> <span class="n">screenWidth</span><span class="p">,</span> <span class="nl">height:</span> <span class="n">defaultPickerHeight</span><span class="p">),</span>
+</span><span class='line'>                  <span class="nl">selectItems:</span> <span class="p">[</span><span class="n">String</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">var</span> <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">safeAreaTopInsets</span> <span class="o">=</span> <span class="n">UIApplication</span><span class="p">.</span><span class="n">shared</span><span class="p">.</span><span class="n">keyWindow</span><span class="o">?</span><span class="p">.</span><span class="n">safeAreaInsets</span><span class="p">.</span><span class="n">top</span><span class="p">,</span> <span class="n">safeAreaTopInsets</span> <span class="o">&gt;</span> <span class="n">CGFloat</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="c1">// iPhoneX , XS, XS MAX, XRの場合はUIPickerViewの高さを調整する</span>
+</span><span class='line'>            <span class="n">frame</span> <span class="o">=</span> <span class="n">CGRect</span><span class="p">(</span><span class="nl">x:</span> <span class="mi">0</span><span class="p">,</span> <span class="nl">y:</span> <span class="n">frame</span><span class="p">.</span><span class="n">origin</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="nl">width:</span> <span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="p">,</span> <span class="nl">height:</span> <span class="p">(</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span> <span class="o">+</span> <span class="mf">100.0</span><span class="p">))</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">frame:</span> <span class="n">frame</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">selectItems</span> <span class="o">=</span> <span class="n">selectItems</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">xibViewSet</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">required</span> <span class="n">init</span><span class="o">?</span><span class="p">(</span><span class="n">coder</span> <span class="nl">aDecoder:</span> <span class="n">NSCoder</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">coder:</span> <span class="n">aDecoder</span><span class="p">)</span><span class="o">!</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">xibViewSet</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">internal</span> <span class="n">func</span> <span class="n">xibViewSet</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">view</span> <span class="o">=</span> <span class="n">R</span><span class="p">.</span><span class="n">nib</span><span class="p">.</span><span class="n">pickerView</span><span class="p">.</span><span class="n">firstView</span><span class="p">(</span><span class="nl">owner:</span> <span class="n">self</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">view</span><span class="p">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">bounds</span>
+</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">addSubview</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">picker</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>            <span class="n">picker</span><span class="p">.</span><span class="n">dataSource</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>            <span class="n">picker</span><span class="p">.</span><span class="n">showsSelectionIndicator</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Picker Move Function</span>
+</span><span class='line'>    <span class="c1">// PickerViewを表示する</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">showPickerView</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">pickerViewWidth</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">pickerViewHeight</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">pickerViewYPosition</span> <span class="o">=</span> <span class="n">PickerView</span><span class="p">.</span><span class="n">screenHeight</span> <span class="o">-</span> <span class="n">pickerViewHeight</span>
+</span><span class='line'>        <span class="n">UIView</span><span class="p">.</span><span class="n">animate</span><span class="p">(</span><span class="nl">withDuration:</span> <span class="n">PickerView</span><span class="p">.</span><span class="n">duration</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">CGRect</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">x:</span> <span class="mi">0</span><span class="p">,</span> <span class="nl">y:</span> <span class="n">pickerViewYPosition</span><span class="p">,</span> <span class="nl">width:</span> <span class="n">pickerViewWidth</span><span class="p">,</span> <span class="nl">height:</span> <span class="n">pickerViewHeight</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// PickerViewを非表示にする</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">hiddenPickerView</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">pickerViewWidth</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">pickerViewHeight</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span>
+</span><span class='line'>        <span class="n">UIView</span><span class="p">.</span><span class="n">animate</span><span class="p">(</span><span class="nl">withDuration:</span> <span class="n">PickerView</span><span class="p">.</span><span class="n">duration</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">frame</span> <span class="o">=</span> <span class="n">CGRect</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">x:</span> <span class="mi">0</span><span class="p">,</span> <span class="nl">y:</span> <span class="n">PickerView</span><span class="p">.</span><span class="n">screenHeight</span><span class="p">,</span> <span class="nl">width:</span> <span class="n">pickerViewWidth</span><span class="p">,</span> <span class="nl">height:</span> <span class="n">pickerViewHeight</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - IBActions</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">cancelSelection</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">delegate</span><span class="o">?</span><span class="p">.</span><span class="n">closePickerView</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">hiddenPickerView</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">doneSelection</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">delegate</span><span class="o">?</span><span class="p">.</span><span class="n">selectedItem</span><span class="p">(</span><span class="nl">index:</span> <span class="n">selectedRowIndex</span><span class="p">,</span> <span class="nl">title:</span> <span class="n">selectItems</span><span class="p">[</span><span class="n">selectedRowIndex</span><span class="p">])</span>
+</span><span class='line'>        <span class="n">hiddenPickerView</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// MARK: - UIPickerViewDelegate</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">PickerView:</span> <span class="n">UIPickerViewDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">func</span> <span class="n">pickerView</span><span class="p">(</span><span class="n">_</span> <span class="nl">pickerView:</span> <span class="n">UIPickerView</span><span class="p">,</span> <span class="n">titleForRow</span> <span class="nl">row:</span> <span class="n">Int</span><span class="p">,</span> <span class="n">forComponent</span> <span class="nl">component:</span> <span class="n">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">String</span><span class="o">?</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">selectItems</span><span class="p">[</span><span class="n">row</span><span class="p">]</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">func</span> <span class="n">pickerView</span><span class="p">(</span><span class="n">_</span> <span class="nl">pickerView:</span> <span class="n">UIPickerView</span><span class="p">,</span> <span class="n">didSelectRow</span> <span class="nl">row:</span> <span class="n">Int</span><span class="p">,</span> <span class="n">inComponent</span> <span class="nl">component:</span> <span class="n">Int</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">selectedRowIndex</span> <span class="o">=</span> <span class="n">row</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// MARK: - UIPickerViewDataSource</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">PickerView:</span> <span class="n">UIPickerViewDataSource</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">func</span> <span class="n">numberOfComponents</span><span class="p">(</span><span class="k">in</span> <span class="nl">pickerView:</span> <span class="n">UIPickerView</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Int</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="mi">1</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">func</span> <span class="n">pickerView</span><span class="p">(</span><span class="n">_</span> <span class="nl">pickerView:</span> <span class="n">UIPickerView</span><span class="p">,</span> <span class="n">numberOfRowsInComponent</span> <span class="nl">component:</span> <span class="n">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Int</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">selectItems</span><span class="p">.</span><span class="n">count</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// MARK: - PickerViewDelegate</span>
+</span><span class='line'><span class="err">@</span><span class="n">objc</span>
+</span><span class='line'><span class="n">public</span> <span class="n">protocol</span> <span class="nl">PickerViewDelegate:</span> <span class="n">class</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">selectedItem</span><span class="p">(</span><span class="nl">index:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">title:</span> <span class="n">String</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">closePickerView</span><span class="p">()</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>では早速 <code>Rx</code> 対応させていきましょう。</p>
+
+<h3>DelegateProxyとDelegateProxyTypeへの対応</h3>
+
+<p>基本的には、 <code>CLLocationManagerDelegate</code> と同じです。<br/>
+<code>DelegateProxy</code> と <code>DelegateProxyType</code> を継承したクラスを実装します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 説明(1)</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">PickerView:</span> <span class="n">HasDelegate</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">typealias</span> <span class="n">Delegate</span> <span class="o">=</span> <span class="n">PickerViewDelegate</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">public</span> <span class="n">class</span> <span class="nl">RxPickerViewDelegateProxy:</span> <span class="n">DelegateProxy</span><span class="o">&lt;</span><span class="n">PickerView</span><span class="p">,</span> <span class="n">PickerViewDelegate</span><span class="o">&gt;</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">DelegateProxyType</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">PickerViewDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">init</span><span class="p">(</span><span class="nl">pickerView:</span> <span class="n">PickerView</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">parentObject:</span> <span class="n">pickerView</span><span class="p">,</span> <span class="nl">delegateProxy:</span> <span class="n">RxPickerViewDelegateProxy</span><span class="p">.</span><span class="n">self</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(2)</span>
+</span><span class='line'>    <span class="n">public</span> <span class="k">static</span> <span class="n">func</span> <span class="n">registerKnownImplementations</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="k">register</span> <span class="p">{</span> <span class="n">RxPickerViewDelegateProxy</span><span class="p">(</span><span class="nl">pickerView:</span> <span class="n">$0</span><span class="p">)</span> <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(3)</span>
+</span><span class='line'>    <span class="n">internal</span> <span class="n">lazy</span> <span class="n">var</span> <span class="n">selectedItemSubject</span> <span class="o">=</span> <span class="n">PublishSubject</span><span class="o">&lt;</span><span class="p">(</span><span class="n">Int</span><span class="p">,</span> <span class="n">String</span><span class="p">)</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">internal</span> <span class="n">lazy</span> <span class="n">var</span> <span class="n">closePickerViewSubject</span> <span class="o">=</span> <span class="n">PublishSubject</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(4)</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">func</span> <span class="n">selectedItem</span><span class="p">(</span><span class="nl">index:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">title:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">selectedItemSubject</span><span class="p">.</span><span class="n">onNext</span><span class="p">((</span><span class="n">index</span><span class="p">,</span> <span class="n">title</span><span class="p">))</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">func</span> <span class="n">closePickerView</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">closePickerViewSubject</span><span class="p">.</span><span class="n">onNext</span><span class="p">(</span><span class="n">Void</span><span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(5)</span>
+</span><span class='line'>    <span class="n">deinit</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">selectedItemSubject</span><span class="p">.</span><span class="n">on</span><span class="p">(.</span><span class="n">completed</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">closePickerViewSubject</span><span class="p">.</span><span class="n">on</span><span class="p">(.</span><span class="n">completed</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>細かく見ていきましょう。</p>
+
+<h4>説明(1)</h4>
+
+<p><code>currentDelegate</code> および <code>setCurrentDelegate</code> に対応する代わりに、 <code>HasDelegate</code> を継承させましょう。</p>
+
+<h4>説明(2)</h4>
+
+<p>自身で定義した <code>DelegateProxy</code> の継承クラスを登録するために、 <code>registerKnownImplementations</code> 内で <code>DelegateProxySubclass.register()</code> を実行します。</p>
+
+<h4>説明(3)</h4>
+
+<p><code>delegate</code> メソッドが呼び出されて処理が実行されたことを <code>Subscriber</code> に伝えるために、 <code>PublishSubject</code> 型のプロパティを用意します。</p>
+
+<h4>説明(4)</h4>
+
+<p><code>PickerViewDelegate</code> の <code>selectedItem(index:title:)</code> と <code>closePickerView()</code> メソッドは必須メソッドです。<br/>
+<code>RxPickerViewDelegateProxy</code> はもちろん <code>PickerViewDelegate</code> も継承しますので、上記2つのメソッドを定義する必要があります。</p>
+
+<p>これが呼び出されたタイミングで <code>Subscriber</code> に伝えるために、 <code>PublishSubject.onNext(element:)</code> を実行します。</p>
+
+<h4>説明(5)</h4>
+
+<p><code>deinit</code> が呼ばれるタイミングで、初期化したオブジェクトが破棄されるので、<br/>
+<code>PublishSubject</code> からイベント送信完了を知らせるように実装しましょう。</p>
+
+<h3>ReactiveへのPickerViewの適応</h3>
+
+<p>これも <code>CLLocationManager</code> と適応方法は同じです。<br/>
+まずは、全体像から&hellip;</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// PickerView+Rx.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="n">Reactive</span> <span class="n">where</span> <span class="nl">Base:</span> <span class="n">PickerView</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(1)</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">delegate:</span> <span class="n">DelegateProxy</span><span class="o">&lt;</span><span class="n">PickerView</span><span class="p">,</span> <span class="n">PickerViewDelegate</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">RxPickerViewDelegateProxy</span><span class="p">.</span><span class="n">proxy</span><span class="p">(</span><span class="k">for</span><span class="o">:</span> <span class="n">base</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(2)</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">selectedItem:</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">(</span><span class="n">Int</span><span class="p">,</span> <span class="n">String</span><span class="p">)</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">RxPickerViewDelegateProxy</span><span class="p">.</span><span class="n">proxy</span><span class="p">(</span><span class="k">for</span><span class="o">:</span> <span class="n">base</span><span class="p">).</span><span class="n">selectedItemSubject</span><span class="p">.</span><span class="n">asObservable</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">public</span> <span class="n">var</span> <span class="nl">closePickerView:</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">RxPickerViewDelegateProxy</span><span class="p">.</span><span class="n">proxy</span><span class="p">(</span><span class="k">for</span><span class="o">:</span> <span class="n">base</span><span class="p">).</span><span class="n">closePickerViewSubject</span><span class="p">.</span><span class="n">asObservable</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>1つずつ説明します。</p>
+
+<h4>説明(1)</h4>
+
+<p><code>delegate</code> を <code>DelegateProxy</code> 型として定義します。<br/>
+<code>DelegateProxy</code> の取得は <code>DelegateProxyType</code> プロトコルの <code>proxy</code> メソッドを利用します。</p>
+
+<h4>説明(2)</h4>
+
+<p>各 <code>delegate</code> メソッドが実行されたことを補足(監視)するために <code>Observable</code> 型の <code>selectedItem</code> と <code>closePickerView</code> を用意します。</p>
+
+<h3>利用方法</h3>
+
+<p>では、早速利用してみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">private</span> <span class="n">func</span> <span class="n">bind</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">pickerView</span><span class="o">?</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">selectedItem</span>
+</span><span class='line'>      <span class="p">.</span><span class="n">asObservable</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">.</span><span class="n">subscribe</span><span class="p">({</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">event</span> <span class="k">in</span>
+</span><span class='line'>          <span class="c1">// Subscriberとして補足した情報を取得</span>
+</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="n">index</span> <span class="o">=</span> <span class="n">event</span><span class="p">.</span><span class="n">element</span><span class="o">?</span><span class="mf">.0</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>          <span class="n">guard</span> <span class="n">let</span> <span class="n">title</span> <span class="o">=</span> <span class="n">event</span><span class="p">.</span><span class="n">element</span><span class="o">?</span><span class="mf">.1</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span>
+</span><span class='line'>              <span class="c1">// ViewModelにsampleActionが定義されているとします</span>
+</span><span class='line'>              <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">strongSelf</span><span class="p">.</span><span class="n">viewModel</span><span class="p">.</span><span class="n">sampleAction</span><span class="p">)</span>
+</span><span class='line'>              <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">strongSelf</span><span class="p">.</span><span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>              <span class="p">})</span>
+</span><span class='line'>              <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記のような形で <code>ViewController</code> にて <code>Subscriber</code> としてアクションを補足し、 <code>ViewModel</code> に伝えることができるでしょう。</p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか？<br/>
+1つ1つの意味を理解することはもちろん大切ですが、<br/>
+何だか型にはまって書き方を覚えれば、自身で <code>Rx</code> 対応が簡単にできる気がしてきますね。</p>
+
+<p><code>Rx</code> の癖が強いが故に、慣れれば利用しやすいということなのでしょう。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[下からニュッと出るPickerを作ろう！]]></title>
@@ -6537,110 +7042,6 @@ Swift4.1では実に簡単に対応できます。</p>
 最近、「ブランチルールを考えて、相談して、図示化して&hellip;」ということが多かったので、少し整理してみました。<br/>
 筆者の現場でも必ずブラッシュアップが発生すると思っているので、また考え方が変わったらブログに書いていこうと思います。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[ストレングス・ファインダー2.0で自分の強みを把握してみた]]></title>
-    <link href="http://grandbig.github.io/blog/2018/03/26/strength-finder-v2/"/>
-    <updated>2018-03-26T23:06:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2018/03/26/strength-finder-v2</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>筆者が初めて <strong>ストレングス・ファインダー</strong> に出会ったのは社会人3年目に差し掛かる頃だったと思います。<br/>
-研修で自身の強みを知るために、 <strong>ストレングス・ファインダー</strong> を活用したことが、つい最近のように思い出されます。<br/>
-ただし、当時は、興味半分&amp;面白半分といった感情でしかなく、そこまで真剣に自身の強みを考えてはいませんでした。</p>
-
-<p>それから月日は流れ&hellip;<br/>
-なんと、 <a href="https://www.amazon.co.jp/%E3%81%95%E3%81%82%E3%80%81%E6%89%8D%E8%83%BD-%E3%81%98%E3%81%B6%E3%82%93-%E3%81%AB%E7%9B%AE%E8%A6%9A%E3%82%81%E3%82%88%E3%81%86-%E6%96%B0%E7%89%88-%E3%82%B9%E3%83%88%E3%83%AC%E3%83%B3%E3%82%B0%E3%82%B9%E3%83%BB%E3%83%95%E3%82%A1%E3%82%A4%E3%83%B3%E3%83%80%E3%83%BC2-0/dp/4532321433">ストレングス・ファインダー2.0</a> が発売されました。<br/>
-「これはやらねば！！」ということで、久々に自身の強みを出してみました。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>34の強みリスト</h3>
-
-<p>早速、 <strong>ストレングス・ファインダー2.0</strong> のアンケートに答えて、34の強みを出してみました。<br/>
-※34全ての強みを知るには書籍購入に加えて$69支払う必要があります。</p>
-
-<p><img src="http://grandbig.github.io/images/strength_finder_v2.png" alt="34の強み" /></p>
-
-<p>上記を見ると、</p>
-
-<ul>
-<li><strong>実行力</strong> のほとんどが上位</li>
-<li><strong>影響力</strong> のほとんどが下位</li>
-<li><strong>人間関係構築力</strong> が真ん中に集まっている</li>
-<li><strong>戦略的思考力</strong> は全体的に散らばっている</li>
-</ul>
-
-
-<p>ことがわかります。<br/>
-また、34の強みの中でのTOP5は</p>
-
-<ol>
-<li>達成欲</li>
-<li>学習欲</li>
-<li>慎重さ</li>
-<li>内省</li>
-<li>調和性</li>
-</ol>
-
-
-<p>となっています。<br/>
-これはストレングス・ファインダーの書籍に書かれた説明を読むと『しっくりくるとしか言いようがないくらい』しっくり来ています笑</p>
-
-<p>例えば、</p>
-
-<ol>
-<li>達成欲<br/>
-昔からなんだかんだ言って、忙しいこと自体は嫌いじゃない。</li>
-<li>学習欲<br/>
-自己研鑽が大好き。結構、本を読む。</li>
-<li>慎重さ<br/>
-最近、リーダー業務が多く、決断を下すことが増えてきたからかも。</li>
-<li>内省<br/>
-脳内フル回転を人知れずよくしている。集中しすぎて降車駅を過ぎることもしばしば&hellip;</li>
-<li>調和性<br/>
-基本的に衝突が嫌いなので、どうすれば納得感を持った整理できるか追いかけがち</li>
-</ol>
-
-
-<p>みたいな感じです。</p>
-
-<h3>便利なストレングス・ファインダーアプリ</h3>
-
-<p>確か、4〜5年前はなかったと思うのですが、今はWEBだけではなく、アプリでも自身の強みを簡単に確認することができます。<br/>
-<a href="https://itunes.apple.com/jp/app/cliftonstrengths/id650833234?mt=8">CliftonStrengths™</a>をぜひ使ってみましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/strength_finder_v2_2.PNG" alt="CliftonStrengths™ アプリ" /></p>
-
-<h3>まとめ</h3>
-
-<p>さて、今回は趣向を変えて、自身の強みを見てみました。<br/>
-折角の機会なので、更に <strong>ストレングス・ファインダー</strong> を読み込んで、自分の強みをどう活かしていくと良いのか理論的に考えられるようになれればと思っています。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
