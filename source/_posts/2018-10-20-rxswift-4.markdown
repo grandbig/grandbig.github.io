@@ -1,0 +1,330 @@
+---
+layout: post
+title: "RxSwiftを勉強してみよう！(4) ~ 成功処理と失敗処理の書き方 ~"
+date: 2018-10-20 13:20
+comments: true
+categories: ios swift rx
+---
+
+### はじめに
+本日は `RxSwift` で、『ある条件のときのみ `Observer` に伝える』方法について見ていきたいと思います。  
+これは例えば、  
+
+* 処理が成功した場合のみ、何か次のアクションを実行させる  
+* 処理の成功/失敗で次のアクション内容を変更する  
+
+場合に必要な書き方です。  
+では具体的に見ていきましょう。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### サンプルを元に書き方を学ぼう
+具体的なサンプルを見ながら書き方を学んでいきたいと思います。  
+今回のサンプルのアーキテクチャは `MVVM` を採用します。  
+
+各役割は  
+
+- `Model` : ビジネスロジック  
+- `View` : ユーザ操作のキャッチと実描画処理  
+- `ViewModel` : プレゼンテーションロジック  
+
+となります。  
+早速、サンプルを見ていきましょう。
+
+#### 検索ボタンをタップした結果を表現する
+サンプルを例に考えます。  
+
+##### サンプルの前提
+- 検索ボタンをタップすると、レストラン検索APIを叩く  
+- レストラン検索APIの取得が成功した場合、マップにレストランの場所を示すマーカを配置する  
+- レストラン検索APIの取得が失敗した場合、エラーメッセージを表示する  
+
+##### Viewにユーザ操作のキャッチ部分を書く
+まずは、 `ViewController.swift` に「ユーザ操作のキャッチ」部分を書きます。  
+※必要のない処理は省略します。  
+
+```objective-c
+// ViewController.swift
+import UIKit
+import RxSwift
+import RxCocoa
+import GoogleMaps
+
+class ViewController: UIViewController, Injectable {
+    ...
+    // MARK: - IBOutlets
+    @IBOutlet weak private var mapView: GMSMapView!
+    @IBOutlet weak private var searchButton: UIButton!
+
+    // MARK: - Properties
+    private let viewModel: ViewModel
+    ...
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        ...
+        bind()
+    }
+
+    func bind() {
+      // ユーザの検索ボタンのタップ操作をキャッチ
+      searchButton.rx.tap
+          .bind(to: viewModel.searchButtonDidTap)
+          .disposed(by: disposeBag)
+    }
+    ...
+}
+```
+
+##### ViewModelにViewからのインプットをハンドリング&レストラン検索APIを叩く
+続いて、上記で書いた `viewModel.searchButtonDidTap` を `ViewModel` に定義します。  
+`View` からユーザのタップ操作が伝えられた時に、レストラン検索APIを叩く処理も書きます。  
+
+```objective-c
+// ViewModel.swift
+import Foundation
+import RxSwift
+import RxCocoa
+import GoogleMaps
+
+final class ViewModel: Injectable {
+
+    struct Dependency {
+        let apiClient: GooglePlacesAPIClient
+        let locationManager: LocationManagerClient
+        let coordinate: CLLocationCoordinate2D
+    }
+    private let disposeBag = DisposeBag()
+    ...
+
+    // MARK: PublishSubjects
+    private let searchButtonDidTapStream = PublishSubject<Void>()
+
+    // MARK: BehaviorSubjects
+    private let placesStream = BehaviorSubject<Places>(value: defaultPlaces)
+    private let errorStream = BehaviorSubject<String>(value: String())
+
+    init(with dependency: Dependency) {
+        let apiClient = dependency.apiClient
+        let locationManager = dependency.locationManager
+        var coordinate = dependency.coordinate
+
+        ...
+
+        // 検索ボタンタップ時に、レストラン検索APIを叩く
+        let state = searchButtonDidTapStream
+            .flatMapLatest { _ -> Observable<Result<Places>> in
+                return apiClient.fetchRestaurants(coordinate: coordinate)
+            }
+
+        ...
+    }
+}
+
+// MARK: Input
+extension ViewModel {
+    var searchButtonDidTap: AnyObserver<()> {
+        return searchButtonDidTapStream.asObserver()
+    }
+}
+
+// MARK: Output
+extension ViewModel {
+    var places: Observable<Places> {
+        return placesStream.asObservable()
+    }
+
+    var error: Observable<String> {
+        return errorStream.asObservable()
+    }
+}
+```
+
+上記のように、 `View` からのインプットとして `searchButtonDidTap` プロパティを用意します。  
+インプットがあった場合に、 `searchButtonDidTapStream.asObserver()` することで、呼び出しを伝搬する仕組みになっています。  
+その中で `apiClient.fetchRestaurants(coordinate: coordinate)` を叩いています。  
+
+##### ViewModelにレストラン検索APIの取得成功/失敗の処理を書く：パターン１
+この `apiClient.fetchRestaurants(coordinate: coordinate)` の結果次第で `View` に表示させる処理を変えたいと思います。  
+`GooglePlacesAPIClient` クラスの `fetchRestaurants` の戻り値の定義は以下とします。    
+
+```objective-c
+func fetchRestaurants(coordinate: CLLocationCoordinate2D) -> Observable<Result<Places>>
+```
+
+上記の `Result` と `Places` の定義は以下とします。  
+
+```objective-c
+// Result.swift
+enum Result<T> {
+    case success(T)
+    case failure(error: Error)
+}
+
+// Places.swift
+public struct Places: Codable {
+
+    public var results: [Place]
+    public var status: String
+    public var htmlAttributions: [String]
+}
+```
+
+`Place` の定義の紹介は省略します。   
+
+準備ができたので、レストラン検索APIの取得成功/失敗の処理を見ていきましょう。  
+
+```objective-c
+// ViewModel.swift
+private static let defaultPlaces = Places(results: [], status: R.string.common.ok(), htmlAttributions: [])
+
+...
+
+// 検索ボタンタップ時
+let state = searchButtonDidTapStream
+    .flatMapLatest { _ -> Observable<Result<Places>> in
+        return apiClient.fetchRestaurants(coordinate: coordinate)
+    }
+
+// 処理が成功した場合
+state
+    .flatMapLatest { result -> Observable<Places> in
+        switch result {
+        case let .success(value):
+            return Observable.just(value)
+        default:
+            return Observable.just(ViewModel.defaultPlaces)
+        }
+    }
+    .bind(to: placesStream)
+    .disposed(by: disposeBag)
+
+// 処理が失敗した場合
+state
+    .flatMapLatest { result -> Observable<String> in
+        switch result {
+        case let .failure(error):
+            return Observable.just(error.localizedDescription)
+        default:
+            return Observable.just(String())
+        }
+    }
+    .bind(to: errorStream)
+    .disposed(by: disposeBag)
+```
+
+上記では、処理が成功した場合と失敗した場合の処理を書いています。  
+処理が成功した場合はアウトプットである `placesStream` を経由して `View` に描画指示を出しています。  
+処理が失敗した場合はアウトプットである `errorStream` を経由して `View` に描画指示を出しています。  
+
+##### Viewに描画処理を書く
+`ViewModel` から指示の渡った後に `View` で実際に描画する処理を書きます。  
+
+```objective-c
+// ViewController.swift
+private func bind() {
+  ...
+  viewModel.places
+      .bind { [weak self] places in
+          guard let strongSelf = self else { return }
+          let results = places.results
+          if results.count > 0 {
+              strongSelf.mapView.clear()
+              results.forEach({ (place) in
+                  // マップにマーカを配置します
+                  strongSelf.putMarker(place: place)
+              })
+          }
+      }
+      .disposed(by: disposeBag)
+
+  viewModel.error
+      .bind { [weak self] message in
+          guard let strongSelf = self else { return }
+          if message.count == 0 { return }
+          // エラーメッセージをアラートに表示します
+          strongSelf.showAlert(message: message, completion: {})
+      }
+      .disposed(by: disposeBag)
+}
+```
+
+##### ViewModelにレストラン検索APIの取得成功/失敗の処理を書く：パターン２
+パターン１で手法を一つ書きましたが、筆者的には  
+
+- `View` に条件分岐などのロジックが必要になってしまう  
+- `ViewModel` で `bind` 先のオブジェクトの型は1つなので無駄な処理を書かざるを得ない  
+  - 処理成功の場合の `return Observable.just(ViewModel.defaultPlaces)`  
+  - 処理失敗の場合の `return Observable.just(String())`  
+
+というところが微妙だと感じています。  
+
+上記を踏まえて、もう１つ別の方法を書きます。  
+
+```objective-c
+// ViewModel.swift
+// 検索ボタンタップ時
+searchButtonDidTapStream
+    .flatMapLatest { _ -> Observable<Result<Places>> in
+        return apiClient.fetchRestaurants(coordinate: coordinate)
+    }.subscribe { [weak self] event in
+        guard let strongSelf = self else { return }
+        guard let element = event.element else { return }
+        switch element {
+        case let .success(result):
+            Observable.just(result)
+                .bind(to: strongSelf.placesStream)
+                .disposed(by: strongSelf.disposeBag)
+        case let .failure(error):
+            Observable.just(error.localizedDescription)
+                .bind(to: strongSelf.errorStream)
+                .disposed(by: strongSelf.disposeBag)
+        }
+}.disposed(by: disposeBag)
+```
+
+これであれば、 `View` の方のロジックも下記のように多少減らすことができ、スッキリします。  
+( あっても困らない条件分岐ではありますけどね... )  
+
+```objective-c
+// ViewController.swift
+private func bind() {
+  ...
+  viewModel.places
+      .bind { [weak self] places in
+          guard let strongSelf = self else { return }
+          let results = places.results
+          strongSelf.mapView.clear()
+          results.forEach({ (place) in
+              // マップにマーカを配置します
+              strongSelf.putMarker(place: place)
+          })
+      }
+      .disposed(by: disposeBag)
+
+  viewModel.error
+      .bind { [weak self] message in
+          guard let strongSelf = self else { return }
+          // エラーメッセージをアラートに表示します
+          strongSelf.showAlert(message: message, completion: {})
+      }
+      .disposed(by: disposeBag)
+}
+```
+
+### まとめ
+さて如何でしたでしょうか？  
+筆者的には、まだまだ全然 `RxSwift` の修行が足りないので、もっと良い書き方を学んでいきたいと思います。  
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
