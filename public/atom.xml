@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2018-12-22T00:30:08+09:00</updated>
+  <updated>2018-12-28T19:27:34+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,428 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[RxDataSourcesを使ってみよう]]></title>
+    <link href="http://grandbig.github.io/blog/2018/12/28/rxdatasources/"/>
+    <updated>2018-12-28T18:41:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/12/28/rxdatasources</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>さて今回は <a href="https://github.com/RxSwiftCommunity/RxDataSources">RxDataSources</a> の使い方について見ていきたいと思います。</p>
+
+<p><code>RxDataSources</code> を利用することで、<br/>
+<code>Cell</code> の選択/移動/削除などの扱いが書きやすくなるとのことのようです。</p>
+
+<p>では早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>今回利用するライブラリをインストール</h3>
+
+<p>まずは、今回の紹介サンプルで利用するライブラリのインストールから始めましょう。<br/>
+<code>CocoaPods</code> を使いますので、下記のように <code>Podfile</code> を作成します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp"># Podfile</span>
+</span><span class='line'><span class="n">platform</span> <span class="o">:</span><span class="n">ios</span><span class="p">,</span> <span class="s">&quot;11.0&quot;</span>
+</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="s">&quot;RxDataSourcesSample&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxSwift</span><span class="err">&#39;</span><span class="p">,</span>    <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxCocoa</span><span class="err">&#39;</span><span class="p">,</span>    <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxDataSources</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">3.0</span><span class="err">&#39;</span>
+</span><span class='line'><span class="n">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="s">&quot;RxDataSourcesSampleTests&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RealmSwift</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxBlocking</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxTest</span><span class="err">&#39;</span><span class="p">,</span>     <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
+</span><span class='line'><span class="n">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="s">&quot;RxDataSourcesSampleUITests&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RealmSwift</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxBlocking</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxTest</span><span class="err">&#39;</span><span class="p">,</span>     <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>RxDataSourcesを利用したサンプル</h3>
+
+<p>準備ができたので、実際に <code>ViewController</code> にサンプルを書いてみましょう。</p>
+
+<h4>プロジェクト構成</h4>
+
+<p>因みに、今回のプロジェクト構成は下記のようになっています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">RxDataSourcesSample</span>
+</span><span class='line'>  <span class="err">├──</span> <span class="n">Model</span>
+</span><span class='line'>  <span class="err">│</span>    <span class="err">└──</span> <span class="n">SectionModel</span>
+</span><span class='line'>  <span class="err">├──</span> <span class="n">AppDelegate</span><span class="p">.</span><span class="n">swift</span>
+</span><span class='line'>  <span class="err">├──</span> <span class="n">ViewController</span><span class="p">.</span><span class="n">swift</span>
+</span><span class='line'>  <span class="err">├──</span> <span class="n">Main</span><span class="p">.</span><span class="n">storyboard</span>
+</span><span class='line'>  <span class="p">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>SectionModelの実装</h4>
+
+<p>Model配下に配置した <code>SectionModel</code> を実装します。<br/>
+これは <code>RxDataSources</code> を利用するにあたって根幹をなす <code>Model</code> となるため非常に重要です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SectionModel.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxDataSources</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">SectionModel</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">]</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">SectionModel:</span> <span class="n">SectionModelType</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">typealias</span> <span class="n">Item</span> <span class="o">=</span> <span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="nl">original:</span> <span class="n">SectionModel</span><span class="p">,</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span> <span class="o">=</span> <span class="n">original</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">items</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>今回のサンプルでは <code>Header</code> は特にセットしないため、 <code>cell</code> 内に表示するデータを持つために <code>items</code> のみ定義します。<br/>
+<code>SectionModel</code> は <code>struct</code> (構造体)で定義をし、<code>SectionModelType</code> を継承させます。</p>
+
+<p><code>SectionModelType</code> の中身を覗いてみると非常にシンプルな作りになっています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">public</span> <span class="n">protocol</span> <span class="n">SectionModelType</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">associatedtype</span> <span class="n">Item</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">]</span> <span class="p">{</span> <span class="n">get</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="nl">original:</span> <span class="n">Self</span><span class="p">,</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">])</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Storyboardの実装</h3>
+
+<p><code>Main.storyboard</code> は下図のように実装します。</p>
+
+<p><img src="http://grandbig.github.io/images/rxdatasources.png" alt="Main.storyboardの実装" /></p>
+
+<h3>ViewControllerの実装</h3>
+
+<p>準備が整ったので <code>ViewController</code> を実装していきましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxDataSources</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - IBOutlets</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">private</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">tableView:</span> <span class="n">UITableView</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// dataSourceをRxDataSourcesを利用して定義する</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">dataSource:</span> <span class="n">RxTableViewSectionedReloadDataSource</span><span class="o">&lt;</span><span class="n">SectionModel</span><span class="o">&gt;!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// cellに設定するデータを保持する</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">sectionModels:</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">]</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// cellに表示するデータの変更を検知して、dataSourceに知らせる</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="n">dataRelay</span> <span class="o">=</span> <span class="n">BehaviorRelay</span><span class="o">&lt;</span><span class="p">[</span><span class="n">SectionModel</span><span class="p">]</span><span class="o">&gt;</span><span class="p">(</span><span class="nl">value:</span> <span class="p">[])</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Lifecycle methods</span>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Cellに設定するデータを格納</span>
+</span><span class='line'>        <span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="p">[(</span><span class="s">&quot;test1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test2&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test3&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)])]</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// RxDataSourcesを利用してCellを描画</span>
+</span><span class='line'>        <span class="n">dataSource</span> <span class="o">=</span> <span class="n">RxTableViewSectionedReloadDataSource</span><span class="o">&lt;</span><span class="n">SectionModel</span><span class="o">&gt;</span><span class="p">(</span>
+</span><span class='line'>            <span class="nl">configureCell:</span> <span class="p">{</span> <span class="n">_</span><span class="p">,</span> <span class="n">tableView</span><span class="p">,</span> <span class="n">indexPath</span><span class="p">,</span> <span class="n">item</span> <span class="k">in</span>
+</span><span class='line'>                <span class="c1">// 引数名通り、与えられたデータを利用してcellを生成する</span>
+</span><span class='line'>                <span class="n">let</span> <span class="n">cell</span> <span class="o">=</span> <span class="n">tableView</span><span class="p">.</span><span class="n">dequeueReusableCell</span><span class="p">(</span><span class="nl">withIdentifier:</span> <span class="s">&quot;Cell&quot;</span><span class="p">,</span>
+</span><span class='line'>                                                         <span class="k">for</span><span class="o">:</span> <span class="n">IndexPath</span><span class="p">(</span><span class="nl">row:</span> <span class="n">indexPath</span><span class="p">.</span><span class="n">row</span><span class="p">,</span> <span class="nl">section:</span> <span class="mi">0</span><span class="p">))</span>
+</span><span class='line'>                <span class="n">cell</span><span class="p">.</span><span class="n">textLabel</span><span class="o">?</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">item</span><span class="mf">.0</span>
+</span><span class='line'>                <span class="n">cell</span><span class="p">.</span><span class="n">accessoryType</span> <span class="o">=</span> <span class="p">.</span><span class="n">disclosureIndicator</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="k">return</span> <span class="n">cell</span>
+</span><span class='line'>        <span class="p">},</span> <span class="nl">canEditRowAtIndexPath:</span> <span class="p">{</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="k">in</span>
+</span><span class='line'>            <span class="c1">// この引数を設定しないと、Cellの削除アクションができない</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>        <span class="p">})</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// dataRelayの変更をキャッチしてdataSourceにデータを流す</span>
+</span><span class='line'>        <span class="n">dataRelay</span><span class="p">.</span><span class="n">asObservable</span><span class="p">()</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">tableView</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">items</span><span class="p">(</span><span class="nl">dataSource:</span> <span class="n">dataSource</span><span class="p">))</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Cellを削除した場合にバインディングされる処理</span>
+</span><span class='line'>        <span class="n">tableView</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">itemDeleted</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="nl">onNext:</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">indexPath</span> <span class="k">in</span>
+</span><span class='line'>                <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span><span class="p">,</span> <span class="n">let</span> <span class="n">sectionModel</span> <span class="o">=</span> <span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">.</span><span class="n">first</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>                <span class="n">var</span> <span class="n">items</span> <span class="o">=</span> <span class="n">sectionModel</span><span class="p">.</span><span class="n">items</span>
+</span><span class='line'>                <span class="n">items</span><span class="p">.</span><span class="n">remove</span><span class="p">(</span><span class="nl">at:</span> <span class="n">indexPath</span><span class="p">.</span><span class="n">row</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c1">// dataRelayにデータを流し込む</span>
+</span><span class='line'>                <span class="n">strongSelf</span><span class="p">.</span><span class="n">dataRelay</span><span class="p">.</span><span class="n">accept</span><span class="p">([</span><span class="n">SectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">items</span><span class="p">)])</span>
+</span><span class='line'>            <span class="p">})</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 初期表示用のデータフェッチ</span>
+</span><span class='line'>        <span class="n">fetch</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// MARK: - Private methods</span>
+</span><span class='line'><span class="n">extension</span> <span class="n">ViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 初期表示用のデータフェッチする処理</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">func</span> <span class="n">fetch</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// sectionModelsを利用して</span>
+</span><span class='line'>        <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">sectionModels</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="nl">onNext:</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">_</span> <span class="k">in</span>
+</span><span class='line'>                <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c1">// dataRelayにデータを流し込む</span>
+</span><span class='line'>                <span class="n">strongSelf</span><span class="p">.</span><span class="n">dataRelay</span><span class="p">.</span><span class="n">accept</span><span class="p">(</span><span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">})</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因みに <code>Cell</code> を削除した場合に <code>deleteRow</code> を実行する必要はありません。<br/>
+理由は、 <code>RxTableViewSectionedReloadDataSource</code> を利用すると <code>reloadData</code> が実行されるようになっているためです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// RxTableViewSectionedReloadDataSource.swift</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#if os(iOS) || os(tvOS)</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="cp">#if !RX_NO_MODULE</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'><span class="cp">#endif</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Differentiator</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">open</span> <span class="n">class</span> <span class="n">RxTableViewSectionedReloadDataSource</span><span class="o">&lt;</span><span class="nl">S:</span> <span class="n">SectionModelType</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="o">:</span> <span class="n">TableViewSectionedDataSource</span><span class="o">&lt;</span><span class="n">S</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="p">,</span> <span class="n">RxTableViewDataSourceType</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">public</span> <span class="n">typealias</span> <span class="n">Element</span> <span class="o">=</span> <span class="p">[</span><span class="n">S</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">open</span> <span class="n">func</span> <span class="n">tableView</span><span class="p">(</span><span class="n">_</span> <span class="nl">tableView:</span> <span class="n">UITableView</span><span class="p">,</span> <span class="nl">observedEvent:</span> <span class="n">Event</span><span class="o">&lt;</span><span class="n">Element</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">Binder</span><span class="p">(</span><span class="n">self</span><span class="p">)</span> <span class="p">{</span> <span class="n">dataSource</span><span class="p">,</span> <span class="n">element</span> <span class="k">in</span>
+</span><span class='line'>            <span class="err">#</span><span class="k">if</span> <span class="n">DEBUG</span>
+</span><span class='line'>                <span class="n">self</span><span class="p">.</span><span class="n">_dataSourceBound</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>            <span class="err">#</span><span class="n">endif</span>
+</span><span class='line'>            <span class="n">dataSource</span><span class="p">.</span><span class="n">setSections</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">tableView</span><span class="p">.</span><span class="n">reloadData</span><span class="p">()</span>  <span class="o">--&gt;</span> <span class="n">reloadData</span><span class="err">を実行するようになっている</span>
+</span><span class='line'>        <span class="p">}.</span><span class="n">on</span><span class="p">(</span><span class="n">observedEvent</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="cp">#endif</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+書き方さえ慣れてしまえば案外簡単に利用できそうですよね。</p>
+
+<p>ということで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[アーキテクチャの選定ポエム〜選定って難しい〜]]></title>
@@ -8169,280 +8591,6 @@ APIで取得できた件数が少なければ大した話ではありません�
 <p>逆に、iOSアプリ向けにAPIを新規開発するときは、上記のような事情も踏まえて開発すると困ることが少ないのではと思います。</p>
 
 <p>と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Crashlyticsが作成するエラーファイルを見てみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2018/04/29/crashlytics/"/>
-    <updated>2018-04-29T17:44:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2018/04/29/crashlytics</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>今回は<a href="https://fabric.io/home">Fabric</a>のメイン機能である <code>Crashlytics</code> について紹介したいと思います。<br/>
-筆者が初めて <code>Crashlytics</code> を利用したのは、もう数年前になるでしょうか。<br/>
-それこそ、当時は <code>Fabric</code> という名称ではなく、本当にただの <code>Crashlytics</code> というサービス名だったんですよね。</p>
-
-<p>あの頃は、クラッシュレポートを溜める独自サービスが大量生産されていたのではないでしょうか？<br/>
-そんな市場に風穴を開けたのが、 <code>Crashlytics</code> でした。<br/>
-なんてったって、無料なんですから、使わない手はなかったわけです。<br/>
-更に今や <code>Firebase</code> だったり、<code>fastlane</code> だったりと連携しちゃうわけですからね。</p>
-
-<p>前置きはこのくらいにして、<br/>
-今回は <code>Crashlytics</code> の <code>crash()</code> や <code>recordError()</code> について少々調べたことを書き留めておきたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>Crashlyticsの導入</h3>
-
-<p>まずは、<code>Crashlytics</code>の導入ですね。<br/>
-<a href="https://fabric.io/kits/ios/crashlytics/install">公式ページ</a>に従って進めれば簡単に準備ができることでしょう。<br/>
-注意点としては、<code>Fabric</code> のダッシュボードでクラッシュレポート数や内容を見るために、<code>dSYM</code>ファイルをアップロードする必要があるということくらいです。</p>
-
-<p>その手順を見ていきましょう。</p>
-
-<p>① Xcode > PROJECT or TARGET > Build Settings > Build Options > Debug Information Formatの設定を変更する</p>
-
-<p>開発版では<code>Debug</code>モードで<code>Run</code>していることもあると思うので、<br/>
-その場合は下図のように <code>DWARF with dSYM File</code> に変更しましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/crashlytics_5.png" alt="Debug Information FormatをDWARF with dSYM Fileに変更する" /></p>
-
-<p>② Xcode > Product > Archive を実行する</p>
-
-<p>③ dSYMをDownloadする</p>
-
-<p>Organizer Windowが自動で表示されるため、dSYMファイルをダウンロードしましょう。<br/>
-Archive Informationの『Download dSYMs&hellip;』を選択するか、<br/>
-もしくは下図のように該当アプリを右クリックして『Show in Finder』を選択して直接Downloadしましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/crashlytics_6.png" alt="Show in Finderを選択する" /></p>
-
-<p>④ Show in Findeで開いたフォルダのdSYMsフォルダをzip化しましょう。</p>
-
-<p><img src="http://grandbig.github.io/images/crashlytics_7.png" alt="dSYMsフォルダをzip化する" /></p>
-
-<p>⑤ dSYMs.zipをFabric管理画面からUploadしましょう。</p>
-
-<p>Settings > APPs > 該当アプリ > Missing DSYMs からDrag&amp;Dropでアップロードできます。</p>
-
-<p><img src="http://grandbig.github.io/images/crashlytics_8.png" alt="dSYMs.zipのアップロード" /></p>
-
-<p>これでクラッシュ後に、アプリを再起動して送信されたレポートを<code>Fabric</code>管理画面から確認することができます。</p>
-
-<h3>crash()で生成されるファイル</h3>
-
-<p><code>Crashlytics</code>で最も利用されているであろうクラッシュ時のレポート送信ですが、<br/>
-一体、何を送っているのでしょうか？</p>
-
-<p>今回は調査のために、わざとクラッシュさせて、アプリ内の『どこに』『何が』保存されているのか見てみました。</p>
-
-<h4>crash()メソッドの呼び出し</h4>
-
-<p>以下のようにボタンタップしたら、クラッシュするようにしてみましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
-</span><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">tappedCrashButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">Crashlytics</span><span class="p">.</span><span class="n">sharedInstance</span><span class="p">().</span><span class="n">crash</span><span class="p">()</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>クラッシュで生成されるファイルの確認方法</h4>
-
-<p>クラッシュ後の生成ファイルの確認方法は以下です。</p>
-
-<p>① アプリを起動してボタンタップでクラッシュさせます。<br/>
-このとき重要なのが、『デバッグ状態にはせずにクラッシュさせる』ということです。<br/>
-(どうもXcodeに接続したデバッグ状態だと、うまく記録されないようです。)</p>
-
-<p>② 端末をMacに繋ぐ</p>
-
-<p>③ Xcode > Window > Devices and Simulators を選択する<br/>
-これにより以下のようなWindowが表示されます。<br/>
-<img src="http://grandbig.github.io/images/crashlytics_1.png" alt="Devices and Simulators Window" /></p>
-
-<p>④ Downloadしたいアプリ内ファイルを選択して「Download Container&hellip;」を選択する<br/>
-<img src="http://grandbig.github.io/images/crashlytics_2.png" alt="Download Container...を選択する" /></p>
-
-<p>⑤ 自動でDownload先フォルダが表示されるので、該当ファイルを右クリックして、「パッケージの内容を表示」を選択する<br/>
-<img src="http://grandbig.github.io/images/crashlytics_3.png" alt="Downloadファイルの内容を表示する" /></p>
-
-<p>⑥ クラッシュログを確認する</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">xxxxxx</span><span class="p">.</span><span class="n">xcappdata</span><span class="o">/</span><span class="n">AppData</span><span class="o">/</span><span class="n">Library</span><span class="o">/</span><span class="n">Caches</span><span class="o">/</span><span class="n">com</span><span class="p">.</span><span class="n">crashlytics</span><span class="p">.</span><span class="n">data</span><span class="o">/&lt;</span><span class="n">BundleID</span><span class="o">&gt;/</span><span class="n">v3</span><span class="o">/</span><span class="n">active</span><span class="o">/</span><span class="n">xxxxxxxxxxx</span><span class="o">/</span><span class="n">match_exception</span><span class="p">.</span><span class="n">clsrecord</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>がそれに該当します。</p>
-
-<p><img src="http://grandbig.github.io/images/crashlytics_4.png" alt="クラッシュログの格納場所" /></p>
-
-<h4>クラッシュログの中身</h4>
-
-<p>中身を見てみると、</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="s">&quot;mach_exception&quot;</span><span class="o">:</span><span class="p">{</span>
-</span><span class='line'>    <span class="s">&quot;exception&quot;</span><span class="o">:</span><span class="mi">6</span><span class="p">,</span>
-</span><span class='line'>    <span class="s">&quot;codes&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">4332784292</span><span class="p">],</span>
-</span><span class='line'>    <span class="s">&quot;name&quot;</span><span class="o">:</span><span class="s">&quot;EXC_BREAKPOINT&quot;</span><span class="p">,</span>
-</span><span class='line'>    <span class="s">&quot;code_name&quot;</span><span class="o">:</span><span class="n">null</span><span class="p">,</span>
-</span><span class='line'>    <span class="s">&quot;original_ports&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span>
-</span><span class='line'>    <span class="s">&quot;time&quot;</span><span class="o">:</span><span class="mi">1525070032</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="s">&quot;threads&quot;</span><span class="o">:</span><span class="p">[</span>
-</span><span class='line'>  <span class="p">{</span>
-</span><span class='line'>    <span class="s">&quot;registers&quot;</span><span class="o">:</span><span class="p">{</span>
-</span><span class='line'>      <span class="s">&quot;x0&quot;</span><span class="o">:</span><span class="mi">7851893440</span><span class="p">,</span><span class="s">&quot;x1&quot;</span><span class="o">:</span><span class="mi">4337440564</span><span class="p">,</span><span class="s">&quot;x2&quot;</span><span class="o">:</span><span class="mi">4431287584</span><span class="p">,</span><span class="s">&quot;x3&quot;</span><span class="o">:</span><span class="mi">7651498240</span><span class="p">,</span><span class="s">&quot;x4&quot;</span><span class="o">:</span><span class="mi">7651498240</span><span class="p">,</span><span class="s">&quot;x5&quot;</span><span class="o">:</span><span class="mi">7651498240</span><span class="p">,</span><span class="s">&quot;x6&quot;</span><span class="o">:</span><span class="mi">7516198016</span><span class="p">,</span><span class="s">&quot;x7&quot;</span><span class="o">:</span><span class="mi">5305</span><span class="p">,</span><span class="s">&quot;x8&quot;</span><span class="o">:</span><span class="mi">7851893440</span><span class="p">,</span><span class="s">&quot;x9&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x10&quot;</span><span class="o">:</span><span class="mi">80378702350618752</span><span class="p">,</span><span class="s">&quot;x11&quot;</span><span class="o">:</span><span class="mi">18714625</span><span class="p">,</span><span class="s">&quot;x12&quot;</span><span class="o">:</span><span class="mi">18714368</span><span class="p">,</span><span class="s">&quot;x13&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x14&quot;</span><span class="o">:</span><span class="mi">18714625</span><span class="p">,</span><span class="s">&quot;x15&quot;</span><span class="o">:</span><span class="mi">18714816</span><span class="p">,</span><span class="s">&quot;x16&quot;</span><span class="o">:</span><span class="mi">6457744324</span><span class="p">,</span><span class="s">&quot;x17&quot;</span><span class="o">:</span><span class="mi">4332784292</span><span class="p">,</span><span class="s">&quot;x18&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x19&quot;</span><span class="o">:</span><span class="mi">7651498240</span><span class="p">,</span><span class="s">&quot;x20&quot;</span><span class="o">:</span><span class="mi">4431355264</span><span class="p">,</span><span class="s">&quot;x21&quot;</span><span class="o">:</span><span class="mi">4337440648</span><span class="p">,</span><span class="s">&quot;x22&quot;</span><span class="o">:</span><span class="mi">4431355264</span><span class="p">,</span><span class="s">&quot;x23&quot;</span><span class="o">:</span><span class="mi">4431355264</span><span class="p">,</span><span class="s">&quot;x24&quot;</span><span class="o">:</span><span class="mi">7516197984</span><span class="p">,</span><span class="s">&quot;x25&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x26&quot;</span><span class="o">:</span><span class="mi">6639092750</span><span class="p">,</span><span class="s">&quot;x27&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;x28&quot;</span><span class="o">:</span><span class="mi">7854100944</span><span class="p">,</span><span class="s">&quot;fp&quot;</span><span class="o">:</span><span class="mi">6134339024</span><span class="p">,</span><span class="s">&quot;sp&quot;</span><span class="o">:</span><span class="mi">6134338992</span><span class="p">,</span><span class="s">&quot;lr&quot;</span><span class="o">:</span><span class="mi">4332705516</span><span class="p">,</span><span class="s">&quot;pc&quot;</span><span class="o">:</span><span class="mi">4332784292</span><span class="p">,</span><span class="s">&quot;cpsr&quot;</span><span class="o">:</span><span class="mi">1610612736</span>
-</span><span class='line'>    <span class="p">},</span>
-</span><span class='line'>    <span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">4332784292</span><span class="p">,</span><span class="mi">4332705516</span><span class="p">,</span><span class="mi">4332705636</span><span class="p">,</span><span class="mi">6626567880</span><span class="p">,</span><span class="mi">6627752100</span><span class="p">,</span><span class="mi">6626592636</span><span class="p">,</span><span class="mi">6627860956</span><span class="p">,</span><span class="mi">6627105352</span><span class="p">,</span><span class="mi">6627059960</span><span class="p">,</span><span class="mi">6627054136</span><span class="p">,</span><span class="mi">6635318284</span><span class="p">,</span><span class="mi">6635327928</span><span class="p">,</span><span class="mi">6635328792</span><span class="p">,</span><span class="mi">6635299416</span><span class="p">,</span><span class="mi">6461387780</span><span class="p">,</span><span class="mi">6461385772</span><span class="p">,</span><span class="mi">6461376412</span><span class="p">,</span><span class="mi">6460460456</span><span class="p">,</span><span class="mi">6493892640</span><span class="p">,</span><span class="mi">6628104076</span><span class="p">,</span><span class="mi">4332687252</span><span class="p">,</span><span class="mi">6454763456</span><span class="p">],</span>
-</span><span class='line'>  <span class="s">&quot;crashed&quot;</span><span class="o">:</span><span class="n">true</span>
-</span><span class='line'>    <span class="p">},</span>
-</span><span class='line'>  <span class="p">{</span>
-</span><span class='line'>    <span class="s">&quot;registers&quot;</span><span class="o">:</span><span class="p">{</span>
-</span><span class='line'>      <span class="s">&quot;x0&quot;</span><span class="o">:</span><span class="mi">256</span><span class="p">,</span><span class="s">&quot;x1&quot;</span><span class="o">:</span><span class="mi">6136048512</span><span class="p">,</span><span class="s">&quot;x2&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;x3&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x4&quot;</span><span class="o">:</span><span class="mi">9991</span><span class="p">,</span><span class="s">&quot;x5&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x6&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x7&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x8&quot;</span><span class="o">:</span><span class="mi">7852716416</span><span class="p">,</span><span class="s">&quot;x9&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;x10&quot;</span><span class="o">:</span><span class="mi">7852716472</span><span class="p">,</span><span class="s">&quot;x11&quot;</span><span class="o">:</span><span class="mi">236223201281</span><span class="p">,</span><span class="s">&quot;x12&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x13&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x14&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;x15&quot;</span><span class="o">:</span><span class="mi">7</span><span class="p">,</span><span class="s">&quot;x16&quot;</span><span class="o">:</span><span class="mi">368</span><span class="p">,</span><span class="s">&quot;x17&quot;</span><span class="o">:</span><span class="mi">48</span><span class="p">,</span><span class="s">&quot;x18&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x19&quot;</span><span class="o">:</span><span class="mi">6136049664</span><span class="p">,</span><span class="s">&quot;x20&quot;</span><span class="o">:</span><span class="mi">7852716416</span><span class="p">,</span><span class="s">&quot;x21&quot;</span><span class="o">:</span><span class="mi">33</span><span class="p">,</span><span class="s">&quot;x22&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;x23&quot;</span><span class="o">:</span><span class="mi">7303651328</span><span class="p">,</span><span class="s">&quot;x24&quot;</span><span class="o">:</span><span class="mi">7303651328</span><span class="p">,</span><span class="s">&quot;x25&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&quot;x26&quot;</span><span class="o">:</span><span class="mi">7</span><span class="p">,</span><span class="s">&quot;x27&quot;</span><span class="o">:</span><span class="mi">2164260864</span><span class="p">,</span><span class="s">&quot;x28&quot;</span><span class="o">:</span><span class="mi">1</span><span class="p">,</span><span class="s">&quot;fp&quot;</span><span class="o">:</span><span class="mi">6136048352</span><span class="p">,</span><span class="s">&quot;sp&quot;</span><span class="o">:</span><span class="mi">6136048192</span><span class="p">,</span><span class="s">&quot;lr&quot;</span><span class="o">:</span><span class="mi">6457704116</span><span class="p">,</span><span class="s">&quot;pc&quot;</span><span class="o">:</span><span class="mi">6456008068</span><span class="p">,</span><span class="s">&quot;cpsr&quot;</span><span class="o">:</span><span class="mi">1073741824</span>
-</span><span class='line'>    <span class="p">},</span>
-</span><span class='line'>    <span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">6456008068</span><span class="p">,</span><span class="mi">6457704116</span><span class="p">,</span><span class="mi">6457703176</span><span class="p">]</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="p">...</span>
-</span><span class='line'>  <span class="p">]</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="p">{</span><span class="s">&quot;runtime&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;objc_selector&quot;</span><span class="o">:</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;crash_info_entries&quot;</span><span class="o">:</span><span class="p">[]}}</span>
-</span><span class='line'><span class="p">{</span><span class="s">&quot;dispatch_queue_names&quot;</span><span class="o">:</span><span class="p">[</span><span class="s">&quot;com.apple.main-thread&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">]}</span>
-</span><span class='line'><span class="p">{</span><span class="s">&quot;thread_names&quot;</span><span class="o">:</span><span class="p">[</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;com.apple.uikit.eventfetch-thread&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;com.twitter.crashlytics.ios.MachExceptionServer&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="s">&quot;com.google.Maps.LabelingBehavior&quot;</span><span class="p">,</span><span class="s">&quot;com.apple.NSURLConnectionLoader&quot;</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="p">]}</span>
-</span><span class='line'><span class="p">{</span><span class="s">&quot;process_stats&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;active&quot;</span><span class="o">:</span><span class="mi">1085800448</span><span class="p">,</span><span class="s">&quot;inactive&quot;</span><span class="o">:</span><span class="mi">460079104</span><span class="p">,</span><span class="s">&quot;wired&quot;</span><span class="o">:</span><span class="mi">669319168</span><span class="p">,</span><span class="s">&quot;freeMem&quot;</span><span class="o">:</span><span class="mi">116162560</span><span class="p">,</span><span class="s">&quot;free_mem&quot;</span><span class="o">:</span><span class="mi">116162560</span><span class="p">,</span><span class="s">&quot;virtual&quot;</span><span class="o">:</span><span class="mi">2060877824</span><span class="p">,</span><span class="s">&quot;resident&quot;</span><span class="o">:</span><span class="mi">1085800448</span><span class="p">,</span><span class="s">&quot;user_time&quot;</span><span class="o">:</span><span class="mi">337647</span><span class="p">,</span><span class="s">&quot;sys_time&quot;</span><span class="o">:</span><span class="mi">0</span><span class="p">}}</span>
-</span><span class='line'><span class="p">{</span><span class="s">&quot;storage&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;free&quot;</span><span class="o">:</span><span class="mi">206087524352</span><span class="p">,</span><span class="s">&quot;total&quot;</span><span class="o">:</span><span class="mi">255937040384</span><span class="p">}}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>のようになっています。<br/>
-これがいい具合に <code>Fabric</code> 管理画面に表示されるわけですね。</p>
-
-<h3>recordError()で生成されるファイル</h3>
-
-<p>クラッシュではないけども、原因調査のためにレポート送信したい時があると思います。<br/>
-そんなときは <code>recordError()</code> メソッドを利用します。</p>
-
-<h4>recordError()メソッドの呼び出し</h4>
-
-<p>以下のようにボタンをタップしたら、レポートを送信するようにしてみましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
-</span><span class='line'><span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">tappedCrashButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">error</span> <span class="o">=</span> <span class="n">NSError</span><span class="p">(</span><span class="nl">domain:</span> <span class="s">&quot;takahiro test&quot;</span><span class="p">,</span> <span class="nl">code:</span> <span class="mi">1001</span><span class="p">,</span> <span class="nl">userInfo:</span> <span class="nb">nil</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">Crashlytics</span><span class="p">.</span><span class="n">sharedInstance</span><span class="p">().</span><span class="n">recordError</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>recordError()で生成されるファイルの確認方法</h4>
-
-<p><code>recordError()</code> 実行後の生成ファイル確認方法は、基本的にはクラッシュ時と同じです。<br/>
-ただし、クラッシュ時に生成されるファイルとファイル名が異なります。<br/>
-<code>recordError()</code> では <code>error_a.clsrecord</code> といったファイルが生成されます。</p>
-
-<h4>recordError()で記録したファイルの中身</h4>
-
-<p>記録内容は以下の通りです。<br/>
-何を格納するかで中身はもう少し変わりそうですね。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">{</span><span class="s">&quot;error&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;domain&quot;</span><span class="o">:</span><span class="s">&quot;74616b616869726f2074657374&quot;</span><span class="p">,</span><span class="s">&quot;code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="p">,</span><span class="s">&quot;time&quot;</span><span class="o">:</span><span class="mi">1524979041</span><span class="p">,</span><span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">4299168744</span><span class="p">,</span><span class="mi">4299051336</span><span class="p">,</span><span class="mi">4298970328</span><span class="p">,</span><span class="mi">4298970672</span><span class="p">,</span><span class="mi">6639789768</span><span class="p">,</span><span class="mi">6640973988</span><span class="p">,</span><span class="mi">6639814524</span><span class="p">,</span><span class="mi">6641082844</span><span class="p">,</span><span class="mi">6640327240</span><span class="p">,</span><span class="mi">6640281848</span><span class="p">,</span><span class="mi">6640276024</span><span class="p">,</span><span class="mi">6648540172</span><span class="p">,</span><span class="mi">6648549816</span><span class="p">,</span><span class="mi">6648550680</span><span class="p">,</span><span class="mi">6648521304</span><span class="p">,</span><span class="mi">6474609668</span><span class="p">,</span><span class="mi">6474607660</span><span class="p">,</span><span class="mi">6474598300</span><span class="p">,</span><span class="mi">6473682344</span><span class="p">,</span><span class="mi">6507114528</span><span class="p">,</span><span class="mi">6641325964</span><span class="p">,</span><span class="mi">4298951872</span><span class="p">,</span><span class="mi">6467985344</span><span class="p">]}}</span>
-</span><span class='line'><span class="p">{</span><span class="s">&quot;error&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;domain&quot;</span><span class="o">:</span><span class="s">&quot;74616b616869726f2074657374&quot;</span><span class="p">,</span><span class="s">&quot;code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="p">,</span><span class="s">&quot;time&quot;</span><span class="o">:</span><span class="mi">1524979043</span><span class="p">,</span><span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">4299168744</span><span class="p">,</span><span class="mi">4299051336</span><span class="p">,</span><span class="mi">4298970328</span><span class="p">,</span><span class="mi">4298970672</span><span class="p">,</span><span class="mi">6639789768</span><span class="p">,</span><span class="mi">6640973988</span><span class="p">,</span><span class="mi">6639814524</span><span class="p">,</span><span class="mi">6641082844</span><span class="p">,</span><span class="mi">6640327240</span><span class="p">,</span><span class="mi">6640281848</span><span class="p">,</span><span class="mi">6640276024</span><span class="p">,</span><span class="mi">6648540172</span><span class="p">,</span><span class="mi">6648549816</span><span class="p">,</span><span class="mi">6648521304</span><span class="p">,</span><span class="mi">6474609668</span><span class="p">,</span><span class="mi">6474607660</span><span class="p">,</span><span class="mi">6474598300</span><span class="p">,</span><span class="mi">6473682344</span><span class="p">,</span><span class="mi">6507114528</span><span class="p">,</span><span class="mi">6641325964</span><span class="p">,</span><span class="mi">4298951872</span><span class="p">,</span><span class="mi">6467985344</span><span class="p">]}}</span>
-</span><span class='line'><span class="p">{</span><span class="s">&quot;error&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;domain&quot;</span><span class="o">:</span><span class="s">&quot;74616b616869726f2074657374&quot;</span><span class="p">,</span><span class="s">&quot;code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="p">,</span><span class="s">&quot;time&quot;</span><span class="o">:</span><span class="mi">1524979046</span><span class="p">,</span><span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">4299168744</span><span class="p">,</span><span class="mi">4299051336</span><span class="p">,</span><span class="mi">4298970328</span><span class="p">,</span><span class="mi">4298970672</span><span class="p">,</span><span class="mi">6639789768</span><span class="p">,</span><span class="mi">6640973988</span><span class="p">,</span><span class="mi">6639814524</span><span class="p">,</span><span class="mi">6641082844</span><span class="p">,</span><span class="mi">6640327240</span><span class="p">,</span><span class="mi">6640281848</span><span class="p">,</span><span class="mi">6640276024</span><span class="p">,</span><span class="mi">6648540172</span><span class="p">,</span><span class="mi">6648549816</span><span class="p">,</span><span class="mi">6648521304</span><span class="p">,</span><span class="mi">6474609668</span><span class="p">,</span><span class="mi">6474607660</span><span class="p">,</span><span class="mi">6474598300</span><span class="p">,</span><span class="mi">6473682344</span><span class="p">,</span><span class="mi">6507114528</span><span class="p">,</span><span class="mi">6641325964</span><span class="p">,</span><span class="mi">4298951872</span><span class="p">,</span><span class="mi">6467985344</span><span class="p">]}}</span>
-</span><span class='line'><span class="p">{</span><span class="s">&quot;error&quot;</span><span class="o">:</span><span class="p">{</span><span class="s">&quot;domain&quot;</span><span class="o">:</span><span class="s">&quot;74616b616869726f2074657374&quot;</span><span class="p">,</span><span class="s">&quot;code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="p">,</span><span class="s">&quot;time&quot;</span><span class="o">:</span><span class="mi">1524979048</span><span class="p">,</span><span class="s">&quot;stacktrace&quot;</span><span class="o">:</span><span class="p">[</span><span class="mi">4299168744</span><span class="p">,</span><span class="mi">4299051336</span><span class="p">,</span><span class="mi">4298970328</span><span class="p">,</span><span class="mi">4298970672</span><span class="p">,</span><span class="mi">6639789768</span><span class="p">,</span><span class="mi">6640973988</span><span class="p">,</span><span class="mi">6639814524</span><span class="p">,</span><span class="mi">6641082844</span><span class="p">,</span><span class="mi">6640327240</span><span class="p">,</span><span class="mi">6640281848</span><span class="p">,</span><span class="mi">6640276024</span><span class="p">,</span><span class="mi">6648540172</span><span class="p">,</span><span class="mi">6648549816</span><span class="p">,</span><span class="mi">6648521304</span><span class="p">,</span><span class="mi">6474609668</span><span class="p">,</span><span class="mi">6474607660</span><span class="p">,</span><span class="mi">6474598300</span><span class="p">,</span><span class="mi">6473682344</span><span class="p">,</span><span class="mi">6507114528</span><span class="p">,</span><span class="mi">6641325964</span><span class="p">,</span><span class="mi">4298951872</span><span class="p">,</span><span class="mi">6467985344</span><span class="p">]}}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>recordError()の注意点</h4>
-
-<p>今回、<code>recordError()</code>を利用していて気づいた点が以下の通りです。</p>
-
-<ul>
-<li>短時間に複数回タップしてもアプリ内のファイルにエラーログとして記録されない</li>
-<li>アプリ内に記録されたエラーログが全て<code>Fabric</code>管理画面に記録されるわけではない</li>
-</ul>
-
-
-<p>どういったフィルタがかかっているのかまではわからないのですが、なんでもかんでも記録されるわけではないようです&hellip;</p>
-
-<h3>まとめ</h3>
-
-<p>さて如何でしたでしょうか？<br/>
-今回たまたま中身を探ってみる機会があったので見てみましたが、きっと普段は気にしなくて良い内容なのだと思います。<br/>
-と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
