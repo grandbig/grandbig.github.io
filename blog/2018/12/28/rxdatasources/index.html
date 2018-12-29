@@ -5,7 +5,7 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>RxDataSourcesを使ってみよう - Takahiro Octopress Blog</title>
+  <title>RxDataSourcesを使ってみよう！ - Takahiro Octopress Blog</title>
   <meta name="author" content="Takahiro">
 
   
@@ -81,7 +81,7 @@ Cell の選択/移動/削除などの扱いが書きやすくなるとのこと�
   
   <header>
     
-      <h1 class="entry-title">RxDataSourcesを使ってみよう</h1>
+      <h1 class="entry-title">RxDataSourcesを使ってみよう！</h1>
     
     
       <p class="meta">
@@ -506,6 +506,314 @@ Cell の選択/移動/削除などの扱いが書きやすくなるとのこと�
 </span></code></pre></td></tr></table></div></figure>
 
 
+<h3>MVVMで実装してみよう</h3>
+
+<p>おまけとして、 <code>MVVM</code> での実装例も載せておきます。</p>
+
+<h4>プロジェクト構成</h4>
+
+<p>プロジェクト構成は下図の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">RxDataSourcesSample</span>
+</span><span class='line'>  <span class="err">├──</span> <span class="n">Protocol</span>
+</span><span class='line'>  <span class="err">│</span>    <span class="err">└──</span> <span class="n">Injectable</span><span class="p">.</span><span class="n">swift</span>
+</span><span class='line'>  <span class="err">├──</span> <span class="n">Model</span>
+</span><span class='line'>  <span class="err">│</span>    <span class="err">└──</span> <span class="n">SectionModel</span>
+</span><span class='line'>  <span class="err">├──</span> <span class="n">ViewModel</span>
+</span><span class='line'>  <span class="err">│</span>    <span class="err">└──</span> <span class="n">MainViewModel</span>
+</span><span class='line'>  <span class="err">├──</span> <span class="n">View</span>
+</span><span class='line'>  <span class="err">│</span>    <span class="err">├──</span> <span class="n">Parts</span>
+</span><span class='line'>  <span class="err">│</span>    <span class="err">│</span>    <span class="err">├──</span> <span class="n">CustomTableViewCell</span><span class="p">.</span><span class="n">swift</span>
+</span><span class='line'>  <span class="err">│</span>    <span class="err">│</span>    <span class="err">└──</span> <span class="n">CustomTableViewCell</span><span class="p">.</span><span class="n">xib</span>
+</span><span class='line'>  <span class="err">│</span>    <span class="err">├──</span> <span class="n">MainViewController</span><span class="p">.</span><span class="n">swift</span>
+</span><span class='line'>  <span class="err">│</span>    <span class="err">└──</span> <span class="n">MainViewController</span><span class="p">.</span><span class="n">xib</span>
+</span><span class='line'>  <span class="err">├──</span> <span class="n">AppDelegate</span><span class="p">.</span><span class="n">swift</span>
+</span><span class='line'>  <span class="p">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Viewの実装</h4>
+
+<p>今回、 <code>MVVM</code> で実装するに辺り、 <code>storyboard</code> から <code>xib</code> に変更しました。<br/>
+下図の通り単純に <code>xib</code> で <code>UITableView</code> を載せているだけです。</p>
+
+<p><img src="/images/rxdatasources_2.png" alt="xibにUITableViewを載せる" /></p>
+
+<p>また、 <code>xib</code> で <code>UITableViewCell</code> を用意します。</p>
+
+<p><img src="/images/rxdatasources_3.png" alt="xibでCustomTableViewCellを用意" /></p>
+
+<p><code>MVVM</code> で構成するために、 <code>Injectable</code> を定義します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Injectable.swift</span>
+</span><span class='line'><span class="n">protocol</span> <span class="n">Injectable</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">associatedtype</span> <span class="n">Dependency</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="n">Injectable</span> <span class="n">where</span> <span class="n">Dependency</span> <span class="o">==</span> <span class="n">Void</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">with:</span> <span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>そして <code>MainViewController.swift</code> の実装です。<br/>
+一部の処理を <code>ViewModel</code> に移行しているだけで、ほぼ変更はありません。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// MainViewController.swift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxDataSources</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Injectableを継承</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">MainViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">Injectable</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">typealias</span> <span class="n">Dependency</span> <span class="o">=</span> <span class="n">MainViewModel</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">private</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">tableView:</span> <span class="n">UITableView</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">dataSource:</span> <span class="n">RxTableViewSectionedReloadDataSource</span><span class="o">&lt;</span><span class="n">SectionModel</span><span class="o">&gt;!</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="nl">viewModel:</span> <span class="n">MainViewModel</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// 初期化時にViewModelを設定できるようにする</span>
+</span><span class='line'>    <span class="n">required</span> <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">viewModel</span> <span class="o">=</span> <span class="n">dependency</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">nibName:</span> <span class="nb">nil</span><span class="p">,</span> <span class="nl">bundle:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="err">@</span><span class="n">available</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">unavailable</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">required</span> <span class="n">init</span><span class="o">?</span><span class="p">(</span><span class="n">coder</span> <span class="nl">aDecoder:</span> <span class="n">NSCoder</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">fatalError</span><span class="p">(</span><span class="s">&quot;init(coder:) has not been implemented&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Do any additional setup after loading the view.</span>
+</span><span class='line'>        <span class="n">tableView</span><span class="p">.</span><span class="k">register</span><span class="p">(</span><span class="n">CustomTableViewCell</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">forCellReuseIdentifier:</span> <span class="s">&quot;Cell&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">dataSource</span> <span class="o">=</span> <span class="n">RxTableViewSectionedReloadDataSource</span><span class="o">&lt;</span><span class="n">SectionModel</span><span class="o">&gt;</span><span class="p">(</span>
+</span><span class='line'>            <span class="nl">configureCell:</span> <span class="p">{</span> <span class="n">_</span><span class="p">,</span> <span class="n">tableView</span><span class="p">,</span> <span class="n">indexPath</span><span class="p">,</span> <span class="n">item</span> <span class="k">in</span>
+</span><span class='line'>                <span class="n">let</span> <span class="n">cell</span> <span class="o">=</span> <span class="n">tableView</span><span class="p">.</span><span class="n">dequeueReusableCell</span><span class="p">(</span><span class="nl">withIdentifier:</span> <span class="s">&quot;Cell&quot;</span><span class="p">,</span>
+</span><span class='line'>                                                         <span class="k">for</span><span class="o">:</span> <span class="n">IndexPath</span><span class="p">(</span><span class="nl">row:</span> <span class="n">indexPath</span><span class="p">.</span><span class="n">row</span><span class="p">,</span> <span class="nl">section:</span> <span class="mi">0</span><span class="p">))</span>
+</span><span class='line'>                <span class="n">cell</span><span class="p">.</span><span class="n">textLabel</span><span class="o">?</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">item</span><span class="mf">.0</span>
+</span><span class='line'>                <span class="n">cell</span><span class="p">.</span><span class="n">accessoryType</span> <span class="o">=</span> <span class="p">.</span><span class="n">disclosureIndicator</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="k">return</span> <span class="n">cell</span>
+</span><span class='line'>        <span class="p">},</span> <span class="nl">canEditRowAtIndexPath:</span> <span class="p">{</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="k">in</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>        <span class="p">})</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">viewModel</span><span class="p">.</span><span class="n">dataRelay</span><span class="p">.</span><span class="n">asObservable</span><span class="p">()</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">tableView</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">items</span><span class="p">(</span><span class="nl">dataSource:</span> <span class="n">dataSource</span><span class="p">))</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">tableView</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">itemDeleted</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="nl">onNext:</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">indexPath</span> <span class="k">in</span>
+</span><span class='line'>                <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c1">// ViewModelにテーブルビューの行を削除操作を伝える</span>
+</span><span class='line'>                <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">indexPath</span><span class="p">)</span>
+</span><span class='line'>                    <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">strongSelf</span><span class="p">.</span><span class="n">viewModel</span><span class="p">.</span><span class="n">requestDeleteRecordStream</span><span class="p">)</span>
+</span><span class='line'>                    <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">strongSelf</span><span class="p">.</span><span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">})</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>ViewModelの実装</h4>
+
+<p>さて、 <code>ViewModel</code> の実装です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// MainViewModel.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Injectableを継承</span>
+</span><span class='line'><span class="n">final</span> <span class="n">class</span> <span class="nl">MainViewModel:</span> <span class="n">Injectable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">Dependency</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">sectionModels:</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">]</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: PublishRelays</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">requestDeleteRecordStream</span> <span class="o">=</span> <span class="n">PublishRelay</span><span class="o">&lt;</span><span class="n">IndexPath</span><span class="o">&gt;</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: BehaviorRelays</span>
+</span><span class='line'>    <span class="n">var</span> <span class="n">dataRelay</span> <span class="o">=</span> <span class="n">BehaviorRelay</span><span class="o">&lt;</span><span class="p">[</span><span class="n">SectionModel</span><span class="p">]</span><span class="o">&gt;</span><span class="p">(</span><span class="nl">value:</span> <span class="p">[])</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: Initial method</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="p">[(</span><span class="s">&quot;test1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test2&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test3&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)])]</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 画面初期描画時に初期設定のsectionModelsを渡す</span>
+</span><span class='line'>        <span class="n">Observable</span><span class="p">.</span><span class="n">deferred</span> <span class="p">{()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[</span><span class="n">SectionModel</span><span class="p">]</span><span class="o">&gt;</span> <span class="k">in</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">dataRelay</span><span class="p">)</span>   <span class="c1">// dataRelayにデータを流し込む</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">requestDeleteRecordStream</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="nl">onNext:</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">indexPath</span> <span class="k">in</span>
+</span><span class='line'>                <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span><span class="p">,</span> <span class="n">let</span> <span class="n">sectionModel</span> <span class="o">=</span> <span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">.</span><span class="n">first</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>                <span class="n">var</span> <span class="n">items</span> <span class="o">=</span> <span class="n">sectionModel</span><span class="p">.</span><span class="n">items</span>
+</span><span class='line'>                <span class="n">items</span><span class="p">.</span><span class="n">remove</span><span class="p">(</span><span class="nl">at:</span> <span class="n">indexPath</span><span class="p">.</span><span class="n">row</span><span class="p">)</span>
+</span><span class='line'>                <span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">items</span><span class="p">)]</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c1">// dataRelayにデータを流し込む</span>
+</span><span class='line'>                <span class="n">strongSelf</span><span class="p">.</span><span class="n">dataRelay</span><span class="p">.</span><span class="n">accept</span><span class="p">(</span><span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">})</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
 <h3>まとめ</h3>
 
 <p>さて如何でしたでしょうか？<br/>
@@ -593,7 +901,7 @@ Cell の選択/移動/削除などの扱いが書きやすくなるとのこと�
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2018/12/28/rxdatasources/">RxDataSourcesを使ってみよう</a>
+        <a href="/blog/2018/12/28/rxdatasources/">RxDataSourcesを使ってみよう！</a>
       </li>
     
       <li class="post">
