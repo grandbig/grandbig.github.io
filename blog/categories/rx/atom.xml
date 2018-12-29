@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rx | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/rx/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2018-12-30T03:32:09+09:00</updated>
+  <updated>2018-12-30T04:40:33+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,247 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[RxSwiftでUITableViewのリロード時にクラッシュする問題にぶつかった]]></title>
+    <link href="http://grandbig.github.io/blog/2018/12/30/rx-uitableview-crash/"/>
+    <updated>2018-12-30T04:11:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2018/12/30/rx-uitableview-crash</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は表題にあるクラッシュ問題についてのメモです。<br/>
+単純な話だったけど、しばらくハマってました笑</p>
+
+<p>取り組んでいた内容としてはシンプルで、</p>
+
+<ul>
+<li><code>RxSwift</code> を利用していた</li>
+<li><code>RxDataSources</code> を利用しようとした</li>
+<li><code>UITableView</code> の <code>Cell</code> 削除アクションを <code>Rx</code> っぽく書きたかった</li>
+</ul>
+
+
+<p>というものです。</p>
+
+<p><code>UITableView</code> の初期描画はうまくいくものの、 <code>Cell</code> 削除アクションを実行するとクラッシュしていました。</p>
+
+<p>では早速内容について見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>クラッシュの内容</h3>
+
+<p>どんなクラッシュが発生していたかというと</p>
+
+<p><code>objective-c
+This is a feature to warn you that there is already a delegate (or data source) set somewhere previously.
+The action you are trying to perform will clear that delegate (data source) and that means that some of your features
+that depend on that delegate (data source) being set will likely stop working.\n
+</code></p>
+
+<p>といったものが出ていました。</p>
+
+<p>この内容でググってみると&hellip;</p>
+
+<ul>
+<li><a href="https://github.com/ReactiveX/RxSwift/issues/675">Maybe delegate was already set in <code>xib</code> or <code>storyboard</code> and now it&rsquo;s being overwritten in code.</a></li>
+<li><a href="https://github.com/RxSwiftCommunity/RxDataSources/issues/185">How to change datasource and rebind to tableview</a></li>
+<li><a href="https://github.com/ReactiveX/RxSwift/issues/706">Assertion failure in DelegateProxyType</a></li>
+</ul>
+
+
+<p>といった形でたびたび本家の <code>RxSwift</code> で意見交換されていました。</p>
+
+<p>上記内で言われていることは、</p>
+
+<p><code>
+tableView.delegate = nil
+tableView.dataSource = nil
+</code></p>
+
+<p>を書けば解決するよって話だったりしました。<br/>
+筆者的には、 <code>xib</code> で <code>delegate</code> や <code>dataSource</code> の設定などしていなかったので、半信半疑ながら上記をコードに記載して試していました。</p>
+
+<p>が解決されず&hellip;</p>
+
+<h3>解決方法</h3>
+
+<p>では、一体どうやって解決したかというと、<br/>
+クラッシュの内容とは全く関係のない部分の話でした&hellip;</p>
+
+<p>筆者は <code>MVVM</code> アーキテクチャでプロジェクトを構成しており、<br/>
+下記のように <code>ViewModel</code> を定義していました。</p>
+
+<p>```objective-c
+// ViewModel.swift
+import Foundation
+import RxSwift
+import RxCocoa</p>
+
+<p>final class MainViewModel: Injectable {</p>
+
+<pre><code>struct Dependency {
+}
+
+// MARK: - Properties
+private let disposeBag = DisposeBag()
+private var sectionModels: [SectionModel]!
+
+// MARK: PublishRelays
+let requestDeleteRecordStream = PublishRelay&lt;IndexPath&gt;()
+
+// MARK: BehaviorRelays
+var dataRelay = BehaviorRelay&lt;[SectionModel]&gt;(value: [])
+
+// MARK: Initial method
+init(with dependency: Dependency) {
+
+    sectionModels = [SectionModel(items: [("test1", 1), ("test2", 2), ("test3", 3)])]
+
+    Observable.deferred {() -&gt; Observable&lt;[SectionModel]&gt; in
+        return Observable.just(self.sectionModels)
+        }
+        .bind(to: dataRelay)
+        .disposed(by: disposeBag)
+
+    requestDeleteRecordStream
+        .subscribe(onNext: { [weak self] indexPath in
+            guard let strongSelf = self, let sectionModel = strongSelf.sectionModels.first else { return }
+            var items = sectionModel.items
+            items.remove(at: indexPath.row)
+            strongSelf.sectionModels = [SectionModel(items: items)]
+            strongSelf.dataRelay.accept(strongSelf.sectionModels)
+        })
+        .disposed(by: disposeBag)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>続いて、 <code>View</code> の方では下記のように、 <code>Cell</code> が削除された場合を捕捉するようにしていました。</p>
+
+<p>```objective-c
+// View
+import UIKit
+import RxSwift
+import RxCocoa
+import RxDataSources</p>
+
+<p>class MainViewController: UIViewController, Injectable {</p>
+
+<pre><code>typealias Dependency = MainViewModel
+
+@IBOutlet private weak var tableView: UITableView!
+
+private let disposeBag = DisposeBag()
+private var dataSource: RxTableViewSectionedReloadDataSource&lt;SectionModel&gt;!
+private let viewModel: MainViewModel
+
+required init(with dependency: Dependency) {
+    viewModel = dependency
+    super.init(nibName: nil, bundle: nil)
+}
+
+@available(*, unavailable)
+required init?(coder aDecoder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+}
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+
+    // Do any additional setup after loading the view.
+    tableView.register(CustomTableViewCell.self, forCellReuseIdentifier: "Cell")
+
+    dataSource = RxTableViewSectionedReloadDataSource&lt;SectionModel&gt;(
+        configureCell: { _, tableView, indexPath, item in
+            let cell = tableView.dequeueReusableCell(withIdentifier: "Cell",
+                                                     for: IndexPath(row: indexPath.row, section: 0))
+            cell.textLabel?.text = item.0
+            cell.accessoryType = .disclosureIndicator
+
+            return cell
+    }, canEditRowAtIndexPath: { _, _ in
+        return true
+    })
+
+    //////// ↓問題はココ /////////////////////////////////////////////////////////////////////
+    viewModel.dataRelay
+        .subscribe(onNext: { [weak self] records in
+            guard let strongSelf = self, let items = records.first?.items else { return }
+            let data = [SectionModel(items: items)]
+            Observable.just(data)
+                .bind(to: strongSelf.tableView.rx.items(dataSource: strongSelf.dataSource))
+                .disposed(by: strongSelf.disposeBag)
+        }.disposed(by: strongSelf.disposeBag)
+    })
+    //////// ↑問題はココ /////////////////////////////////////////////////////////////////////
+
+    tableView.rx.itemDeleted
+        .subscribe(onNext: { [weak self] indexPath in
+            guard let strongSelf = self else { return }
+            Observable.just(indexPath)
+                .bind(to: strongSelf.viewModel.requestDeleteRecordStream)
+                .disposed(by: strongSelf.disposeBag)
+        })
+        .disposed(by: disposeBag)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記の <strong>問題はココ</strong> と書かれているところが間違っていました。<br/>
+<code>ViewModel</code> 側で既に <code>SectionModel</code> としてデータを作成しているので、<br/>
+<code>ViewController</code> 側では単に <code>tableView.rx.items</code> に流せば良かったのです。</p>
+
+<p>それを改めて <code>SectionModel</code> の形に整形し直そうとしてしまっていました。<br/>
+そして再度 <code>Observable</code> を生成して <code>tableView.rx.items</code> に流し込んでいました。</p>
+
+<p>この問題の部分を下記のように修正したところクラッシュすることがなくなりました。</p>
+
+<p>```objective-c
+viewModel.dataRelay</p>
+
+<pre><code>.asObservable()
+.bind(to: tableView.rx.items(dataSource: dataSource))
+.disposed(by: disposeBag)
+</code></pre>
+
+<p>```</p>
+
+<h3>まとめ</h3>
+
+<p>クラッシュ内容にだいぶ惑わされましたが、<br/>
+どうしてもわからない時は簡単なサンプルを作って試してみるのが良いなと改めて思いました。</p>
+
+<p>ということで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[RxDataSourcesを使ってみよう！]]></title>
@@ -2360,713 +2601,6 @@ public var closePickerView: Observable&lt;Void&gt; {
 
 <p><code>Rx</code> の癖が強いが故に、慣れれば利用しやすいということなのでしょう。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[GeolocationSampleから学ぶdelegateのRx対応]]></title>
-    <link href="http://grandbig.github.io/blog/2018/10/06/rx-delegate/"/>
-    <updated>2018-10-06T11:16:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2018/10/06/rx-delegate</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p><code>RxSwift</code> を利用して <code>MVVM</code> アーキテクチャでアプリを開発することがあるでしょう。<br/>
-その際に、ボタンタップやネットワーク通信であれば、何もやらずとも <code>RxSwift</code> が対応してくれていたり、 <code>RxSwift</code> に対応しているライブラリがあったりします。</p>
-
-<p>しかし、デフォルトでは <code>RxSwift</code> に対応していない場合も当然あります。<br/>
-ではそんなとき、どのようにして対応すれば良いでしょうか。</p>
-
-<p>今日は、 <code>delegate</code> の <code>Rx</code> 対応について公式サンプルの <code>GeolocationSample</code> を元に説明してみたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>delegateのRx対応方法</h3>
-
-<p>早速具体的に方法を見ていきましょう。<br/>
-今回は公式サンプルの <code>GeolocationSample</code> を元に、 <code>CLLocationManagerDelegate</code> を <code>Rx</code> に対応させる方法を説明します。</p>
-
-<h4>DelegateProxyとDelegateProxyTypeへの対応</h4>
-
-<p><code>delegate</code> の <code>Rx</code> 対応でまず必要なことは</p>
-
-<ul>
-<li><code>DelegateProxy</code> クラスを継承するクラスを作成すること</li>
-<li><code>DelegateProxyType</code> プロトコルを継承するクラスを作成すること</li>
-</ul>
-
-
-<p>です。<br/>
-ここでは上記2つの条件を満たした <code>RxCLLocationManagerDelegateProxy</code> クラスを作ることとします。</p>
-
-<h5>DelegateProxyの説明</h5>
-
-<p><code>DelegateProxy.swift</code> を見てみると、下記のように定義されています。</p>
-
-<p>```objective-c
-// DelegateProxy.swift</p>
-
-<p>/// Base class for <code>DelegateProxyType</code> protocol.
-///
-/// This implementation is not thread safe and can be used only from one thread (Main thread).
-open class DelegateProxy&lt;P: AnyObject, D>: _RXDelegateProxy {</p>
-
-<pre><code>public typealias ParentObject = P
-public typealias Delegate = D
-...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>この <code>DelegateProxy</code> は <code>DelegateProxyType</code> プロトコルのベースクラスと説明されています。<br/>
-<code>DelegateProxy</code> はジェネリッククラスであり、2つのパラメータ <code>P</code> と <code>D</code> を持ちます。</p>
-
-<p>ここで、 <code>P</code> と <code>D</code> について説明します。</p>
-
-<ul>
-<li><code>D</code> :<br/>
-<code>Rx</code> に対応させたい <code>delegate</code> を指定します<br/>
-<code>D</code> は <code>Delegate</code> の頭文字と思われます</li>
-<li><code>P</code> :<br/>
-<code>delegate</code> である <code>D</code> をプロパティとして持つオブジェクトを指定します<br/>
-<code>P</code> は <code>ParentObject</code> の頭文字と思われます</li>
-</ul>
-
-
-<p>今回の場合は、<br/>
-<code>DelegateProxy&lt;CLLocationManager, CLLocationManagerDelegate&gt;</code> になります。</p>
-
-<h5>DelegateProxyTypeの説明</h5>
-
-<p><code>DelegateProxyType.swift</code> の中身を見てみると、下記のように説明されています。</p>
-
-<p>```objective-c
-// DelegateProxyType.swift</p>
-
-<p>/**
-<code>DelegateProxyType</code> protocol enables using both normal delegates and Rx observable sequences with
-views that can have only one delegate/datasource registered.
-&hellip;</p>
-
-<p>*/
-```</p>
-
-<p>意訳すると、<br/>
-<code>DelegateProxyType</code> は <code>delegate</code> と <code>Rx</code> との紐付けを実現するプロトコル<br/>
-であることを指しています。</p>
-
-<p>方式は図示化されていますので、見てみると何となく理解できると思います。<br/>
-図では <code>UIScrollViewDelegate</code> を例に説明されています。</p>
-
-<p>```objective-c
-+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
-|                                           |                         <br/>
-| UIView subclass (UIScrollView)            |                         <br/>
-|                                           |
-+&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+</p>
-
-<pre><code>        |                                                           
-        | Delegate                                                  
-        |                                                           
-        |                                                           
-</code></pre>
-
-<p>+&mdash;&mdash;&mdash;&mdash;&mdash;-v&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+                         <br/>
-|                                           |                         <br/>
-| Delegate proxy : DelegateProxyType        +&mdash;&mdash;&ndash;+&mdash;&mdash;>  Observable<T1>
-|                , UIScrollViewDelegate     |     |
-+&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+     +&mdash;&mdash;>  Observable<T2></p>
-
-<pre><code>        |                                     |                     
-        |                                     +----&gt;  Observable&lt;T3&gt;
-        |                                     |                     
-        | forwards events                     |
-        | to custom delegate                  |
-        |                                     v                     
-</code></pre>
-
-<p>+&mdash;&mdash;&mdash;&mdash;&mdash;-v&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+                         <br/>
-|                                           |                         <br/>
-| Custom delegate (UIScrollViewDelegate)    |                         <br/>
-|                                           |
-+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+ <br/>
-```</p>
-
-<p>また <code>DelegateProxyType</code> は以下3つの <code>static</code> メソッドを定義しているため、<br/>
-<code>DelegateProxyType</code> を継承すると、必ずこの3つのメソッドを持つ必要があります。</p>
-
-<ul>
-<li><code>registerKnownImplementations</code><br/>
-このメソッドの中で必ず <code>DelegateProxySubclass.register()</code> を実行します。<br/>
-これをすることで自身で定義した <code>DelegateProxy</code> の継承クラスを登録することができます。</li>
-<li><code>currentDelegate</code><br/>
-<code>ParentObject</code> の持つ <code>delegate</code> を返却する処理を書きます。</li>
-<li><code>setCurrentDelegate</code><br/>
-<code>ParentObject</code> に持つべき <code>delegate</code> を設定する処理を書きます。</li>
-</ul>
-
-
-<p>特に特殊なことをしない場合は、<br/>
-<code>delegate</code> をプロパティとして持つオブジェクトである <code>ParentObject</code>に<br/>
-<code>HasDelegate</code> プロトコルを継承させます。 　</p>
-
-<p>```objective-c
-extension CLLocationManager: HasDelegate {</p>
-
-<pre><code>public typealias Delegate = CLLocationManagerDelegate
-</code></pre>
-
-<p>}
-```</p>
-
-<p>これにより、 <code>currentDelegate</code> と <code>setCurrentDelegate</code> を省略することができます。</p>
-
-<h5>対応したコードを書いてみる</h5>
-
-<p>基本的な説明は以上として、実際にコードに起こしてみましょう。<br/>
-まずは結果から。</p>
-
-<p>```objective-c
-import RxSwift      // ここは必須
-import RxCocoa      // ここは必須
-import CoreLocation //  CLLocationManagerDelegateはCoreLocation内に定義されています</p>
-
-<p>// currentDelegateとsetCurrentDelegateの役割を担います
-extension CLLocationManager: HasDelegate {</p>
-
-<pre><code>public typealias Delegate = CLLocationManagerDelegate
-</code></pre>
-
-<p>}</p>
-
-<p>// DelegateProxy, DelegateProxyType, CLLocationManagerDelegateを継承
-// DelegateをRxに対応させるために、元となるDelegateも継承が必須です
-public class RxCLLocationManagerDelegateProxy: DelegateProxy&lt;CLLocationManager, CLLocationManagerDelegate>,</p>
-
-<pre><code>DelegateProxyType,
-CLLocationManagerDelegate {
-
-// 初期化処理
-public init(locationManager: CLLocationManager) {
-    super.init(parentObject: locationManager, delegateProxy: RxCLLocationManagerDelegateProxy.self)
-}
-
-// 必須のstaticメソッド
-public static func registerKnownImplementations() {
-    // 説明(1)
-    self.register { (locationManager) -&gt; RxCLLocationManagerDelegateProxy in
-        RxCLLocationManagerDelegateProxy(locationManager: locationManager)
-    }
-}
-
-// 説明(2)
-internal lazy var didUpdateLocationsSubject = PublishSubject&lt;[CLLocation]&gt;()
-internal lazy var didFailWithErrorSubject = PublishSubject&lt;Error&gt;()
-
-// 説明(3)
-public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-    _forwardToDelegate?.locationManager(manager, didUpdateLocations: locations)
-    didUpdateLocationsSubject.onNext(locations)
-}
-
-public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-    _forwardToDelegate?.locationManager(manager, didFailWithError: error)
-    didFailWithErrorSubject.onNext(error)
-}
-
-// 説明(4)
-deinit {
-    self.didUpdateLocationsSubject.on(.completed)
-    self.didFailWithErrorSubject.on(.completed)
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>上記ソースコードを一部補足説明します。</p>
-
-<h6>説明(1)</h6>
-
-<p><code>registerKnownImplementations</code> で説明した通り <code>register</code> メソッドを実行しています。<br/>
-<code>register</code> メソッドは、</p>
-
-<p>```objective-c
-/// Store DelegateProxy subclass to factory.
-/// When make &lsquo;Rx<em>DelegateProxy&rsquo; subclass, call &lsquo;Rx</em>DelegateProxySubclass.register(for:_)&rsquo; 1 time, or use it in DelegateProxyFactory
-/// &lsquo;Rx*DelegateProxy&rsquo; can have one subclass implementation per concrete ParentObject type.
-/// Should call it from concrete DelegateProxy type, not generic.
-public static func register<Parent>(make: @escaping (Parent) &ndash;> Self) {</p>
-
-<pre><code>self.factory.extend(make: make)
-</code></pre>
-
-<p>}
-```</p>
-
-<p>と定義されています。</p>
-
-<p>クロージャの引数に <code>ParentObject</code> を必要とし、<br/>
-そのクラス自身を戻り値を必要としているため、<br/>
-<code>ParentObject</code> として <code>locationManager</code> を渡し、<br/>
-それを元に初期化した <code>RxCLLocationManagerDelegateProxy</code> オブジェクトを戻り値として渡しています。</p>
-
-<p>ここは説明のため省略書きしませんでしたが、</p>
-
-<p>```objective-c
-public static func registerKnownImplementations() {</p>
-
-<pre><code>self.register { RxCLLocationManagerDelegateProxy(locationManager: $0) }
-</code></pre>
-
-<p>}
-```</p>
-
-<p>とも当然書けます。</p>
-
-<h6>説明(2)</h6>
-
-<p><code>PublishSubject</code> 型のプロパティを2つ定義しています。</p>
-
-<p><code>objective-c
-internal lazy var didUpdateLocationsSubject = PublishSubject&lt;[CLLocation]&gt;()
-internal lazy var didFailWithErrorSubject = PublishSubject&lt;Error&gt;()
-</code></p>
-
-<p>これは説明(3)にも関わるのですが、<br/>
-<code>delegate</code> メソッドが呼び出されて処理が実行されたことを <code>Subscriber</code> に伝えるために定義が必要となります。</p>
-
-<h6>説明(3)</h6>
-
-<p><code>delegate</code> メソッドを <code>Rx</code> で対応するための方法が、まさにココで直接的に書かれています。</p>
-
-<p>```objective-c
-public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {</p>
-
-<pre><code>_forwardToDelegate?.locationManager(manager, didUpdateLocations: locations)
-didUpdateLocationsSubject.onNext(locations)
-</code></pre>
-
-<p>}
-```</p>
-
-<p>今回は、 <code>didUpdateLocations</code> で取得した <code>locations</code> の情報を <code>Rx</code> 連携させるために、上記のように記述しています。<br/>
-先程説明した <code>PublishSubject</code> が <code>Subscriber</code> にメソッドの実行タイミングでデータを伝える方法ですが、<br/>
-<code>didUpdateLocationsSubject.onNext(locations)</code> で実行しています。</p>
-
-<p><code>_forwardToDelegate?.locationManager(manager, didUpdateLocations: locations)</code> はメモリ観点から<br/>
-<code>delegate</code> を引き続き利用していることを伝えるために利用しているように見えます。</p>
-
-<h6>説明(4)</h6>
-
-<p>最後に <code>deinit</code> 内で実行している処理ですが、<br/>
-<code>deinit</code> が呼ばれるということは初期化したオブジェクトが破棄される時なので、イベントが送られることはないはずです。<br/>
-よって <code>PublishSubject</code> からイベント送信完了を知らせるように実装しましょう。</p>
-
-<h4>ReactiveへのCLLocationManagerの適応</h4>
-
-<p>事前準備が整ったため、実際に <code>CLLocationManager</code> を <code>Rx</code> 適応させてみます。</p>
-
-<p><code>RxSwift</code> では下記のように書くことで拡張できる仕組みを用意しています。</p>
-
-<p>```objective-c
-// CLLocationManager+Rx.swift
-import CoreLocation
-import RxSwift
-import RxCocoa</p>
-
-<p>extension Reactive where Base: CLLocationManager {</p>
-
-<pre><code>...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>これが可能な理由は <code>Reactive.swift</code> を見てみると良いでしょう。</p>
-
-<p>```objective-c
-public struct Reactive<Base> {</p>
-
-<pre><code>/// Base object to extend.
-public let base: Base
-
-/// Creates extensions with base object.
-///
-/// - parameter base: Base object.
-public init(_ base: Base) {
-    self.base = base
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>そして、拡張した後にやることは下記です。</p>
-
-<ul>
-<li><code>delegate</code> のラッパーを生成する</li>
-<li>各 <code>delegate</code> メソッドに対応したラッパープロパティを生成する</li>
-<li>キャストメソッドを用意する</li>
-</ul>
-
-
-<p>1つずつ説明していきましょう。</p>
-
-<h5>delegateのラッパーを生成する</h5>
-
-<p>このラッパーは <code>delegate</code> を <code>DelegateProxy</code> 型として定義します。<br/>
-この <code>delegate</code> はもちろん <code>readOnly</code> で値の取得のみできるものとします。<br/>
-<code>DelegateProxy</code> の取得は <code>DelegateProxyType</code> プロトコルの <code>proxy</code> メソッドを利用します。</p>
-
-<p><code>``objective-c
-/**
-Reactive wrapper for</code>delegate`.</p>
-
-<p>For more information take a look at <code>DelegateProxyType</code> protocol documentation.
-*/
-public var delegate: DelegateProxy&lt;CLLocationManager, CLLocationManagerDelegate> {</p>
-
-<pre><code>return RxCLLocationManagerDelegateProxy.proxy(for: base)
-</code></pre>
-
-<p>}
-```</p>
-
-<h5>各delegateメソッドに対応したラッパープロパティを生成する</h5>
-
-<p><code>RxCLLocationManagerDelegateProxy</code> で <code>didUpdateLocations</code> と <code>didFailWithError</code> の <code>delegate</code> メソッドに対応しました。<br/>
-これらのメソッドに対応したラッパープロパティは以下のように実装します。</p>
-
-<p>```objective-c
-// MARK: Responding to Location Events</p>
-
-<p>/<em>*
- Reactive wrapper for <code>delegate</code> message.
- </em>/
- public var didUpdateLocations: Observable&lt;[CLLocation]> {</p>
-
-<pre><code>return RxCLLocationManagerDelegateProxy.proxy(for: base).didUpdateLocationsSubject.asObservable()
-</code></pre>
-
-<p>}</p>
-
-<p>/<em>*
- Reactive wrapper for <code>delegate</code> message.
- </em>/
-public var didFailWithError: Observable<Error> {</p>
-
-<pre><code>return RxCLLocationManagerDelegateProxy.proxy(for: base).didFailWithErrorSubject.asObservable()
-</code></pre>
-
-<p>}
-```</p>
-
-<p>これらも <code>readOnly</code> で値のみを <code>Observable</code> 型で取得できるように定義しています。</p>
-
-<h5>キャストメソッドを用意する</h5>
-
-<p>キャストメソッドを用意する理由は、<br/>
-あるメソッドの処理の完了タイミングで何らかの処理を実行させたい<br/>
-<code>methodInvoked</code> を利用するときに必要になります。</p>
-
-<p>処理は下記の通りです。<br/>
-<code>Optional</code> 型の場合とそうでない場合が必要になる可能性がありますので、2種類用意しています。</p>
-
-<p>```objective-c
-fileprivate func castOrThrow<T>(_ resultType: T.Type, _ object: Any) throws &ndash;> T {</p>
-
-<pre><code>guard let returnValue = object as? T else {
-    throw RxCocoaError.castingError(object: object, targetType: resultType)
-}
-
-return returnValue
-</code></pre>
-
-<p>}</p>
-
-<p>fileprivate func castOptionalOrThrow<T>(_ resultType: T.Type, _ object: Any) throws &ndash;> T? {</p>
-
-<pre><code>if NSNull().isEqual(object) {
-    return nil
-}
-
-guard let returnValue = object as? T else {
-    throw RxCocoaError.castingError(object: object, targetType: resultType)
-}
-
-return returnValue
-</code></pre>
-
-<p>}
-```</p>
-
-<p>今回の場合、端末の位置情報を利用するので、 <code>CLLocationManagerDelegate</code> の <code>didChangeAuthorization</code> のハンドリングが必須になります。<br/>
-この <code>delegate</code> メソッドは定期的に繰り返し利用する必要はありません。<br/>
-状態が変わって、その情報を必要となったタイミングでだけ利用できれば良いのです。<br/>
-よって <code>methodInvoked</code> を利用してプロパティを定義します。</p>
-
-<p>```objective-c
-// MARK: Responding to Authorization Changes</p>
-
-<p>/<em>*
- Reactive wrapper for <code>delegate</code> message.
- </em>/
-public var didChangeAuthorizationStatus: Observable<CLAuthorizationStatus> {</p>
-
-<pre><code>return delegate.methodInvoked(#selector(CLLocationManagerDelegate.locationManager(_:didChangeAuthorization:)))
-    .map { a in
-        let number = try castOrThrow(NSNumber.self, a[1])
-        return CLAuthorizationStatus(rawValue: Int32(number.intValue)) ?? .notDetermined
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>以上で必要な対応は全て完了です。</p>
-
-<h3>Rxに対応したdelegateの使い方</h3>
-
-<p>自作した <code>Rx</code> 対応後の <code>delegate</code> を利用する例も見ていきましょう。</p>
-
-<h4>処理ロジックの実装</h4>
-
-<p>公式サンプルでは処理ロジックに相当する <code>GeolocationService.swift</code> を下記のように実装しています。</p>
-
-<p>```objective-c
-// GeolocationService.swift
-import CoreLocation
-import RxSwift
-import RxCocoa</p>
-
-<p>class GeolocationService {</p>
-
-<pre><code>static let instance = GeolocationService()
-// 説明(1)
-private (set) var authorized: Driver&lt;Bool&gt;
-private (set) var location: Driver&lt;CLLocationCoordinate2D&gt;
-
-private let locationManager = CLLocationManager()
-
-private init() {
-
-    locationManager.distanceFilter = kCLDistanceFilterNone
-    locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-
-    // 説明(2)
-    authorized = Observable.deferred { [weak locationManager] in
-            let status = CLLocationManager.authorizationStatus()
-            guard let locationManager = locationManager else {
-                return Observable.just(status)
-            }
-            return locationManager
-                .rx.didChangeAuthorizationStatus
-                .startWith(status)
-        }
-        .asDriver(onErrorJustReturn: CLAuthorizationStatus.notDetermined)
-        .map {
-            switch $0 {
-            case .authorizedAlways:
-                return true
-            default:
-                return false
-            }
-        }
-
-    // 説明(3)
-    location = locationManager.rx.didUpdateLocations
-        .asDriver(onErrorJustReturn: [])
-        .flatMap {
-            return $0.last.map(Driver.just) ?? Driver.empty()
-        }
-        .map { $0.coordinate }
-
-    locationManager.requestAlwaysAuthorization()
-    locationManager.startUpdatingLocation()
-}
-</code></pre>
-
-<p>}
-```</p>
-
-<p>1つずつ説明していきましょう。</p>
-
-<h5>説明(1)</h5>
-
-<p>今回のサンプルは、</p>
-
-<ul>
-<li>位置情報の利用を許可したら、画面が切り替わる</li>
-<li>取得した最新の位置情報を画面に表示する</li>
-</ul>
-
-
-<p>という、データ結果を画面に直接反映させる処理が含まれています。<br/>
-よって、</p>
-
-<p><code>objective-c
-private (set) var authorized: Driver&lt;Bool&gt;
-private (set) var location: Driver&lt;CLLocationCoordinate2D&gt;
-</code></p>
-
-<p>のように <code>Driver</code> として定義しています。</p>
-
-<h5>説明(2)</h5>
-
-<p><code>authorized</code> は <code>delegate</code> メソッドである <code>didChangeAuthorization</code> が呼び出されたタイミングで値が変更される必要があります。 <br/>
-今回は、<br/>
-<code>Subscribe</code> するまでは <code>Observable</code> を生成せずに、 <code>Subscribe</code> されたタイミングで <code>Observable</code> を返す <code>Observable</code> を生成する<br/>
-<code>deferred</code> メソッドを利用しています。</p>
-
-<p>```objective-c
-authorized = Observable.deferred { [weak locationManager] in</p>
-
-<pre><code>    let status = CLLocationManager.authorizationStatus()
-    guard let locationManager = locationManager else {
-        return Observable.just(status)
-    }
-    // didChangeAuthorizationStatusからauthorizedの値を取得
-    return locationManager
-        .rx.didChangeAuthorizationStatus
-        .startWith(status)
-}
-// エラーが発生した場合は .notDetermined で返却する
-.asDriver(onErrorJustReturn: CLAuthorizationStatus.notDetermined)
-.map {
-    // .authorizedAlwaysの場合のみauthorizedにtrueを格納する
-    switch $0 {
-    case .authorizedAlways:
-        return true
-    default:
-        return false
-    }
-}
-</code></pre>
-
-<p>```</p>
-
-<h5>説明(3)</h5>
-
-<p>最新の位置情報を取得したタイミングで通知します。</p>
-
-<p>```objective-c
-location = locationManager.rx.didUpdateLocations</p>
-
-<pre><code>// エラーが発生した場合は、空配列で返却する
-.asDriver(onErrorJustReturn: [])
-// 位置情報が格納されている場合はその値を、位置情報がない場合は空を返却する
-.flatMap {
-    return $0.last.map(Driver.just) ?? Driver.empty()
-}
-// CLLocationCoordinate2Dの値を返却する
-.map { $0.coordinate }
-</code></pre>
-
-<p>```</p>
-
-<h4>Viewロジックの実装</h4>
-
-<p>サンプルでは下記のように実装しています。</p>
-
-<p>```objective-c
-// GeolocationViewController.swift
-import UIKit
-import CoreLocation
-import RxSwift
-import RxCocoa</p>
-
-<p>// 説明(1)
-private extension Reactive where Base: UILabel {</p>
-
-<pre><code>var coordinates: Binder&lt;CLLocationCoordinate2D&gt; {
-    return Binder(base) { label, location in
-        label.text = "Lat: \(location.latitude)\nLon: \(location.longitude)"
-    }
-}
-</code></pre>
-
-<p>}</p>
-
-<p>class GeolocationViewController: ViewController {</p>
-
-<pre><code>@IBOutlet weak private var noGeolocationView: UIView!
-@IBOutlet weak private var button: UIButton!
-@IBOutlet weak private var button2: UIButton!
-@IBOutlet weak var label: UILabel!
-
-override func viewDidLoad() {
-    super.viewDidLoad()
-
-    view.addSubview(noGeolocationView)
-
-    let geolocationService = GeolocationService.instance
-
-    // 説明(2)
-    geolocationService.authorized
-        .drive(noGeolocationView.rx.isHidden)
-        .disposed(by: disposeBag)
-
-    // 説明(3)
-    geolocationService.location
-        .drive(label.rx.coordinates)
-        .disposed(by: disposeBag)
-    ...
-}
-...
-</code></pre>
-
-<p>}
-```</p>
-
-<p>1つずつ説明していきましょう。</p>
-
-<h5>説明(1)</h5>
-
-<p>画面に位置情報を表示するために <code>UILabel</code> を独自に <code>Rx</code> に対応させています。<br/>
-これは <code>CLLocationManager</code> を拡張した方法と同じですね。</p>
-
-<h5>説明(2)</h5>
-
-<p><code>authorized</code> が <code>true</code> の場合に <code>noGeolocationView</code> を非表示にするよう実装しています。</p>
-
-<h5>説明(3)</h5>
-
-<p>取得できた最新の位置情報を説明(1)で拡張した機能を利用して <code>UILabel</code> に表示するようにしています。</p>
-
-<p>以上で <code>Rx</code> に対応させた <code>delegate</code> を利用することができました。</p>
-
-<h3>まとめ</h3>
-
-<p>さて、如何でしたでしょうか。<br/>
-形式に沿って実装をすることで簡単に拡張することはできますが、<br/>
-実装1つ1つを理解することでより深く <code>RxSwift</code> を現場で活用できるかと思います。</p>
-
-<p>まだまだ筆者も理解が乏しいところがあるので、もっと深く勉強を続けていきたいと思います。<br/>
-ということで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
