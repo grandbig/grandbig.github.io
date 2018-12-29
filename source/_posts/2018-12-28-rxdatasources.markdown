@@ -169,8 +169,9 @@ class ViewController: UIViewController {
                 var items = sectionModel.items
                 items.remove(at: indexPath.row)
 
+								strongSelf.sectionModels = [SectionModel(items: items)]
                 // dataRelayにデータを流し込む
-                strongSelf.dataRelay.accept([SectionModel(items: items)])
+                strongSelf.dataRelay.accept(strongSelf.sectionModels)
             })
             .disposed(by: disposeBag)
 
