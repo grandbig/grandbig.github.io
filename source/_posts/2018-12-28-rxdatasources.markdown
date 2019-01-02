@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "RxDataSourcesを使ってみよう"
+title: "RxDataSourcesを使ってみよう！"
 date: 2018-12-28 18:41
 comments: true
 categories: ios swift rx
@@ -229,6 +229,176 @@ open class RxTableViewSectionedReloadDataSource<S: SectionModelType>
     }
 }
 #endif
+```
+
+### MVVMで実装してみよう
+おまけとして、 `MVVM` での実装例も載せておきます。  
+
+#### プロジェクト構成
+プロジェクト構成は下図の通りです。  
+
+```objective-c
+RxDataSourcesSample
+  ├── Protocol
+	│    └── Injectable.swift
+  ├── Model
+  │    └── SectionModel
+	├── ViewModel
+  │    └── MainViewModel
+	├── View
+	│    ├── Parts
+	│    │    ├── CustomTableViewCell.swift
+	│    │    └── CustomTableViewCell.xib
+  │    ├── MainViewController.swift
+	│    └── MainViewController.xib
+  ├── AppDelegate.swift
+  ...
+```
+
+#### Viewの実装
+今回、 `MVVM` で実装するに辺り、 `storyboard` から `xib` に変更しました。  
+下図の通り単純に `xib` で `UITableView` を載せているだけです。  
+
+![xibにUITableViewを載せる](/images/rxdatasources_2.png)  
+
+また、 `xib` で `UITableViewCell` を用意します。  
+
+![xibでCustomTableViewCellを用意](/images/rxdatasources_3.png)  
+
+`MVVM` で構成するために、 `Injectable` を定義します。  
+
+```objective-c
+// Injectable.swift
+protocol Injectable {
+    associatedtype Dependency
+    init(with dependency: Dependency)
+}
+
+extension Injectable where Dependency == Void {
+    init() {
+        self.init(with: ())
+    }
+}
+```
+
+そして `MainViewController.swift` の実装です。  
+一部の処理を `ViewModel` に移行しているだけで、ほぼ変更はありません。  
+
+```objective-c
+// MainViewController.swift
+
+import UIKit
+import RxSwift
+import RxCocoa
+import RxDataSources
+
+// Injectableを継承
+class MainViewController: UIViewController, Injectable {
+    typealias Dependency = MainViewModel
+
+    @IBOutlet private weak var tableView: UITableView!
+
+    private let disposeBag = DisposeBag()
+    private var dataSource: RxTableViewSectionedReloadDataSource<SectionModel>!
+    private let viewModel: MainViewModel
+
+		// 初期化時にViewModelを設定できるようにする
+    required init(with dependency: Dependency) {
+        viewModel = dependency
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        // Do any additional setup after loading the view.
+        tableView.register(CustomTableViewCell.self, forCellReuseIdentifier: "Cell")
+
+        dataSource = RxTableViewSectionedReloadDataSource<SectionModel>(
+            configureCell: { _, tableView, indexPath, item in
+                let cell = tableView.dequeueReusableCell(withIdentifier: "Cell",
+                                                         for: IndexPath(row: indexPath.row, section: 0))
+                cell.textLabel?.text = item.0
+                cell.accessoryType = .disclosureIndicator
+
+                return cell
+        }, canEditRowAtIndexPath: { _, _ in
+            return true
+        })
+
+        viewModel.dataRelay.asObservable()
+            .bind(to: tableView.rx.items(dataSource: dataSource))
+            .disposed(by: disposeBag)
+
+        tableView.rx.itemDeleted
+            .subscribe(onNext: { [weak self] indexPath in
+                guard let strongSelf = self else { return }
+
+                // ViewModelにテーブルビューの行を削除操作を伝える
+                Observable.just(indexPath)
+                    .bind(to: strongSelf.viewModel.requestDeleteRecordStream)
+                    .disposed(by: strongSelf.disposeBag)
+            })
+            .disposed(by: disposeBag)
+    }
+}
+```
+
+#### ViewModelの実装
+さて、 `ViewModel` の実装です。  
+
+```objective-c
+// MainViewModel.swift
+import Foundation
+import RxSwift
+import RxCocoa
+
+// Injectableを継承
+final class MainViewModel: Injectable {
+
+    struct Dependency {
+    }
+
+    // MARK: - Properties
+    private let disposeBag = DisposeBag()
+    private var sectionModels: [SectionModel]!
+
+    // MARK: PublishRelays
+    let requestDeleteRecordStream = PublishRelay<IndexPath>()
+
+    // MARK: BehaviorRelays
+    var dataRelay = BehaviorRelay<[SectionModel]>(value: [])
+
+    // MARK: Initial method
+    init(with dependency: Dependency) {
+
+        sectionModels = [SectionModel(items: [("test1", 1), ("test2", 2), ("test3", 3)])]
+
+        // 画面初期描画時に初期設定のsectionModelsを渡す
+        Observable.deferred {() -> Observable<[SectionModel]> in
+            return Observable.just(self.sectionModels)
+            }
+            .bind(to: dataRelay)	// dataRelayにデータを流し込む
+            .disposed(by: disposeBag)
+
+        requestDeleteRecordStream
+            .subscribe(onNext: { [weak self] indexPath in
+                guard let strongSelf = self, let sectionModel = strongSelf.sectionModels.first else { return }
+                var items = sectionModel.items
+                items.remove(at: indexPath.row)
+                strongSelf.sectionModels = [SectionModel(items: items)]
+
+                // dataRelayにデータを流し込む
+                strongSelf.dataRelay.accept(strongSelf.sectionModels)
+            })
+            .disposed(by: disposeBag)
+    }
+}
 ```
 
 ### まとめ
