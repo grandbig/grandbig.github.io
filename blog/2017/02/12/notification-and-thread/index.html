@@ -1,0 +1,569 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Notificationとメインスレッド/サブスレッド - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに 今日は久々にiOS関連の話を書きたいと思います。
+正直なところSwiftを触って思ったのですが、今やXcodeではSwift3が標準装備されているため書き方が変わっており、業務で触らないまでも遅れを取らないように勉強しなきゃな&hellip;なんて感じてしまいました。 本日のお題は
+『 &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2017/02/12/notification-and-thread/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Notificationとメインスレッド/サブスレッド</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-02-12T17:15:00+09:00" pubdate data-updated="true">Feb 12<span>th</span>, 2017</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>今日は久々にiOS関連の話を書きたいと思います。<br/>
+正直なところSwiftを触って思ったのですが、今やXcodeではSwift3が標準装備されているため書き方が変わっており、業務で触らないまでも遅れを取らないように勉強しなきゃな&hellip;なんて感じてしまいました。</p>
+
+<p>本日のお題は<br/>
+『<code>Notification</code>はメインスレッド/サブスレッドのどちらで実行されるのか』<br/>
+という話です。</p>
+
+<p>筆者の理解では、普通に使う限りメインスレッドだと思っていたのですが、「使い方に寄るのでは？」なんて話題が上がったこともあって、調べてみたくなりました。<br/>
+その調べ方と調査結果を書いていきます。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Notificationとは</h3>
+
+<p>まずは、<code>Notification</code>とは何かという話から始めましょう。<br/>
+その名の通り、アプリ内で通知を行う仕組みを実装するために利用します。<br/>
+少し前までは<code>NSNotification</code>という名前でしたので、こちらの名前の方がしっくりくるiOSエンジニアの方々は多いのではないでしょうか。</p>
+
+<p>使い方は非常に簡単です。</p>
+
+<p>１．監視対象のメソッドを登録する</p>
+
+<p><img src="/images/notification_1.png" alt="監視対象のメソッドを登録" /></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 登録時にはaddObserverメソッドを利用する</span>
+</span><span class='line'><span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">addObserver</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="nl">selector:</span> <span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">doSomething</span><span class="p">),</span> <span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>２．監視対象メソッドの呼び出しを要求する</p>
+
+<p><img src="/images/notification_2.png" alt="監視対象メソッドの呼び出し要求" /></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 呼び出し要求時にはpostメソッドを利用する</span>
+</span><span class='line'><span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">post</span><span class="p">(</span><span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>３．監視対象メソッドを実行する</p>
+
+<p><img src="/images/notification_3.png" alt="監視対象メソッドを実行" /></p>
+
+<h3>Notificationとメインスレッド/サブスレッドの調査</h3>
+
+<p>さて、本題に入ります。<br/>
+<code>Notification</code>はメインスレッド/サブスレッドどちらで実行されるのでしょうか。</p>
+
+<h4>普通に呼び出す場合</h4>
+
+<p>まずは特異なことをせず、普通に実行してみます。<br/>
+要件としては下記になります。</p>
+
+<ul>
+<li>アプリ起動時に<code>doSomething</code>メソッドを<code>NotificationCenter</code>に登録する</li>
+<li>ボタンタップ時に<code>doSomething</code>メソッドの呼び出しを要求する</li>
+<li><code>doSomething</code>メソッド内でメインスレッド/サブスレッドの判定処理を実行する</li>
+</ul>
+
+
+<p>ソースコードは下記となります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">addObserver</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="nl">selector:</span> <span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">doSomething</span><span class="p">),</span> <span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">doSomething</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;このメソッドは\(Thread.isMainThread)で動いています。(false: サブスレッド, true: メインスレッド)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">checkThread</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">post</span><span class="p">(</span><span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>結果は「呼び出し先の処理実行は <strong>メインスレッド</strong> 」となりました。</p>
+
+<h4>GCDを利用して、サブスレッド内でメソッドを呼び出す</h4>
+
+<p>次はサブスレッドで監視対象メソッドの呼び出し要求を実施します。<br/>
+ソースコードは下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">addObserver</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="nl">selector:</span> <span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">doSomething</span><span class="p">),</span> <span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">doSomething</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;このメソッドは\(Thread.isMainThread)で動いています。(0: サブスレッド, 1: メインスレッド)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">checkThread</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">DispatchQueue</span><span class="p">.</span><span class="n">global</span><span class="p">().</span><span class="n">async</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">post</span><span class="p">(</span><span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>結果は「呼び出し先の処理実行は <strong>サブスレッド</strong> 」となりました。</p>
+
+<h4>GCDを利用して、メインスレッド内でメソッドを呼び出す</h4>
+
+<p>今度はGCDを利用したメインスレッド内で監視対象メソッドの呼び出し要求を実施してみます。<br/>
+ソースコードは下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span><span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">addObserver</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="nl">selector:</span> <span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">doSomething</span><span class="p">),</span> <span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">doSomething</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;このメソッドは\(Thread.isMainThread)で動いています。(0: サブスレッド, 1: メインスレッド)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">checkThread</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">DispatchQueue</span><span class="p">.</span><span class="n">global</span><span class="p">().</span><span class="n">async</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">DispatchQueue</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">async</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">NotificationCenter</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">post</span><span class="p">(</span><span class="nl">name:</span> <span class="n">NSNotification</span><span class="p">.</span><span class="n">Name</span><span class="p">(</span><span class="s">&quot;SomeNotification&quot;</span><span class="p">),</span> <span class="nl">object:</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>結果は「呼び出し先の処理実行は <strong>メインスレッド</strong> 」となりました。</p>
+
+<h3>まとめ</h3>
+
+<p>調査結果をまとめると次の通りです。</p>
+
+<p>「要求 <strong>元</strong> と <strong>同じスレッド</strong> で監視対象メソッドは実行されます。」<br/>
+※登録時(<code>addObserver</code>)のスレッドは無関係です。</p>
+
+<p>さて如何でしたでしょうか？<br/>
+普段考えずに利用している様々な処理が実際にはどのスレッドで実行されるのか、どういった書き方をするとどのスレッドで実行されうるのか調べてみることも面白いですね。<br/>
+ふとしたときにまた調べてみようと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-02-12T17:15:00+09:00" pubdate data-updated="true">Feb 12<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/swift/'>swift</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2017/02/12/notification-and-thread/" data-via="" data-counturl="http://grandbig.github.io/blog/2017/02/12/notification-and-thread/" >Tweet</a>
+  
+  <a href="http://b.hatena.ne.jp/entry/http://grandbig.github.io/blog/2017/02/12/notification-and-thread/" class="hatena-bookmark-button" 
+	  data-hatena-bookmark-layout="standard" title="このエントリーをはてなブックマークに追加">
+	  <img src="http://b.st-hatena.com/images/entry-button/button-only.gif" 
+	  alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;" />
+  </a>
+  <script type="text/javascript" src="http://b.st-hatena.com/js/bookmark_button.js" charset="utf-8" async="async"></script>
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/02/04/react-animation-1/" title="Previous Post: iOSエンジニアが苦しんだReactアニメーション">&laquo; iOSエンジニアが苦しんだReactアニメーション</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/02/13/docker-for-mac-1/" title="Next Post: Docker for Macをインストールしよう！">Docker for Macをインストールしよう！ &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/01/22/mycareer-3/">人生2回目の転職を振り返る</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/30/rx-uitableview-crash/">This is a feature to warn you that there is already a delegate の対応 ~ RxSwiftでUITableViewのリロード時にクラッシュする問題にぶつかった ~</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/28/rxdatasources/">RxDataSourcesを使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/22/team-develop/">アーキテクチャの選定ポエム〜選定って難しい〜</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/12/personal-develop-footstepmeter/">5年前に初めて個人開発したアプリを再構築している話</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (185)</a></li><li><a href='/blog/categories/swift'>swift (89)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/rx'>rx (9)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/redux'>redux (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2017/02/12/notification-and-thread/';
+        var disqus_url = 'http://grandbig.github.io/blog/2017/02/12/notification-and-thread/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,668 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>iOSでGoogle OAuth認証がしたい〜OAuth2Clientを使う〜 - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="OAuth2Clientを利用したOAuth認証をやってみる 前回はgtm-oauth2ライブラリを利用したOAuth認証について説明しました。
+このライブラリは非常に使いやすく、WebViewの実装もやってくれるので楽です。
+ただ、１つだけ気になるのが、『 &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2014/07/17/ios-google-oauth2-2/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">iOSでGoogle OAuth認証がしたい〜OAuth2Clientを使う〜</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-07-17T00:08:00+09:00" pubdate data-updated="true">Jul 17<span>th</span>, 2014</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>OAuth2Clientを利用したOAuth認証をやってみる</h3>
+
+<p>前回は<strong>gtm-oauth2</strong>ライブラリを利用したOAuth認証について説明しました。<br/>
+このライブラリは非常に使いやすく、WebViewの実装もやってくれるので楽です。<br/>
+ただ、１つだけ気になるのが、『このアプリが次のリクエストを許可しています』画面で<strong>承認するボタン</strong>を押した後に下記のような画面が出てしまうことです。<br/>
+<img src="/images/goauth2-1.png" alt="気になる画面" /><br/>
+これは格好悪いですね&hellip;。できれば、この画面を出したくない&hellip;。<br/>
+そもそもこの画面が表示される理由は、redirectURIに<strong>urn:ietf:wg:oauth:2.0:oob</strong>を設定した場合だそうです。<br/>
+詳しくは<a href="http://d.hatena.ne.jp/iad_otomamay/20130213/1360753743">山本大＠クロノスの日記 &ndash; GoogleAPI利用のためにOAuth2.0を使う</a>を確認してください。<br/>
+gtm-oauth2ではredirectURIを開発者側で設定することなく、ライブラリが自動でやってくれるため、どうにもできないんですね&hellip;。<br/>
+ま、ドメインのあるアドレスも持ってないですけど&hellip;。</p>
+
+<p>そこで、<strong>OAuth2Client</strong>を使ってみることにしました。</p>
+
+<!--more-->
+
+
+<h4>OAuth2Clientを使おう！！</h4>
+
+<p>CocoaPodsを使った導入方法から説明します。(CocoaPodsインストールしている前提です。)<br/>
+1: .xcodeprojファイルと同じ階層にPodfileを作成します。<br/>
+2: Podfileの中身は『pod &lsquo;NXOAuth2Client&rsquo;, &lsquo;~>1.2.2&#8217;』の１行のみです。<br/>
+3: pod install<br/>
+4: 作成された.xcworkspaceファイルを開く</p>
+
+<p>たったこれだけのことでOAuth2Clientを使う準備が整いました。</p>
+
+<p>では、続けて、画面を追加していきましょう。<br/>
+今回は下記2つのUIViewControllerを追加しました。<br/>
+・OAuth認証用の画面<br/>
+・OAuth認証後に表示するメイン画面<br/>
+<img src="/images/goauth2-2.png" alt="画面構成" /></p>
+
+<p>OAuth認証後に表示するメイン画面はアプリの用途によって異なると思うので、割愛して、OAuth認証用の画面について説明します。</p>
+
+<p>LoginViewController.mファイル</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#import "LoginViewController.h"
+</span><span class='line'>#import "NXOAuth2.h"
+</span><span class='line'>
+</span><span class='line'>// OAuthのConfigureに必要な値の設定
+</span><span class='line'>static NSString *const clientId = @"Google Consoleで登録したクライアントID";
+</span><span class='line'>static NSString *const clientSecret = @"Google Consoleで登録したクライアントシークレット";
+</span><span class='line'>static NSString *const redirectURI = @"urn:ietf:wg:oauth:2.0:oob";
+</span><span class='line'>static NSString *const authorizationURL = @"https://accounts.google.com/o/oauth2/auth";
+</span><span class='line'>static NSString *const tokenURL = @"https://accounts.google.com/o/oauth2/token";
+</span><span class='line'>static NSString *const scope = @"https://www.googleapis.com/auth/userinfo.profile";
+</span><span class='line'>static NSString *const accountType = @"Google API";
+</span><span class='line'>static NSString *const keyChainGroup = @"Google";
+</span><span class='line'>static NSString *const successPagePrefix = @"Success";
+</span><span class='line'>static NSString *const hasLoggedIn = @"hasLoggedIn";
+</span><span class='line'>
+</span><span class='line'>@interface LoginViewController () &lt;UIWebViewDelegate&gt;
+</span><span class='line'>@property (weak, nonatomic) IBOutlet UIWebView *loginWebView;
+</span><span class='line'>
+</span><span class='line'>@end
+</span><span class='line'>
+</span><span class='line'>&lt;省略&gt;
+</span><span class='line'>
+</span><span class='line'>- (void)viewDidLoad
+</span><span class='line'>{
+</span><span class='line'>  [super viewDidLoad];
+</span><span class='line'>
+</span><span class='line'>  // WebViewのDelegate Protocolを利用するために設定
+</span><span class='line'>  self.loginWebView.delegate = self;
+</span><span class='line'>
+</span><span class='line'>  // OAuth認証の処理
+</span><span class='line'>  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+</span><span class='line'>  BOOL flag = [defaults boolForKey:hasLoggedIn];
+</span><span class='line'>
+</span><span class='line'>  if(!flag) {
+</span><span class='line'>      // 一度もOAuth認証を通っていない場合
+</span><span class='line'>      [self setupOAuth2AccountStore];
+</span><span class='line'>      [self requestOAuth2Access];
+</span><span class='line'>  } else {
+</span><span class='line'>      // 一度はOAuth認証を通した場合
+</span><span class='line'>      [self requestOAuth2ProtectedDetails];
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>- (void)setupOAuth2AccountStore
+</span><span class='line'>{
+</span><span class='line'>  // OAuth認証のための準備。各パラメータ値を設定
+</span><span class='line'>  [[NXOAuth2AccountStore sharedStore] setClientID:clientId
+</span><span class='line'>                                          secret:clientSecret
+</span><span class='line'>                                           scope:[NSSet setWithObject:scope]
+</span><span class='line'>                                authorizationURL:[NSURL URLWithString:authorizationURL]
+</span><span class='line'>                                        tokenURL:[NSURL URLWithString:tokenURL]
+</span><span class='line'>                                     redirectURL:[NSURL URLWithString:redirectURI]
+</span><span class='line'>                                   keyChainGroup:keyChainGroup
+</span><span class='line'>                                  forAccountType:accountType];
+</span><span class='line'>  
+</span><span class='line'>  // OAuth認証が成功したときに受け取るNotification
+</span><span class='line'>  [[NSNotificationCenter defaultCenter] addObserverForName:NXOAuth2AccountStoreAccountsDidChangeNotification
+</span><span class='line'>                                                    object:[NXOAuth2AccountStore sharedStore]
+</span><span class='line'>                                                     queue:nil
+</span><span class='line'>                                                usingBlock:^(NSNotification *aNotification){
+</span><span class='line'>                                                    if (aNotification.userInfo) {
+</span><span class='line'>                                                      NSLog(@"Success!! We have an access token.");
+</span><span class='line'>                                                      NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+</span><span class='line'>                                                      [defaults setBool:YES forKey:hasLoggedIn];
+</span><span class='line'>                                                      [self requestOAuth2ProtectedDetails];
+</span><span class='line'>                                                    } else {
+</span><span class='line'>                                                      NSLog(@"Success!! We lost an access token.");
+</span><span class='line'>                                                    }
+</span><span class='line'>                                                }];
+</span><span class='line'>
+</span><span class='line'>  // OAuth認証に失敗したときに受け取るNotification
+</span><span class='line'>  [[NSNotificationCenter defaultCenter] addObserverForName:NXOAuth2AccountStoreDidFailToRequestAccessNotification
+</span><span class='line'>                                                    object:[NXOAuth2AccountStore sharedStore]
+</span><span class='line'>                                                     queue:nil
+</span><span class='line'>                                                usingBlock:^(NSNotification *aNotification){
+</span><span class='line'>                                                    NSError *error = [aNotification.userInfo objectForKey:NXOAuth2AccountStoreErrorKey];
+</span><span class='line'>                                                    NSLog(@"error: %@", error.localizedDescription);
+</span><span class='line'>                                                }];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// Googleログイン画面をUIWebViewに表示する処理
+</span><span class='line'>- (void)requestOAuth2Access
+</span><span class='line'>{
+</span><span class='line'>  [[NXOAuth2AccountStore sharedStore] requestAccessToAccountWithType:accountType
+</span><span class='line'>                                 withPreparedAuthorizationURLHandler:^(NSURL *preparedURL){
+</span><span class='line'>                                     [self.loginWebView loadRequest:[NSURLRequest requestWithURL:preparedURL]];
+</span><span class='line'>                                 }];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// アクセストークンやリフレッシュトークンを取得するための処理
+</span><span class='line'>- (void)handleOAuth2AccessResult:(NSString *)accessResult
+</span><span class='line'>{
+</span><span class='line'>  BOOL success = [accessResult rangeOfString:successPagePrefix options:NSCaseInsensitiveSearch].location != NSNotFound;
+</span><span class='line'>
+</span><span class='line'>  if(success) {
+</span><span class='line'>      // OAuth認証の画面で承認するを選択した場合
+</span><span class='line'>      NSString * arguments = accessResult;
+</span><span class='line'>      if ([arguments hasPrefix:successPagePrefix]) {
+</span><span class='line'>          arguments = [arguments substringFromIndex:successPagePrefix.length + 1];
+</span><span class='line'>      }
+</span><span class='line'>
+</span><span class='line'>      NSString *redirectURL = [NSString stringWithFormat:@"%@?%@", redirectURI, arguments];
+</span><span class='line'>
+</span><span class='line'>      [NXOAuth2AccountStore sharedStore] handleRedirectURL:[NSURL URLWithString:redirectURL]];]
+</span><span class='line'>  } else {
+</span><span class='line'>      // OAuth認証の画面で承認しなかった場合
+</span><span class='line'>      // 再度、Googleログインページに遷移させる
+</span><span class='line'>      [self requestOAuth2Access];
+</span><span class='line'>  }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>// OAuth認証後にユーザ情報取得のAPIを投げる処理
+</span><span class='line'>- (void)requestOAuth2ProtectedDetails
+</span><span class='line'>{
+</span><span class='line'>  NXOAuth2AccountStore *store = [NXOAuth2AccountStore sharedStore];
+</span><span class='line'>  NSArray *accounts = [store accountsWithAccountType:accountType];
+</span><span class='line'>
+</span><span class='line'>  [NXOAuth2Request performMethod:@"GET"
+</span><span class='line'>                      onResource:[NSURL URLWithString:@"https://www.googleapis.com/oauth2/v1/userinfo"]
+</span><span class='line'>                 usingParameters:nil
+</span><span class='line'>                     withAccount:accounts[0]
+</span><span class='line'>             sendProgressHandler:^(unsigned long long bytesSend, unsigned long long bytesTotal) {
+</span><span class='line'>             }
+</span><span class='line'>                 responseHandler:^(NSURLResponse *response, NSData *responseData, NSError *error){
+</span><span class='line'>                     if (responseData) {
+</span><span class='line'>                         NSError *error;
+</span><span class='line'>                         NSDictionary *userInfo = [NSJSONSerialization JSONObjectWithData:responseData options:NSJSONReadingMutableContainers error:&error];
+</span><span class='line'>                         NSLog(@"%@", userInfo);
+</span><span class='line'>                     }
+</span><span class='line'>                     if(error) {
+</span><span class='line'>                         NSLog(@"%@", error.localizedDescription);
+</span><span class='line'>                     }
+</span><span class='line'>                 }];
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>#pragma mark - UIWebViewDelegate
+</span><span class='line'>// ページが読み終わった後に処理
+</span><span class='line'>- (void)webViewDidFinishLoad:(UIWebView *)webView
+</span><span class='line'>{
+</span><span class='line'>  if ([webView.request.URL.absoluteString rangeOfString:authorizationURL options:NSCaseInsensitiveSearch].location != NSNotFound) {
+</span><span class='line'>      self.loginWebView.hidden = NO;
+</span><span class='line'>  } else {
+</span><span class='line'>      self.loginWebView.hidden = YES;
+</span><span class='line'>
+</span><span class='line'>      NSString *pageTitle = [webView stringByEvaluatingJavaScriptFromString:@"document.title"];
+</span><span class='line'>      NSLog(@"pageTitle: %@", pageTitle);
+</span><span class='line'>
+</span><span class='line'>      [self handleOAuth2AccessResult:pageTitle];
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>重要なことはwebViewDidFinishLoadの中で見せたくない画面を隠せるように実装していることです。<br/>
+これがgtm-oauth2ライブラリではできなかったことですね。<br/>
+また、gtm-oauth2ライブラリと同じく、OAuth2Clientライブラリも「アクセストークンが期限切れになった場合にリフレッシュトークンを投げることで新しいアクセストークンを取得する処理」を実装しています。そのため、自身で実装するよりも工数を削減することができます。</p>
+
+<p>Googleだけでなく、twitter, facebookなどのOAuth認証でも利用できますので、ぜひお試しあれ！！</p>
+
+<p>参考<br/>
+・<a href="http://www.idmworks.com/blog/entry/getting-started-with-oauth2client-on-ios">IDMWORKS : BLOG</a></p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-07-17T00:08:00+09:00" pubdate data-updated="true">Jul 17<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/oauth2/'>oauth2</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2014/07/17/ios-google-oauth2-2/" data-via="" data-counturl="http://grandbig.github.io/blog/2014/07/17/ios-google-oauth2-2/" >Tweet</a>
+  
+  <a href="http://b.hatena.ne.jp/entry/http://grandbig.github.io/blog/2014/07/17/ios-google-oauth2-2/" class="hatena-bookmark-button" 
+	  data-hatena-bookmark-layout="standard" title="このエントリーをはてなブックマークに追加">
+	  <img src="http://b.st-hatena.com/images/entry-button/button-only.gif" 
+	  alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;" />
+  </a>
+  <script type="text/javascript" src="http://b.st-hatena.com/js/bookmark_button.js" charset="utf-8" async="async"></script>
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/07/13/ios-google-oauth2/" title="Previous Post: iOSでGoogle OAuth認証がしたい">&laquo; iOSでGoogle OAuth認証がしたい</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/08/02/didupdatetolocation3/" title="Next Post: iOS7とNSTimerと位置情報の取得について">iOS7とNSTimerと位置情報の取得について &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/01/22/mycareer-3/">人生2回目の転職を振り返る</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/30/rx-uitableview-crash/">This is a feature to warn you that there is already a delegate の対応 ~ RxSwiftでUITableViewのリロード時にクラッシュする問題にぶつかった ~</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/28/rxdatasources/">RxDataSourcesを使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/22/team-develop/">アーキテクチャの選定ポエム〜選定って難しい〜</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/12/personal-develop-footstepmeter/">5年前に初めて個人開発したアプリを再構築している話</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (185)</a></li><li><a href='/blog/categories/swift'>swift (89)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/rx'>rx (9)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/redux'>redux (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2014/07/17/ios-google-oauth2-2/';
+        var disqus_url = 'http://grandbig.github.io/blog/2014/07/17/ios-google-oauth2-2/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

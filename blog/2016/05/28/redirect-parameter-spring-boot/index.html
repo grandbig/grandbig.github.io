@@ -1,0 +1,528 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Spring Bootでリダイレクト先にパラメータを渡す方法 - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="RedirectAttributesを使ってみよう！ さて、本日は久々にSpring Bootの話です。 皆さんはWebアプリケーションを作る中で、「リダイレクト先にパラメータを渡したい！」なんてことはありませんでしょうか？
+筆者は先日、そのような状況に鉢合わせたのですが、 &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Spring Bootでリダイレクト先にパラメータを渡す方法</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-05-28T20:39:00+09:00" pubdate data-updated="true">May 28<span>th</span>, 2016</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h4>RedirectAttributesを使ってみよう！</h4>
+
+<p>さて、本日は久々にSpring Bootの話です。</p>
+
+<p>皆さんはWebアプリケーションを作る中で、「リダイレクト先にパラメータを渡したい！」なんてことはありませんでしょうか？<br/>
+筆者は先日、そのような状況に鉢合わせたのですが、ググってみてもなかなか求めている答えが見つからず、少々悩んでしまいました。<br/>
+GETリクエストであればリダイレクト後にURLからリクエストパラメータが取得できますが、<br/>
+POSTリクエストやURLにリクエストパラメータを表示するわけにいかない仕様の場合はそうもいきません。</p>
+
+<p>そんなときに役に立つのが<code>RedirectAttributes</code>です。<br/>
+では、早速、使い方を見ていきましょう。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+<!-- more -->
+
+
+<h4>リダイレクト先に文字列を送る</h4>
+
+<p>まずは単純な例から見ていきましょう。<br/>
+下記はリダイレクト先に文字列をパラメータとして渡す例です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// HelloController</span>
+</span><span class='line'><span class="nd">@Controller</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">HelloController</span> <span class="o">{</span>
+</span><span class='line'>  <span class="nd">@RequestMappinf</span><span class="o">(</span><span class="n">value</span> <span class="o">=</span> <span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="n">method</span> <span class="o">=</span> <span class="n">RequestMethod</span><span class="o">.</span><span class="na">POST</span><span class="o">)</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">String</span> <span class="nf">form</span><span class="o">(</span><span class="n">RedirectAttributes</span> <span class="n">redirectAttributes</span><span class="o">,</span> <span class="nd">@RequestParam</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">)</span> <span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      
+</span><span class='line'>      <span class="n">redirectAttributes</span><span class="o">.</span><span class="na">addFlashSttribute</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">,</span> <span class="n">name</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">return</span> <span class="s">&quot;redirect:/redirectSample&quot;</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">&quot;/redirectSample&quot;</span><span class="o">)</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">String</span> <span class="nf">sample</span><span class="o">(</span><span class="nd">@ModelAttributes</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">)</span> <span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      
+</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;name: &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">return</span> <span class="s">&quot;sample&quot;</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>実際に動かしてみれば、正しくログが出力されることを確認できるでしょう。<br/>
+上記で<code>return "sample";</code>としているのは単なる例なので、適切なtemplateを指定してあげてください。</p>
+
+<h4>リダイレクト先にオブジェクトを送る</h4>
+
+<p>続いて、パラメータをまとめて送るパターンです。<br/>
+今回は下記のように定義された<code>MyData</code>を送ってみましょう。<br/>
+※ソースを簡単にするために<code>build.gradle</code>に<code>compile("org.projectlombok:lombok:1.16.6")</code>を設定して<code>@Data</code>を利用しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// MyData.java</span>
+</span><span class='line'><span class="nd">@Data</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyData</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">private</span> <span class="n">String</span> <span class="n">name</span><span class="o">;</span>
+</span><span class='line'>  <span class="kd">private</span> <span class="n">String</span> <span class="n">memo</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>では、実際にパラメータを送ってみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// HelloController</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@Controller</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">HelloController</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@RequestMapping</span><span class="o">(</span><span class="n">value</span> <span class="o">=</span> <span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="n">method</span> <span class="o">=</span> <span class="n">RequestMethod</span><span class="o">.</span><span class="na">POST</span><span class="o">)</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">String</span> <span class="nf">form</span><span class="o">(</span><span class="n">RedirectAttributes</span> <span class="n">redirectAttributes</span><span class="o">,</span> <span class="nd">@RequestParam</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">)</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="nd">@RequestParam</span><span class="o">(</span><span class="s">&quot;memo&quot;</span><span class="o">)</span> <span class="n">String</span> <span class="n">memo</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      
+</span><span class='line'>      <span class="c1">// MyDataについては後述します</span>
+</span><span class='line'>      <span class="n">MyData</span> <span class="n">mydata</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MyData</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">memo</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">ModelMap</span> <span class="n">modelMap</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ModelMap</span><span class="o">();</span>
+</span><span class='line'>      <span class="n">modelMap</span><span class="o">.</span><span class="na">addAttribute</span><span class="o">(</span><span class="s">&quot;mydata&quot;</span><span class="o">,</span> <span class="n">mydata</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">redirectAttributes</span><span class="o">.</span><span class="na">addFlashAttribute</span><span class="o">(</span><span class="s">&quot;model&quot;</span><span class="o">,</span> <span class="n">modelMap</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">return</span> <span class="s">&quot;redirect:/redirectSample&quot;</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">&quot;/redirectSample&quot;</span><span class="o">)</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">String</span> <span class="nf">sample</span><span class="o">(</span><span class="nd">@ModelAttribute</span><span class="o">(</span><span class="s">&quot;model&quot;</span><span class="o">)</span><span class="n">ModelMap</span> <span class="n">modelMap</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      
+</span><span class='line'>      <span class="n">MyData</span> <span class="n">mydata</span> <span class="o">=</span> <span class="n">modelMap</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="s">&quot;mydata&quot;</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">name</span> <span class="o">=</span> <span class="n">mydata</span><span class="o">.</span><span class="na">getName</span><span class="o">();</span>
+</span><span class='line'>      <span class="n">String</span> <span class="n">memo</span> <span class="o">=</span> <span class="n">mydata</span><span class="o">.</span><span class="na">getMemo</span><span class="o">();</span>
+</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;name: &quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&quot;, memo: &quot;</span> <span class="o">+</span> <span class="n">memo</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">return</span> <span class="s">&quot;sample&quot;</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>オブジェクトとしてパラメータを送るには<code>ModelMap</code>に一度格納する必要があります。<br/>
+パラメータを受け取ったあとに型変換して取り出せばOKです。</p>
+
+<h4>RedirectAttributesにおけるaddAttributeとaddFlashAttributeの違い</h4>
+
+<p>さて、今回は<code>RedirectAttributes</code>の<code>addFlashAttribute</code>を利用しましたが、<code>RedirectAttributes</code>には<code>addAttribute</code>というメソッドも存在します。<br/>
+ではなぜ<code>addFlashAttribute</code>を利用したのか参考までに書いておきます。</p>
+
+<h5>RedirectAttributesのaddAttributeはリダイレクト先に文字列としてパラメータを送る</h5>
+
+<p>大きな違いは<code>addFlashAttribute</code>のように<code>ModelMap</code>型でパラメータを送れません。<br/>
+よって、複数のパラメータを送るには1つずつパラメータをセットするしか方法がありません。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// addAttributeの例</span>
+</span><span class='line'><span class="n">redirectAttributes</span><span class="o">.</span><span class="na">addAttribute</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">,</span> <span class="s">&quot;hogehoge&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">redirectAttributes</span><span class="o">.</span><span class="na">addAttribute</span><span class="o">(</span><span class="s">&quot;memo&quot;</span><span class="o">,</span> <span class="s">&quot;fugafuga&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>RedirectAttributesのaddAttributeはリダイレクト先でのパラメータの受取り方が異なる</h5>
+
+<p>こちらも大きな違いとなりますが、<code>addFlashAttribute</code>のときのように<code>@ModelAttribute</code>を使ってパラメータを受け取ることができません。<br/>
+<code>addAttribute</code>の場合、<code>@RequestParameter</code>を使ってパラメータを受取ります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// addAttributeの例</span>
+</span><span class='line'><span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">&quot;/redirectSample&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">String</span> <span class="nf">sample</span><span class="o">(</span><span class="nd">@RequestParam</span><span class="o">(</span><span class="s">&quot;name&quot;</span><span class="o">)</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="nd">@RequestParam</span><span class="o">(</span><span class="s">&quot;memo&quot;</span><span class="o">)</span> <span class="n">String</span> <span class="n">memo</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="o">...</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>リロード時の挙動が異なる</h5>
+
+<p>最後になりますが、<br/>
+<code>addAttribute</code>と<code>addFlashAttribute</code>ではリダイレクト後にリロードすると挙動が異なります。<br/>
+<code>addAttribute</code>ではGETリクエストとしてURLの末尾に<code>?name=hogehoge&amp;memo=fugafuga</code>という形でパラメータが渡されるため、リロードをしてもパラメータを受け取ることができます。</p>
+
+<p>しかし、<code>addFlashAttribute</code>では<code>flashMap</code>を利用したパラメータ渡しとなっています。<br/>
+よって、リダイレクト後は<code>flashMap</code>からパラメータが残らないため、何もパラメータを受け取ることはできなくなります。</p>
+
+<p>いかがでしたでしょうか？<br/>
+筆者にとってもSpring Bootに慣れない日々が続きますが、気づいたことや学んだことについてはブログにまとめていきたと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-05-28T20:39:00+09:00" pubdate data-updated="true">May 28<span>th</span>, 2016</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/java/'>java</a>, <a class='category' href='/blog/categories/springboot/'>springboot</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot/" data-via="" data-counturl="http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot/" >Tweet</a>
+  
+  <a href="http://b.hatena.ne.jp/entry/http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot/" class="hatena-bookmark-button" 
+	  data-hatena-bookmark-layout="standard" title="このエントリーをはてなブックマークに追加">
+	  <img src="http://b.st-hatena.com/images/entry-button/button-only.gif" 
+	  alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;" />
+  </a>
+  <script type="text/javascript" src="http://b.st-hatena.com/js/bookmark_button.js" charset="utf-8" async="async"></script>
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/05/15/bolts-swift/" title="Previous Post: Bolts-Swiftを使ってみよう！">&laquo; Bolts-Swiftを使ってみよう！</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/06/04/cocoapods-v1-dot-0/" title="Next Post: CocoaPods v1.0.0のメモ">CocoaPods v1.0.0のメモ &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/01/22/mycareer-3/">人生2回目の転職を振り返る</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/30/rx-uitableview-crash/">This is a feature to warn you that there is already a delegate の対応 ~ RxSwiftでUITableViewのリロード時にクラッシュする問題にぶつかった ~</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/28/rxdatasources/">RxDataSourcesを使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/22/team-develop/">アーキテクチャの選定ポエム〜選定って難しい〜</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/12/personal-develop-footstepmeter/">5年前に初めて個人開発したアプリを再構築している話</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (185)</a></li><li><a href='/blog/categories/swift'>swift (89)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/rx'>rx (9)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/redux'>redux (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot/';
+        var disqus_url = 'http://grandbig.github.io/blog/2016/05/28/redirect-parameter-spring-boot/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

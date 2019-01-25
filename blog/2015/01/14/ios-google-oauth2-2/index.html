@@ -1,0 +1,608 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>gtm-oauth2を使ってGoogle APIをiOSで叩きたい！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="iOSネイティブアプリでGoogle APIを叩く方法 以前、 gtm-oauth2 を使ったiOSでのOAuth2認証について説明しました。
+(iOSでGoogle OAuth認証がしたいを参照のこと)
+今回はOAuth2認証の後の話、そうGoogle &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2015/01/14/ios-google-oauth2-2/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">gtm-oauth2を使ってGoogle APIをiOSで叩きたい！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-01-14T00:09:00+09:00" pubdate data-updated="true">Jan 14<span>th</span>, 2015</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h4>iOSネイティブアプリでGoogle APIを叩く方法</h4>
+
+<p>以前、 <strong>gtm-oauth2</strong> を使ったiOSでのOAuth2認証について説明しました。<br/>
+(<a href="http://grandbig.github.io/blog/2014/07/13/ios-google-oauth2/">iOSでGoogle OAuth認証がしたい</a>を参照のこと)<br/>
+今回はOAuth2認証の後の話、そうGoogle APIを叩くメソッドの実装について説明します。</p>
+
+<h5>ユーザ情報の取得</h5>
+
+<p>まずは、ユーザ情報の取得を実装します。<br/>
+下記のように、画面上のGETボタンをタップしたときにユーザ情報を取得するという処理を実装してみます。</p>
+
+<!-- more -->
+
+
+<p><img src="/images/gtm-oauth2-1.png" alt="GETボタンでユーザ情報を取得" /></p>
+
+<p>念のため、OAuth2認証の処理は下記になります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.m</span>
+</span><span class='line'><span class="cp">#import &quot;ViewController.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;GTMOAuth2Authentication.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;GTMOAuth2ViewControllerTouch.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">clientId</span> <span class="o">=</span> <span class="s">@&quot;********&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">clientSecret</span> <span class="o">=</span> <span class="s">@&quot;*********&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">redirectURI</span> <span class="o">=</span> <span class="s">@&quot;urn:ietf:wg:oauth:2.0:oob&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">scope</span> <span class="o">=</span> <span class="s">@&quot;https://www.googleapis.com/auth/plus.login https://www.googleapis.com/auth/userinfo.email&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">kKeychainItemName</span> <span class="o">=</span> <span class="s">@&quot;Google&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">NSString</span> <span class="o">*</span><span class="k">const</span> <span class="n">hasLoggedIn</span> <span class="o">=</span> <span class="s">@&quot;hasLoggedIn&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">ViewController</span> <span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">retain</span><span class="p">)</span> <span class="n">GTMOAuth2Authentication</span> <span class="o">*</span><span class="n">auth</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">strong</span><span class="p">)</span> <span class="n">NSString</span> <span class="o">*</span><span class="n">accessToken</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">-</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="nf">startLogin</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span> <span class="err">省略</span> <span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// OAuth認証の開始</span>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">startLogin</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="c1">// 既に認証をしたかどうか確認</span>
+</span><span class='line'>  <span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+</span><span class='line'>  <span class="kt">BOOL</span> <span class="n">hasLoggedin</span> <span class="o">=</span> <span class="p">[</span><span class="n">defaults</span> <span class="nl">boolForKey:</span><span class="n">hasLoggedIn</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">hasLoggedin</span> <span class="o">==</span> <span class="n">YES</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 認証済みの場合</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">auth</span> <span class="o">=</span> <span class="p">[</span><span class="n">GTMOAuth2ViewControllerTouch</span> <span class="nl">authForGoogleFromKeychainForName:</span><span class="n">kKeychainItemName</span>
+</span><span class='line'>                                                                        <span class="nl">clientID:</span><span class="n">clientId</span>
+</span><span class='line'>                                                                    <span class="nl">clientSecret:</span><span class="n">clientSecret</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// アクセストークンの取得</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span> <span class="n">authorizeRequest</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 未認証の場合</span>
+</span><span class='line'>      <span class="n">GTMOAuth2ViewControllerTouch</span> <span class="o">*</span><span class="n">gvc</span> <span class="o">=</span> <span class="p">[[</span><span class="n">GTMOAuth2ViewControllerTouch</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithScope:</span><span class="n">scope</span>
+</span><span class='line'>                                                                                     <span class="nl">clientID:</span><span class="n">clientId</span>
+</span><span class='line'>                                                                                 <span class="nl">clientSecret:</span><span class="n">clientSecret</span>
+</span><span class='line'>                                                                             <span class="nl">keychainItemName:</span><span class="n">kKeychainItemName</span>
+</span><span class='line'>                                                                                     <span class="nl">delegate:</span><span class="n">self</span>
+</span><span class='line'>                                                                             <span class="nl">finishedSelector:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">viewController:finishedWithAuth:error:</span><span class="p">)];</span>
+</span><span class='line'>      <span class="c1">// 認証画面の表示</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span> <span class="nl">presentViewController:</span><span class="n">gvc</span> <span class="nl">animated:</span><span class="n">YES</span> <span class="nl">completion:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 認証後に実行する処理</span>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nl">viewController:</span><span class="p">(</span><span class="n">GTMOAuth2ViewControllerTouch</span> <span class="o">*</span><span class="p">)</span><span class="n">viewController</span>
+</span><span class='line'>      <span class="nl">finishedWithAuth:</span><span class="p">(</span><span class="n">GTMOAuth2Authentication</span> <span class="o">*</span><span class="p">)</span><span class="n">auth</span>
+</span><span class='line'>               <span class="nl">error:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="p">)</span><span class="n">error</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">error</span> <span class="o">!=</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 認証失敗</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 認証成功</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">auth</span> <span class="o">=</span> <span class="n">auth</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">NSUserDefaults</span> <span class="o">*</span><span class="n">defaults</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">defaults</span> <span class="nl">setBool:</span><span class="n">YES</span> <span class="nl">forKey:</span><span class="n">hasLoggedIn</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">defaults</span> <span class="n">synchronize</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// アクセストークンの取得</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">self</span> <span class="n">authorizeRequest</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="c1">// 認証画面を閉じる</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">viewController</span> <span class="nl">dismissViewControllerAnimated:</span><span class="n">YES</span> <span class="nl">completion:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// アクセストークンの取得処理</span>
+</span><span class='line'><span class="o">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">authorizeRequest</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">NSMutableURLRequest</span> <span class="o">*</span><span class="n">req</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSMutableURLRequest</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithURL:</span><span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">.</span><span class="n">tokenURL</span><span class="p">];</span>
+</span><span class='line'>  <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">auth</span> <span class="nl">authorizeRequest:</span><span class="n">req</span> <span class="nl">completionHandler:</span><span class="o">^</span><span class="p">(</span><span class="n">NSError</span> <span class="o">*</span><span class="n">error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%@&quot;</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">.</span><span class="n">accessToken</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">self</span><span class="p">.</span><span class="n">accessToken</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">auth</span><span class="p">.</span><span class="n">accessToken</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これにユーザ情報の取得処理を実装します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.m</span>
+</span><span class='line'><span class="c1">// GETボタンをタップしてユーザ情報を取得</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="kt">IBAction</span><span class="p">)</span><span class="nf">getBtnAction:</span><span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nv">sender</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">NSError</span> <span class="o">*</span><span class="n">err</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">NSDictionary</span> <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span> <span class="nl">httpGetRequest:</span><span class="s">@&quot;https://www.googleapis.com/oauth2/v2/userinfo&quot;</span> <span class="nl">timeout:</span><span class="mi">10</span> <span class="nl">error:</span><span class="o">&amp;</span><span class="n">err</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;res: %@&quot;</span><span class="p">,</span> <span class="n">res</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// GETリクエスト処理</span>
+</span><span class='line'><span class="k">-</span> <span class="p">(</span><span class="n">NSDictionary</span> <span class="o">*</span><span class="p">)</span><span class="nf">httpGetRequest:</span><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">url</span>
+</span><span class='line'>                       <span class="nf">timeout:</span><span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nv">timeout</span>
+</span><span class='line'>                         <span class="nf">error:</span><span class="p">(</span><span class="n">NSError</span> <span class="o">**</span><span class="p">)</span><span class="nv">error</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">NSDictionary</span> <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">url</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">NSError</span> <span class="o">*</span><span class="n">err</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">NSMutableURLRequest</span> <span class="o">*</span><span class="n">request</span> <span class="o">=</span> <span class="p">[[</span><span class="n">NSMutableURLRequest</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithURL:</span><span class="p">[</span><span class="n">NSURL</span> <span class="nl">URLWithString:</span><span class="n">urlEscapeStr</span><span class="p">]</span> <span class="nl">cachePolicy:</span><span class="n">NSURLRequestReloadIgnoringLocalCacheData</span> <span class="nl">timeoutInterval:</span><span class="n">timeout</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// ヘッダーにアクセストークンをセット</span>
+</span><span class='line'>      <span class="n">NSString</span> <span class="o">*</span><span class="n">token</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSString</span> <span class="nl">stringWithFormat:</span><span class="s">@&quot;OAuth %@&quot;</span><span class="p">,</span> <span class="n">self</span><span class="p">.</span><span class="n">accessToken</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">[</span><span class="n">request</span> <span class="nl">setValue:</span><span class="n">token</span> <span class="nl">forHTTPHeaderField:</span><span class="s">@&quot;Authorization&quot;</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">NSURLResponse</span> <span class="o">*</span><span class="n">response</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">NSData</span> <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSURLConnection</span> <span class="nl">sendSynchronousRequest:</span><span class="n">request</span> <span class="nl">returningResponse:</span><span class="o">&amp;</span><span class="n">response</span> <span class="nl">error:</span><span class="o">&amp;</span><span class="n">err</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// ステータスコードの取得</span>
+</span><span class='line'>      <span class="n">NSInteger</span> <span class="n">statusCode</span> <span class="o">=</span> <span class="p">[(</span><span class="n">NSHTTPURLResponse</span> <span class="o">*</span><span class="p">)</span><span class="n">response</span> <span class="n">statusCode</span><span class="p">];</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">err</span> <span class="o">||</span> <span class="n">statusCode</span> <span class="o">&gt;=</span> <span class="mi">400</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="o">*</span><span class="n">error</span> <span class="o">=</span> <span class="n">err</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">NSError</span> <span class="o">*</span><span class="n">error</span> <span class="o">=</span> <span class="nb">nil</span><span class="p">;</span>
+</span><span class='line'>          <span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSJSONSerialization</span> <span class="nl">JSONObjectWithData:</span><span class="n">res</span> <span class="nl">options:</span><span class="n">NSJSONReadingAllowFragments</span> <span class="nl">error:</span><span class="o">&amp;</span><span class="n">error</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これでユーザ情報が取得できるはずです。<br/>
+ポイントは</p>
+
+<ul>
+<li>初めのOAuth2認証でユーザ情報を取得できるようにscopeを設定していること</li>
+<li>リクエスト時にヘッダーにアクセストークンをセットしていること</li>
+</ul>
+
+
+<p>です。</p>
+
+<p>因みに、上記の処理では本来、URLエンコードをするべきですが、GETリクエストパラメータを含まないことから省略しています。</p>
+
+<p>参考:<br/>
+・<a href="http://kernhack.hatenablog.com/entry/2013/11/24/164828">gtm-oauth2でOAuth認証してgoogleのAPIを使う</a></p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-01-14T00:09:00+09:00" pubdate data-updated="true">Jan 14<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/oauth2/'>oauth2</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2015/01/14/ios-google-oauth2-2/" data-via="" data-counturl="http://grandbig.github.io/blog/2015/01/14/ios-google-oauth2-2/" >Tweet</a>
+  
+  <a href="http://b.hatena.ne.jp/entry/http://grandbig.github.io/blog/2015/01/14/ios-google-oauth2-2/" class="hatena-bookmark-button" 
+	  data-hatena-bookmark-layout="standard" title="このエントリーをはてなブックマークに追加">
+	  <img src="http://b.st-hatena.com/images/entry-button/button-only.gif" 
+	  alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;" />
+  </a>
+  <script type="text/javascript" src="http://b.st-hatena.com/js/bookmark_button.js" charset="utf-8" async="async"></script>
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/01/10/visit-and-step2/" title="Previous Post: CLVisitとCMPedometerをフィールド検証してみた！">&laquo; CLVisitとCMPedometerをフィールド検証してみた！</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/01/29/uiimagerotate-ios8/" title="Next Post: iOS8で端末の向きに合わせて画像を回転させる方法について">iOS8で端末の向きに合わせて画像を回転させる方法について &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/01/22/mycareer-3/">人生2回目の転職を振り返る</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/30/rx-uitableview-crash/">This is a feature to warn you that there is already a delegate の対応 ~ RxSwiftでUITableViewのリロード時にクラッシュする問題にぶつかった ~</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/28/rxdatasources/">RxDataSourcesを使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/22/team-develop/">アーキテクチャの選定ポエム〜選定って難しい〜</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/12/personal-develop-footstepmeter/">5年前に初めて個人開発したアプリを再構築している話</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (185)</a></li><li><a href='/blog/categories/swift'>swift (89)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/rx'>rx (9)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/redux'>redux (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2015/01/14/ios-google-oauth2-2/';
+        var disqus_url = 'http://grandbig.github.io/blog/2015/01/14/ios-google-oauth2-2/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
