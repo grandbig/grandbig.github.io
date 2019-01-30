@@ -1,0 +1,599 @@
+---
+layout: post
+title: "XCTestでViewModelのテストを書いてみよう！"
+date: 2019-01-30 11:57
+comments: true
+categories: ios swift xctest test
+---
+
+### はじめに
+今回は、 `MVVM` アーキテクチャでiOSアプリを書いた場合の `Unit Test` について記事を書こうと思います。  
+
+だいぶ[以前](http://grandbig.github.io/blog/2016/01/11/xctest/)に `XCTest` と `XCUITest` の初歩について紹介しましたが、  
+本記事では特に `XCTest` を用いた `Unit Test` に焦点をあてます。  
+
+では、早速見ていきましょう。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### 前提
+まずは、 `Unit Test` を書くにあたっての前提について確認しておきたいと思います。  
+
+#### 利用するソースコード
+今回説明に利用するソースコードは[足跡計 v1.0.4](https://github.com/grandbig/footStepMeter)にします。  
+
+主な機能は下記の通りです。  
+
+* 様々な精度で歩行ルートを記録可能  
+* 複数の歩行ルートを記録可能  
+* 歩行ルート履歴をいつでも閲覧可能  
+* 歩行ルート記録をメールで送信可能  
+* 不要になった歩行ルート記録は削除可能  
+
+また、実際のアプリ画面は下記の通りです。
+
+![足跡計 v1.0.4の画面キャプチャ](/images/xctest-2_1.png)  
+
+#### 利用しているOSSライブラリ
+このアプリで利用しているOSSライブラリは下記の通りです。  
+
+* [RxSwift](https://github.com/ReactiveX/RxSwift)  
+  * `MVVM` アーキテクチャでアプリを構成するために利用しています。  
+  * `RxCocoa` は `RxSwift` と基本的にはセットで利用します。  
+  * `RxTest` はテストコードを書く時に利用します。  
+* [RxDataSources](https://github.com/RxSwiftCommunity/RxDataSources)  
+  * `UITableView` 関連の処理を `Rx` 書く時のサポートとなるため利用しています。  
+* [RealmSwift](https://github.com/realm/realm-cocoa)  
+  * 位置情報をアプリローカルに保存するために利用しています。  
+* [R.swift](https://github.com/mac-cain13/R.swift)  
+  * 文字列のベタ書きやそれに寄るスペルミス等を防ぐために利用しています。  
+* [LicensePlist](https://github.com/mono0926/LicensePlist)  
+  * ライセンスページをアプリ外に配置するために利用しています。  
+
+### テストコードのサンプル1
+それでは実際にテストコードを見ていきましょう。  
+
+まず1つ目のサンプルとしては、下記画面のテストを取り上げて説明します。  
+
+![設定画面](/images/xctest-2_2.png)  
+
+この画面は、  
+
+* メイン画面の `UITabBar` の4項目目をタップして画面遷移した先の設定画面  
+* この設定画面は `UITableView` で構成されたテーブルビューの画面  
+* 表示されている2項目は文言固定  
+
+という仕様になっています。  
+
+#### ViewModelのソースコード
+テストを書く前にそもそもの実装を紹介します。  
+
+##### SettingView.strings
+文字列べた書きを避けるために `R.swift` を利用しているので、  
+
+```objective-c
+// SettingView.strings
+"title" = "SETTINGS";
+"footprintHistory" = "FOOTPRINT HISTORY";
+"aboutApp" = "ABOUT APP";
+```
+
+のように定義しています。  
+
+##### Injectable.swift
+ここは `ViewModel` クラスの `DI` 化をするために用意した `Protocol` になります。  
+
+```objective-c
+// Injectable.swift
+protocol Injectable {
+    associatedtype Dependency
+    init(with dependency: Dependency)
+}
+
+extension Injectable where Dependency == Void {
+    init() {
+        self.init(with: ())
+    }
+}
+```
+
+##### SettingSectionModel.swift
+本画面ではテーブルビューの描画時に `RxDataSources` を利用しているため、その準備が必要です。  
+
+```objective-c
+// SettingSectionModel.swift
+import RxDataSources
+
+struct SettingSectionModel {
+    var items: [Item]
+}
+extension SettingSectionModel: SectionModelType {
+    typealias Item = String
+
+    init(original: SettingSectionModel, items: [Item]) {
+        self = original
+        self.items = items
+    }
+}
+```
+
+##### SettingViewModel.swift
+そして、 `ViewModel` のクラスです。  
+
+```objective-c
+// SettingViewModel.swift
+import Foundation
+import RxSwift
+import RxCocoa
+
+final class SettingViewModel: Injectable {
+    struct Dependency {
+    }
+
+    // MARK: - Properties
+    private let disposeBag = DisposeBag()
+    private var sectionModels = [SettingSectionModel]()
+
+    // MARK: BehaviorRelays
+    let viewDidLoadStream = BehaviorRelay<[SettingSectionModel]>(value: [])
+
+    // MARK: Initial method
+    init(with dependency: Dependency) {
+
+        Observable.deferred {() -> Observable<[SettingSectionModel]> in
+            let items = [R.string.settingView.footprintHistory(), R.string.settingView.aboutApp()]
+            self.sectionModels = [SettingSectionModel(items: items)]
+            return Observable.just(self.sectionModels)
+            }
+            .bind(to: viewDidLoadStream)
+            .disposed(by: disposeBag)
+    }
+}
+```
+
+初期ロード時に、固定文言をセットしたテーブルビューを表示する必要があるため、  
+画面初期化時に即時に `Subscribe` するようにしており、  
+それを `Observable.deferred` で捕捉して、必要な値を `viewDidLoadStream` にバインディングする形で `View` に返しています。   
+
+#### ViewModelのテストコード
+ではテストを書いていきます。  
+
+ここで書きたいテストは、  
+
+* When: 初期ロード時に  
+* What: `RxDataSources` で処理可能な `SettingSectionModel` の形をした2つの固定文言を  
+* How: `viewDidLoadStream` 経由で  
+
+渡ってくることになります。  
+
+それを表したテストコードが下記の通りです。  
+
+```objective-c
+// SettingViewModelTests.swift
+import XCTest
+import RxSwift
+import RxCocoa
+import RxTest
+@testable import footStepMeter
+
+class SettingViewModelTests: XCTestCase {
+
+    // 説明(1)
+    var viewModel: SettingViewModel!
+    let scheduler = TestScheduler(initialClock: 0)
+
+    // 説明(2)
+    override func setUp() {
+        super.setUp()
+
+        let dependency = SettingViewModel.Dependency()
+        viewModel = SettingViewModel(with: dependency)
+    }
+
+    override func tearDown() {
+        super.tearDown()
+    }
+
+    // 説明(3)
+    func testViewDidLoadStream() {
+        let disposeBag = DisposeBag()
+        let settingSectionModels = scheduler.createObserver([SettingSectionModel].self)
+
+        viewModel.viewDidLoadStream
+            .bind(to: settingSectionModels)
+            .disposed(by: disposeBag)
+
+        scheduler.start()
+
+        // 想定されるテスト結果の定義
+        let items = [R.string.settingView.footprintHistory(), R.string.settingView.aboutApp()]
+        let mock = [SettingSectionModel(items: items)]
+        let expectedItems = [Recorded.next(0, mock)]
+
+        // 実際の実行結果
+        let element = settingSectionModels.events.first!.value.element
+
+        // 想定結果と実行結果を比較
+        XCTAssertEqual(element!.first!.items, expectedItems.first!.value.element!.first!.items)
+    }
+}
+```
+
+##### 説明(1)
+テスト対象となる `SettingViewModel` とテストの実行タイミングを測る上で必要な `TestScheduler` を定義しています。  
+
+##### 説明(2)
+テスト実施前のセットアップとして、 `SettingViewModel` を初期化しています。  
+
+##### 説明(3)
+ここで具体的にテストを書いています。  
+
+* ストリームを捕捉する `Observer` として `settingSectionModels` を定義  
+* それを `viewDidLoadStream` に流れた時のバインディング先として設定  
+* 固定文言2つが `RxDataSources` 用の形で流れてくるため、そのモックデータを定義  
+* 初期ロード時に流れるはずなので `[Recorded.next(0, mock)]` と設定  
+* 想定結果と実行結果を `XCTAssertEqual` を用いて比較  
+
+### テストコードのサンプル2
+続いて、2つ目のサンプルですが、下記のテストの一部を紹介します。  
+
+![足跡履歴一覧画面](/images/xctest-2_3.png)  
+
+この画面は、  
+
+* 設定画面の `FOOTPRINT HISTORY` をタップした時に画面遷移した先の足跡履歴一覧画面  
+* この足跡履歴一覧画面は `UITableView` で構成されたテーブルビューの画面  
+* 各項目はアプリローカルに保存された情報から取得して表示している  
+
+という仕様になっています。  
+
+幾つか他にも機能があるため、サンプル1よりもテスト項目数は多くなるのですが、説明のため上記1つに絞ります。  
+
+#### ViewModelのソースコード
+さて、そもそものソースコードですが、 `Injectable.swift` は先程と同じなので省略します。  
+
+##### FootprintRecordSectionModel.swift
+サンプル1と同じく、本画面ではテーブルビューの描画時に `RxDataSources` を利用しているため、その準備が必要です。  
+
+```objective-c
+// FootprintRecordSectionModel.swift
+import RxDataSources
+
+struct FootprintRecordSectionModel {
+    var items: [Item]
+}
+extension FootprintRecordSectionModel: SectionModelType {
+    typealias Item = (String, Int)
+
+    init(original: FootprintRecordSectionModel, items: [Item]) {
+        self = original
+        self.items = items
+    }
+}
+```
+
+各行に表示する内容が、  
+
+* 保存データのタイトル  
+* その足跡数  
+
+となっていて、対にしてデータを返却するために `(String, Int)` とタプルで書いています。  
+
+##### RealmManager.swift
+今回のテストでは、アプリ内部に保存したデータを取得する処理を扱うため、その処理を実装する必要があります。  
+
+```objective-c
+// RealmManager.swift
+import Foundation
+import CoreLocation
+import RxSwift
+import RealmSwift
+
+protocol RealmManagerClient {
+    // MARK: - Protocol Properties
+    var title: String { get set }
+
+    // MARK: - Protocol Methods
+    func setSaveTitle(_ title: String)
+    func createFootprint(location: CLLocation)
+    func fetchFootprints() -> Results<Footprint>?
+    func fetchFootprints() -> Observable<Results<Footprint>?>
+    func fetchFootprintsByTitle(_ text: String) -> Observable<Results<Footprint>?>
+    func existsByTitle(_ text: String) -> Observable<Bool>
+    func distinctByTitle() -> [(String, Int)]
+    func distinctByTitle() -> Observable<[(String, Int)]>
+    func countFootprints() -> Observable<Int>
+    func countFootprintsByTitle(_ text: String) -> Observable<Int>
+    func delete(_ text: String) -> Observable<Error?>
+}
+
+final class RealmManager: NSObject, RealmManagerClient {
+    ...
+
+    func distinctByTitle() -> [(String, Int)] {
+        do {
+            let realm = try Realm()
+            if let titles = realm.objects(Footprint.self).sorted(byKeyPath: "id", ascending: false)
+                .value(forKey: "title") as? [String], let distinctTitles = NSOrderedSet(array: titles).array as? [String] {
+                var distinctFootprints = [(String, Int)]()
+                for title in distinctTitles {
+                    let count = realm.objects(Footprint.self).filter("title == '\(title)'").count
+                    distinctFootprints.append((title, count))
+                }
+                return distinctFootprints
+            }
+            return []
+        } catch _ as NSError {
+            return []
+        }
+    }
+
+    ...
+}
+```
+
+今回直接扱う処理以外は省略して書きました。  
+基本的な `CRUD` の処理に加えて、本アプリ固有のビジネスロジックが存在します。  
+※ `protocol` 部分を書いたのは、後のテストコードに関わるためです。   
+
+##### FootprintRecordViewModel
+冒頭に説明した通り、混乱を避けるため、今回のテストコードで利用しない部分はあえてコードを省略しています。  
+
+```objective-c
+// FootprintRecordViewModel.swift
+import Foundation
+import RxSwift
+import RxCocoa
+import RealmSwift
+
+final class FootprintRecordViewModel: Injectable {
+
+    struct Dependency {
+        let realmManager: RealmManagerClient
+    }
+
+    // MARK: - Properties
+    private let disposeBag = DisposeBag()
+    private var sectionModels = [FootprintRecordSectionModel]()
+
+    // MARK: BehaviorRelays
+    let savedRecordStream = BehaviorRelay<[FootprintRecordSectionModel]>(value: [])
+
+    // MARK: Initial method
+    init(with dependency: Dependency) {
+        let realmManager = dependency.realmManager
+
+        Observable.deferred {() -> Observable<[FootprintRecordSectionModel]> in
+            self.sectionModels = [FootprintRecordSectionModel(items: realmManager.distinctByTitle())]
+            return Observable.just(self.sectionModels)
+            }
+            .bind(to: savedRecordStream)
+            .disposed(by: disposeBag)
+    }
+}
+```
+
+サンプル1と基本的には同じです。  
+返却値をアプリ内部に保存したデータにする必要があるため、  
+`realmManager.distinctByTitle()` を利用しています。  
+
+#### ViewModelのテストコード
+ではテストを書いていきます。  
+
+ここで書きたいテストは、  
+
+* When: 初期ロード時に  
+* What: `RxDataSources` で処理可能な `FootprintRecordSectionModel` の形をした保存済み足跡情報を  
+* How: `savedRecordStream` 経由で  
+
+渡ってくることになります。  
+
+それを表したテストコードが下記の通りです。  
+
+```objective-c
+// FootprintRecordViewModelTests.swift
+import XCTest
+import RxSwift
+import RxCocoa
+import RxTest
+import CoreLocation
+import RealmSwift
+
+@testable import footStepMeter
+
+class FootprintRecordViewModelTests: XCTestCase {
+
+    // 説明(1)
+    var viewModel: FootprintRecordViewModel!
+    let scheduler = TestScheduler(initialClock: 0)
+    static let realm = try! Realm(configuration: Realm.Configuration(inMemoryIdentifier: "inMemory"))
+
+    // 説明(2)
+    /// テスト用のモックRealmManagerClient
+    final class MockRealmManagerClient: RealmManagerClient {
+        var title: String = String()
+
+        func setSaveTitle(_ title: String) {
+        }
+
+        func createFootprint(location: CLLocation) {
+        }
+
+        func fetchFootprints() -> Results<Footprint>? {
+            return nil
+        }
+
+        func fetchFootprints() -> Observable<Results<Footprint>?> {
+            return Observable.just(FootprintRecordViewModelTests.mockFootprints())
+        }
+
+        func fetchFootprintsByTitle(_ text: String) -> Observable<Results<Footprint>?> {
+            return Observable.just(FootprintRecordViewModelTests.mockFootprints())
+        }
+
+        func existsByTitle(_ text: String) -> Observable<Bool> {
+            return Observable.just(false)
+        }
+
+        func distinctByTitle() -> [(String, Int)] {
+            return FootprintRecordViewModelTests.mockDistinctData()
+        }
+
+        func distinctByTitle() -> Observable<[(String, Int)]> {
+            return Observable.just(FootprintRecordViewModelTests.mockDistinctData())
+        }
+
+        func countFootprints() -> Observable<Int> {
+            return Observable.just(10)
+        }
+
+        func countFootprintsByTitle(_ text: String) -> Observable<Int> {
+            return Observable.just(10)
+        }
+
+        func delete(_ text: String) -> Observable<Error?> {
+            return Observable.just(nil)
+        }
+    }
+
+    static let mockFootprints = { () -> Results<Footprint>? in
+        return realm.objects(Footprint.self).sorted(byKeyPath: "id")
+    }
+
+    static let mockDistinctData = { () -> [(String, Int)] in
+        return [("test1", 1), ("test2", 3)]
+    }
+
+    private func setUpInitialFootprint() {
+        let footprint = Footprint()
+        footprint.id = 1
+        footprint.title = String()
+        footprint.latitude = 35.0
+        footprint.longitude = 137.0
+        footprint.accuracy = 65.0
+        footprint.speed = 1.0
+        footprint.direction = 0.0
+        try! FootprintRecordViewModelTests.realm.write {
+            FootprintRecordViewModelTests.realm.create(Footprint.self, value: footprint, update: false)
+        }
+    }
+
+    // 説明(3)
+    override func setUp() {
+        super.setUp()
+        // 初めにinMemoryに保存するデータを構築
+        setUpInitialFootprint()
+
+        let dependency = FootprintRecordViewModel.Dependency(realmManager: MockRealmManagerClient())
+        viewModel = FootprintRecordViewModel(with: dependency)
+    }
+
+    // 説明(4)
+    override func tearDown() {
+        super.tearDown()
+
+        // inMemoryのデータは全て削除
+        try! FootprintRecordViewModelTests.realm.write {
+            FootprintRecordViewModelTests.realm.deleteAll()
+        }
+    }
+
+    // 説明(5)
+    /// 初期ロード時に指定したデータが正しい順番&内容でデータバインディングできることの確認
+    func testSavedRecordStream() {
+        let disposeBag = DisposeBag()
+        let footprintSectionModels = scheduler.createObserver([FootprintRecordSectionModel].self)
+
+        viewModel.savedRecordStream
+            .bind(to: footprintSectionModels)
+            .disposed(by: disposeBag)
+
+        scheduler.start()
+
+        // 想定されるテスト結果の定義
+        let items = [("test1", 1), ("test2", 3)]
+        let mock = [FootprintRecordSectionModel(items: items)]
+        let expectedItems = [Recorded.next(0, mock)]
+
+        // 実際の実行結果
+        let element = footprintSectionModels.events.first!.value.element
+
+        // 想定結果と実行結果の比較
+        XCTAssertEqual(element!.first!.items.first!.0, expectedItems.first!.value.element!.first!.items.first!.0)
+        XCTAssertEqual(element!.first!.items.first!.1, expectedItems.first!.value.element!.first!.items.first!.1)
+        XCTAssertEqual(element!.first!.items[1].0, expectedItems.first!.value.element!.first!.items[1].0)
+        XCTAssertEqual(element!.first!.items[1].1, expectedItems.first!.value.element!.first!.items[1].1)
+    }
+    ...
+}
+```
+
+##### 説明(1)
+`viewModel` と `scheduler` はサンプル1と同じです。  
+ 今回、ここで下記定義を追加しています。  
+
+ ```objective-c
+static let realm = try! Realm(configuration: Realm.Configuration(inMemoryIdentifier: "inMemory"))
+ ```
+
+これは、このテスト対象が『 `RealmSwift` に保存したデータを利用する処理であること』が理由です。  
+`RealmSwift` では特にモックデータを返却するような仕組みはないため、自身で実装する必要があります。  
+
+最も簡単な方法が **インメモリで一時保存したモックデータを利用する** といったものになります。  
+
+##### 説明(2)
+`RealmSwift` に保存したデータを取得するために `FootprintRecordViewModel` 内では `RealmManagerClient` を利用しています。  
+
+下記より、  
+
+* `FootprintRecordViewModel` の初期化時に `RealmManagerClient` 型のオブジェクトを渡す  
+* `RealmManagerClient` は `protocol` として定義している  
+
+各メソッドの返却値をテスト用に自由にカスタマイズ可能です。  
+ここでは `RealmManagerClient` に準拠した `MockRealmManagerClient` を 定義して、  
+`FootprintRecordViewModel` の初期化時の引数に渡しています。   
+
+##### 説明(3)
+セットアップで `RealmSwift` に、計測した足跡履歴が保存されている状態とします。  
+
+##### 説明(4)
+一応、今回は **インメモリで保存している** ので、アプリが終了したタイミングでメモリから解放されるはずではあるのですが、  
+テスト終了時に必ず実行する処理として `tearDown` メソッド内に **インメモリで保存したデータの削除** を仕込んでいます。  
+
+##### 説明(5)
+ここはサンプル1と同じですね。  
+
+* ストリームを捕捉する `Observer` として `footprintSectionModels` を定義  
+* それを `savedRecordStream` に流れた時のバインディング先として設定  
+* 固定文言2つが `RxDataSources` 用の形で流れてくるため、そのモックデータを定義  
+* 初期ロード時に流れるはずなので `[Recorded.next(0, mock)]` と設定  
+* 想定結果と実行結果を `XCTAssertEqual` を用いて比較  
+  * モックデータとして2つのデータを用意しているので、両方比較して想定通りであることを確認します  
+  * これはデータの並び順まで想定通りであることを確認したいためです  
+
+### まとめ
+さて、如何でしたでしょうか？  
+以上が `Unit Test` の書き方の事例紹介になります。  
+iOSの `Unit Test` では、  
+
+* `protocol` 準拠してマニュアルモックを実装する  
+* 初期化時に、上記を渡すことでテストデータとして利用できる  
+
+ことが重要だと思っています。  
+
+ここを始めから念頭に置きつつ実装しないと、テストコードが書けずに苦労することになるでしょう。  
+(もしくはテストコードを書くために、元々の実装を見直すことになりかねません。)  
+
+と言ったところで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
