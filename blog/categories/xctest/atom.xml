@@ -1,0 +1,1052 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: xctest | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/xctest/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2019-01-30T14:12:54+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[XCTestでViewModelのテストを書いてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2019/01/30/xctest-2/"/>
+    <updated>2019-01-30T11:57:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/01/30/xctest-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は、 <code>MVVM</code> アーキテクチャでiOSアプリを書いた場合の <code>Unit Test</code> について記事を書こうと思います。</p>
+
+<p>だいぶ<a href="http://grandbig.github.io/blog/2016/01/11/xctest/">以前</a>に <code>XCTest</code> と <code>XCUITest</code> の初歩について紹介しましたが、<br/>
+本記事では特に <code>XCTest</code> を用いた <code>Unit Test</code> に焦点をあてます。</p>
+
+<p>では、早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>前提</h3>
+
+<p>まずは、 <code>Unit Test</code> を書くにあたっての前提について確認しておきたいと思います。</p>
+
+<h4>利用するソースコード</h4>
+
+<p>今回説明に利用するソースコードは<a href="https://github.com/grandbig/footStepMeter">足跡計 v1.0.4</a>にします。</p>
+
+<p>主な機能は下記の通りです。</p>
+
+<ul>
+<li>様々な精度で歩行ルートを記録可能</li>
+<li>複数の歩行ルートを記録可能</li>
+<li>歩行ルート履歴をいつでも閲覧可能</li>
+<li>歩行ルート記録をメールで送信可能</li>
+<li>不要になった歩行ルート記録は削除可能</li>
+</ul>
+
+
+<p>また、実際のアプリ画面は下記の通りです。</p>
+
+<p><img src="/images/xctest-2_1.png" alt="足跡計 v1.0.4の画面キャプチャ" /></p>
+
+<h4>利用しているOSSライブラリ</h4>
+
+<p>このアプリで利用しているOSSライブラリは下記の通りです。</p>
+
+<ul>
+<li><a href="https://github.com/ReactiveX/RxSwift">RxSwift</a>
+
+<ul>
+<li><code>MVVM</code> アーキテクチャでアプリを構成するために利用しています。</li>
+<li><code>RxCocoa</code> は <code>RxSwift</code> と基本的にはセットで利用します。</li>
+<li><code>RxTest</code> はテストコードを書く時に利用します。</li>
+</ul>
+</li>
+<li><a href="https://github.com/RxSwiftCommunity/RxDataSources">RxDataSources</a>
+
+<ul>
+<li><code>UITableView</code> 関連の処理を <code>Rx</code> 書く時のサポートとなるため利用しています。</li>
+</ul>
+</li>
+<li><a href="https://github.com/realm/realm-cocoa">RealmSwift</a>
+
+<ul>
+<li>位置情報をアプリローカルに保存するために利用しています。</li>
+</ul>
+</li>
+<li><a href="https://github.com/mac-cain13/R.swift">R.swift</a>
+
+<ul>
+<li>文字列のベタ書きやそれに寄るスペルミス等を防ぐために利用しています。</li>
+</ul>
+</li>
+<li><a href="https://github.com/mono0926/LicensePlist">LicensePlist</a>
+
+<ul>
+<li>ライセンスページをアプリ外に配置するために利用しています。</li>
+</ul>
+</li>
+</ul>
+
+
+<h3>テストコードのサンプル1</h3>
+
+<p>それでは実際にテストコードを見ていきましょう。</p>
+
+<p>まず1つ目のサンプルとしては、下記画面のテストを取り上げて説明します。</p>
+
+<p><img src="/images/xctest-2_2.png" alt="設定画面" /></p>
+
+<p>この画面は、</p>
+
+<ul>
+<li>メイン画面の <code>UITabBar</code> の4項目目をタップして画面遷移した先の設定画面</li>
+<li>この設定画面は <code>UITableView</code> で構成されたテーブルビューの画面</li>
+<li>表示されている2項目は文言固定</li>
+</ul>
+
+
+<p>という仕様になっています。</p>
+
+<h4>ViewModelのソースコード</h4>
+
+<p>テストを書く前にそもそもの実装を紹介します。</p>
+
+<h5>SettingView.strings</h5>
+
+<p>文字列べた書きを避けるために <code>R.swift</code> を利用しているので、</p>
+
+<p><code>objective-c
+// SettingView.strings
+"title" = "SETTINGS";
+"footprintHistory" = "FOOTPRINT HISTORY";
+"aboutApp" = "ABOUT APP";
+</code></p>
+
+<p>のように定義しています。</p>
+
+<h5>Injectable.swift</h5>
+
+<p>ここは <code>ViewModel</code> クラスの <code>DI</code> 化をするために用意した <code>Protocol</code> になります。</p>
+
+<p>```objective-c
+// Injectable.swift
+protocol Injectable {</p>
+
+<pre><code>associatedtype Dependency
+init(with dependency: Dependency)
+</code></pre>
+
+<p>}</p>
+
+<p>extension Injectable where Dependency == Void {</p>
+
+<pre><code>init() {
+    self.init(with: ())
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>SettingSectionModel.swift</h5>
+
+<p>本画面ではテーブルビューの描画時に <code>RxDataSources</code> を利用しているため、その準備が必要です。</p>
+
+<p>```objective-c
+// SettingSectionModel.swift
+import RxDataSources</p>
+
+<p>struct SettingSectionModel {</p>
+
+<pre><code>var items: [Item]
+</code></pre>
+
+<p>}
+extension SettingSectionModel: SectionModelType {</p>
+
+<pre><code>typealias Item = String
+
+init(original: SettingSectionModel, items: [Item]) {
+    self = original
+    self.items = items
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>SettingViewModel.swift</h5>
+
+<p>そして、 <code>ViewModel</code> のクラスです。</p>
+
+<p>```objective-c
+// SettingViewModel.swift
+import Foundation
+import RxSwift
+import RxCocoa</p>
+
+<p>final class SettingViewModel: Injectable {</p>
+
+<pre><code>struct Dependency {
+}
+
+// MARK: - Properties
+private let disposeBag = DisposeBag()
+private var sectionModels = [SettingSectionModel]()
+
+// MARK: BehaviorRelays
+let viewDidLoadStream = BehaviorRelay&lt;[SettingSectionModel]&gt;(value: [])
+
+// MARK: Initial method
+init(with dependency: Dependency) {
+
+    Observable.deferred {() -&gt; Observable&lt;[SettingSectionModel]&gt; in
+        let items = [R.string.settingView.footprintHistory(), R.string.settingView.aboutApp()]
+        self.sectionModels = [SettingSectionModel(items: items)]
+        return Observable.just(self.sectionModels)
+        }
+        .bind(to: viewDidLoadStream)
+        .disposed(by: disposeBag)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>初期ロード時に、固定文言をセットしたテーブルビューを表示する必要があるため、<br/>
+画面初期化時に即時に <code>Subscribe</code> するようにしており、<br/>
+それを <code>Observable.deferred</code> で捕捉して、必要な値を <code>viewDidLoadStream</code> にバインディングする形で <code>View</code> に返しています。</p>
+
+<h4>ViewModelのテストコード</h4>
+
+<p>ではテストを書いていきます。</p>
+
+<p>ここで書きたいテストは、</p>
+
+<ul>
+<li>When: 初期ロード時に</li>
+<li>What: <code>RxDataSources</code> で処理可能な <code>SettingSectionModel</code> の形をした2つの固定文言を</li>
+<li>How: <code>viewDidLoadStream</code> 経由で</li>
+</ul>
+
+
+<p>渡ってくることになります。</p>
+
+<p>それを表したテストコードが下記の通りです。</p>
+
+<p>```objective-c
+// SettingViewModelTests.swift
+import XCTest
+import RxSwift
+import RxCocoa
+import RxTest
+@testable import footStepMeter</p>
+
+<p>class SettingViewModelTests: XCTestCase {</p>
+
+<pre><code>// 説明(1)
+var viewModel: SettingViewModel!
+let scheduler = TestScheduler(initialClock: 0)
+
+// 説明(2)
+override func setUp() {
+    super.setUp()
+
+    let dependency = SettingViewModel.Dependency()
+    viewModel = SettingViewModel(with: dependency)
+}
+
+override func tearDown() {
+    super.tearDown()
+}
+
+// 説明(3)
+func testViewDidLoadStream() {
+    let disposeBag = DisposeBag()
+    let settingSectionModels = scheduler.createObserver([SettingSectionModel].self)
+
+    viewModel.viewDidLoadStream
+        .bind(to: settingSectionModels)
+        .disposed(by: disposeBag)
+
+    scheduler.start()
+
+    // 想定されるテスト結果の定義
+    let items = [R.string.settingView.footprintHistory(), R.string.settingView.aboutApp()]
+    let mock = [SettingSectionModel(items: items)]
+    let expectedItems = [Recorded.next(0, mock)]
+
+    // 実際の実行結果
+    let element = settingSectionModels.events.first!.value.element
+
+    // 想定結果と実行結果を比較
+    XCTAssertEqual(element!.first!.items, expectedItems.first!.value.element!.first!.items)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>説明(1)</h5>
+
+<p>テスト対象となる <code>SettingViewModel</code> とテストの実行タイミングを測る上で必要な <code>TestScheduler</code> を定義しています。</p>
+
+<h5>説明(2)</h5>
+
+<p>テスト実施前のセットアップとして、 <code>SettingViewModel</code> を初期化しています。</p>
+
+<h5>説明(3)</h5>
+
+<p>ここで具体的にテストを書いています。</p>
+
+<ul>
+<li>ストリームを捕捉する <code>Observer</code> として <code>settingSectionModels</code> を定義</li>
+<li>それを <code>viewDidLoadStream</code> に流れた時のバインディング先として設定</li>
+<li>固定文言2つが <code>RxDataSources</code> 用の形で流れてくるため、そのモックデータを定義</li>
+<li>初期ロード時に流れるはずなので <code>[Recorded.next(0, mock)]</code> と設定</li>
+<li>想定結果と実行結果を <code>XCTAssertEqual</code> を用いて比較</li>
+</ul>
+
+
+<h3>テストコードのサンプル2</h3>
+
+<p>続いて、2つ目のサンプルですが、下記のテストの一部を紹介します。</p>
+
+<p><img src="/images/xctest-2_3.png" alt="足跡履歴一覧画面" /></p>
+
+<p>この画面は、</p>
+
+<ul>
+<li>設定画面の <code>FOOTPRINT HISTORY</code> をタップした時に画面遷移した先の足跡履歴一覧画面</li>
+<li>この足跡履歴一覧画面は <code>UITableView</code> で構成されたテーブルビューの画面</li>
+<li>各項目はアプリローカルに保存された情報から取得して表示している</li>
+</ul>
+
+
+<p>という仕様になっています。</p>
+
+<p>幾つか他にも機能があるため、サンプル1よりもテスト項目数は多くなるのですが、説明のため上記1つに絞ります。</p>
+
+<h4>ViewModelのソースコード</h4>
+
+<p>さて、そもそものソースコードですが、 <code>Injectable.swift</code> は先程と同じなので省略します。</p>
+
+<h5>FootprintRecordSectionModel.swift</h5>
+
+<p>サンプル1と同じく、本画面ではテーブルビューの描画時に <code>RxDataSources</code> を利用しているため、その準備が必要です。</p>
+
+<p>```objective-c
+// FootprintRecordSectionModel.swift
+import RxDataSources</p>
+
+<p>struct FootprintRecordSectionModel {</p>
+
+<pre><code>var items: [Item]
+</code></pre>
+
+<p>}
+extension FootprintRecordSectionModel: SectionModelType {</p>
+
+<pre><code>typealias Item = (String, Int)
+
+init(original: FootprintRecordSectionModel, items: [Item]) {
+    self = original
+    self.items = items
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>各行に表示する内容が、</p>
+
+<ul>
+<li>保存データのタイトル</li>
+<li>その足跡数</li>
+</ul>
+
+
+<p>となっていて、対にしてデータを返却するために <code>(String, Int)</code> とタプルで書いています。</p>
+
+<h5>RealmManager.swift</h5>
+
+<p>今回のテストでは、アプリ内部に保存したデータを取得する処理を扱うため、その処理を実装する必要があります。</p>
+
+<p>```objective-c
+// RealmManager.swift
+import Foundation
+import CoreLocation
+import RxSwift
+import RealmSwift</p>
+
+<p>protocol RealmManagerClient {</p>
+
+<pre><code>// MARK: - Protocol Properties
+var title: String { get set }
+
+// MARK: - Protocol Methods
+func setSaveTitle(_ title: String)
+func createFootprint(location: CLLocation)
+func fetchFootprints() -&gt; Results&lt;Footprint&gt;?
+func fetchFootprints() -&gt; Observable&lt;Results&lt;Footprint&gt;?&gt;
+func fetchFootprintsByTitle(_ text: String) -&gt; Observable&lt;Results&lt;Footprint&gt;?&gt;
+func existsByTitle(_ text: String) -&gt; Observable&lt;Bool&gt;
+func distinctByTitle() -&gt; [(String, Int)]
+func distinctByTitle() -&gt; Observable&lt;[(String, Int)]&gt;
+func countFootprints() -&gt; Observable&lt;Int&gt;
+func countFootprintsByTitle(_ text: String) -&gt; Observable&lt;Int&gt;
+func delete(_ text: String) -&gt; Observable&lt;Error?&gt;
+</code></pre>
+
+<p>}</p>
+
+<p>final class RealmManager: NSObject, RealmManagerClient {</p>
+
+<pre><code>...
+
+func distinctByTitle() -&gt; [(String, Int)] {
+    do {
+        let realm = try Realm()
+        if let titles = realm.objects(Footprint.self).sorted(byKeyPath: "id", ascending: false)
+            .value(forKey: "title") as? [String], let distinctTitles = NSOrderedSet(array: titles).array as? [String] {
+            var distinctFootprints = [(String, Int)]()
+            for title in distinctTitles {
+                let count = realm.objects(Footprint.self).filter("title == '\(title)'").count
+                distinctFootprints.append((title, count))
+            }
+            return distinctFootprints
+        }
+        return []
+    } catch _ as NSError {
+        return []
+    }
+}
+
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p>今回直接扱う処理以外は省略して書きました。<br/>
+基本的な <code>CRUD</code> の処理に加えて、本アプリ固有のビジネスロジックが存在します。<br/>
+※ <code>protocol</code> 部分を書いたのは、後のテストコードに関わるためです。</p>
+
+<h5>FootprintRecordViewModel</h5>
+
+<p>冒頭に説明した通り、混乱を避けるため、今回のテストコードで利用しない部分はあえてコードを省略しています。</p>
+
+<p>```objective-c
+// FootprintRecordViewModel.swift
+import Foundation
+import RxSwift
+import RxCocoa
+import RealmSwift</p>
+
+<p>final class FootprintRecordViewModel: Injectable {</p>
+
+<pre><code>struct Dependency {
+    let realmManager: RealmManagerClient
+}
+
+// MARK: - Properties
+private let disposeBag = DisposeBag()
+private var sectionModels = [FootprintRecordSectionModel]()
+
+// MARK: BehaviorRelays
+let savedRecordStream = BehaviorRelay&lt;[FootprintRecordSectionModel]&gt;(value: [])
+
+// MARK: Initial method
+init(with dependency: Dependency) {
+    let realmManager = dependency.realmManager
+
+    Observable.deferred {() -&gt; Observable&lt;[FootprintRecordSectionModel]&gt; in
+        self.sectionModels = [FootprintRecordSectionModel(items: realmManager.distinctByTitle())]
+        return Observable.just(self.sectionModels)
+        }
+        .bind(to: savedRecordStream)
+        .disposed(by: disposeBag)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>サンプル1と基本的には同じです。<br/>
+返却値をアプリ内部に保存したデータにする必要があるため、<br/>
+<code>realmManager.distinctByTitle()</code> を利用しています。</p>
+
+<h4>ViewModelのテストコード</h4>
+
+<p>ではテストを書いていきます。</p>
+
+<p>ここで書きたいテストは、</p>
+
+<ul>
+<li>When: 初期ロード時に</li>
+<li>What: <code>RxDataSources</code> で処理可能な <code>FootprintRecordSectionModel</code> の形をした保存済み足跡情報を</li>
+<li>How: <code>savedRecordStream</code> 経由で</li>
+</ul>
+
+
+<p>渡ってくることになります。</p>
+
+<p>それを表したテストコードが下記の通りです。</p>
+
+<p>```objective-c
+// FootprintRecordViewModelTests.swift
+import XCTest
+import RxSwift
+import RxCocoa
+import RxTest
+import CoreLocation
+import RealmSwift</p>
+
+<p>@testable import footStepMeter</p>
+
+<p>class FootprintRecordViewModelTests: XCTestCase {</p>
+
+<pre><code>// 説明(1)
+var viewModel: FootprintRecordViewModel!
+let scheduler = TestScheduler(initialClock: 0)
+static let realm = try! Realm(configuration: Realm.Configuration(inMemoryIdentifier: "inMemory"))
+
+// 説明(2)
+/// テスト用のモックRealmManagerClient
+final class MockRealmManagerClient: RealmManagerClient {
+    var title: String = String()
+
+    func setSaveTitle(_ title: String) {
+    }
+
+    func createFootprint(location: CLLocation) {
+    }
+
+    func fetchFootprints() -&gt; Results&lt;Footprint&gt;? {
+        return nil
+    }
+
+    func fetchFootprints() -&gt; Observable&lt;Results&lt;Footprint&gt;?&gt; {
+        return Observable.just(FootprintRecordViewModelTests.mockFootprints())
+    }
+
+    func fetchFootprintsByTitle(_ text: String) -&gt; Observable&lt;Results&lt;Footprint&gt;?&gt; {
+        return Observable.just(FootprintRecordViewModelTests.mockFootprints())
+    }
+
+    func existsByTitle(_ text: String) -&gt; Observable&lt;Bool&gt; {
+        return Observable.just(false)
+    }
+
+    func distinctByTitle() -&gt; [(String, Int)] {
+        return FootprintRecordViewModelTests.mockDistinctData()
+    }
+
+    func distinctByTitle() -&gt; Observable&lt;[(String, Int)]&gt; {
+        return Observable.just(FootprintRecordViewModelTests.mockDistinctData())
+    }
+
+    func countFootprints() -&gt; Observable&lt;Int&gt; {
+        return Observable.just(10)
+    }
+
+    func countFootprintsByTitle(_ text: String) -&gt; Observable&lt;Int&gt; {
+        return Observable.just(10)
+    }
+
+    func delete(_ text: String) -&gt; Observable&lt;Error?&gt; {
+        return Observable.just(nil)
+    }
+}
+
+static let mockFootprints = { () -&gt; Results&lt;Footprint&gt;? in
+    return realm.objects(Footprint.self).sorted(byKeyPath: "id")
+}
+
+static let mockDistinctData = { () -&gt; [(String, Int)] in
+    return [("test1", 1), ("test2", 3)]
+}
+
+private func setUpInitialFootprint() {
+    let footprint = Footprint()
+    footprint.id = 1
+    footprint.title = String()
+    footprint.latitude = 35.0
+    footprint.longitude = 137.0
+    footprint.accuracy = 65.0
+    footprint.speed = 1.0
+    footprint.direction = 0.0
+    try! FootprintRecordViewModelTests.realm.write {
+        FootprintRecordViewModelTests.realm.create(Footprint.self, value: footprint, update: false)
+    }
+}
+
+// 説明(3)
+override func setUp() {
+    super.setUp()
+    // 初めにinMemoryに保存するデータを構築
+    setUpInitialFootprint()
+
+    let dependency = FootprintRecordViewModel.Dependency(realmManager: MockRealmManagerClient())
+    viewModel = FootprintRecordViewModel(with: dependency)
+}
+
+// 説明(4)
+override func tearDown() {
+    super.tearDown()
+
+    // inMemoryのデータは全て削除
+    try! FootprintRecordViewModelTests.realm.write {
+        FootprintRecordViewModelTests.realm.deleteAll()
+    }
+}
+
+// 説明(5)
+/// 初期ロード時に指定したデータが正しい順番&amp;内容でデータバインディングできることの確認
+func testSavedRecordStream() {
+    let disposeBag = DisposeBag()
+    let footprintSectionModels = scheduler.createObserver([FootprintRecordSectionModel].self)
+
+    viewModel.savedRecordStream
+        .bind(to: footprintSectionModels)
+        .disposed(by: disposeBag)
+
+    scheduler.start()
+
+    // 想定されるテスト結果の定義
+    let items = [("test1", 1), ("test2", 3)]
+    let mock = [FootprintRecordSectionModel(items: items)]
+    let expectedItems = [Recorded.next(0, mock)]
+
+    // 実際の実行結果
+    let element = footprintSectionModels.events.first!.value.element
+
+    // 想定結果と実行結果の比較
+    XCTAssertEqual(element!.first!.items.first!.0, expectedItems.first!.value.element!.first!.items.first!.0)
+    XCTAssertEqual(element!.first!.items.first!.1, expectedItems.first!.value.element!.first!.items.first!.1)
+    XCTAssertEqual(element!.first!.items[1].0, expectedItems.first!.value.element!.first!.items[1].0)
+    XCTAssertEqual(element!.first!.items[1].1, expectedItems.first!.value.element!.first!.items[1].1)
+}
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<h5>説明(1)</h5>
+
+<p><code>viewModel</code> と <code>scheduler</code> はサンプル1と同じです。<br/>
+ 今回、ここで下記定義を追加しています。</p>
+
+<p> <code>objective-c
+static let realm = try! Realm(configuration: Realm.Configuration(inMemoryIdentifier: "inMemory"))
+</code></p>
+
+<p>これは、このテスト対象が『 <code>RealmSwift</code> に保存したデータを利用する処理であること』が理由です。<br/>
+<code>RealmSwift</code> では特にモックデータを返却するような仕組みはないため、自身で実装する必要があります。</p>
+
+<p>最も簡単な方法が <strong>インメモリで一時保存したモックデータを利用する</strong> といったものになります。</p>
+
+<h5>説明(2)</h5>
+
+<p><code>RealmSwift</code> に保存したデータを取得するために <code>FootprintRecordViewModel</code> 内では <code>RealmManagerClient</code> を利用しています。</p>
+
+<p>下記より、</p>
+
+<ul>
+<li><code>FootprintRecordViewModel</code> の初期化時に <code>RealmManagerClient</code> 型のオブジェクトを渡す</li>
+<li><code>RealmManagerClient</code> は <code>protocol</code> として定義している</li>
+</ul>
+
+
+<p>各メソッドの返却値をテスト用に自由にカスタマイズ可能です。<br/>
+ここでは <code>RealmManagerClient</code> に準拠した <code>MockRealmManagerClient</code> を 定義して、<br/>
+<code>FootprintRecordViewModel</code> の初期化時の引数に渡しています。</p>
+
+<h5>説明(3)</h5>
+
+<p>セットアップで <code>RealmSwift</code> に、計測した足跡履歴が保存されている状態とします。</p>
+
+<h5>説明(4)</h5>
+
+<p>一応、今回は <strong>インメモリで保存している</strong> ので、アプリが終了したタイミングでメモリから解放されるはずではあるのですが、<br/>
+テスト終了時に必ず実行する処理として <code>tearDown</code> メソッド内に <strong>インメモリで保存したデータの削除</strong> を仕込んでいます。</p>
+
+<h5>説明(5)</h5>
+
+<p>ここはサンプル1と同じですね。</p>
+
+<ul>
+<li>ストリームを捕捉する <code>Observer</code> として <code>footprintSectionModels</code> を定義</li>
+<li>それを <code>savedRecordStream</code> に流れた時のバインディング先として設定</li>
+<li>固定文言2つが <code>RxDataSources</code> 用の形で流れてくるため、そのモックデータを定義</li>
+<li>初期ロード時に流れるはずなので <code>[Recorded.next(0, mock)]</code> と設定</li>
+<li>想定結果と実行結果を <code>XCTAssertEqual</code> を用いて比較
+
+<ul>
+<li>モックデータとして2つのデータを用意しているので、両方比較して想定通りであることを確認します</li>
+<li>これはデータの並び順まで想定通りであることを確認したいためです</li>
+</ul>
+</li>
+</ul>
+
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか？<br/>
+以上が <code>Unit Test</code> の書き方の事例紹介になります。<br/>
+iOSの <code>Unit Test</code> では、</p>
+
+<ul>
+<li><code>protocol</code> 準拠してマニュアルモックを実装する</li>
+<li>初期化時に、上記を渡すことでテストデータとして利用できる</li>
+</ul>
+
+
+<p>ことが重要だと思っています。</p>
+
+<p>ここを始めから念頭に置きつつ実装しないと、テストコードが書けずに苦労することになるでしょう。<br/>
+(もしくはテストコードを書くために、元々の実装を見直すことになりかねません。)</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SwiftでXCTestを使って単体テストとUIテストをしてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2016/01/11/xctest/"/>
+    <updated>2016-01-11T19:17:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2016/01/11/xctest</id>
+    <content type="html"><![CDATA[<h4>iOSアプリケーション開発でのテストとは</h4>
+
+<p>さて、本日はiOSアプリケーションを開発する際のテストについて書きたいと思います。<br/>
+元々、Objective-Cでは下記のテスト用のライブラリが使われてきました。</p>
+
+<ul>
+<li><a href="https://github.com/kiwi-bdd/Kiwi">Kiwi</a></li>
+<li><a href="https://github.com/gh-unit/gh-unit">GHUnit</a></li>
+<li><a href="https://github.com/specta/specta">Specta</a></li>
+</ul>
+
+
+<p>しかし、これらはあくまでもObjective-C時代にApple公式のテストフレームワークが充実する以前から活躍していたものです。今後、Swiftが普及するにつれて、これらのテストフレームワークもSwiftに最適化したものになっていくかもしれません。<br/>
+とは言え、AppleもいつまでもOSSのテストフレームワークがなければならない状況は避け、Xcode内で完結することを目指していくかもしれません。<br/>
+後ほど詳しく説明しますが、Xcode7からUIテストが新たに追加されたのも、その流れだと思っています。</p>
+
+<p>本日は特に <strong>XCTest</strong> に焦点をあてた、iOSにおけるテストについて見ていきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h4>XCTestでUnit Test</h4>
+
+<p>早速、XCTestの使い方について見ていきましょう。<br/>
+Xcode7ではプロジェクトを新規作成する際にXCTest用のTargetを作成するか否かを選ぶことができます。<br/>
+初めにチェックを入れていない場合は、途中で追加することが可能ですが、単体テストをすることは大切なので、チェックはつけておきましょう。</p>
+
+<p><img src="/images/xctest_1.png" alt="プロジェクト作成時にXCTest用のTargetを作成" /></p>
+
+<p>今回テストするソースコードは下記のようなシンプルなものにします。</p>
+
+<p>```objective-c
+import UIKit
+import Alamofire</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+func showWeather() {
+    self.getWeather{(description) -&gt; Void in
+        print(description)
+    }
+}
+
+func getWeather(closure:(String) -&gt; Void) {
+    Alamofire.request(.GET, "http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPIDを指定&gt;", parameters:
+        ["q":"Tokyo"]).response { (request, response, data, error) -&gt; Void in
+        if(error == nil) {
+            do {
+                let dataDict = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+                let weatherArray:[AnyObject] = dataDict["weather"] as! [AnyObject]
+                let weather:AnyObject = weatherArray[0]
+                let description:String = weather["description"] as! String
+
+                // アラートを表示
+                self.showAlert(description)
+            } catch {
+                print("例外が発生しました！")
+            }
+        }
+    }
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>今回は <strong>showWeather</strong> メソッドのUnit Testを書いていきます。<br/>
+上記コードを見て頂くと、 <strong>showWeather</strong> メソッドは <strong>Open Weather Map API</strong> を使って東京の天気を取得し、それをログとして出力していることがわかると思います。<br/>
+前半の <strong>Alamofire</strong> を使った通信処理はOSSライブラリを使っているわけで、この通信処理のテストがしたいわけではありません。<br/>
+筆者が実施したいテストは後半の <strong>Open Weather Map API</strong> を使って <strong>取得した天気情報をログに出力する</strong> 部分です。<br/>
+(本来はテストするまでもないのですが、テストの手法や考え方をメインに説明したいので、ソースは超簡単にしています。)</p>
+
+<p>それを踏まえた上で、実際にテストコードを書いてみましょう。<br/>
+&lt;Project名>Tests.swiftファイルを選択します。</p>
+
+<p>```objective-c
+import XCTest
+@testable import SimpleApplication</p>
+
+<p>class SimpleApplicationTests: XCTestCase {</p>
+
+<pre><code>override func setUp() {
+    super.setUp()
+}
+
+override func tearDown() {
+    super.tearDown()
+}
+
+func testShowWeather() {
+    class VCMock:ViewController {
+        override func getWeather(closure:(String) -&gt; Void) {
+            closure("test weather")
+        }
+    }
+
+    let vcm:VCMock = VCMock()
+    vcm.showWeather()
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>ポイントは</p>
+
+<ol>
+<li>テストメソッドの定義<br/>
+テストメソッドは、 <strong>test + &lt;任意の文字列></strong> で命名しましょう。</li>
+<li>スタブの定義<br/>
+Swiftは <strong>manual mocking</strong> という手法を取ります。<br/>
+これはテスト対象クラスを継承したクラスを定義し、テストしたいメソッドをオーバーライドします。<br/>
+返却値等を固定文字列とすることで、スタブの作成となります。</li>
+</ol>
+
+
+<p>の2点です。</p>
+
+<p>では、このテストを実行してみます。</p>
+
+<p>まず、実行Targetに <strong>&lt;Project名>Tests</strong> を選択できるようにSchemeを編集します。</p>
+
+<p><img src="/images/xctest_2.png" alt="Manage Schemes..." /></p>
+
+<p><img src="/images/xctest_3.png" alt="Add Scheme" /></p>
+
+<p><img src="/images/xctest_4.png" alt="Choose Testsファイル" /></p>
+
+<p><img src="/images/xctest_5.png" alt="Set Scheme" /><br/>
+実行するSchemeを <strong>&lt;Project名>Tests</strong> に設定し、実行デバイスをシミュレータにします。<br/>
+(実機ではテスト実行できないからです。)</p>
+
+<p><img src="/images/xctest_6.png" alt="Testを実行" /><br/>
+Xcodeメニュー > Product > Test を選択してテストを実行します。</p>
+
+<p><img src="/images/xctest_7.png" alt="テスト結果の確認" /><br/>
+左メニューおよびコード上からテスト結果を確認できます。</p>
+
+<p>メソッドが増えるごとにテストメソッドを増やしていきましょう。<br/>
+テストファイルはクラス別に作成しておくと、第三者から見ても見やすいと思います。</p>
+
+<h4>XCTestでUI Test</h4>
+
+<p>続いて、Xcode7から追加されたUI Testの方法を見ていきたいと思います。<br/>
+冒頭で説明した通り、プロジェクト作成時に <strong>include UI Tests</strong> を選択しておくことで、 <strong>&lt;Project名>UITests.swift</strong> ファイルが作成されます。</p>
+
+<p>では、UI Test用に少しコードを修正してみます。</p>
+
+<p>```objective-c
+import UIKit
+import Alamofire</p>
+
+<p>class ViewController: UIViewController {</p>
+
+<pre><code>override func viewDidLoad() {
+    super.viewDidLoad()
+}
+
+override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+}
+
+@IBAction func getWeatherAction(sender: AnyObject) {
+    self.getWeather { (description) -&gt; Void in
+        self.showAlert(description)
+    }
+}
+
+func getWeather(closure:(String) -&gt; Void) {
+    Alamofire.request(.GET, "http://api.openweathermap.org/data/2.5/weather?APPID=&lt;自身のAPPIDを指定&gt;", parameters:
+        ["q":"Tokyo"]).response { (request, response, data, error) -&gt; Void in
+        if(error == nil) {
+            do {
+                let dataDict = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+                let weatherArray:[AnyObject] = dataDict["weather"] as! [AnyObject]
+                let weather:AnyObject = weatherArray[0]
+                let description:String = weather["description"] as! String
+
+                // アラートを表示
+                self.showAlert(description)
+            } catch {
+                print("例外が発生しました！")
+            }
+        }
+    }
+}
+
+func showAlert(message:String) {
+    let alertController:UIAlertController = UIAlertController(title: "確認", message: message, preferredStyle: .Alert)
+    let okAction:UIAlertAction = UIAlertAction(title: "OK", style: .Default) { (alert) -&gt; Void in
+        // OKを選択したときに実行される処理
+    }
+    alertController.addAction(okAction)
+
+    presentViewController(alertController, animated: true, completion: nil)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>これに伴い、画面にボタンを配置しました。<br/>
+このボタンをタップすると、天気情報をアラートで表示してくれます。</p>
+
+<p><img src="/images/xctest_8.png" alt="ボタンを配置" /></p>
+
+<p><img src="/images/xctest_9.png" alt="アラートを表示" /></p>
+
+<p>では、UI Testのテストコードを作成します。<br/>
+UI Testの場合は、Xcodeの <strong>UI recording</strong> 機能を使って、手作業でコードを修正していきます。</p>
+
+<p><img src="/images/xctest_10.png" alt="UI recording 開始ボタンをタップ" /></p>
+
+<p><img src="/images/xctest_11.png" alt="UI recording 終了ボタンをタップ" /></p>
+
+<p>すると、下記のようなコードが生成されました。</p>
+
+<p>```objective-c
+func testShowWeatherAlert() {</p>
+
+<pre><code>let app = XCUIApplication()
+app.buttons["GET Weather"].tap()
+app.alerts["\U78ba\U8a8d"].collectionViews.buttons["OK"].tap()
+</code></pre>
+
+<p>}
+```</p>
+
+<p>しかし、このままではエラーが表示されるはずです。<br/>
+理由はアラートのタイトルを日本語にしていたため、ASCIIコードで表示されてしまっているからです。<br/>
+もし、指し示しているASCIIコードが理解できないようであれば、<a href="http://web-apps.nbookmark.com/ascii-converter/">ASCIIコード変換機</a>を使ってください。</p>
+
+<p>ASCIIコード部分を修正した結果が下記となります。</p>
+
+<p>```objective-c
+func testShowWeatherAlert() {</p>
+
+<pre><code>let app = XCUIApplication()
+app.buttons["GET Weather"].tap()
+app.alerts["確認"].collectionViews.buttons["OK"].tap()
+</code></pre>
+
+<p>}
+```</p>
+
+<p>テストコードが作成できましたので、実行Targetに &lt;Project名>UITests を選択できるようにSchemeを編集します。</p>
+
+<p><img src="/images/xctest_12.png" alt="Manage Schemes..." /></p>
+
+<p><img src="/images/xctest_13.png" alt="Add Scheme" /></p>
+
+<p><img src="/images/xctest_14.png" alt="Choose Testsファイル" /></p>
+
+<p><img src="/images/xctest_15.png" alt="Set Scheme" /><br/>
+実行するSchemeを &lt;Project名>UITests に設定し、実行デバイスをシミュレータにします。<br/>
+(実機ではテスト実行できないからです。)</p>
+
+<p><img src="/images/xctest_6.png" alt="Testを実行" /><br/>
+Xcodeメニュー > Product > Test を選択してテストを実行します。</p>
+
+<p><img src="/images/xctest_16.png" alt="テスト結果の確認" /><br/>
+左メニューおよびコード上からテスト結果を確認できます。</p>
+
+<p>Unit Testと同様にメソッドが増えるごとにテストメソッドを増やしていきましょう。<br/>
+テストファイルはクラス別に作成しておくと、第三者から見ても見やすいと思います。</p>
+
+<p>いかがだったでしょうか？<br/>
+今回は超簡単なサンプルコードで基本的なことについて説明しましたが、今後深く使っていくことで躓くこともあるかもしれません。<br/>
+その際にはまたブログにて説明したいと思います。<br/>
+ぜひ、単体テストとUIテストを駆使して、バグの少ないアプリを作っていきたいものです。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

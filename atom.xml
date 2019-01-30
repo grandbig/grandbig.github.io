@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2019-01-27T11:34:31+09:00</updated>
+  <updated>2019-01-30T14:11:53+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,1031 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[XCTestでViewModelのテストを書いてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2019/01/30/xctest-2/"/>
+    <updated>2019-01-30T11:57:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/01/30/xctest-2</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は、 <code>MVVM</code> アーキテクチャでiOSアプリを書いた場合の <code>Unit Test</code> について記事を書こうと思います。</p>
+
+<p>だいぶ<a href="http://grandbig.github.io/blog/2016/01/11/xctest/">以前</a>に <code>XCTest</code> と <code>XCUITest</code> の初歩について紹介しましたが、<br/>
+本記事では特に <code>XCTest</code> を用いた <code>Unit Test</code> に焦点をあてます。</p>
+
+<p>では、早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>前提</h3>
+
+<p>まずは、 <code>Unit Test</code> を書くにあたっての前提について確認しておきたいと思います。</p>
+
+<h4>利用するソースコード</h4>
+
+<p>今回説明に利用するソースコードは<a href="https://github.com/grandbig/footStepMeter">足跡計 v1.0.4</a>にします。</p>
+
+<p>主な機能は下記の通りです。</p>
+
+<ul>
+<li>様々な精度で歩行ルートを記録可能</li>
+<li>複数の歩行ルートを記録可能</li>
+<li>歩行ルート履歴をいつでも閲覧可能</li>
+<li>歩行ルート記録をメールで送信可能</li>
+<li>不要になった歩行ルート記録は削除可能</li>
+</ul>
+
+
+<p>また、実際のアプリ画面は下記の通りです。</p>
+
+<p><img src="http://grandbig.github.io/images/xctest-2_1.png" alt="足跡計 v1.0.4の画面キャプチャ" /></p>
+
+<h4>利用しているOSSライブラリ</h4>
+
+<p>このアプリで利用しているOSSライブラリは下記の通りです。</p>
+
+<ul>
+<li><a href="https://github.com/ReactiveX/RxSwift">RxSwift</a>
+
+<ul>
+<li><code>MVVM</code> アーキテクチャでアプリを構成するために利用しています。</li>
+<li><code>RxCocoa</code> は <code>RxSwift</code> と基本的にはセットで利用します。</li>
+<li><code>RxTest</code> はテストコードを書く時に利用します。</li>
+</ul>
+</li>
+<li><a href="https://github.com/RxSwiftCommunity/RxDataSources">RxDataSources</a>
+
+<ul>
+<li><code>UITableView</code> 関連の処理を <code>Rx</code> 書く時のサポートとなるため利用しています。</li>
+</ul>
+</li>
+<li><a href="https://github.com/realm/realm-cocoa">RealmSwift</a>
+
+<ul>
+<li>位置情報をアプリローカルに保存するために利用しています。</li>
+</ul>
+</li>
+<li><a href="https://github.com/mac-cain13/R.swift">R.swift</a>
+
+<ul>
+<li>文字列のベタ書きやそれに寄るスペルミス等を防ぐために利用しています。</li>
+</ul>
+</li>
+<li><a href="https://github.com/mono0926/LicensePlist">LicensePlist</a>
+
+<ul>
+<li>ライセンスページをアプリ外に配置するために利用しています。</li>
+</ul>
+</li>
+</ul>
+
+
+<h3>テストコードのサンプル1</h3>
+
+<p>それでは実際にテストコードを見ていきましょう。</p>
+
+<p>まず1つ目のサンプルとしては、下記画面のテストを取り上げて説明します。</p>
+
+<p><img src="http://grandbig.github.io/images/xctest-2_2.png" alt="設定画面" /></p>
+
+<p>この画面は、</p>
+
+<ul>
+<li>メイン画面の <code>UITabBar</code> の4項目目をタップして画面遷移した先の設定画面</li>
+<li>この設定画面は <code>UITableView</code> で構成されたテーブルビューの画面</li>
+<li>表示されている2項目は文言固定</li>
+</ul>
+
+
+<p>という仕様になっています。</p>
+
+<h4>ViewModelのソースコード</h4>
+
+<p>テストを書く前にそもそもの実装を紹介します。</p>
+
+<h5>SettingView.strings</h5>
+
+<p>文字列べた書きを避けるために <code>R.swift</code> を利用しているので、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SettingView.strings</span>
+</span><span class='line'><span class="s">&quot;title&quot;</span> <span class="o">=</span> <span class="s">&quot;SETTINGS&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="s">&quot;footprintHistory&quot;</span> <span class="o">=</span> <span class="s">&quot;FOOTPRINT HISTORY&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="s">&quot;aboutApp&quot;</span> <span class="o">=</span> <span class="s">&quot;ABOUT APP&quot;</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のように定義しています。</p>
+
+<h5>Injectable.swift</h5>
+
+<p>ここは <code>ViewModel</code> クラスの <code>DI</code> 化をするために用意した <code>Protocol</code> になります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Injectable.swift</span>
+</span><span class='line'><span class="n">protocol</span> <span class="n">Injectable</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">associatedtype</span> <span class="n">Dependency</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="n">Injectable</span> <span class="n">where</span> <span class="n">Dependency</span> <span class="o">==</span> <span class="n">Void</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">with:</span> <span class="p">())</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>SettingSectionModel.swift</h5>
+
+<p>本画面ではテーブルビューの描画時に <code>RxDataSources</code> を利用しているため、その準備が必要です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SettingSectionModel.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxDataSources</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">SettingSectionModel</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">]</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">SettingSectionModel:</span> <span class="n">SectionModelType</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">typealias</span> <span class="n">Item</span> <span class="o">=</span> <span class="n">String</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="nl">original:</span> <span class="n">SettingSectionModel</span><span class="p">,</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span> <span class="o">=</span> <span class="n">original</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">items</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>SettingViewModel.swift</h5>
+
+<p>そして、 <code>ViewModel</code> のクラスです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SettingViewModel.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">final</span> <span class="n">class</span> <span class="nl">SettingViewModel:</span> <span class="n">Injectable</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">Dependency</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SettingSectionModel</span><span class="p">]()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: BehaviorRelays</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">viewDidLoadStream</span> <span class="o">=</span> <span class="n">BehaviorRelay</span><span class="o">&lt;</span><span class="p">[</span><span class="n">SettingSectionModel</span><span class="p">]</span><span class="o">&gt;</span><span class="p">(</span><span class="nl">value:</span> <span class="p">[])</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: Initial method</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">Observable</span><span class="p">.</span><span class="n">deferred</span> <span class="p">{()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[</span><span class="n">SettingSectionModel</span><span class="p">]</span><span class="o">&gt;</span> <span class="k">in</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">settingView</span><span class="p">.</span><span class="n">footprintHistory</span><span class="p">(),</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">settingView</span><span class="p">.</span><span class="n">aboutApp</span><span class="p">()]</span>
+</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SettingSectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">items</span><span class="p">)]</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">viewDidLoadStream</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>初期ロード時に、固定文言をセットしたテーブルビューを表示する必要があるため、<br/>
+画面初期化時に即時に <code>Subscribe</code> するようにしており、<br/>
+それを <code>Observable.deferred</code> で捕捉して、必要な値を <code>viewDidLoadStream</code> にバインディングする形で <code>View</code> に返しています。</p>
+
+<h4>ViewModelのテストコード</h4>
+
+<p>ではテストを書いていきます。</p>
+
+<p>ここで書きたいテストは、</p>
+
+<ul>
+<li>When: 初期ロード時に</li>
+<li>What: <code>RxDataSources</code> で処理可能な <code>SettingSectionModel</code> の形をした2つの固定文言を</li>
+<li>How: <code>viewDidLoadStream</code> 経由で</li>
+</ul>
+
+
+<p>渡ってくることになります。</p>
+
+<p>それを表したテストコードが下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SettingViewModelTests.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">XCTest</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxTest</span>
+</span><span class='line'><span class="err">@</span><span class="n">testable</span> <span class="n">import</span> <span class="n">footStepMeter</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">SettingViewModelTests:</span> <span class="n">XCTestCase</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(1)</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">viewModel:</span> <span class="n">SettingViewModel</span><span class="o">!</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">scheduler</span> <span class="o">=</span> <span class="n">TestScheduler</span><span class="p">(</span><span class="nl">initialClock:</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(2)</span>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">setUp</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">setUp</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">let</span> <span class="n">dependency</span> <span class="o">=</span> <span class="n">SettingViewModel</span><span class="p">.</span><span class="n">Dependency</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">viewModel</span> <span class="o">=</span> <span class="n">SettingViewModel</span><span class="p">(</span><span class="nl">with:</span> <span class="n">dependency</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">tearDown</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">tearDown</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(3)</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">testViewDidLoadStream</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">settingSectionModels</span> <span class="o">=</span> <span class="n">scheduler</span><span class="p">.</span><span class="n">createObserver</span><span class="p">([</span><span class="n">SettingSectionModel</span><span class="p">].</span><span class="n">self</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">viewModel</span><span class="p">.</span><span class="n">viewDidLoadStream</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">settingSectionModels</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">scheduler</span><span class="p">.</span><span class="n">start</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 想定されるテスト結果の定義</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">settingView</span><span class="p">.</span><span class="n">footprintHistory</span><span class="p">(),</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">settingView</span><span class="p">.</span><span class="n">aboutApp</span><span class="p">()]</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">mock</span> <span class="o">=</span> <span class="p">[</span><span class="n">SettingSectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">items</span><span class="p">)]</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">expectedItems</span> <span class="o">=</span> <span class="p">[</span><span class="n">Recorded</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">mock</span><span class="p">)]</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 実際の実行結果</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">element</span> <span class="o">=</span> <span class="n">settingSectionModels</span><span class="p">.</span><span class="n">events</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 想定結果と実行結果を比較</span>
+</span><span class='line'>        <span class="n">XCTAssertEqual</span><span class="p">(</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">,</span> <span class="n">expectedItems</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>説明(1)</h5>
+
+<p>テスト対象となる <code>SettingViewModel</code> とテストの実行タイミングを測る上で必要な <code>TestScheduler</code> を定義しています。</p>
+
+<h5>説明(2)</h5>
+
+<p>テスト実施前のセットアップとして、 <code>SettingViewModel</code> を初期化しています。</p>
+
+<h5>説明(3)</h5>
+
+<p>ここで具体的にテストを書いています。</p>
+
+<ul>
+<li>ストリームを捕捉する <code>Observer</code> として <code>settingSectionModels</code> を定義</li>
+<li>それを <code>viewDidLoadStream</code> に流れた時のバインディング先として設定</li>
+<li>固定文言2つが <code>RxDataSources</code> 用の形で流れてくるため、そのモックデータを定義</li>
+<li>初期ロード時に流れるはずなので <code>[Recorded.next(0, mock)]</code> と設定</li>
+<li>想定結果と実行結果を <code>XCTAssertEqual</code> を用いて比較</li>
+</ul>
+
+
+<h3>テストコードのサンプル2</h3>
+
+<p>続いて、2つ目のサンプルですが、下記のテストの一部を紹介します。</p>
+
+<p><img src="http://grandbig.github.io/images/xctest-2_3.png" alt="足跡履歴一覧画面" /></p>
+
+<p>この画面は、</p>
+
+<ul>
+<li>設定画面の <code>FOOTPRINT HISTORY</code> をタップした時に画面遷移した先の足跡履歴一覧画面</li>
+<li>この足跡履歴一覧画面は <code>UITableView</code> で構成されたテーブルビューの画面</li>
+<li>各項目はアプリローカルに保存された情報から取得して表示している</li>
+</ul>
+
+
+<p>という仕様になっています。</p>
+
+<p>幾つか他にも機能があるため、サンプル1よりもテスト項目数は多くなるのですが、説明のため上記1つに絞ります。</p>
+
+<h4>ViewModelのソースコード</h4>
+
+<p>さて、そもそものソースコードですが、 <code>Injectable.swift</code> は先程と同じなので省略します。</p>
+
+<h5>FootprintRecordSectionModel.swift</h5>
+
+<p>サンプル1と同じく、本画面ではテーブルビューの描画時に <code>RxDataSources</code> を利用しているため、その準備が必要です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// FootprintRecordSectionModel.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxDataSources</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">FootprintRecordSectionModel</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">]</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">FootprintRecordSectionModel:</span> <span class="n">SectionModelType</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">typealias</span> <span class="n">Item</span> <span class="o">=</span> <span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="nl">original:</span> <span class="n">FootprintRecordSectionModel</span><span class="p">,</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span> <span class="o">=</span> <span class="n">original</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">items</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>各行に表示する内容が、</p>
+
+<ul>
+<li>保存データのタイトル</li>
+<li>その足跡数</li>
+</ul>
+
+
+<p>となっていて、対にしてデータを返却するために <code>(String, Int)</code> とタプルで書いています。</p>
+
+<h5>RealmManager.swift</h5>
+
+<p>今回のテストでは、アプリ内部に保存したデータを取得する処理を扱うため、その処理を実装する必要があります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// RealmManager.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">protocol</span> <span class="n">RealmManagerClient</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// MARK: - Protocol Properties</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">title:</span> <span class="n">String</span> <span class="p">{</span> <span class="n">get</span> <span class="n">set</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Protocol Methods</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">setSaveTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">title:</span> <span class="n">String</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">createFootprint</span><span class="p">(</span><span class="nl">location:</span> <span class="n">CLLocation</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">fetchFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">fetchFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?&gt;</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">fetchFootprintsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?&gt;</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">existsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Bool</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">countFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Int</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">countFootprintsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Int</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">delete</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Error</span><span class="o">?&gt;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">final</span> <span class="n">class</span> <span class="nl">RealmManager:</span> <span class="n">NSObject</span><span class="p">,</span> <span class="n">RealmManagerClient</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">do</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span> <span class="n">Realm</span><span class="p">()</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">let</span> <span class="n">titles</span> <span class="o">=</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Footprint</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">sorted</span><span class="p">(</span><span class="nl">byKeyPath:</span> <span class="s">&quot;id&quot;</span><span class="p">,</span> <span class="nl">ascending:</span> <span class="n">false</span><span class="p">)</span>
+</span><span class='line'>                <span class="p">.</span><span class="n">value</span><span class="p">(</span><span class="nl">forKey:</span> <span class="s">&quot;title&quot;</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="n">String</span><span class="p">],</span> <span class="n">let</span> <span class="n">distinctTitles</span> <span class="o">=</span> <span class="n">NSOrderedSet</span><span class="p">(</span><span class="nl">array:</span> <span class="n">titles</span><span class="p">).</span><span class="n">array</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">var</span> <span class="n">distinctFootprints</span> <span class="o">=</span> <span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]()</span>
+</span><span class='line'>                <span class="k">for</span> <span class="n">title</span> <span class="k">in</span> <span class="n">distinctTitles</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="n">let</span> <span class="n">count</span> <span class="o">=</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Footprint</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">filter</span><span class="p">(</span><span class="s">&quot;title == &#39;\(title)&#39;&quot;</span><span class="p">).</span><span class="n">count</span>
+</span><span class='line'>                    <span class="n">distinctFootprints</span><span class="p">.</span><span class="n">append</span><span class="p">((</span><span class="n">title</span><span class="p">,</span> <span class="n">count</span><span class="p">))</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">distinctFootprints</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="k">return</span> <span class="p">[]</span>
+</span><span class='line'>        <span class="p">}</span> <span class="n">catch</span> <span class="n">_</span> <span class="n">as</span> <span class="n">NSError</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="p">[]</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>今回直接扱う処理以外は省略して書きました。<br/>
+基本的な <code>CRUD</code> の処理に加えて、本アプリ固有のビジネスロジックが存在します。<br/>
+※ <code>protocol</code> 部分を書いたのは、後のテストコードに関わるためです。</p>
+
+<h5>FootprintRecordViewModel</h5>
+
+<p>冒頭に説明した通り、混乱を避けるため、今回のテストコードで利用しない部分はあえてコードを省略しています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// FootprintRecordViewModel.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">final</span> <span class="n">class</span> <span class="nl">FootprintRecordViewModel:</span> <span class="n">Injectable</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">Dependency</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="nl">realmManager:</span> <span class="n">RealmManagerClient</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">FootprintRecordSectionModel</span><span class="p">]()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: BehaviorRelays</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">savedRecordStream</span> <span class="o">=</span> <span class="n">BehaviorRelay</span><span class="o">&lt;</span><span class="p">[</span><span class="n">FootprintRecordSectionModel</span><span class="p">]</span><span class="o">&gt;</span><span class="p">(</span><span class="nl">value:</span> <span class="p">[])</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// MARK: Initial method</span>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">realmManager</span> <span class="o">=</span> <span class="n">dependency</span><span class="p">.</span><span class="n">realmManager</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">Observable</span><span class="p">.</span><span class="n">deferred</span> <span class="p">{()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[</span><span class="n">FootprintRecordSectionModel</span><span class="p">]</span><span class="o">&gt;</span> <span class="k">in</span>
+</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">FootprintRecordSectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">realmManager</span><span class="p">.</span><span class="n">distinctByTitle</span><span class="p">())]</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">savedRecordStream</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>サンプル1と基本的には同じです。<br/>
+返却値をアプリ内部に保存したデータにする必要があるため、<br/>
+<code>realmManager.distinctByTitle()</code> を利用しています。</p>
+
+<h4>ViewModelのテストコード</h4>
+
+<p>ではテストを書いていきます。</p>
+
+<p>ここで書きたいテストは、</p>
+
+<ul>
+<li>When: 初期ロード時に</li>
+<li>What: <code>RxDataSources</code> で処理可能な <code>FootprintRecordSectionModel</code> の形をした保存済み足跡情報を</li>
+<li>How: <code>savedRecordStream</code> 経由で</li>
+</ul>
+
+
+<p>渡ってくることになります。</p>
+
+<p>それを表したテストコードが下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// FootprintRecordViewModelTests.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">XCTest</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RxTest</span>
+</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">@</span><span class="n">testable</span> <span class="n">import</span> <span class="n">footStepMeter</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">FootprintRecordViewModelTests:</span> <span class="n">XCTestCase</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(1)</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">viewModel:</span> <span class="n">FootprintRecordViewModel</span><span class="o">!</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">scheduler</span> <span class="o">=</span> <span class="n">TestScheduler</span><span class="p">(</span><span class="nl">initialClock:</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">static</span> <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">(</span><span class="nl">configuration:</span> <span class="n">Realm</span><span class="p">.</span><span class="n">Configuration</span><span class="p">(</span><span class="nl">inMemoryIdentifier:</span> <span class="s">&quot;inMemory&quot;</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(2)</span>
+</span><span class='line'>    <span class="c1">/// テスト用のモックRealmManagerClient</span>
+</span><span class='line'>    <span class="n">final</span> <span class="n">class</span> <span class="nl">MockRealmManagerClient:</span> <span class="n">RealmManagerClient</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">var</span> <span class="nl">title:</span> <span class="n">String</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">setSaveTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">title:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">createFootprint</span><span class="p">(</span><span class="nl">location:</span> <span class="n">CLLocation</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">fetchFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="nb">nil</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">fetchFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">mockFootprints</span><span class="p">())</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">fetchFootprintsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">mockFootprints</span><span class="p">())</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">existsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Bool</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">false</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">mockDistinctData</span><span class="p">()</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">mockDistinctData</span><span class="p">())</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">countFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Int</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">countFootprintsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Int</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">func</span> <span class="n">delete</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Error</span><span class="o">?&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">static</span> <span class="n">let</span> <span class="n">mockFootprints</span> <span class="o">=</span> <span class="p">{</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?</span> <span class="k">in</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Footprint</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">sorted</span><span class="p">(</span><span class="nl">byKeyPath:</span> <span class="s">&quot;id&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">static</span> <span class="n">let</span> <span class="n">mockDistinctData</span> <span class="o">=</span> <span class="p">{</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span> <span class="k">in</span>
+</span><span class='line'>        <span class="k">return</span> <span class="p">[(</span><span class="s">&quot;test1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test2&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">private</span> <span class="n">func</span> <span class="n">setUpInitialFootprint</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">footprint</span> <span class="o">=</span> <span class="n">Footprint</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="kt">id</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">latitude</span> <span class="o">=</span> <span class="mf">35.0</span>
+</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">longitude</span> <span class="o">=</span> <span class="mf">137.0</span>
+</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">accuracy</span> <span class="o">=</span> <span class="mf">65.0</span>
+</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">speed</span> <span class="o">=</span> <span class="mf">1.0</span>
+</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">direction</span> <span class="o">=</span> <span class="mf">0.0</span>
+</span><span class='line'>        <span class="n">try</span><span class="o">!</span> <span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">realm</span><span class="p">.</span><span class="n">create</span><span class="p">(</span><span class="n">Footprint</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">value:</span> <span class="n">footprint</span><span class="p">,</span> <span class="nl">update:</span> <span class="n">false</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(3)</span>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">setUp</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">setUp</span><span class="p">()</span>
+</span><span class='line'>        <span class="c1">// 初めにinMemoryに保存するデータを構築</span>
+</span><span class='line'>        <span class="n">setUpInitialFootprint</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">let</span> <span class="n">dependency</span> <span class="o">=</span> <span class="n">FootprintRecordViewModel</span><span class="p">.</span><span class="n">Dependency</span><span class="p">(</span><span class="nl">realmManager:</span> <span class="n">MockRealmManagerClient</span><span class="p">())</span>
+</span><span class='line'>        <span class="n">viewModel</span> <span class="o">=</span> <span class="n">FootprintRecordViewModel</span><span class="p">(</span><span class="nl">with:</span> <span class="n">dependency</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(4)</span>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">tearDown</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">tearDown</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// inMemoryのデータは全て削除</span>
+</span><span class='line'>        <span class="n">try</span><span class="o">!</span> <span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">realm</span><span class="p">.</span><span class="n">deleteAll</span><span class="p">()</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 説明(5)</span>
+</span><span class='line'>    <span class="c1">/// 初期ロード時に指定したデータが正しい順番&amp;内容でデータバインディングできることの確認</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">testSavedRecordStream</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">footprintSectionModels</span> <span class="o">=</span> <span class="n">scheduler</span><span class="p">.</span><span class="n">createObserver</span><span class="p">([</span><span class="n">FootprintRecordSectionModel</span><span class="p">].</span><span class="n">self</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">viewModel</span><span class="p">.</span><span class="n">savedRecordStream</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">footprintSectionModels</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">scheduler</span><span class="p">.</span><span class="n">start</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 想定されるテスト結果の定義</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">items</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&quot;test1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test2&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">mock</span> <span class="o">=</span> <span class="p">[</span><span class="n">FootprintRecordSectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">items</span><span class="p">)]</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">expectedItems</span> <span class="o">=</span> <span class="p">[</span><span class="n">Recorded</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">mock</span><span class="p">)]</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 実際の実行結果</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">element</span> <span class="o">=</span> <span class="n">footprintSectionModels</span><span class="p">.</span><span class="n">events</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 想定結果と実行結果の比較</span>
+</span><span class='line'>        <span class="n">XCTAssertEqual</span><span class="p">(</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="mf">.0</span><span class="p">,</span> <span class="n">expectedItems</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="mf">.0</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">XCTAssertEqual</span><span class="p">(</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="mf">.1</span><span class="p">,</span> <span class="n">expectedItems</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="mf">.1</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">XCTAssertEqual</span><span class="p">(</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="mf">.0</span><span class="p">,</span> <span class="n">expectedItems</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="mf">.0</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">XCTAssertEqual</span><span class="p">(</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="mf">.1</span><span class="p">,</span> <span class="n">expectedItems</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="mf">.1</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>説明(1)</h5>
+
+<p><code>viewModel</code> と <code>scheduler</code> はサンプル1と同じです。<br/>
+ 今回、ここで下記定義を追加しています。</p>
+
+<p> <code>objective-c
+static let realm = try! Realm(configuration: Realm.Configuration(inMemoryIdentifier: "inMemory"))
+</code></p>
+
+<p>これは、このテスト対象が『 <code>RealmSwift</code> に保存したデータを利用する処理であること』が理由です。<br/>
+<code>RealmSwift</code> では特にモックデータを返却するような仕組みはないため、自身で実装する必要があります。</p>
+
+<p>最も簡単な方法が <strong>インメモリで一時保存したモックデータを利用する</strong> といったものになります。</p>
+
+<h5>説明(2)</h5>
+
+<p><code>RealmSwift</code> に保存したデータを取得するために <code>FootprintRecordViewModel</code> 内では <code>RealmManagerClient</code> を利用しています。</p>
+
+<p>下記より、</p>
+
+<ul>
+<li><code>FootprintRecordViewModel</code> の初期化時に <code>RealmManagerClient</code> 型のオブジェクトを渡す</li>
+<li><code>RealmManagerClient</code> は <code>protocol</code> として定義している</li>
+</ul>
+
+
+<p>各メソッドの返却値をテスト用に自由にカスタマイズ可能です。<br/>
+ここでは <code>RealmManagerClient</code> に準拠した <code>MockRealmManagerClient</code> を 定義して、<br/>
+<code>FootprintRecordViewModel</code> の初期化時の引数に渡しています。</p>
+
+<h5>説明(3)</h5>
+
+<p>セットアップで <code>RealmSwift</code> に、計測した足跡履歴が保存されている状態とします。</p>
+
+<h5>説明(4)</h5>
+
+<p>一応、今回は <strong>インメモリで保存している</strong> ので、アプリが終了したタイミングでメモリから解放されるはずではあるのですが、<br/>
+テスト終了時に必ず実行する処理として <code>tearDown</code> メソッド内に <strong>インメモリで保存したデータの削除</strong> を仕込んでいます。</p>
+
+<h5>説明(5)</h5>
+
+<p>ここはサンプル1と同じですね。</p>
+
+<ul>
+<li>ストリームを捕捉する <code>Observer</code> として <code>footprintSectionModels</code> を定義</li>
+<li>それを <code>savedRecordStream</code> に流れた時のバインディング先として設定</li>
+<li>固定文言2つが <code>RxDataSources</code> 用の形で流れてくるため、そのモックデータを定義</li>
+<li>初期ロード時に流れるはずなので <code>[Recorded.next(0, mock)]</code> と設定</li>
+<li>想定結果と実行結果を <code>XCTAssertEqual</code> を用いて比較
+
+<ul>
+<li>モックデータとして2つのデータを用意しているので、両方比較して想定通りであることを確認します</li>
+<li>これはデータの並び順まで想定通りであることを確認したいためです</li>
+</ul>
+</li>
+</ul>
+
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか？<br/>
+以上が <code>Unit Test</code> の書き方の事例紹介になります。<br/>
+iOSの <code>Unit Test</code> では、</p>
+
+<ul>
+<li><code>protocol</code> 準拠してマニュアルモックを実装する</li>
+<li>初期化時に、上記を渡すことでテストデータとして利用できる</li>
+</ul>
+
+
+<p>ことが重要だと思っています。</p>
+
+<p>ここを始めから念頭に置きつつ実装しないと、テストコードが書けずに苦労することになるでしょう。<br/>
+(もしくはテストコードを書くために、元々の実装を見直すことになりかねません。)</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[転職面接で聞かれた質問から求めている人材を考えてみる(2)]]></title>
@@ -7871,142 +8896,6 @@ iOSアプリを開発する際に、 <code>AutoLayout</code> スキルをない�
 
 <p>ぜひぜひ今後とも強めていきたいところですね。<br/>
 ということで、本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[HackerRankで問題を解いてみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2018/07/22/hacker-rank/"/>
-    <updated>2018-07-22T23:35:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2018/07/22/hacker-rank</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>さて、今回は<a href="https://www.hackerrank.com/dashboard?h_r=logo">HackerRank</a>について紹介したいと思います。<br/>
-HackerRankとは求人サイトの一種で、問題を解くことで得点を稼ぐことができ、そのスコアでランキングを競うことのできるサイトです。<br/>
-同様のサービスでは<a href="https://paiza.jp/">paiza</a>も有名かと思います。<br/>
-( 少し前はCodeIQといったサービスもありましたね。 )</p>
-
-<p>HackerRankの特徴は、</p>
-
-<ul>
-<li>全世界のエンジニア対象(=ランキングは世界ランキングになる)</li>
-<li>問題文は全て英語で書かれている</li>
-<li>問題種別は <code>Algorithms</code>, <code>Data Structures</code>, <code>Mathematics</code> が用意されている</li>
-</ul>
-
-
-<p>といったところでしょうか。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>どんな問題なのか</h3>
-
-<p>オンラインでのプログラミングテストでありがちなのが、その独特な <code>Input</code> の扱い方かと思います。<br/>
-例えば、複数 <code>Input</code> がある場合、<br/>
-1回目の <code>readLine()</code> の呼び出しが1つ目の <code>Input</code> に当たり、<br/>
-2回目の <code>readLine()</code> の呼び出しが2つ目の <code>Input</code> に当たるといった感じですね。</p>
-
-<p>HackerRankでも、初級の問題ではそういった部分を書かせることがあるのですが、<br/>
-ほとんどの問題が『肝心のロジックをどのように書いているのかに終始できる問題の出し方になっています。</p>
-
-<p>では、実際に一例を見てみましょう。<br/>
-こちらの<a href="https://www.hackerrank.com/challenges/apple-and-orange/problem">Apple and Orange</a>は <code>Algorithms</code> に区分けされた <code>Easy</code> 問題です。</p>
-
-<p>問題を見てみると、「何やら既にたくさんのコードが書かれているな」ということに気づくでしょう。</p>
-
-<p><img src="http://grandbig.github.io/images/hacker_rank.png" alt="HackerRankの問題例" /></p>
-
-<p>上図のように中身のないメソッドが用意されており、その中のロジックを書くことが『問題に回答する』ということになります。<br/>
-<code>Easy</code> 問題であっても、割と長々と英語で問題が解説されているため、身構えてしまう人もいるかもしれませんが、<br/>
-最後まで読み切ってしまえば、問題の難易度と英文の長さが比例しているわけではないということがわかるでしょう。</p>
-
-<p>参考までに上記の問題を筆者が解いたときの回答を記載しておきます。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">func</span> <span class="n">countApplesAndOranges</span><span class="p">(</span><span class="nl">s:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">t:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">a:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">b:</span> <span class="n">Int</span><span class="p">,</span> <span class="nl">apples:</span> <span class="p">[</span><span class="n">Int</span><span class="p">],</span> <span class="nl">oranges:</span> <span class="p">[</span><span class="n">Int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Void</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">// まずは林檎の計算から開始する</span>
-</span><span class='line'>    <span class="n">var</span> <span class="n">sumAppleCount</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>    <span class="k">for</span> <span class="n">apple</span> <span class="k">in</span> <span class="n">apples</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">position</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">apple</span>
-</span><span class='line'>        <span class="k">if</span> <span class="n">position</span> <span class="o">&gt;=</span> <span class="n">s</span><span class="p">,</span> <span class="n">position</span> <span class="o">&lt;=</span> <span class="n">t</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">sumAppleCount</span> <span class="o">+=</span> <span class="mi">1</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 次にオレンジの計算</span>
-</span><span class='line'>    <span class="n">var</span> <span class="n">sumOrangeCount</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span class='line'>    <span class="k">for</span> <span class="n">orange</span> <span class="k">in</span> <span class="n">oranges</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">position</span> <span class="o">=</span> <span class="n">b</span> <span class="o">+</span> <span class="n">orange</span>
-</span><span class='line'>        <span class="k">if</span> <span class="n">position</span> <span class="o">&gt;=</span> <span class="n">s</span><span class="p">,</span> <span class="n">position</span> <span class="o">&lt;=</span> <span class="n">t</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">sumOrangeCount</span> <span class="o">+=</span> <span class="mi">1</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="s">&quot;\(sumAppleCount)</span><span class="se">\n</span><span class="s">\(sumOrangeCount)&quot;</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>このように、コメント文を日本語で書いても問題はありません。<br/>
-因みに、一度解いて提出した回答内容はいつでも <code>Submissions</code> タブから確認することができます。</p>
-
-<p><img src="http://grandbig.github.io/images/hacker_rank_2.png" alt="提出した回答の確認方法" /></p>
-
-<h3>まとめ</h3>
-
-<p>さて、今回はHackerRankについて簡単に紹介しました。<br/>
-初めは『プロダクトの開発の方がよっぽど面白いんじゃないか』と思っていたのですが、<br/>
-案外、解き始めて見ると楽しいし、勉強になるしで良い遊び場を見つけたような気持ちになりました。</p>
-
-<p>少しずつではありますが、筆者も <code>Easy</code> 問題から解き始めています。<br/>
-そして <a href="https://github.com/grandbig/HackerRankAnswer">GitHub</a>に、その軌跡を残し始めることにしました。</p>
-
-<p>「プロダクト開発で、『○○なロジックをキレイに書くためには&hellip;』なんて考えた時に思い出すかもしれないな」なんて思ったり笑</p>
-
-<p>と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
