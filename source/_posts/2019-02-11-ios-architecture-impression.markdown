@@ -3,7 +3,7 @@ layout: post
 title: "初心者だけしゃない！『iOSアプリ設計パターン入門』へのススメ"
 date: 2019-02-11 15:28
 comments: true
-categories: ios architecture
+categories: ios architecture book
 ---
 
 ### はじめに
