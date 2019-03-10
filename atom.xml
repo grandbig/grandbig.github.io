@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2019-02-24T23:04:29+09:00</updated>
+  <updated>2019-03-10T18:28:31+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,325 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Swiftのグローバルプロパティとスタティックプロパティは自動でlazyになる]]></title>
+    <link href="http://grandbig.github.io/blog/2019/03/10/swift-global-variables/"/>
+    <updated>2019-03-10T00:40:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/03/10/swift-global-variables</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今日はSwiftでグローバルプロパティを定義した時の挙動についてのメモです。</p>
+
+<p>Swiftではプロパティを定義する時に、わざと遅延評価させるための <code>lazy</code> という修飾子があります。<br/>
+<code>lazy</code> をつけることで、そのプロパティが利用される時に、初期化されメモリが消費されるため、メモリの効率性を上げることに一役買います。</p>
+
+<p>実際の定義は下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">lazy</span> <span class="n">var</span> <span class="n">localProp</span> <span class="o">=</span> <span class="s">&quot;local&quot;</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これがSwiftで <strong>グローバルプロパティ</strong> や <strong>スタティックプロパティ</strong> を定義した時に自動的に付与されます。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>実験</h3>
+
+<p>では、実際に実験してみましょう。</p>
+
+<h4>事前準備</h4>
+
+<p>まずは下記のような <code>Sample</code> クラスを定義します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 実験用のクラス</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="n">Sample</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">label:</span> <span class="n">String</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">init</span><span class="p">(</span><span class="nl">label:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">label</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;initされたよ！ - \(label)&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">deinit</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;deinitされたよ！ - \(label)&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>そして、下記のような <code>Storyboard</code> を用意します。</p>
+
+<p><img src="http://grandbig.github.io/images/swift_global_variables_1.png" alt="Storyboard" /></p>
+
+<p>各種機能を箇条書きで述べると下記の通りです。</p>
+
+<ul>
+<li>中央の『<code>Next Page</code>』ボタンを持つVCが <code>FirstViewController</code></li>
+<li>右端のVCが <code>SecondViewController</code></li>
+<li><code>FirstViewController</code> の『<code>Next Page</code>』ボタンをタップすると <code>SecondViewController</code> に遷移する</li>
+<li><code>SecondViewController</code> に各種プロパティを定義</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SecondViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// グローバルプロパティ</span>
+</span><span class='line'><span class="n">var</span> <span class="n">global_prop</span> <span class="o">=</span> <span class="n">Sample</span><span class="p">(</span><span class="nl">label:</span> <span class="s">&quot;global_prop&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">SecondViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// 通常のローカルプロパティ</span>
+</span><span class='line'>    <span class="n">var</span> <span class="n">local_prop</span> <span class="o">=</span> <span class="n">Sample</span><span class="p">(</span><span class="nl">label:</span> <span class="s">&quot;local_prop&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="c1">/// 遅延実行されるローカルプロパティ</span>
+</span><span class='line'>    <span class="n">lazy</span> <span class="n">var</span> <span class="n">local_lazy_prop</span> <span class="o">=</span> <span class="n">Sample</span><span class="p">(</span><span class="nl">label:</span> <span class="s">&quot;local_lazy_prop&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="c1">/// スタティックプロパティ</span>
+</span><span class='line'>    <span class="k">static</span> <span class="n">var</span> <span class="n">static_prop</span> <span class="o">=</span> <span class="n">Sample</span><span class="p">(</span><span class="nl">label:</span> <span class="s">&quot;static_prop&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 各種プロパティにアクセスする</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="n">global_prop</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="n">local_prop</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="n">local_lazy_prop</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="n">SecondViewController</span><span class="p">.</span><span class="n">static_prop</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">deinit</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;SecondViewControllerがdeinitされました&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>実験結果</h4>
+
+<p>準備が整ったので、実際に挙動を見ていきましょう。</p>
+
+<p>まずは、 <code>FirstViewController</code> の『<code>Next Page</code>』をタップして <code>SecondViewController</code> に遷移した場合です。</p>
+
+<p>結果は、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_prop</span>
+</span><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">global_prop</span>
+</span><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_lazy_prop</span>
+</span><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">static_prop</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>の順番でログが出力されました。</p>
+
+<p>このことから、</p>
+
+<ul>
+<li><code>local_prop</code> は <code>SecondViewController</code> 初期化時に初期化される</li>
+<li><code>global_prop</code> はアクセス時に初期化される</li>
+<li><code>local_lazy_prop</code> はアクセス時に初期化される</li>
+<li><code>static_prop</code> はアクセス時に初期化される</li>
+</ul>
+
+
+<p>ことがわかります。</p>
+
+<p>続いて、 <code>SecondViewController</code> のナビゲーションバーの『<code>Back</code>』をタップして前の画面に戻ってみます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">SecondViewController</span><span class="err">が</span><span class="n">deinit</span><span class="err">されました</span>
+</span><span class='line'><span class="n">deinit</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_prop</span>
+</span><span class='line'><span class="n">deinit</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_lazy_prop</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のようにログが出力されました。</p>
+
+<p>このことから、</p>
+
+<ul>
+<li><code>local_prop</code> は <code>SecondViewController</code> が <code>deinit</code> されるタイミングで <code>deinit</code> される</li>
+<li><code>local_lazy_prop</code> は <code>SecondViewController</code> が <code>deinit</code> されるタイミングで <code>deinit</code> される</li>
+<li><code>global_prop</code> は <code>SecondViewController</code> が <code>deinit</code> されても <code>deinit</code>  <strong>されない</strong></li>
+<li><code>static_prop</code> は <code>SecondViewController</code> が <code>deinit</code> されても <code>deinit</code>  <strong>されない</strong></li>
+</ul>
+
+
+<p>ことがわかります。</p>
+
+<p>さらに、再度 <code>FirstViewController</code> の『<code>Next Page</code>』をタップして <code>SecondViewController</code> に画面遷移してみます。</p>
+
+<p>すると、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_prop</span>
+</span><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_lazy_prop</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のようにログが出力されました。</p>
+
+<p>このことから、</p>
+
+<ul>
+<li><code>local_prop</code> は <code>SecondViewController</code> 初期化時に初期化される</li>
+<li><code>local_lazy_prop</code> はアクセス時に初期化される</li>
+<li><code>global_prop</code> と <code>static_prop</code> は既に初期化済みなので、初期化されない</li>
+</ul>
+
+
+<p>ことがわかります。</p>
+
+<h3>グローバルプロパティ vs スタティックプロパティ</h3>
+
+<p>因みに、グローバルプロパティとスタティックプロパティの挙動は下記の点で似ています。</p>
+
+<ul>
+<li>特定のクラスを初期化しなくても利用できる</li>
+<li>特定のクラスが <code>deinit</code> されてもプロパティ自体は <code>deinit</code> されない</li>
+</ul>
+
+
+<p>そうなると、グローバルプロパティとスタティックプロパティそれぞれ使い分けに疑問を抱くかもしれません。<br/>
+しかしながら、この2つは全く利用用途が異なります。</p>
+
+<ul>
+<li>グローバルプロパティ
+
+<ul>
+<li>グローバルにアクセスする必要がある場合に利用する</li>
+<li>特定のクラスに依存するような関係性を持たない</li>
+<li>名前空間はグローバル(全体)に影響があるため、十分注意が必要</li>
+</ul>
+</li>
+<li>スタティックプロパティ
+
+<ul>
+<li>特定のクラスを初期化せずともアクセスする必要がある場合に利用する</li>
+<li>特定のクラスに依存する関係性ではある
+
+<ul>
+<li>特定のクラスを初期化せずとも利用できるが、特定のクラスが持つ役割に含まれる</li>
+</ul>
+</li>
+<li>名前空間は特定のクラス内に留まる</li>
+</ul>
+</li>
+</ul>
+
+
+<p>上記から、より適切な使い分けをするように気をつけましょう。</p>
+
+<h3>まとめ</h3>
+
+<p>ではまとめます。</p>
+
+<ul>
+<li>グローバルプロパティは自動で <code>lazy</code> 付与と同じ扱いになる</li>
+<li>スタティックプロパティは自動で <code>lazy</code> 付与と同じ扱いになる</li>
+<li>グローバルプロパティとスタティックプロパティは特定のクラスが <code>deinit</code> されても <code>deinit</code> されない</li>
+<li>グローバルプロパティはグローバルにアクセスが必要な場合に利用する</li>
+<li>スタティックプロパティは特定のクラス内に定義して利用することで、その役割を明確にして利用する</li>
+</ul>
+
+
+<p>ということで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[『Team Geek Googleのギークたちはいかにしてチームを作るのか』を読んで]]></title>
@@ -8808,132 +9127,6 @@ Swift3とSwift4の算出方法が異なり、○番目の数え方も1ズレて�
 <p>結論、処理速度を見ると複数ケースの比較が必要な場面では <code>switch</code> の方が有効なようです。<br/>
 しかし、微々たる差ではあるので、可読性も考えながら最適な方法を選択すべきかと思います。<br/>
 と言ったところで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[AutoLayoutの実例（２）]]></title>
-    <link href="http://grandbig.github.io/blog/2018/08/18/autolayout-2/"/>
-    <updated>2018-08-18T13:41:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2018/08/18/autolayout-2</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>前回、<a href="https://grandbig.github.io/blog/2018/08/11/autolayout-1/">AutoLayoutの実例（１）</a>にて、<br/>
-『 <code>UITableViewCell</code> 内に長さの異なる <code>UILabel</code> を持った <code>UIStackView</code> がある場合』の <code>AutoLayout</code> について説明しました。</p>
-
-<p>今回は『 <code>UITableViewCell</code> 内に条件次第で <code>isHidden</code> が <code>true</code> になるパーツを持つ <code>UIStackView</code> がある場合』<br/>
-の <code>AutoLayout</code> について説明したいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3><code>UITableViewCell</code> 内に条件次第で <code>isHidden</code> が <code>true</code> になるパーツを持つ <code>UIStackView</code> がある場合</h3>
-
-<p>下図のようなレイアウトを実現する場合</p>
-
-<p><img src="http://grandbig.github.io/images/autolayout_sample_2_1.png" alt="UITableViewCell内に条件次第でisHiddenがtrueになるパーツを持つUIStackViewがある" /></p>
-
-<p>これは前回のサンプルの、</p>
-
-<ul>
-<li><code>subTitleLabel</code> は文字列 <code>GOOD</code> 固定</li>
-<li><code>titleLabel</code> には可変長の文字列を表示する</li>
-<li><code>titleLabel</code> のすぐ右隣に <code>subTitleLabel</code> を表示する(要素は全て左詰め)</li>
-<li>画像は固定サイズで表示する</li>
-</ul>
-
-
-<p>に加えて、以下仕様をプラスしました。</p>
-
-<ul>
-<li><code>hiddenLabel1</code> (条件次第で非表示になるオレンジ色のラベル)が <code>titleLabel</code> 等の下に配置</li>
-<li><code>hiddenLabel2</code> (条件次第で非表示になる茶色のラベル)が更にその下に配置</li>
-<li><code>button</code> が更にその下に配置</li>
-<li>条件次第で <code>hiddenLabel2</code> と <code>button</code> がセットで非表示になる</li>
-<li>条件次第で <code>hiddenLabel1</code> と <code>hiddenLabel2</code> , <code>button</code> が非表示になる</li>
-</ul>
-
-
-<h4>レイアウトの構成</h4>
-
-<p><code>xib</code> 上のUIパーツは下図の通りです。</p>
-
-<p><img src="http://grandbig.github.io/images/autolayout_sample_2_2.png" alt="xib上の構成" /></p>
-
-<p>構成について説明します。</p>
-
-<ul>
-<li>画像、 <code>titleLabel</code> , <code>subTitleLabel</code> は前回に引き続き1つの <code>UIStackView</code> 内に要素を配置しています
-
-<ul>
-<li>これは3つの要素の横の関係性が場合によって変化する仕様に対応するためです。</li>
-</ul>
-</li>
-</ul>
-
-
-<p><img src="http://grandbig.github.io/images/autolayout_sample_2_7.png" alt="画像, titleLabel, subTitleLabelを囲むUIStackView" /></p>
-
-<ul>
-<li><code>hiddenLabel2</code> と <code>button</code> は条件次第で同時に非表示になるため、<code>UIStackView</code>で囲みます</li>
-</ul>
-
-
-<p><img src="http://grandbig.github.io/images/autolayout_sample_2_4.png" alt="hiddenLabel2とbuttonを囲むUIStackView" /></p>
-
-<ul>
-<li>条件次第で <code>hiddenLabel1</code> , <code>hiddenLabel2</code> , <code>button</code> が一気に非表示になるため、さらに <code>UIStackView</code> で囲みます</li>
-</ul>
-
-
-<p><img src="http://grandbig.github.io/images/autolayout_sample_2_5.png" alt="hiddenLabel1, hiddenLabel2, buttonを囲むUIStackView" /></p>
-
-<ul>
-<li>非表示になったときに、Cellの高さが動的に変わるように、全要素を <code>UIStackView</code>で囲みます</li>
-</ul>
-
-
-<p><img src="http://grandbig.github.io/images/autolayout_sample_2_6.png" alt="全要素を囲むUIStackView" /></p>
-
-<h4>Cellの高さを要素の表示/非表示状態次第で可変にする</h4>
-
-<p><code>ContentView</code> と全要素を囲む <code>UIStackView</code>の間に <code>Constraint</code> を付与するだけです。</p>
-
-<p><img src="http://grandbig.github.io/images/autolayout_sample_2_3.png" alt="ContentViewと全要素を囲むUIStackViewの間にConstraintを付与する" /></p>
-
-<p>以前、<a href="http://grandbig.github.io/blog/2017/12/10/ios11-stackview-hidden/">iOS10とiOS11で比較するUIStackViewのhiddenとConstraintエラー</a>で説明しましたが、
-iOS11からは <code>UIStackView</code> を <code>isHidden = true</code> にしても、<code>Constraint</code> エラーは出なくなったので、  かなり扱いやすくなっています。</p>
-
-<h3>まとめ</h3>
-
-<p>さて、今回の実例は前回の実例の追加版といった位置づけで書いてみました。<br/>
-<code>UITableViewCell</code> で、条件により表示/非表示を切り替えて、動的に高さを変更する場面は多いと思います。<br/>
-今は <code>AutoLayout</code> さえ正しく使えば簡単に対応できる内容となっていますので、必ず覚えておきましょう。</p>
-
-<p>次回はもう少し複雑な <code>AutoLayout</code> の実例を紹介できればと思います。<br/>
-ということで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

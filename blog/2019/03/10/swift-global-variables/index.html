@@ -1,0 +1,606 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Swiftのグローバルプロパティとスタティックプロパティは自動でlazyになる - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに 今日はSwiftでグローバルプロパティを定義した時の挙動についてのメモです。 Swiftではプロパティを定義する時に、わざと遅延評価させるための lazy という修飾子があります。
+lazy をつけることで、そのプロパティが利用される時に、初期化されメモリが消費されるため、 &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2019/03/10/swift-global-variables/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Swiftのグローバルプロパティとスタティックプロパティは自動でlazyになる</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-03-10T00:40:00+09:00" pubdate data-updated="true">Mar 10<span>th</span>, 2019</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>今日はSwiftでグローバルプロパティを定義した時の挙動についてのメモです。</p>
+
+<p>Swiftではプロパティを定義する時に、わざと遅延評価させるための <code>lazy</code> という修飾子があります。<br/>
+<code>lazy</code> をつけることで、そのプロパティが利用される時に、初期化されメモリが消費されるため、メモリの効率性を上げることに一役買います。</p>
+
+<p>実際の定義は下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">lazy</span> <span class="n">var</span> <span class="n">localProp</span> <span class="o">=</span> <span class="s">&quot;local&quot;</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これがSwiftで <strong>グローバルプロパティ</strong> や <strong>スタティックプロパティ</strong> を定義した時に自動的に付与されます。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>実験</h3>
+
+<p>では、実際に実験してみましょう。</p>
+
+<h4>事前準備</h4>
+
+<p>まずは下記のような <code>Sample</code> クラスを定義します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 実験用のクラス</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="n">Sample</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">label:</span> <span class="n">String</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">init</span><span class="p">(</span><span class="nl">label:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">self</span><span class="p">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">label</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;initされたよ！ - \(label)&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">deinit</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;deinitされたよ！ - \(label)&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>そして、下記のような <code>Storyboard</code> を用意します。</p>
+
+<p><img src="/images/swift_global_variables_1.png" alt="Storyboard" /></p>
+
+<p>各種機能を箇条書きで述べると下記の通りです。</p>
+
+<ul>
+<li>中央の『<code>Next Page</code>』ボタンを持つVCが <code>FirstViewController</code></li>
+<li>右端のVCが <code>SecondViewController</code></li>
+<li><code>FirstViewController</code> の『<code>Next Page</code>』ボタンをタップすると <code>SecondViewController</code> に遷移する</li>
+<li><code>SecondViewController</code> に各種プロパティを定義</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SecondViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">/// グローバルプロパティ</span>
+</span><span class='line'><span class="n">var</span> <span class="n">global_prop</span> <span class="o">=</span> <span class="n">Sample</span><span class="p">(</span><span class="nl">label:</span> <span class="s">&quot;global_prop&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">SecondViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// 通常のローカルプロパティ</span>
+</span><span class='line'>    <span class="n">var</span> <span class="n">local_prop</span> <span class="o">=</span> <span class="n">Sample</span><span class="p">(</span><span class="nl">label:</span> <span class="s">&quot;local_prop&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="c1">/// 遅延実行されるローカルプロパティ</span>
+</span><span class='line'>    <span class="n">lazy</span> <span class="n">var</span> <span class="n">local_lazy_prop</span> <span class="o">=</span> <span class="n">Sample</span><span class="p">(</span><span class="nl">label:</span> <span class="s">&quot;local_lazy_prop&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="c1">/// スタティックプロパティ</span>
+</span><span class='line'>    <span class="k">static</span> <span class="n">var</span> <span class="n">static_prop</span> <span class="o">=</span> <span class="n">Sample</span><span class="p">(</span><span class="nl">label:</span> <span class="s">&quot;static_prop&quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 各種プロパティにアクセスする</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="n">global_prop</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="n">local_prop</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="n">local_lazy_prop</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="n">SecondViewController</span><span class="p">.</span><span class="n">static_prop</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceiveMemoryWarning</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">didReceiveMemoryWarning</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">deinit</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;SecondViewControllerがdeinitされました&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>実験結果</h4>
+
+<p>準備が整ったので、実際に挙動を見ていきましょう。</p>
+
+<p>まずは、 <code>FirstViewController</code> の『<code>Next Page</code>』をタップして <code>SecondViewController</code> に遷移した場合です。</p>
+
+<p>結果は、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_prop</span>
+</span><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">global_prop</span>
+</span><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_lazy_prop</span>
+</span><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">static_prop</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>の順番でログが出力されました。</p>
+
+<p>このことから、</p>
+
+<ul>
+<li><code>local_prop</code> は <code>SecondViewController</code> 初期化時に初期化される</li>
+<li><code>global_prop</code> はアクセス時に初期化される</li>
+<li><code>local_lazy_prop</code> はアクセス時に初期化される</li>
+<li><code>static_prop</code> はアクセス時に初期化される</li>
+</ul>
+
+
+<p>ことがわかります。</p>
+
+<p>続いて、 <code>SecondViewController</code> のナビゲーションバーの『<code>Back</code>』をタップして前の画面に戻ってみます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">SecondViewController</span><span class="err">が</span><span class="n">deinit</span><span class="err">されました</span>
+</span><span class='line'><span class="n">deinit</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_prop</span>
+</span><span class='line'><span class="n">deinit</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_lazy_prop</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のようにログが出力されました。</p>
+
+<p>このことから、</p>
+
+<ul>
+<li><code>local_prop</code> は <code>SecondViewController</code> が <code>deinit</code> されるタイミングで <code>deinit</code> される</li>
+<li><code>local_lazy_prop</code> は <code>SecondViewController</code> が <code>deinit</code> されるタイミングで <code>deinit</code> される</li>
+<li><code>global_prop</code> は <code>SecondViewController</code> が <code>deinit</code> されても <code>deinit</code>  <strong>されない</strong></li>
+<li><code>static_prop</code> は <code>SecondViewController</code> が <code>deinit</code> されても <code>deinit</code>  <strong>されない</strong></li>
+</ul>
+
+
+<p>ことがわかります。</p>
+
+<p>さらに、再度 <code>FirstViewController</code> の『<code>Next Page</code>』をタップして <code>SecondViewController</code> に画面遷移してみます。</p>
+
+<p>すると、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_prop</span>
+</span><span class='line'><span class="n">init</span><span class="err">されたよ！</span> <span class="o">-</span> <span class="n">local_lazy_prop</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のようにログが出力されました。</p>
+
+<p>このことから、</p>
+
+<ul>
+<li><code>local_prop</code> は <code>SecondViewController</code> 初期化時に初期化される</li>
+<li><code>local_lazy_prop</code> はアクセス時に初期化される</li>
+<li><code>global_prop</code> と <code>static_prop</code> は既に初期化済みなので、初期化されない</li>
+</ul>
+
+
+<p>ことがわかります。</p>
+
+<h3>グローバルプロパティ vs スタティックプロパティ</h3>
+
+<p>因みに、グローバルプロパティとスタティックプロパティの挙動は下記の点で似ています。</p>
+
+<ul>
+<li>特定のクラスを初期化しなくても利用できる</li>
+<li>特定のクラスが <code>deinit</code> されてもプロパティ自体は <code>deinit</code> されない</li>
+</ul>
+
+
+<p>そうなると、グローバルプロパティとスタティックプロパティそれぞれ使い分けに疑問を抱くかもしれません。<br/>
+しかしながら、この2つは全く利用用途が異なります。</p>
+
+<ul>
+<li>グローバルプロパティ
+
+<ul>
+<li>グローバルにアクセスする必要がある場合に利用する</li>
+<li>特定のクラスに依存するような関係性を持たない</li>
+<li>名前空間はグローバル(全体)に影響があるため、十分注意が必要</li>
+</ul>
+</li>
+<li>スタティックプロパティ
+
+<ul>
+<li>特定のクラスを初期化せずともアクセスする必要がある場合に利用する</li>
+<li>特定のクラスに依存する関係性ではある
+
+<ul>
+<li>特定のクラスを初期化せずとも利用できるが、特定のクラスが持つ役割に含まれる</li>
+</ul>
+</li>
+<li>名前空間は特定のクラス内に留まる</li>
+</ul>
+</li>
+</ul>
+
+
+<p>上記から、より適切な使い分けをするように気をつけましょう。</p>
+
+<h3>まとめ</h3>
+
+<p>ではまとめます。</p>
+
+<ul>
+<li>グローバルプロパティは自動で <code>lazy</code> 付与と同じ扱いになる</li>
+<li>スタティックプロパティは自動で <code>lazy</code> 付与と同じ扱いになる</li>
+<li>グローバルプロパティとスタティックプロパティは特定のクラスが <code>deinit</code> されても <code>deinit</code> されない</li>
+<li>グローバルプロパティはグローバルにアクセスが必要な場合に利用する</li>
+<li>スタティックプロパティは特定のクラス内に定義して利用することで、その役割を明確にして利用する</li>
+</ul>
+
+
+<p>ということで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-03-10T00:40:00+09:00" pubdate data-updated="true">Mar 10<span>th</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/swift/'>swift</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2019/03/10/swift-global-variables/" data-via="" data-counturl="http://grandbig.github.io/blog/2019/03/10/swift-global-variables/" >Tweet</a>
+  
+  <a href="http://b.hatena.ne.jp/entry/http://grandbig.github.io/blog/2019/03/10/swift-global-variables/" class="hatena-bookmark-button" 
+	  data-hatena-bookmark-layout="standard" title="このエントリーをはてなブックマークに追加">
+	  <img src="http://b.st-hatena.com/images/entry-button/button-only.gif" 
+	  alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;" />
+  </a>
+  <script type="text/javascript" src="http://b.st-hatena.com/js/bookmark_button.js" charset="utf-8" async="async"></script>
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/02/24/team-geek/" title="Previous Post: 『Team Geek Googleのギークたちはいかにしてチームを作るのか』を読んで">&laquo; 『Team Geek Googleのギークたちはいかにしてチームを作るのか』を読んで</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/10/swift-global-variables/">Swiftのグローバルプロパティとスタティックプロパティは自動でlazyになる</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/02/24/team-geek/">『Team Geek Googleのギークたちはいかにしてチームを作るのか』を読んで</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/02/16/inout-exclusive-access-to-memory/">参照渡し(inout)と『Exclusive Access to Memory』</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/02/11/ios-architecture-impression/">初心者だけしゃない！『iOSアプリ設計パターン入門』へのススメ</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/01/30/xctest-2/">XCTestでViewModelのテストを書いてみよう！</a>
+      </li>
+    
+  </ul>
+</section>
+
+Included file 'asides/pinboard.html' not found in _includes directory
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (190)</a></li><li><a href='/blog/categories/swift'>swift (92)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/rx'>rx (9)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (8)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/redux'>redux (7)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2019/03/10/swift-global-variables/';
+        var disqus_url = 'http://grandbig.github.io/blog/2019/03/10/swift-global-variables/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+Included file 'google_plus_one.html' not found in _includes directory
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
