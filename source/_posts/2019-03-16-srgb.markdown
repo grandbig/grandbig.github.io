@@ -1,0 +1,147 @@
+---
+layout: post
+title: "iOSアプリ開発時に注意したい色空間(Generic RGB vs sRGB)"
+date: 2019-03-16 19:21
+comments: true
+categories: ios swift xcode
+---
+
+### はじめに
+最近、iOSアプリ開発をしている際に、  
+
+**デザイナーさんが指定している色をXcode上で指定しているにも関わらず、**  
+**iPhoneで見た時に、デザイナーさんが指定した色になっていない**  
+
+といった話が出ました。  
+結論から言えば、  
+
+デザイナーさんが利用しているツール(PhotoshopやXdなど)と、  
+エンジニアが利用しているXcodeとで、  
+指定している **色空間が異なる** ことが原因でした。  
+
+筆者は過去に同様の問題に直面した経験があったため、すぐに理由の予測がついたのですが、  
+ふと『元々こういった話って開発時に出てきていただろうか？』と疑問に思いました。  
+
+そこでXcodeでの色空間について触りを見ていきたいと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### Xcodeの色空間について
+Xcodeでは様々な方法で色を定義・設定することができます。  
+しかしながら筆者が見る限り、デフォルトの色空間の指定は、色の設定方法次第で異なっているようです。  
+
+では、1つずつ見ていきましょう。  
+※ Xcodeのバージョンは `Version 10.1 (10B61)` です。  
+
+#### Xcode Interface Builderの場合
+Interface Builder(以降、IB)の場合を見ていきます。  
+IBでは色空間がデフォルトで `Generic RGB` が指定されています。  
+
+![IBで色を指定する場合、デフォルト色空間はGeneric RGB](/images/srgb_1.png)  
+
+デザイナーとエンジニア間での色の違いが問題に上がる際は、だいたいIB周りで発生していることが多いと思います。  
+
+#### コードで指定する場合
+コードでの指定方法は幾つかありますので、その一部を例に見ていきましょう。  
+
+##### UIColorを初期化して設定する場合
+まずは、 `UIColor` を初期化して設定する場合です。  
+
+```objective-c
+// sRGBで指定する場合
+label.backgroundColor = UIColor(red: 245/255.0, green: 84/255.0, blue: 45/255.0, alpha: 1.0)
+
+//Display P3で指定する場合
+label.backgroundColor = UIColor(displayP3Red: 245/255.0, green: 84/255.0, blue: 45/255.0, alpha: 1.0)
+```
+
+`Display P3` の場合は引数名の `displayP3Red` から自明なのでわかりやすいかと思います。  
+注意したいのは、前者の初期化方法です。こちらはメソッド名からはわからないものの、実際には `sRGB` になっています。  
+
+##### Color Literalを利用して設定する場合
+Xcode8から `Color Literal` が導入され、コード上で色がある程度わかるようになりました。  
+※「ある程度わかる」 = 「色の傾向はわかるものの、肉眼では色空間の指定まではわからない」 ということです。  
+
+`Color Literal` でも、もちろん色空間を設定できます。  
+実際に色を指定する際に見てみると、デフォルトで `sRGB` が指定されていることがわかります。  
+
+![Color Literalで指定する場合、デフォルト色空間はsRGB](/images/srgb_2.png)  
+
+#### AssetCatalogのColorSetで設定する場合
+Xcode9から `AssetCatalog` から `ColorSet` を定義できるようになりました。  
+
+設定方法は簡単で、Xcodeプロジェクト内の `Assets.xcassets` を開きます。  
+そして `New Color Set` を追加すれば良いだけです。  
+
+`AssetCatalog` で `ColorSet` を設定する際には、下図のようにデフォルトで `sRGB` が色空間として指定されています。  
+
+![AssetCatalogで指定する場合、デフォルト色空間はsRGB](/images/srgb_3.png)  
+
+先程、IBでは色空間の指定に注意しなければならないと書きましたが、  
+もしも、色のテーマが決まっているようであれば、  
+`AssetCatalog` で `ColorSet` を定義し、それをIBで利用すれば、  
+毎回個別に `sRGB` を指定するといったことも起こらなくなるでしょう。  
+
+`AssetCatalog` で `ColorSet` を定義してしまえば、コード上でもその名称の色を呼び出すだけなので、IBと定義がずれる可能性も低くなることでしょう。  
+
+### なぜsRGBが多く利用されるのか
+ところで、なぜ `sRGB` が多く利用されているのでしょうか。  
+
+そもそも `sRGB` とは、ヒューレット・パッカード社とマイクロソフト社が提案し、  
+IEC（国際電気標準会議）で審議され、1991年にRGB色空間の国際規格として標準化されました。  
+
+これによって様々な製品間のやりとりで個別に色空間の定義が異なれば、  
+結果的に思っていたものと異なる色の製品ができ上がるという問題を解決するに至ったようですね。  
+
+そういう経緯もあり、今では `sRGB` はパソコンやデジカメなど多くの製品で利用されています。  
+
+よって、デザイナーさんがデザインするときには `sRGB` を利用していることが多いのでしょう。  
+※場合によっては `Adobe RGB` でデザインされている可能性もあるため、基本的には開発時に色空間の設定を認識合わせすると良いでしょう。  
+
+### P3ディスプレイについて
+おまけですが、`P3`ディスプレイについても触れておきたいと思います。  
+`P3`ディスプレイとは `sRGB` を超える色域である `DCI-P3` という色空間で表現された色を表現できるディスプレイです。  
+
+iPhoneではiPhone7以降が対応しており、iPhoneXでは更に上級なOLEDディスプレイが採用されています。  
+もちろんiPhoneは従来の `sRGB` も対応していますし、 `DCI-P3` にも対応しています。  
+そしてその色空間の切り替えは必要性に応じてiOSが自動で行なってくれるため、  
+作り手側が本来見せたい意図を伝えられる可能性が高いとも言えるかもしれません。  
+
+### まとめ
+さて如何でしたでしょうか？  
+一言で『色の指定』と言っても、注意しなければいけないことが多々ありますよね。  
+
+以上をまとめます。  
+
+* エンジニアとデザイナーで開発前に色空間の認識を合わせることは重要  
+* IBではデフォルト `Generic RGB` で、他はデフォルト `sRGB` で指定されている  
+* `AssetCatalog` で `ColorSet` を定義することでプロジェクト内での色空間の齟齬を少なくできる  
+
+では最後にそれぞれの色指定方法を比較した画面を掲載しておきたいと思います。  
+
+![各色指定方法を比較した画面](/images/srgb_4.png)  
+
+すべて `RGB` に指定した値は同じですが、色空間によって微妙に色が異なっていることがわかると思います。  
+※色の指定方法が異なるだけで色空間が同じものは、もちろん同じ色になっています。  
+
+ということで本日はここまで。  
+
+参考URL  
+
+* [sRGBとは、現在カメラやモニター等で共通で使われている標準色空間](https://omoide-photo.jp/blog/srgb/#sRGB1999)  
+* [Asset Catalogで色を定義できるようになりました](https://dev.classmethod.jp/smartphone/iphone/xcode-9-asset-catalogs-support-named-colors/)  
+* [Apple Engine iPhone と Display P3](http://appleengine.hatenablog.com/entry/2016/10/24/182852)  
+* [Xcode8の新機能！画像と色のリテラル、画像のコード補完](https://dev.classmethod.jp/smartphone/iphone/xcode-8-image-and-color-literals/)  
+* [スマホのディスプレイの色味が端末によって違う理由](https://www.gizmodo.jp/2017/12/why-every-smartphone-screen-looks-different.html)  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
