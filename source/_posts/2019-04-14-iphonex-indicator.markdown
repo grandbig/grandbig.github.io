@@ -122,7 +122,7 @@ FTLinearActivityIndicator
 ```
 
 これを見ると、ライブラリ側で`iPhoneX`系端末なのか/`iPad`ではない端末なのかを判別してくれていることがわかります。  
-今後、`iPad`はどうなるかわかりませんが、`iPad`でもほぼ全面ディスプレイな端末が登場したら、この辺りの条件分岐は変わると思われます。  
+既に全画面表示の `iPad` が世に出ているため、作成者に`PullRequest`を送るチャンスかもしれないですね！  
 
 続いて、もう少し深ぼると...  
 上記メソッド内で実行している`configureLinearNetworkActivityIndicator()`の中身は、  
