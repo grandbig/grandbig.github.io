@@ -1,0 +1,470 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: github | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/github/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2019-05-26T14:05:21+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[GitHubとSlackを自作で連携させてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2019/05/26/github2slack/"/>
+    <updated>2019-05-26T11:47:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/05/26/github2slack</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は <code>GitHub</code> と <code>Slack</code> の連携を自作でやってみる話の備忘録です。</p>
+
+<p>と言っても、手法は本当に簡易で、</p>
+
+<ul>
+<li><code>GitHub</code> 上で <code>Webhook</code> を設定する</li>
+<li><code>GitHub</code> からの <code>POSTリクエスト</code> を受け付けるサーバを用意する</li>
+<li>受け付けた <code>POSTリクエスト</code> から各種値を抽出して、Slackに通知する</li>
+</ul>
+
+
+<p>を対応することで実現することが可能です。<br/>
+それでは早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>GitHub上でWebhookを設定する</h3>
+
+<p><code>GitHub</code> 上で <code>Slack</code> と連携したい <code>Repository</code> を開いて、<code>Settings</code> ページにアクセスします。<br/>
+<code>Settings</code> ページの左メニューから <code>Webhooks</code> を選択して、<code>Add webhook</code> を選択します。</p>
+
+<p><img src="/images/github2slack_1.png" alt="Add webhookを選択" /></p>
+
+<p>続いて、<code>Add webhook</code> ページを編集します。</p>
+
+<p><img src="/images/github2slack_2.png" alt="Add webhookの編集" /></p>
+
+<p>① <code>Payload URL</code> にPOSTリクエストの送り先を設定します<br/>
+② <code>Content type</code> は <code>application/json</code> を設定します<br/>
+③ <code>Which events would you like to trigger this webhook?</code> に設定したいものを設定します<br/>
+　 ※筆者の場合は、個別に細かく設定可能な <code>Let me select individual events.</code> を選択しています。</p>
+
+<h3>GitHubからのPOSTリクエストを受け付けるサーバを用意する</h3>
+
+<p>ここは開発者の好きなインフラを用意すれば良いと思います。<br/>
+AWSでもGCPでも良いかと思います。</p>
+
+<p>また、APIサーバの作り込みに関しても、好きな言語で、自由にフレームワーク等を使って実装すれば良いと思います。<br/>
+ポイントは、時間をかけずに作ることです。<br/>
+(あくまでもチーム開発などを円滑に進めるための取り組みであって、この作り込みが目的ではないためです。)</p>
+
+<p>因みに、筆者は、<code>Node.js</code>と<code>Express</code>を利用してAPIサーバを作ることにしました。</p>
+
+<h3>受け付けたPOSTリクエストから各種値を抽出して、Slackに通知する</h3>
+
+<p>では、少しAPIサーバの実装について紹介します。</p>
+
+<h4>package.json</h4>
+
+<p>まず、<code>package.json</code>は下記のようにしました。</p>
+
+<p>```javascript
+{
+  &ldquo;name&rdquo;: &ldquo;github2slack&rdquo;,
+  &ldquo;version&rdquo;: &ldquo;1.0.0&rdquo;,
+  &ldquo;description&rdquo;: &ldquo;GitHub Action Notification&rdquo;,
+  &ldquo;main&rdquo;: &ldquo;server.js&rdquo;,
+  &ldquo;scripts&rdquo;: {</p>
+
+<pre><code>"test": "echo \"Error: no test specified\" &amp;&amp; exit 1"
+</code></pre>
+
+<p>  },
+  &ldquo;author&rdquo;: &ldquo;&rdquo;,
+  &ldquo;dependencies&rdquo;: {</p>
+
+<pre><code>"@slack/web-api": "^5.0.1",
+"express": "^4.17.0"
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>先程申し上げた通り <code>Express</code> を用いているのと、<code>Slack Web API</code>を簡単に利用できる <code>@slack/web-api</code>も導入しています。</p>
+
+<h4>server.js</h4>
+
+<p>続いてメインとなる<code>server.js</code>です。</p>
+
+<p><code>POSTリクエスト</code>を受け付けるところまでですが、下記のように実装しています。<br/>
+※ただ、<code>Express</code>を利用している、よくある書き方かなと思います。</p>
+
+<p>```javascript
+var https = require(&lsquo;https&rsquo;);
+var express = require(&lsquo;express&rsquo;);
+var bodyParser = require(&lsquo;body-parser&rsquo;)
+const { WebClient, LogLevel, retryPolicies } = require(&lsquo;@slack/web-api&rsquo;);
+const slackChannel = &lsquo;XXXXXXXX&rsquo;;  // 通知先のSlackチャンネルのID
+const serverPort = 3000;</p>
+
+<p>const app = express();
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());</p>
+
+<p>/// POSTリクエストの受付
+app.post(&lsquo;/&rsquo;, (req, res) => {
+  &hellip;
+});</p>
+
+<p>/// サーバを起動
+app.listen(serverPort, () => console.log(&lsquo;Listening on port &rsquo; + serverPort));
+```</p>
+
+<p>肝心の<code>POSTリクエスト</code>で受け付けた後の処理ですが、</p>
+
+<p>```javascript
+app.post(&lsquo;/&rsquo;, (req, res) => {
+  // GitHubからのリクエストを分析
+  let message = makeMessageFromGitHubRequest(req) &mdash;&ndash;> 後ほど説明します
+  if (!message) {</p>
+
+<pre><code>// 送るべきメッセージがないため、200で返して終了する
+res.status(200).send('no message');
+return;
+</code></pre>
+
+<p>  }</p>
+
+<p>  // Slackにメッセージを投稿
+  const slack = new WebClient(&lsquo;&rsquo;, {</p>
+
+<pre><code>slackApiUrl: 'http://xxxxxxxxxxxxxxxxxxxxxx',
+retryConfig: retryPolicies.tenRetriesInAboutThirtyMinutes,
+logLevel: LogLevel.DEBUG
+</code></pre>
+
+<p>  })</p>
+
+<p>  const main = async () => {</p>
+
+<pre><code>try {
+  const result = await slack.chat.postMessage({
+    channel: slackChannel,
+    text: message
+  })
+
+  res.status(200).send('message: ' + message + '\n');
+} catch (err) {
+  res.status(500).send(err.message + '\n');
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  main()
+});
+```</p>
+
+<p>のようになっています。<br/>
+先程導入した <code>@slack/web-api</code> を利用すれば、いとも簡単に<code>Slack</code>への通知が可能となっています。</p>
+
+<p>そして<code>Slack</code>にどんな通知を送るかについてですが、<code>GitHub</code>上で発生したイベント毎にメッセージが異なると考えられます。<br/>
+よって、<code>GitHub</code>から<code>POSTリクエスト</code>された値を分析して、最適なメッセージを送る処理を導入してみましょう。</p>
+
+<p>今回、筆者は下記のイベントをハンドリングすることにしました。</p>
+
+<ul>
+<li><code>PullRequest</code>に<code>Reviewer</code>をセットした時に、レビュー依頼を流す</li>
+<li><code>PullRequest</code>のレビューをして、ステータスを変更した時に、レビュー依頼者に知らせる</li>
+<li><code>PullRequest</code>の<code>diff</code>に沿ってコメントを書いたことを流す</li>
+<li><code>PullRequest</code>の<code>Conversation</code>にコメントを書いたことを流す</li>
+</ul>
+
+
+<p>それらをハンドリングするメソッドをまずは用意します。</p>
+
+<p>```javascript
+/<em>*
+ * GitHubからのリクエストの中身を精査して、メッセージを作成する
+ * @param {object}  req   POSTリクエスト
+ * @return {string}       メッセージ
+ </em>/
+function makeMessageFromGitHubRequest(req) {
+  const gitHubEvent = req.headers[&lsquo;x-github-event&rsquo;];
+  const gitHubBody = req.body;</p>
+
+<p>  if (gitHubEvent === &lsquo;pull_request&rsquo;) {</p>
+
+<pre><code>return makePullRequestMessage(gitHubBody.action, gitHubBody);
+</code></pre>
+
+<p>  } else if (gitHubEvent === &lsquo;pull_request_review&rsquo;) {</p>
+
+<pre><code>return makeChangeReviewStateMessage(gitHubBody.action, gitHubBody);
+</code></pre>
+
+<p>  } else if (gitHubEvent === &lsquo;pull_request_review_comment&rsquo;) {</p>
+
+<pre><code>return makePullRequestReviewCommentMessage(gitHubBody.action, gitHubBody.comment);
+</code></pre>
+
+<p>  } else if (gitHubEvent === &lsquo;issue_comment&rsquo;) {</p>
+
+<pre><code>return makeIssueCommentMessage(gitHubBody.action, gitHubBody.comment);
+</code></pre>
+
+<p>  } else {</p>
+
+<pre><code>return null;
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>それぞれイベントによって作成するメッセージが異なるため、1つずつメソッドを切り出しました。<br/>
+『<code>PullRequest</code>に<code>Reviewer</code>をセットした時に、レビュー依頼を流す』場合の処理は下記です。</p>
+
+<p>```javascript
+/<em>*
+ * PullRequest関連のメッセージを作成する
+ * @param {string}  action      アクション種別
+ * @param {object}  body        GitHubのBody情報
+ * @return {string}             メッセージ
+ </em>/
+function makePullRequestMessage(action, body) {
+  let mention;
+  let from;
+  let content;
+  let title = body.pull_request.title;</p>
+
+<p>  let message;
+  let linkUrl = body.pull_request.html_url;</p>
+
+<p>  switch(action) {</p>
+
+<pre><code>case 'created':
+  mention = makeMentionTextAtPullRequestCreated(body.pull_request);
+  from = '「' + body.pull_request.user.login + '」さんから';
+  content = 'PullRequestのレビュー依頼が届きました\n\n';
+  message = mention + from + content + title;
+  break;
+case 'review_requested':
+  mention = makeMentionText(body.requested_reviewer);
+  from = '「' + body.pull_request.user.login + '」さんから';
+  content = 'PullRequestのレビュー依頼が届きました\n\n';
+  message = mention + from + content + title;
+  break;
+default:
+  break;
+</code></pre>
+
+<p>  }</p>
+
+<p>  if (!message) {</p>
+
+<pre><code>return null;
+</code></pre>
+
+<p>  }
+  return message + &lsquo;\n&rsquo; + linkUrl;
+}</p>
+
+<p>/<em>*
+ * PullRequest作成時にレビューを要求された場合にメンションテキストを作成する処理
+ * @param {object} pullRequest  PullRequest情報
+ * @return {string}             メンションテキスト
+ </em>/
+function makeMentionTextAtPullRequestCreated(pullRequest) {
+  let result = &lsquo;&rsquo;;
+  const requested_reviewers = pullRequest.requested_reviewers;
+  requested_reviewers.forEach(reviewer => {</p>
+
+<pre><code>// Slack APIでは、&lt;@username&gt;の形でメッセージを作らないとメンションできない
+const mention = "&lt;@" + reviewer.login + "&gt; ";
+result = result + mention;
+</code></pre>
+
+<p>  });
+  result = result + &lsquo;\n&rsquo;;
+  return result;
+}</p>
+
+<p>/<em>*
+ * PullRequestレビュワー追加時にメンションテキストを作成する処理
+ * @param {object} user  ユーザ情報
+ * @return {string}      メンションテキスト
+ </em>/
+function makeMentionText(user) {
+  const mention = &ldquo;&lt;@&rdquo; + user.login + &ldquo;> &rdquo;;
+  return mention + &lsquo;\n&rsquo;;
+}
+```</p>
+
+<p>『<code>PullRequest</code>のレビューをして、ステータスを変更した時に、レビュー依頼者に知らせる』場合は下記です。</p>
+
+<p>```javascript
+/<em>*
+ * PullRequestのReview関連のメッセージを作成する
+ * @param {string}  action  アクション種別
+ * @param {object}  body    GitHubのBody情報
+ * @return {string}         メッセージ
+ </em>/
+function makeChangeReviewStateMessage(action, body) {
+  let mention;
+  let from;
+  let content;
+  let title = convertCommentWithMention(body.review.body);</p>
+
+<p>  let message;
+  let linkUrl = body.review.html_url;</p>
+
+<p>  switch(action) {</p>
+
+<pre><code>case 'submitted':
+  mention = makeMentionText(body.pull_request.user);
+  from = '「' + body.review.user.login + '」さんから'
+  content = 'レビュー結果： *' + body.review.state + '* が返ってきました。\n\n';
+  message = mention + from + content + title;
+  break;
+default:
+  break;
+</code></pre>
+
+<p>  }</p>
+
+<p>  if (!message) {</p>
+
+<pre><code>return null;
+</code></pre>
+
+<p>  }
+  return message + &lsquo;\n&rsquo; + linkUrl;
+}</p>
+
+<p>/<em>*
+ * コメント内にメンションがあった場合に、Slackが検知できるメンションテキストに置き換える処理
+ * @param {object} comment  コメント
+ * @return {string}         メンションテキスト
+ </em>/
+function convertCommentWithMention(comment) {
+  return comment.replace(/@[A-Za-z0-9-/]+/g, &ldquo;&lt;$&amp;>&rdquo;);
+}
+```</p>
+
+<p>『* <code>PullRequest</code>の<code>diff</code>に沿ってコメントを書いたことを流す』場合は下記です。</p>
+
+<p>```javascript
+/<em>*
+ * PullRequestのReviewコメント関連のメッセージを作成する
+ * @param {string}  action  アクション種別
+ * @param {object}  comment コメント情報
+ * @return {string}         メッセージ
+ </em>/
+function makePullRequestReviewCommentMessage(action, comment) {
+  let from;
+  let content;
+  let title = convertCommentWithMention(comment.body);</p>
+
+<p>  let message;
+  let linkUrl = comment.html_url;</p>
+
+<p>  switch(action) {</p>
+
+<pre><code>case 'created':
+  // PullRequestのFileChanges内でコメントした場合
+  from = '「' + comment.user.login + '」さんから'
+  content = 'コメントが届きました。\n\n';
+  message = from + content + title;
+  break;
+default:
+  break;
+</code></pre>
+
+<p>  }</p>
+
+<p>  if (!message) {</p>
+
+<pre><code>return null;
+</code></pre>
+
+<p>  }
+  return message + &lsquo;\n&rsquo; + linkUrl;
+}
+```</p>
+
+<p>『* <code>PullRequest</code>の<code>Conversation</code>にコメントを書いたことを流す』場合は下記です。</p>
+
+<p>```javascript
+/<em>*
+ * PullRequestやIssueのConversation欄のコメント関連のメッセージを作成する
+ * @param {string}  action  アクション種別
+ * @param {object}  comment コメント情報
+ * @return {string}         メッセージ
+ </em>/
+function makeIssueCommentMessage(action, comment) {
+  let from;
+  let content;
+  let title = convertCommentWithMention(comment.body);</p>
+
+<p>  let message;
+  let linkUrl = comment.html_url;</p>
+
+<p>  switch (action) {</p>
+
+<pre><code>case 'created':
+  from = '「' + comment.user.login + '」さんから';
+  content = 'コメントが届きました。\n\n';
+  message = from + content + title;
+  break;
+default:
+  break;
+</code></pre>
+
+<p>  }</p>
+
+<p>  if (!message) {</p>
+
+<pre><code>return null;
+</code></pre>
+
+<p>  }
+  return message + &lsquo;\n&rsquo; + linkUrl;
+}
+```</p>
+
+<h3>まとめ</h3>
+
+<p>さて、割と手軽に実装できることがわかったところで本日はここまで。<br/>
+今後、もっと様々なイベントをキャッチして<code>Slack</code>に流す必要性が出てきたら、どんどん足していこうかな。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
