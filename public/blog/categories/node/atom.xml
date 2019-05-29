@@ -4,7 +4,7 @@
   <title><![CDATA[Category: node | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/node/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2019-05-19T17:46:11+09:00</updated>
+  <updated>2019-05-26T14:07:46+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,460 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[GitHubとSlackを自作で連携させてみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2019/05/26/github2slack/"/>
+    <updated>2019-05-26T11:47:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/05/26/github2slack</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は <code>GitHub</code> と <code>Slack</code> の連携を自作でやってみる話の備忘録です。</p>
+
+<p>と言っても、手法は本当に簡易で、</p>
+
+<ul>
+<li><code>GitHub</code> 上で <code>Webhook</code> を設定する</li>
+<li><code>GitHub</code> からの <code>POSTリクエスト</code> を受け付けるサーバを用意する</li>
+<li>受け付けた <code>POSTリクエスト</code> から各種値を抽出して、Slackに通知する</li>
+</ul>
+
+
+<p>を対応することで実現することが可能です。<br/>
+それでは早速見ていきましょう。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>GitHub上でWebhookを設定する</h3>
+
+<p><code>GitHub</code> 上で <code>Slack</code> と連携したい <code>Repository</code> を開いて、<code>Settings</code> ページにアクセスします。<br/>
+<code>Settings</code> ページの左メニューから <code>Webhooks</code> を選択して、<code>Add webhook</code> を選択します。</p>
+
+<p><img src="/images/github2slack_1.png" alt="Add webhookを選択" /></p>
+
+<p>続いて、<code>Add webhook</code> ページを編集します。</p>
+
+<p><img src="/images/github2slack_2.png" alt="Add webhookの編集" /></p>
+
+<p>① <code>Payload URL</code> にPOSTリクエストの送り先を設定します<br/>
+② <code>Content type</code> は <code>application/json</code> を設定します<br/>
+③ <code>Which events would you like to trigger this webhook?</code> に設定したいものを設定します<br/>
+　 ※筆者の場合は、個別に細かく設定可能な <code>Let me select individual events.</code> を選択しています。</p>
+
+<h3>GitHubからのPOSTリクエストを受け付けるサーバを用意する</h3>
+
+<p>ここは開発者の好きなインフラを用意すれば良いと思います。<br/>
+AWSでもGCPでも良いかと思います。</p>
+
+<p>また、APIサーバの作り込みに関しても、好きな言語で、自由にフレームワーク等を使って実装すれば良いと思います。<br/>
+ポイントは、時間をかけずに作ることです。<br/>
+(あくまでもチーム開発などを円滑に進めるための取り組みであって、この作り込みが目的ではないためです。)</p>
+
+<p>因みに、筆者は、<code>Node.js</code>と<code>Express</code>を利用してAPIサーバを作ることにしました。</p>
+
+<h3>受け付けたPOSTリクエストから各種値を抽出して、Slackに通知する</h3>
+
+<p>では、少しAPIサーバの実装について紹介します。</p>
+
+<h4>package.json</h4>
+
+<p>まず、<code>package.json</code>は下記のようにしました。</p>
+
+<p>```javascript
+{
+  &ldquo;name&rdquo;: &ldquo;github2slack&rdquo;,
+  &ldquo;version&rdquo;: &ldquo;1.0.0&rdquo;,
+  &ldquo;description&rdquo;: &ldquo;GitHub Action Notification&rdquo;,
+  &ldquo;main&rdquo;: &ldquo;server.js&rdquo;,
+  &ldquo;scripts&rdquo;: {</p>
+
+<pre><code>"test": "echo \"Error: no test specified\" &amp;&amp; exit 1"
+</code></pre>
+
+<p>  },
+  &ldquo;author&rdquo;: &ldquo;&rdquo;,
+  &ldquo;dependencies&rdquo;: {</p>
+
+<pre><code>"@slack/web-api": "^5.0.1",
+"express": "^4.17.0"
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>先程申し上げた通り <code>Express</code> を用いているのと、<code>Slack Web API</code>を簡単に利用できる <code>@slack/web-api</code>も導入しています。</p>
+
+<h4>server.js</h4>
+
+<p>続いてメインとなる<code>server.js</code>です。</p>
+
+<p><code>POSTリクエスト</code>を受け付けるところまでですが、下記のように実装しています。<br/>
+※ただ、<code>Express</code>を利用している、よくある書き方かなと思います。</p>
+
+<p>```javascript
+var https = require(&lsquo;https&rsquo;);
+var express = require(&lsquo;express&rsquo;);
+var bodyParser = require(&lsquo;body-parser&rsquo;)
+const { WebClient, LogLevel, retryPolicies } = require(&lsquo;@slack/web-api&rsquo;);
+const slackChannel = &lsquo;XXXXXXXX&rsquo;;  // 通知先のSlackチャンネルのID
+const serverPort = 3000;</p>
+
+<p>const app = express();
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());</p>
+
+<p>/// POSTリクエストの受付
+app.post(&lsquo;/&rsquo;, (req, res) => {
+  &hellip;
+});</p>
+
+<p>/// サーバを起動
+app.listen(serverPort, () => console.log(&lsquo;Listening on port &rsquo; + serverPort));
+```</p>
+
+<p>肝心の<code>POSTリクエスト</code>で受け付けた後の処理ですが、</p>
+
+<p>```javascript
+app.post(&lsquo;/&rsquo;, (req, res) => {
+  // GitHubからのリクエストを分析
+  let message = makeMessageFromGitHubRequest(req) &mdash;&ndash;> 後ほど説明します
+  if (!message) {</p>
+
+<pre><code>// 送るべきメッセージがないため、200で返して終了する
+res.status(200).send('no message');
+return;
+</code></pre>
+
+<p>  }</p>
+
+<p>  // Slackにメッセージを投稿
+  const slack = new WebClient(&lsquo;&rsquo;, {</p>
+
+<pre><code>slackApiUrl: 'http://xxxxxxxxxxxxxxxxxxxxxx',
+retryConfig: retryPolicies.tenRetriesInAboutThirtyMinutes,
+logLevel: LogLevel.DEBUG
+</code></pre>
+
+<p>  })</p>
+
+<p>  const main = async () => {</p>
+
+<pre><code>try {
+  const result = await slack.chat.postMessage({
+    channel: slackChannel,
+    text: message
+  })
+
+  res.status(200).send('message: ' + message + '\n');
+} catch (err) {
+  res.status(500).send(err.message + '\n');
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  main()
+});
+```</p>
+
+<p>のようになっています。<br/>
+先程導入した <code>@slack/web-api</code> を利用すれば、いとも簡単に<code>Slack</code>への通知が可能となっています。</p>
+
+<p>そして<code>Slack</code>にどんな通知を送るかについてですが、<code>GitHub</code>上で発生したイベント毎にメッセージが異なると考えられます。<br/>
+よって、<code>GitHub</code>から<code>POSTリクエスト</code>された値を分析して、最適なメッセージを送る処理を導入してみましょう。</p>
+
+<p>今回、筆者は下記のイベントをハンドリングすることにしました。</p>
+
+<ul>
+<li><code>PullRequest</code>に<code>Reviewer</code>をセットした時に、レビュー依頼を流す</li>
+<li><code>PullRequest</code>のレビューをして、ステータスを変更した時に、レビュー依頼者に知らせる</li>
+<li><code>PullRequest</code>の<code>diff</code>に沿ってコメントを書いたことを流す</li>
+<li><code>PullRequest</code>の<code>Conversation</code>にコメントを書いたことを流す</li>
+</ul>
+
+
+<p>それらをハンドリングするメソッドをまずは用意します。</p>
+
+<p>```javascript
+/<em>*
+ * GitHubからのリクエストの中身を精査して、メッセージを作成する
+ * @param {object}  req   POSTリクエスト
+ * @return {string}       メッセージ
+ </em>/
+function makeMessageFromGitHubRequest(req) {
+  const gitHubEvent = req.headers[&lsquo;x-github-event&rsquo;];
+  const gitHubBody = req.body;</p>
+
+<p>  if (gitHubEvent === &lsquo;pull_request&rsquo;) {</p>
+
+<pre><code>return makePullRequestMessage(gitHubBody.action, gitHubBody);
+</code></pre>
+
+<p>  } else if (gitHubEvent === &lsquo;pull_request_review&rsquo;) {</p>
+
+<pre><code>return makeChangeReviewStateMessage(gitHubBody.action, gitHubBody);
+</code></pre>
+
+<p>  } else if (gitHubEvent === &lsquo;pull_request_review_comment&rsquo;) {</p>
+
+<pre><code>return makePullRequestReviewCommentMessage(gitHubBody.action, gitHubBody.comment);
+</code></pre>
+
+<p>  } else if (gitHubEvent === &lsquo;issue_comment&rsquo;) {</p>
+
+<pre><code>return makeIssueCommentMessage(gitHubBody.action, gitHubBody.comment);
+</code></pre>
+
+<p>  } else {</p>
+
+<pre><code>return null;
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>それぞれイベントによって作成するメッセージが異なるため、1つずつメソッドを切り出しました。<br/>
+『<code>PullRequest</code>に<code>Reviewer</code>をセットした時に、レビュー依頼を流す』場合の処理は下記です。</p>
+
+<p>```javascript
+/<em>*
+ * PullRequest関連のメッセージを作成する
+ * @param {string}  action      アクション種別
+ * @param {object}  body        GitHubのBody情報
+ * @return {string}             メッセージ
+ </em>/
+function makePullRequestMessage(action, body) {
+  let mention;
+  let from;
+  let content;
+  let title = body.pull_request.title;</p>
+
+<p>  let message;
+  let linkUrl = body.pull_request.html_url;</p>
+
+<p>  switch(action) {</p>
+
+<pre><code>case 'created':
+  mention = makeMentionTextAtPullRequestCreated(body.pull_request);
+  from = '「' + body.pull_request.user.login + '」さんから';
+  content = 'PullRequestのレビュー依頼が届きました\n\n';
+  message = mention + from + content + title;
+  break;
+case 'review_requested':
+  mention = makeMentionText(body.requested_reviewer);
+  from = '「' + body.pull_request.user.login + '」さんから';
+  content = 'PullRequestのレビュー依頼が届きました\n\n';
+  message = mention + from + content + title;
+  break;
+default:
+  break;
+</code></pre>
+
+<p>  }</p>
+
+<p>  if (!message) {</p>
+
+<pre><code>return null;
+</code></pre>
+
+<p>  }
+  return message + &lsquo;\n&rsquo; + linkUrl;
+}</p>
+
+<p>/<em>*
+ * PullRequest作成時にレビューを要求された場合にメンションテキストを作成する処理
+ * @param {object} pullRequest  PullRequest情報
+ * @return {string}             メンションテキスト
+ </em>/
+function makeMentionTextAtPullRequestCreated(pullRequest) {
+  let result = &lsquo;&rsquo;;
+  const requested_reviewers = pullRequest.requested_reviewers;
+  requested_reviewers.forEach(reviewer => {</p>
+
+<pre><code>// Slack APIでは、&lt;@username&gt;の形でメッセージを作らないとメンションできない
+const mention = "&lt;@" + reviewer.login + "&gt; ";
+result = result + mention;
+</code></pre>
+
+<p>  });
+  result = result + &lsquo;\n&rsquo;;
+  return result;
+}</p>
+
+<p>/<em>*
+ * PullRequestレビュワー追加時にメンションテキストを作成する処理
+ * @param {object} user  ユーザ情報
+ * @return {string}      メンションテキスト
+ </em>/
+function makeMentionText(user) {
+  const mention = &ldquo;&lt;@&rdquo; + user.login + &ldquo;> &rdquo;;
+  return mention + &lsquo;\n&rsquo;;
+}
+```</p>
+
+<p>『<code>PullRequest</code>のレビューをして、ステータスを変更した時に、レビュー依頼者に知らせる』場合は下記です。</p>
+
+<p>```javascript
+/<em>*
+ * PullRequestのReview関連のメッセージを作成する
+ * @param {string}  action  アクション種別
+ * @param {object}  body    GitHubのBody情報
+ * @return {string}         メッセージ
+ </em>/
+function makeChangeReviewStateMessage(action, body) {
+  let mention;
+  let from;
+  let content;
+  let title = convertCommentWithMention(body.review.body);</p>
+
+<p>  let message;
+  let linkUrl = body.review.html_url;</p>
+
+<p>  switch(action) {</p>
+
+<pre><code>case 'submitted':
+  mention = makeMentionText(body.pull_request.user);
+  from = '「' + body.review.user.login + '」さんから'
+  content = 'レビュー結果： *' + body.review.state + '* が返ってきました。\n\n';
+  message = mention + from + content + title;
+  break;
+default:
+  break;
+</code></pre>
+
+<p>  }</p>
+
+<p>  if (!message) {</p>
+
+<pre><code>return null;
+</code></pre>
+
+<p>  }
+  return message + &lsquo;\n&rsquo; + linkUrl;
+}</p>
+
+<p>/<em>*
+ * コメント内にメンションがあった場合に、Slackが検知できるメンションテキストに置き換える処理
+ * @param {object} comment  コメント
+ * @return {string}         メンションテキスト
+ </em>/
+function convertCommentWithMention(comment) {
+  return comment.replace(/@[A-Za-z0-9-/]+/g, &ldquo;&lt;$&amp;>&rdquo;);
+}
+```</p>
+
+<p>『* <code>PullRequest</code>の<code>diff</code>に沿ってコメントを書いたことを流す』場合は下記です。</p>
+
+<p>```javascript
+/<em>*
+ * PullRequestのReviewコメント関連のメッセージを作成する
+ * @param {string}  action  アクション種別
+ * @param {object}  comment コメント情報
+ * @return {string}         メッセージ
+ </em>/
+function makePullRequestReviewCommentMessage(action, comment) {
+  let from;
+  let content;
+  let title = convertCommentWithMention(comment.body);</p>
+
+<p>  let message;
+  let linkUrl = comment.html_url;</p>
+
+<p>  switch(action) {</p>
+
+<pre><code>case 'created':
+  // PullRequestのFileChanges内でコメントした場合
+  from = '「' + comment.user.login + '」さんから'
+  content = 'コメントが届きました。\n\n';
+  message = from + content + title;
+  break;
+default:
+  break;
+</code></pre>
+
+<p>  }</p>
+
+<p>  if (!message) {</p>
+
+<pre><code>return null;
+</code></pre>
+
+<p>  }
+  return message + &lsquo;\n&rsquo; + linkUrl;
+}
+```</p>
+
+<p>『* <code>PullRequest</code>の<code>Conversation</code>にコメントを書いたことを流す』場合は下記です。</p>
+
+<p>```javascript
+/<em>*
+ * PullRequestやIssueのConversation欄のコメント関連のメッセージを作成する
+ * @param {string}  action  アクション種別
+ * @param {object}  comment コメント情報
+ * @return {string}         メッセージ
+ </em>/
+function makeIssueCommentMessage(action, comment) {
+  let from;
+  let content;
+  let title = convertCommentWithMention(comment.body);</p>
+
+<p>  let message;
+  let linkUrl = comment.html_url;</p>
+
+<p>  switch (action) {</p>
+
+<pre><code>case 'created':
+  from = '「' + comment.user.login + '」さんから';
+  content = 'コメントが届きました。\n\n';
+  message = from + content + title;
+  break;
+default:
+  break;
+</code></pre>
+
+<p>  }</p>
+
+<p>  if (!message) {</p>
+
+<pre><code>return null;
+</code></pre>
+
+<p>  }
+  return message + &lsquo;\n&rsquo; + linkUrl;
+}
+```</p>
+
+<h3>まとめ</h3>
+
+<p>さて、割と手軽に実装できることがわかったところで本日はここまで。<br/>
+今後、もっと様々なイベントをキャッチして<code>Slack</code>に流す必要性が出てきたら、どんどん足していこうかな。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[プッシュ通知をnode-apnで送ってみよう！]]></title>
@@ -1104,256 +1558,6 @@ debug('Listening on ' + bind);
 <strong>Swift Express</strong> はこれからサーバサイドSwiftを学んでいく上で強力なWebフレームワークとなるかもしれません。<br/>
 新しくNode.jsを学ぶ人も将来的にサーバサイドSwiftを触る機会が出てくるかもしれませんので知っておいて損はないでしょう。<br/>
 筆者もこれまら益々注目されるであろうサーバサイドSwiftの情報は追っていきたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[昔関わったNode.jsを思い出してみる]]></title>
-    <link href="http://grandbig.github.io/blog/2016/07/09/remember-node-js/"/>
-    <updated>2016-07-09T22:20:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2016/07/09/remember-node-js</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>本日は久しぶりにNode.jsについて書きたいと思います。<br/>
-筆者が本格的にNode.jsを触っていたのは、3〜4年ほど前で、当時は今ほど存在が浸透してはいませんでした。<br/>
-それが今やサーバサイドの処理作成の選択肢の1つとして普通に検討される時代になりました。<br/>
-正直なところ、最新のNode.jsを追えているわけではないのですが、<br/>
-その本質は今も昔も大きくは変わっていないだろうと思いつつ、筆者の経験を元にNode.jsを見ていきたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>Node.jsとは</h3>
-
-<p>Node.jsは2009年にライアン・ダールによって作成された『JavaScriptをサーバサイドで実行可能にしてくれるプログラム』です。<br/>
-JavaScriptエンジンは <strong>Google V8 JavaScript エンジン</strong> を使っています。<br/>
-因みに、 <strong>Google V8 JavaScript エンジン</strong> とは、</p>
-
-<ul>
-<li>ECMAScript5に準拠</li>
-<li>C++で記述されている</li>
-<li>スタンドアローンで動作可能</li>
-<li>Google Chromeでも使われている</li>
-</ul>
-
-
-<p>というものです。<br/>
-これを見ただけでも何となくすごいな〜と思ってしまいますね笑。</p>
-
-<p>Node.jsの公式サイトは<a href="https://nodejs.org/en/">こちら</a>です。<br/>
-日本ユーザグループサイトもありますが、今は活動的に更新されていません。</p>
-
-<h3>Node.jsの特徴</h3>
-
-<p>続いて、Node.jsの特徴を見ていきましょう。<br/>
-Node.jsの特徴は、何と言っても</p>
-
-<ul>
-<li>イベントループモデル</li>
-<li>Non-blocking I/O</li>
-<li>シングルスレッド</li>
-</ul>
-
-
-<p>ではないでしょうか。<br/>
-筆者がNode.jsを触っていた時は正直全く理解していなかったのですが、<br/>
-これらこそがNode.jsの本質でしょう。</p>
-
-<h4>イベントループモデル</h4>
-
-<p>イベントループモデルと一言聞くと、「なんぞや！？」となってしまいそうですが、</p>
-
-<ul>
-<li>イベントの発火を常に監視しているループ</li>
-<li>イベントの発火を受け付けると、イベントキューに格納される</li>
-<li>受付順にイベントを処理していく</li>
-</ul>
-
-
-<p>という方式のことです。</p>
-
-<h4>Non-blocking I/O</h4>
-
-<p>I/O処理を受け付けた場合、I/O処理が完了するまで待つ(Blockされる)のが通常です。<br/>
-Node.jsではI/O処理を投げつけた間、他にやるべき処理があれば進んで実行してくれます。<br/>
-よって <strong>Non-blocking I/O</strong> と呼ばれています。</p>
-
-<h4>シングルスレッド</h4>
-
-<p>言葉のとおりですが、複数のリクエストを1つのスレッドで実行するということです。<br/>
-複数スレッドを生成するわけではないため、メモリ消費を抑えることができると言われています。</p>
-
-<h3>Node.jsのメリット/デメリット</h3>
-
-<p>Node.jsが全てのアプリケーションに最適なのかと言うとそんなことは当然ありません。<br/>
-Node.jsのメリット/デメリットを理解した上で、採用を検討する必要があるのです。</p>
-
-<h4>Node.jsのメリット</h4>
-
-<p>まずはメリットを見ていきましょう。</p>
-
-<ol>
-<li>大量の軽量な同時リクエストを捌くのが得意</li>
-<li>NoSQLとの親和性が高い</li>
-<li>JavaScriptで書ける</li>
-<li>充実したライブラリが存在している</li>
-</ol>
-
-
-<p>筆者の経験に基づくメリットを4つ上げさせて頂きました。</p>
-
-<p>1つ目の <strong>大量の軽量な同時リクエストを捌くのが得意</strong> というメリットですが、<br/>
-これはNode.jsの特徴で上げたことが関わってきます。<br/>
-Non-blocking I/Oなので、I/Oブロックしないとは言うものの、Node.jsはシングルスレッドなんです。<br/>
-なので、1つのイベント処理の中に非常に時間のかかる処理が含まれていると、そこがネックとなってしまい大量のリクエストを待たせてしまいます。<br/>
-場合によってはクライアント側で設定したタイムアウト時間を上回り期待した結果をユーザが得られなくなるでしょう。</p>
-
-<p>なので1つのイベント(1回のリクエスト)で非常に重い処理を実行させなくてはならない仕様が求められるサービスには向きません。<br/>
-逆に、細かくイベントを分割できて、複数回のリクエストをクライアントから送っても問題のない仕様のサービスには適切と言えます。</p>
-
-<p>2つ目の <strong>NoSQLとの親和性が高い</strong> というメリットですが、<br/>
-筆者は主に <strong>MongoDB</strong> と一緒に利用してきました。<br/>
-MongoDBはドキュメント指向データベースであるため、JSON型のデータをそのまま突っ込めるため非常に使いやすいのです。<br/>
-スキーマレスかつスケールアウトの特徴を存分に活かしたい場合はNoSQLを選択すると思いますが、<br/>
-そこから遡ってNode.jsを選択しても良いでしょう。</p>
-
-<p>3つ目と4つ目のメリットですが、<br/>
-フロントエンドエンジニアであれば、基本的にはJavaScriptを扱えるという人もたくさんいるかと思います。<br/>
-であれば同じ言語のJavaScriptで書けるNode.jsを採用しない手はないでしょう。<br/>
-また、MongoDBもNode.jsもJavaScriptにも言えることですが、初心者を割りとすんなり受け入れてくれる土台が整っているため、<br/>
-1人でサービス提案時のモック作成をしなくてはならないときなどに最適です。<br/>
-(誤解されたくないのが、どの技術も極めるにはかなり大変ということに変わりはないということです。)</p>
-
-<h4>Node.jsのデメリット</h4>
-
-<p>続いてデメリットを見ていきましょう。</p>
-
-<ol>
-<li>重いリクエストを捌くのが苦手</li>
-<li>コールバック地獄</li>
-</ol>
-
-
-<p>1つ目のデメリットはメリットで書いた内容です。<br/>
-2つ目はまさに筆者が3〜4年前に感じていたデメリットです。<br/>
-Non-blocking I/Oの特徴を持つ代わりにソースコードを書いた際に複数回ネストすることが少なくありません。<br/>
-(サーバダウンを防ぐために<code>try-catch</code>を入れようものなら尚更です。)</p>
-
-<p>ただし、v0.12から<code>yield</code>が追加されましたし、<br/>
-今やWebに限らずスマホネイティブの世界でも<code>Promise</code>の利用が珍しくはないため、最早デメリットとも言えなくなったと思われます。</p>
-
-<p>また、筆者的には<br/>
-HTML, CSS, JavaScriptや画像などの静的ファイルを返却するようなWebサーバとしての役割はNginxやApacheに任せてしまって良いという感覚です。<br/>
-むか〜し、計測したイメージが強く残っているからかもしれませんが&hellip;</p>
-
-<h3>Nodeモジュール</h3>
-
-<p>今も忘れない当時使っていた or 助けられたNodeモジュールについて紹介します。</p>
-
-<h4>Express</h4>
-
-<p>これは最も有名なNodeモジュールではないでしょうか？<br/>
-( <strong>Express</strong> の公式サイトは<a href="http://expressjs.com/">こちら</a>です。)</p>
-
-<p><strong>Express</strong> はWebアプリケションフレームワークであり、Webアプリケーションを作成するために必要な機能を提供してくれます。<br/>
-このモジュールがあるため、サーバサイドを非常に簡単に作成することができるのです。<br/>
-(玄人になればなるほどアンチExpressが多い気もしますが&hellip;)</p>
-
-<h4>node-inspector</h4>
-
-<p>続いて、こちらも使わない人の方が少ないのでは？と思うくらい重要な <strong>node-inspector</strong> について紹介します。<br/>
-(GitHubは<a href="https://github.com/node-inspector/node-inspector">こちら</a>です。)</p>
-
-<p>サーバサイドエンジニアはeclipse, IntelliJなどのIDEを利用して開発すると思います。<br/>
-IDEを利用する理由は様々ですが、その中の1つにデバッグ機能があります。<br/>
-<strong>node-inspector</strong> はまるでフロントエンドを開発しているかのごとく、ブラウザ上でデバッグ機能を提供してくれます。</p>
-
-<h4>forever</h4>
-
-<p>次は、 <strong>forever</strong> の紹介です。<br/>
-Node.jsでは想定外のエラーが発生した際にサーバがダウンしてしまいます。<br/>
-サーバがダウンし、イベントループが停止してしまうと、クライアント側からのリクエストを受け付けることができません。<br/>
-そのため、サーバを再起動する必要があるのですが、これを自動的に実行してくれるモジュールが <strong>forever</strong> です。<br/>
-(GitHubは<a href="https://github.com/foreverjs/forever">こちら</a>です。)</p>
-
-<h4>log4js-node</h4>
-
-<p>先ほども説明した通り、プログラムは所詮、人間が作り上げたものなので、想定外なことは起こりえます。<br/>
-それに対処するためにエンジニアとしては失敗をただの失敗として放置するのではなく、経験として蓄積し、次に活かすのです。<br/>
-その手助けとなるのがログです。</p>
-
-<p><strong>log4js-node</strong> を利用することで、<code>info</code>, <code>debug</code>, <code>warn</code>, <code>error</code>など各種ログを仕込むことが可能となります。</p>
-
-<h4>async</h4>
-
-<p>実は筆者が最も思い出深いモジュールがこの <strong>async</strong> です。<br/>
-Node.jsのデメリットで紹介しましたが、筆者がNode.jsをメインで触っていた3〜4年前はまさにコールバック地獄でした。<br/>
-また、1回のイベント発火内で非同期処理を繰り返し順番に実行したい要望があり、非常に手を焼きました。<br/>
-これを救ってくれたのが <strong>async</strong> なのです。</p>
-
-<p>特に、<code>async.waterfall</code>, <code>async.parallel</code>, <code>async.series</code>, <code>async.eachSeries</code>は必見の価値ありです。<br/>
-(GitHubは<a href="https://github.com/caolan/async">こちら</a>です。)</p>
-
-<h4>その他</h4>
-
-<p>その他にも便利なものがたくさん用意されているので必要に応じて利用すると良いでしょう。</p>
-
-<ul>
-<li><a href="https://github.com/mochajs/mocha">mocha</a>: Node.jsのためのテストフレームワーク</li>
-<li><a href="http://socket.io/">socket.io</a>: WebSocket機能を実装できるモジュール</li>
-<li><a href="http://mongoosejs.com/">mongoose</a>: Node.jsからMongoDBを利用するためのモジュール</li>
-<li><a href="https://github.com/mysqljs/mysql">mysql</a>: Node.jsからMySQLを利用するためのモジュール</li>
-<li><a href="https://github.com/balderdashy/sails">sails</a>: Ruby on RailsライクなMVCフレームワーク</li>
-</ul>
-
-
-<h3>Node.jsを勉強するための近道</h3>
-
-<p>最後にNode.jsの勉強方法について紹介したいと思います。<br/>
-筆者的には、まずは <strong>JavaScript</strong> をきちんと学ぶことが必要だと思います。<br/>
-クライアントサイドから始めても、サーバサイドから始めても構わないのですが、クライアントサイドからの方が始めやすいのではないでしょうか。</p>
-
-<p>また、サーバサイドでNode.jsというものが何かを学ぶのであれば、<br/>
-<a href="http://www.nodebeginner.org/index-jp.html">Nodeビギナーズブック</a>を1回は読んでおくことをオススメします。<br/>
-市販されている本を読むよりも本質的な部分を理解できると思います。<br/>
-(あと、未だにNode.js関連の本って全然ないので&hellip;。)</p>
-
-<h3>まとめ</h3>
-
-<p>さていかがでしたでしょうか？<br/>
-Node.jsはまだまだ新しい技術ですし、これからもっと学ぶべきことが増えてくることでしょう。<br/>
-筆者も極力最新を追えるように精進したいと思います。<br/>
-と言ったところで本日はここまで。</p>
-
-<p>参考:</p>
-
-<ul>
-<li><a href="http://www.atmarkit.co.jp/ait/articles/1103/23/news101_2.html">naveでNode.jsのバージョン管理＆イベントループ詳説 </a></li>
-<li><a href="http://www.slideshare.net/shigeki_ohtsu/processnext-tick-nodejs">そうだったのか！ よくわかる process.nextTick() node.jsのイベントループを理解する</a></li>
-</ul>
-
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
