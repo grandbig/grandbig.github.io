@@ -1,0 +1,130 @@
+---
+layout: post
+title: "Xcodeの環境変数を有効に利用しよう！"
+date: 2019-07-15 16:24
+comments: true
+categories: ios xcode
+---
+
+### はじめに
+iOSアプリを開発する中で避けて通れないのが `Xcode` 周りの扱いです。  
+とは言え、個人でのアプリ開発であれば、そこまで工夫せずともビルド待ち時間に困ったりすることはないかもしれません。  
+ですが、業務で扱うような大規模なアプリ開発となると、やはり様々な工夫が必要になることでしょう。  
+
+その中の一つに『 `Xcode` の環境変数を有効に利用すること』が上げられます。  
+今回はその『 `Xcode` の環境変数』に関するメモ書きを残しておこうと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### Xcodeプロジェクトの環境変数を調べる方法
+`Xcode` の環境変数と一言で言っても、種類はかなりの数に上ります。  
+[Xcode Help > Build settings reference](https://help.apple.com/xcode/mac/10.2/#/itcaec37c2a6)に一覧があるので、ざっと見てみるのも良いかと思います。  
+ただ、毎回、「あの環境変数はどんな名称だったっけ...？」という時にリファレンスを見るのも手間がかかります。  
+そこで、`Xcode` で用意されている、「環境変数を確認するためのコマンド」を積極的に利用しましょう。
+
+使い方はシンプルで下記のようになります。  
+
+`.xcodeproj` ファイルと同階層に移動して、以下コマンドを叩きます。  
+
+```objective-c
+$ xcodebuild -showBuildSettings
+```
+
+すると、  
+
+```objective-c
+Build settings for action build and target <プロジェクト名>:
+    ACTION = build
+    AD_HOC_CODE_SIGNING_ALLOWED = NO
+    ALTERNATE_GROUP = staff
+    ...
+    YACC = yacc
+    arch = arm64
+    diagnostic_message_length = 199
+    variant = normal
+```
+
+のように結果が表示されます。  
+思ったよりも大量に出力されるため、初めから探したいものが決まっている場合は `grep` コマンドを利用して出力させて見るのが良いでしょう。  
+
+例えば、  
+
+```objective-c
+$ xcodebuild -showBuildSettings | grep "PODS"
+```
+
+のような感じで...。  
+
+### Xcodeの環境変数の利用実践例
+環境変数の調べ方がわかったところで、実践例を紹介しておきたいと思います。  
+
+#### 環境変数の実践利用①
+例えば `SwiftLint` を利用して静的解析をかける場合、常に `SwiftLint` を実行する必要はありません。  
+手元での開発時や、社内展開時のCI/CDツールにかける時に実行する場合が多くなるかと思います。  
+
+そんな時には、 `Build Phases` で下記のように設定することでしょう。  
+
+```objective-c
+if ["${CONFIGURATION}" = "Debug"] && which swiftlint >/dev/null; then
+swiftlint
+else
+echo "Configuration is not Debug or SwiftLint does not exist, download from https://github.com/realm/SwiftLint"
+fi
+```
+
+#### 環境変数の実践利用②
+例えば、 `Carthage` でOSSライブラリを管理している場合、 `Debug` 時と `Release` 時で利用する/利用しないライブラリが別れていることがあるかもしれません。   
+その場合は、 `Build Phases` の `Input File Lists` と `Output File Lists` で指定するファイルのパスを工夫する必要があります。  
+
+まずは下記のように、 `Input File Lists` と `Output File Lists` 用のファイルを格納する構造をプロジェクト内に作ります。    
+
+```objective-c
+SampleApp
+├── SampleApp
+│    ├── inputXcfilelist
+│    │    ├── SampleApp-Debug.xcfilelist
+│    │    └── SampleApp-Release.xcfilelist
+│    ├── outputXcfilelist
+│    │    ├── SampleApp-Debug.xcfilelist
+│    │    └── SampleApp-Release.xcfilelist
+│    ...
+├── SampleAppTests
+├── SampleAppUITests
+...
+```
+
+続いて、 `Carthage` 利用時に指定する `Build Phases > Run Script` 内の `Input File Lists` と `Output File Lists` にそれぞれパスを指定するだけです。  
+
+```objective-c
+// Input File Lists Path
+${SRCROOT}/SampleApp/inputXcfilelist/SampleApp-${CONFIGURATION}.xcfilelist
+
+// Output File Lists Path
+${SRCROOT}/SampleApp/outputXcfilelist/SampleApp-${CONFIGURATION}.xcfilelist
+```
+
+因みに、 `Input File Lists` や `Output File Lists` を使わずとも、実践例①と同様にシェルスクリプト内で `${CONFIGURATION}` を利用する方法もあるのでは？と思われるかもしれません。  
+確かに、その方法でも問題なく成立する場合もありますが、  
+
+* 変更時にファイルの `diff` として確認ができるので、レビューしやすい  
+* `Xcode10` からの新ビルドシステムが厳密なビルドを実行するため、エラーが出るパターンがある  
+
+ことから `Input File Lists` や `Output File Lists` を利用することを筆者はおすすめしたいと思います。  
+(後者でうまくいかないパターンは、 `CONFIGURATION` を変えると、複数のターゲット間で `Input/Output` するモジュールが入れ替わる場合などです。 )   
+
+### まとめ
+さて、最近、 `Xcode` の環境変数周りを触る機会が久しぶりにあったためメモ書き程度に書き記しました。  
+忘れがちなので心に留めておきたいですね。  
+と言うことで本日はここまで。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>

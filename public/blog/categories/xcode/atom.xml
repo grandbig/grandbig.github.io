@@ -4,7 +4,7 @@
   <title><![CDATA[Category: xcode | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/xcode/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2019-06-29T22:21:55+09:00</updated>
+  <updated>2019-08-10T22:30:30+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,159 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Xcodeの環境変数を有効に利用しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2019/07/15/xcode-env/"/>
+    <updated>2019-07-15T16:24:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/07/15/xcode-env</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>iOSアプリを開発する中で避けて通れないのが <code>Xcode</code> 周りの扱いです。<br/>
+とは言え、個人でのアプリ開発であれば、そこまで工夫せずともビルド待ち時間に困ったりすることはないかもしれません。<br/>
+ですが、業務で扱うような大規模なアプリ開発となると、やはり様々な工夫が必要になることでしょう。</p>
+
+<p>その中の一つに『 <code>Xcode</code> の環境変数を有効に利用すること』が上げられます。<br/>
+今回はその『 <code>Xcode</code> の環境変数』に関するメモ書きを残しておこうと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Xcodeプロジェクトの環境変数を調べる方法</h3>
+
+<p><code>Xcode</code> の環境変数と一言で言っても、種類はかなりの数に上ります。<br/>
+<a href="https://help.apple.com/xcode/mac/10.2/#/itcaec37c2a6">Xcode Help > Build settings reference</a>に一覧があるので、ざっと見てみるのも良いかと思います。<br/>
+ただ、毎回、「あの環境変数はどんな名称だったっけ&hellip;？」という時にリファレンスを見るのも手間がかかります。<br/>
+そこで、<code>Xcode</code> で用意されている、「環境変数を確認するためのコマンド」を積極的に利用しましょう。</p>
+
+<p>使い方はシンプルで下記のようになります。</p>
+
+<p><code>.xcodeproj</code> ファイルと同階層に移動して、以下コマンドを叩きます。</p>
+
+<p><code>objective-c
+$ xcodebuild -showBuildSettings
+</code></p>
+
+<p>すると、</p>
+
+<p>```objective-c
+Build settings for action build and target &lt;プロジェクト名>:</p>
+
+<pre><code>ACTION = build
+AD_HOC_CODE_SIGNING_ALLOWED = NO
+ALTERNATE_GROUP = staff
+...
+YACC = yacc
+arch = arm64
+diagnostic_message_length = 199
+variant = normal
+</code></pre>
+
+<p>```</p>
+
+<p>のように結果が表示されます。<br/>
+思ったよりも大量に出力されるため、初めから探したいものが決まっている場合は <code>grep</code> コマンドを利用して出力させて見るのが良いでしょう。</p>
+
+<p>例えば、</p>
+
+<p><code>objective-c
+$ xcodebuild -showBuildSettings | grep "PODS"
+</code></p>
+
+<p>のような感じで&hellip;。</p>
+
+<h3>Xcodeの環境変数の利用実践例</h3>
+
+<p>環境変数の調べ方がわかったところで、実践例を紹介しておきたいと思います。</p>
+
+<h4>環境変数の実践利用①</h4>
+
+<p>例えば <code>SwiftLint</code> を利用して静的解析をかける場合、常に <code>SwiftLint</code> を実行する必要はありません。<br/>
+手元での開発時や、社内展開時のCI/CDツールにかける時に実行する場合が多くなるかと思います。</p>
+
+<p>そんな時には、 <code>Build Phases</code> で下記のように設定することでしょう。</p>
+
+<p><code>objective-c
+if ["${CONFIGURATION}" = "Debug"] &amp;&amp; which swiftlint &gt;/dev/null; then
+swiftlint
+else
+echo "Configuration is not Debug or SwiftLint does not exist, download from https://github.com/realm/SwiftLint"
+fi
+</code></p>
+
+<h4>環境変数の実践利用②</h4>
+
+<p>例えば、 <code>Carthage</code> でOSSライブラリを管理している場合、 <code>Debug</code> 時と <code>Release</code> 時で利用する/利用しないライブラリが別れていることがあるかもしれません。 <br/>
+その場合は、 <code>Build Phases</code> の <code>Input File Lists</code> と <code>Output File Lists</code> で指定するファイルのパスを工夫する必要があります。</p>
+
+<p>まずは下記のように、 <code>Input File Lists</code> と <code>Output File Lists</code> 用のファイルを格納する構造をプロジェクト内に作ります。</p>
+
+<p><code>objective-c
+SampleApp
+├── SampleApp
+│    ├── inputXcfilelist
+│    │    ├── SampleApp-Debug.xcfilelist
+│    │    └── SampleApp-Release.xcfilelist
+│    ├── outputXcfilelist
+│    │    ├── SampleApp-Debug.xcfilelist
+│    │    └── SampleApp-Release.xcfilelist
+│    ...
+├── SampleAppTests
+├── SampleAppUITests
+...
+</code></p>
+
+<p>続いて、 <code>Carthage</code> 利用時に指定する <code>Build Phases &gt; Run Script</code> 内の <code>Input File Lists</code> と <code>Output File Lists</code> にそれぞれパスを指定するだけです。</p>
+
+<p>```objective-c
+// Input File Lists Path
+${SRCROOT}/SampleApp/inputXcfilelist/SampleApp-${CONFIGURATION}.xcfilelist</p>
+
+<p>// Output File Lists Path
+${SRCROOT}/SampleApp/outputXcfilelist/SampleApp-${CONFIGURATION}.xcfilelist
+```</p>
+
+<p>因みに、 <code>Input File Lists</code> や <code>Output File Lists</code> を使わずとも、実践例①と同様にシェルスクリプト内で <code>${CONFIGURATION}</code> を利用する方法もあるのでは？と思われるかもしれません。<br/>
+確かに、その方法でも問題なく成立する場合もありますが、</p>
+
+<ul>
+<li>変更時にファイルの <code>diff</code> として確認ができるので、レビューしやすい</li>
+<li><code>Xcode10</code> からの新ビルドシステムが厳密なビルドを実行するため、エラーが出るパターンがある</li>
+</ul>
+
+
+<p>ことから <code>Input File Lists</code> や <code>Output File Lists</code> を利用することを筆者はおすすめしたいと思います。<br/>
+(後者でうまくいかないパターンは、 <code>CONFIGURATION</code> を変えると、複数のターゲット間で <code>Input/Output</code> するモジュールが入れ替わる場合などです。 )</p>
+
+<h3>まとめ</h3>
+
+<p>さて、最近、 <code>Xcode</code> の環境変数周りを触る機会が久しぶりにあったためメモ書き程度に書き記しました。<br/>
+忘れがちなので心に留めておきたいですね。<br/>
+と言うことで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOSアプリ開発時に注意したい色空間(Generic RGB vs sRGB)]]></title>
@@ -445,96 +598,6 @@ Storyboardの使い方は案外簡単ですね！まだまだ触り程度の話�
 (adsbygoogle = window.adsbygoogle || []).push({});
 </script>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Xcode5でDebug gaugesを使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2014/03/16/xcode5debug/"/>
-    <updated>2014-03-16T21:56:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/03/16/xcode5debug</id>
-    <content type="html"><![CDATA[<h3>Xcode5のデバッグ機能を使ってCPUとスレッドを調べよう</h3>
-
-<p>最近、アプリを開発する上で、その操作が<strong>どのくらいCPUを消費するのか</strong>, <strong>マルチスレッドを有効に使えているのか</strong>を厳しく見る必要が出てきました。それまでCPUやスレッドもそこまで気にしたことはなかったのですが、Xcode5からはInstrumentを起動しなくとも、簡易的に確認できるということで試しにやってみました。</p>
-
-<!--more-->
-
-
-<h4>Xcode5でDebug gaugesを使ってみる</h4>
-
-<p>まずは、本当に簡単な何もしない画面を作成して、様子を見てみました。<br/>
-<img src="/images/xcode_debug1.png" alt="何もしない画面の様子" /></p>
-
-<p>4つスレッドがあります。そして、画面の描画に使われているであろうスレッドがThread1であることがわかると思います。他は全く使ってないですね。<br/>
-また、本試験ではiPhone5(iOS7.1)を利用しているため、マルチコアなので、CPUのメータが最大200%であることが示されています。<br/>
-しばらく見ていると、4つあったスレッドが2つに減ります。<br/>
-<img src="/images/xcode_debug2.png" alt="スレッドが2つになる" /></p>
-
-<p>続いて、for分で10000回ループしてひたすらログを出力するボタンを作成して、様子を見てみました。<br/>
-<img src="/images/xcode_debug3.png" alt="for分で10000回ループ" /></p>
-
-<p>さて、スレッドを別に作成して実行してみましょう。<br/>
-```objective-c
-dispatch_queue_t gQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);</p>
-
-<p>dispatch_async(gQueue, ^(void) {</p>
-
-<pre><code>for(NSInteger j=0; j &lt; 10000; j++) {
-    NSLog(@"%d回目のループ", j);
-}
-</code></pre>
-
-<p>});
-```</p>
-
-<p>その結果が下図。<br/>
-<img src="/images/xcode_debug4.png" alt="別スレッドで実行" /><br/>
-これを見るとメインスレッドとは別のスレッドで実行されていることがわかります。基本的に描画はメインスレッドでしか実行がされないので、その他の処理はメインスレッドとは別スレッドで行うのが良さそうですね。</p>
-
-<p>実際にやってみましょう。<br/>
-```objective-c
-dispatch_queue_t gQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);</p>
-
-<p>dispatch_async(gQueue, ^(void) {</p>
-
-<pre><code>for(NSInteger j=0; j &lt; 10000; j++) {
-    NSLog(@"%d回目のループ", j);
-    dispatch_async(dispatch_get_main_queue(), ^(void) {
-        NSLog(@"メインのループ");
-    });
-}
-</code></pre>
-
-<p>});
-```
-<img src="/images/xcode_debug5.png" alt="マルチスレッドでの実行" /><br/>
-メインスレッドと別スレッドで各10000回ログを出力する処理を実行しているため、同じ時間帯にリソースを使っていることがわかりますね。</p>
-
-<h3>マップを描画してDebug gaugesを見てみる</h3>
-
-<p>アプリを開発するときにマップを利用すると様々な操作でメインスレッドを利用していることがわかります。まずはマップを起動してみましょう。<br/>
-<img src="/images/xcode_debug6.png" alt="マップを起動してみる" /><br/>
-起動直後から大量のスレッドが作成されていることがわかります。描画はメインスレッドでやるものの、様々な計算は別スレッドでやっているということなんでしょうか&hellip;。<br/>
-起動してからしばらく放置しておくとスレッドがどんどん減っていきます。<br/>
-しかし、マップを拡大・縮小するとスレッドが大量に作成されます。また、CPUも激しく消費することがわかります。(余裕で140〜150%まで上がったりしますね&hellip;)</p>
-
-<p>これらはユーザの操作によって引き起こされる現象なので、極端な話、触らなければCPUの消費はされません。<br/>
-では、下記のようにしてみたらどうなるでしょうか？<br/>
-```objective-c
-&ndash; (void)mapViewDidFinishLoadingMap:(MKMapView *)mapView
-{</p>
-
-<pre><code>[self.map setUserTrackingMode:MKUserTrackingModeFollowWithHeading animated:YES];
-</code></pre>
-
-<p>}
-```
-<img src="/images/xcode_debug7.png" alt="ユーザの方向にマップが回転する" /><br/>
-ユーザの動きを検知して自動で回転するので、CPUを使い続けます。</p>
-
-<h3>まとめ</h3>
-
-<p>アプリを開発する上で、端末のリソースをどのようにうまく使っていくのかは非常に重要です。マップを使うアプリを作成するときは特に注意が必要ですね。</p>
 ]]></content>
   </entry>
   
