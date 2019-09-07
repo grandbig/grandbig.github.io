@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2019-09-07T18:03:32+09:00</updated>
+  <updated>2019-09-07T21:46:33+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,529 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LLDBの便利なp/po/ｖコマンドを覚えよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2019/09/07/po-v-command/"/>
+    <updated>2019-09-07T20:02:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/09/07/po-v-command</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>筆者はこれまでLLDBコマンドでは <code>po</code> を利用することが多かったのですが、<br/>
+WWDC2019のビデオである<a href="https://developer.apple.com/videos/play/wwdc2019/429/">LLDB: Beyond &ldquo;po&rdquo;</a>を視聴して改めて <code>v</code> コマンドの使いやすさを勉強しました。</p>
+
+<p>今回はその <code>v</code> コマンドについて実例を交えながら見ていきたいと思います。
+( <code>p</code> や <code>po</code> コマンドでなぜか変数の中身が見れない&hellip;と思っていた方、必見です。 )</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>p/po/vコマンドについて</h3>
+
+<p>まず、各種コマンドについて簡単に見ていきます。</p>
+
+<h4>poコマンドについて</h4>
+
+<p><code>po</code> は <code>print object</code> の略だそうです。 <br/>
+<code>po</code> は <code>expression</code> コマンドのエイリアス(ショートカット機能)であり、簡略化して書くことができます。</p>
+
+<p>具体的には、以下の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">expression</span> <span class="o">--</span><span class="n">object</span><span class="o">-</span><span class="n">description</span> <span class="o">--</span> <span class="n">engineer</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">po</span> <span class="n">engineer</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>また、 <code>po</code> は式を評価した結果のオブジェクトを返すため、非常に見やすい形式で出力されます。<br/>
+早速例を見てみましょう。</p>
+
+<p>下記のような構造体が定義されているとします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">struct</span> <span class="n">iOSEngineer</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">name:</span> <span class="n">string</span>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">age:</span> <span class="n">Int</span>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">swiftLevel:</span> <span class="n">Int</span>
+</span><span class='line'>  <span class="n">var</span> <span class="nl">obcLevel:</span> <span class="n">Int</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これを初期化した直後にブレークポイントで止めているとしましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">let</span> <span class="n">engineer</span> <span class="o">=</span> <span class="n">iOSEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;Ichiro&quot;</span><span class="p">,</span> <span class="nl">age:</span> <span class="mi">33</span><span class="p">,</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="s">&quot;gps&quot;</span><span class="p">,</span> <span class="s">&quot;bluetooth&quot;</span><span class="p">,</span> <span class="s">&quot;animation&quot;</span><span class="p">],</span> <span class="nl">swiftLevel:</span> <span class="mi">3</span><span class="p">,</span> <span class="nl">obcLevel:</span> <span class="mi">2</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ブレークポイントで止めた状態で <code>po</code> コマンドを打ち出すと、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">po</span> <span class="n">engineer</span>
+</span><span class='line'><span class="err">▿</span> <span class="n">iOSEngineer</span>
+</span><span class='line'>  <span class="o">-</span> <span class="n">name</span> <span class="o">:</span> <span class="s">&quot;Ichiro&quot;</span>
+</span><span class='line'>  <span class="o">-</span> <span class="n">age</span> <span class="o">:</span> <span class="mi">33</span>
+</span><span class='line'>  <span class="err">▿</span> <span class="n">specialty</span> <span class="o">:</span> <span class="mi">3</span> <span class="n">elements</span>
+</span><span class='line'>    <span class="o">-</span> <span class="mi">0</span> <span class="o">:</span> <span class="s">&quot;gps&quot;</span>
+</span><span class='line'>    <span class="o">-</span> <span class="mi">1</span> <span class="o">:</span> <span class="s">&quot;bluetooth&quot;</span>
+</span><span class='line'>    <span class="o">-</span> <span class="mi">2</span> <span class="o">:</span> <span class="s">&quot;animation&quot;</span>
+</span><span class='line'>  <span class="o">-</span> <span class="n">swiftLevel</span> <span class="o">:</span> <span class="mi">3</span>
+</span><span class='line'>  <span class="o">-</span> <span class="n">obcLevel</span> <span class="o">:</span> <span class="mi">2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>という出力結果が得られます。</p>
+
+<h4>pコマンドについて</h4>
+
+<p><code>p</code> は <code>print</code> の略だそうで、<code>po</code> と同じくコンパイルして式を評価します。<br/>
+<code>po</code> と異なるのは、出力結果の形式です。<br/>
+以下はその例です。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">p</span> <span class="n">engineer</span>
+</span><span class='line'><span class="p">(</span><span class="n">Sample</span><span class="p">.</span><span class="n">iOSEngineer</span><span class="p">)</span> <span class="n">$R4</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Ichiro&quot;</span>
+</span><span class='line'>  <span class="n">age</span> <span class="o">=</span> <span class="mi">33</span>
+</span><span class='line'>  <span class="n">specialty</span> <span class="o">=</span> <span class="mi">3</span> <span class="n">values</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;gps&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;bluetooth&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;animation&quot;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="n">swiftLevel</span> <span class="o">=</span> <span class="mi">3</span>
+</span><span class='line'>  <span class="n">obcLevel</span> <span class="o">=</span> <span class="mi">2</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>po</code> と違って <code>$R4</code> のような名前がつけられていることがわかります。<br/>
+この <code>$R4</code> のような名前を引数に指定して <code>po</code> や <code>p</code> コマンドを実行することができます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">p</span> <span class="n">$R4</span><span class="p">.</span><span class="n">name</span>
+</span><span class='line'><span class="p">(</span><span class="n">String</span><span class="p">)</span> <span class="n">$R10</span> <span class="o">=</span> <span class="s">&quot;Ichiro&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">po</span> <span class="n">$R4</span><span class="p">.</span><span class="n">name</span>
+</span><span class='line'><span class="s">&quot;Ichiro&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このように以前の結果から更に値を取得するような場面で使い勝手が非常に良いです。</p>
+
+<p>もちろん <code>p</code> も <code>expression</code> コマンドのエイリアスになっています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">expression</span> <span class="o">--</span> <span class="n">engineer</span>
+</span><span class='line'><span class="p">(</span><span class="n">MeasurementSample</span><span class="p">.</span><span class="n">iOSEngineer</span><span class="p">)</span> <span class="n">$R16</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Ichiro&quot;</span>
+</span><span class='line'>  <span class="n">age</span> <span class="o">=</span> <span class="mi">33</span>
+</span><span class='line'>  <span class="n">specialty</span> <span class="o">=</span> <span class="mi">3</span> <span class="n">values</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;gps&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;bluetooth&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;animation&quot;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="n">swiftLevel</span> <span class="o">=</span> <span class="mi">3</span>
+</span><span class='line'>  <span class="n">obcLevel</span> <span class="o">=</span> <span class="mi">2</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>vコマンドについて</h4>
+
+<p><code>v</code> は <code>variable</code> の略のようです。<br/>
+出力形式自体は <code>p</code> コマンドと同じになっています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">v</span> <span class="n">engineer</span>
+</span><span class='line'><span class="p">(</span><span class="n">MeasurementSample</span><span class="p">.</span><span class="n">iOSEngineer</span><span class="p">)</span> <span class="n">engineer</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Ichiro&quot;</span>
+</span><span class='line'>  <span class="n">age</span> <span class="o">=</span> <span class="mi">33</span>
+</span><span class='line'>  <span class="n">specialty</span> <span class="o">=</span> <span class="mi">3</span> <span class="n">values</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;gps&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;bluetooth&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;animation&quot;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="n">swiftLevel</span> <span class="o">=</span> <span class="mi">3</span>
+</span><span class='line'>  <span class="n">obcLevel</span> <span class="o">=</span> <span class="mi">2</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>po</code> や <code>p</code> と同じくエイリアスなのですが、 <code>expression</code> ではなく <code>frame variable</code> コマンドのエイリアスです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">frame</span> <span class="n">variable</span> <span class="n">engineer</span>
+</span><span class='line'><span class="p">(</span><span class="n">MeasurementSample</span><span class="p">.</span><span class="n">iOSEngineer</span><span class="p">)</span> <span class="n">engineer</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Ichiro&quot;</span>
+</span><span class='line'>  <span class="n">age</span> <span class="o">=</span> <span class="mi">33</span>
+</span><span class='line'>  <span class="n">specialty</span> <span class="o">=</span> <span class="mi">3</span> <span class="n">values</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;gps&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;bluetooth&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;animation&quot;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="n">swiftLevel</span> <span class="o">=</span> <span class="mi">3</span>
+</span><span class='line'>  <span class="n">obcLevel</span> <span class="o">=</span> <span class="mi">2</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>一見、 <code>p</code> コマンドを使えば良いのでは？と思われそうですが、 <code>v</code> コマンドは以下の特徴があります。</p>
+
+<ul>
+<li>コンパイルしないため、結果の出力が速い</li>
+<li>メモリから変数を読み込み、動的解決を複数回繰り返すことで、サブフィールドの読み込みが可能</li>
+</ul>
+
+
+<p>上記のどちらにも言えることですが、代わりに式の評価ができないので使い分けが必要です。</p>
+
+<h3>vコマンドの便利機能</h3>
+
+<p>もう少し具体的に <code>v</code> コマンドの良さを見ていきましょう。</p>
+
+<p>次のように定義された構造体があったとします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">protocol</span> <span class="n">Engineer</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span> <span class="p">{</span> <span class="n">get</span> <span class="n">set</span> <span class="p">}</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">age:</span> <span class="n">Int</span> <span class="p">{</span> <span class="n">get</span> <span class="n">set</span> <span class="p">}</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span> <span class="p">{</span> <span class="n">get</span> <span class="n">set</span> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">iOSEngineer:</span> <span class="n">Engineer</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">age:</span> <span class="n">Int</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">swiftLevel:</span> <span class="n">Int</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">obcLevel:</span><span class="n">Int</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記の通り、 <code>iOSEngineer</code> はプロトコル <code>Engineer</code> に準拠しています。<br/>
+加えて独自に <code>swiftLevel</code> と <code>obcLevel</code> という変数を持ちます。</p>
+
+<p>この構造体を下記のように初期化している場面があったとします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">let</span> <span class="nl">engineer:</span> <span class="n">Engineer</span> <span class="o">=</span> <span class="n">iOSEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;Ichiro&quot;</span><span class="p">,</span> <span class="nl">age:</span> <span class="mi">33</span><span class="p">,</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="s">&quot;gps&quot;</span><span class="p">,</span> <span class="s">&quot;bluetooth&quot;</span><span class="p">,</span> <span class="s">&quot;animation&quot;</span><span class="p">],</span> <span class="nl">swiftLevel:</span> <span class="mi">3</span><span class="p">,</span> <span class="nl">obcLevel:</span> <span class="mi">2</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これを <code>p</code> や <code>po</code> コマンドで <code>iOSEngineer</code> 独自のフィールドである <code>swiftLevel</code> を出力させようとすると、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">p</span> <span class="n">engineer</span><span class="p">.</span><span class="n">swiftLevel</span>
+</span><span class='line'><span class="nl">error:</span> <span class="o">&lt;</span><span class="n">EXPR</span><span class="o">&gt;:</span><span class="mi">3</span><span class="o">:</span><span class="mi">1</span><span class="o">:</span> <span class="nl">error:</span> <span class="n">value</span> <span class="n">of</span> <span class="n">type</span> <span class="err">&#39;</span><span class="n">Engineer</span><span class="err">&#39;</span> <span class="n">has</span> <span class="n">no</span> <span class="n">member</span> <span class="err">&#39;</span><span class="n">swiftLevel</span><span class="err">&#39;</span>
+</span><span class='line'><span class="n">engineer</span><span class="p">.</span><span class="n">swiftLevel</span>
+</span><span class='line'><span class="o">^~~~~~~~</span> <span class="o">~~~~~~~~~~</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このようなエラーが表示されます。<br/>
+<code>p</code> や <code>po</code> コマンドは1回しか動的解決をしないため、<br/>
+<code>Engineer</code> 型として格納された <code>engineer</code> には <code>swiftLevel</code> はメンバ変数として持ち合わせていないと見なされてしまうのです。</p>
+
+<p>もちろん、<code>p</code> や <code>po</code> コマンドは式の評価が可能なので</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">p</span> <span class="p">(</span><span class="n">engineer</span> <span class="n">as</span><span class="o">!</span> <span class="n">iOSEngineer</span><span class="p">).</span><span class="n">swiftLevel</span>
+</span><span class='line'><span class="p">(</span><span class="n">Int</span><span class="p">)</span> <span class="n">$R20</span> <span class="o">=</span> <span class="mi">3</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のようにキャストすることで中身を見ることはできます。<br/>
+ですが、少々手間ではありますよね&hellip;<br/>
+(深い階層のサブフィールドを見ようとすればするほど&hellip;)</p>
+
+<p>これが <code>v</code> コマンドでは、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">v</span> <span class="n">engineer</span><span class="p">.</span><span class="n">swiftLevel</span>
+</span><span class='line'><span class="p">(</span><span class="n">Int</span><span class="p">)</span> <span class="n">engineer</span><span class="p">.</span><span class="n">swiftLevel</span> <span class="o">=</span> <span class="mi">3</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>とキャストせずとも結果を得ることができます。</p>
+
+<h3>filter機能</h3>
+
+<p>もう一つ、LLDBコマンドを利用する上で役立つのが <code>filter</code> 機能です。<br/>
+折角なので使い方を見ていきましょう。</p>
+
+<h4>filter機能の紹介</h4>
+
+<p>フィールドの多い変数や、その変数と同じ型の要素を数十個持つ配列などを出力させる場合、とてもではないですが特定のフィールドを見つけることは困難です。</p>
+
+<p>そんな時には <code>filter</code> 機能を利用して、特定の型であれば、特定のフィールドのみを表示するといったことができます。<br/>
+指定の方法は簡単で、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">type</span> <span class="n">filter</span> <span class="n">add</span> <span class="o">&lt;</span><span class="n">Xcode</span><span class="err">のプロジェクト名</span><span class="o">&gt;</span><span class="p">.</span><span class="o">&lt;</span><span class="err">型の名前</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">child</span> <span class="o">&lt;</span><span class="err">フィールド名</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のようにするだけです。<br/>
+筆者の例で言えば、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">type</span> <span class="n">filter</span> <span class="n">add</span> <span class="n">Sample</span><span class="p">.</span><span class="n">iOSEngineer</span> <span class="o">--</span><span class="n">child</span> <span class="n">name</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のような感じです。</p>
+
+<p>これにより、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">v</span> <span class="n">engineer</span>
+</span><span class='line'><span class="p">(</span><span class="n">MeasurementSample</span><span class="p">.</span><span class="n">iOSEngineer</span><span class="p">)</span> <span class="n">engineer</span> <span class="o">=</span> <span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Ichiro&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のように今必要のないフィールドを省略して、結果を得ることができます。<br/>
+※便宜上、 <code>v</code> コマンドを使いましたが <code>p</code> コマンドでも同じ結果を得ることができます。</p>
+
+<p>因みに、機能利用後は忘れずに <code>filter</code> を解除しましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">type</span> <span class="n">filter</span> <span class="n">delete</span> <span class="o">&lt;</span><span class="n">Xcode</span><span class="err">プロジェクト名</span><span class="o">&gt;</span><span class="p">.</span><span class="o">&lt;</span><span class="err">型の名前</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>で解除できます。</p>
+
+<h4>filter機能の限界</h4>
+
+<p>因みに、 <code>filter</code> 機能も万能ではなく、場合によっては複数回 <code>filter</code> をセットすることで結果を得なければいけないこともあります。<br/>
+例えば、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">protocol</span> <span class="n">Engineer</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span> <span class="p">{</span> <span class="n">get</span> <span class="n">set</span> <span class="p">}</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">age:</span> <span class="n">Int</span> <span class="p">{</span> <span class="n">get</span> <span class="n">set</span> <span class="p">}</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span> <span class="p">{</span> <span class="n">get</span> <span class="n">set</span> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">iOSEngineer:</span> <span class="n">Engineer</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">age:</span> <span class="n">Int</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">swiftLevel:</span> <span class="n">Int</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">obcLevel:</span><span class="n">Int</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">WebEngineer:</span> <span class="n">Engineer</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">age:</span> <span class="n">Int</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">htmlLevel:</span> <span class="n">Int</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">cssLevel:</span> <span class="n">Int</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">jsLevel:</span> <span class="n">Int</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のように新たに <code>Engineer</code> プロトコルに準拠した <code>WebEngineer</code> を定義し、以下のような配列を作成します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">let</span> <span class="n">engineer1</span> <span class="o">=</span> <span class="n">WebEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;Taro&quot;</span><span class="p">,</span> <span class="nl">age:</span> <span class="mi">30</span><span class="p">,</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="s">&quot;react&quot;</span><span class="p">],</span> <span class="nl">htmlLevel:</span> <span class="mi">2</span><span class="p">,</span> <span class="nl">cssLevel:</span> <span class="mi">1</span><span class="p">,</span> <span class="nl">jsLevel:</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'><span class="n">let</span> <span class="n">engineer2</span> <span class="o">=</span> <span class="n">WebEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;Jiro&quot;</span><span class="p">,</span> <span class="nl">age:</span> <span class="mi">35</span><span class="p">,</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="s">&quot;vue&quot;</span><span class="p">],</span> <span class="nl">htmlLevel:</span> <span class="mi">3</span><span class="p">,</span> <span class="nl">cssLevel:</span> <span class="mi">2</span><span class="p">,</span> <span class="nl">jsLevel:</span> <span class="mi">4</span><span class="p">)</span>
+</span><span class='line'><span class="n">let</span> <span class="n">engineer3</span> <span class="o">=</span> <span class="n">iOSEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;Saburo&quot;</span><span class="p">,</span> <span class="nl">age:</span> <span class="mi">25</span><span class="p">,</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="s">&quot;gps&quot;</span><span class="p">,</span> <span class="s">&quot;bluetooth&quot;</span><span class="p">],</span> <span class="nl">swiftLevel:</span> <span class="mi">3</span><span class="p">,</span> <span class="nl">obcLevel:</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'><span class="n">let</span> <span class="n">engineer4</span> <span class="o">=</span> <span class="n">WebEngineer</span><span class="p">(</span><span class="nl">name:</span> <span class="s">&quot;Shiro&quot;</span><span class="p">,</span> <span class="nl">age:</span> <span class="mi">28</span><span class="p">,</span> <span class="nl">specialty:</span> <span class="p">[</span><span class="s">&quot;react&quot;</span><span class="p">,</span> <span class="s">&quot;vue&quot;</span><span class="p">,</span> <span class="s">&quot;angular&quot;</span><span class="p">],</span> <span class="nl">htmlLevel:</span> <span class="mi">4</span><span class="p">,</span> <span class="nl">cssLevel:</span> <span class="mi">4</span><span class="p">,</span> <span class="nl">jsLevel:</span> <span class="mi">5</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">let</span> <span class="n">engineers</span> <span class="o">=</span> <span class="p">[</span><span class="n">engineer1</span><span class="p">,</span> <span class="n">engineer2</span><span class="p">,</span> <span class="n">engineer3</span><span class="p">,</span> <span class="n">engineer4</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>engineers</code> をそのまま <code>v</code> コマンドで出力すると少し見えにくそうなので <code>filter</code> 機能が利用したいのですが、<br/>
+<code>Engineer</code> に準拠しているからと言って</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">type</span> <span class="n">filter</span> <span class="n">add</span> <span class="n">Sample</span><span class="p">.</span><span class="n">Engineer</span> <span class="o">--</span><span class="n">child</span> <span class="n">name</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>としても思ったようには動かず、全フィールドが出力されてしまいます。</p>
+
+<p>そこで、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">type</span> <span class="n">filter</span> <span class="n">add</span> <span class="n">Sample</span><span class="p">.</span><span class="n">iOSEngineer</span> <span class="o">--</span><span class="n">child</span> <span class="n">name</span>
+</span><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">type</span> <span class="n">filter</span> <span class="n">add</span> <span class="n">Sample</span><span class="p">.</span><span class="n">WebEngineer</span> <span class="o">--</span><span class="n">child</span> <span class="n">name</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>としてやれば、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">v</span> <span class="n">engineers</span>
+</span><span class='line'><span class="p">([</span><span class="n">Engineer</span><span class="p">])</span> <span class="n">engineers</span> <span class="o">=</span> <span class="mi">4</span> <span class="n">values</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Taro&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Jiro&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Saburo&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Shiro&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このように期待した結果を得ることができます。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+<code>p</code> , <code>po</code> , <code>v</code> コマンドは各々用途がありそうですが、特に <code>v</code> コマンドの利便性を感じてもらえたら幸いです。<br/>
+筆者も積極的に <code>v</code> コマンドを使っていきたいと思います。</p>
+
+<p>といったところで本日はここまで。</p>
+
+<p>参考URL:</p>
+
+<ul>
+<li><a href="https://developer.apple.com/videos/play/wwdc2019/429/">LLDB: Beyond &ldquo;po&rdquo;</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[os.signpostで処理速度を計測しよう！]]></title>
@@ -5911,167 +6434,6 @@ SPI的なテストが出題されることもありましたが、コーディ�
 書き方さえ慣れてしまえば案外簡単に利用できそうですよね。</p>
 
 <p>ということで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[アーキテクチャの選定ポエム〜選定って難しい〜]]></title>
-    <link href="http://grandbig.github.io/blog/2018/12/22/team-develop/"/>
-    <updated>2018-12-22T00:00:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2018/12/22/team-develop</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>こちらは<a href="https://qiita.com/advent-calendar/2018/poem">技術的ポエム Advent Calendar 2018</a>の22日目の記事です。<br/>
-今回はここ最近、感じている <strong>『アーキテクチャの選定の難しさ』</strong> について書いていきたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>アーキテクチャ選定について</h3>
-
-<p>新規プロダクトの開発をする時に、当然、アーキテクチャを選定する必要があります。</p>
-
-<p>では、アーキテクチャはどのように選定すべきなのでしょうか？<br/>
-筆者が振り返って今感じる、選定時に考えるべきポイントを紹介したいと思います。</p>
-
-<p>個人的に大事だと思うポイントは下記の4つになります。</p>
-
-<p>【ポイント】</p>
-
-<ul>
-<li>プロダクトの規模感</li>
-<li>単発的なサービスか長期的に育てていくサービスか</li>
-<li>チームメンバーのスキルセットの把握とマインドの統一</li>
-<li>QCDの優先順位</li>
-</ul>
-
-
-<p>順を追って1つずつ説明していきましょう。</p>
-
-<h3>プロダクトの規模感</h3>
-
-<p>例えば、画面数が3〜4個でロジックが簡易なアプリに <code>Clean Architecture</code> を適用するのが本当に正しいのかという話です。<br/>
-とは言え、『 <code>Testability</code> を高めた設計にしたい』という想いや、『新しい設計思想で開発したい』という想いも技術者なら持ち合わせて然るべきです。</p>
-
-<p>なので、筆者個人としては、他ポイントと合わせた上で、結論を出すべきだと思っています。</p>
-
-<h3>単発的なサービスか長期的に育てていくサービスか</h3>
-
-<p>CM用の一時的なサービスであれば、そこまで運用を考えすぎずに、技術者の裁量で決めてしまっても良いように思えます。<br/>
-もちろん、CMを打つタイミングでサービスが完成していないといった状況は避けるべきではありますが&hellip;</p>
-
-<p>一方で長期的に育てていくサービスはどうすべきなのでしょうか？</p>
-
-<p>筆者個人としては、下記理由から、現状よりも一段階上のレベルの挑戦をするのが適切だと思っています。</p>
-
-<p>① 現時点でレガシーすぎる技術を使うと、 <strong>今後の採用に響く</strong> 可能性がある<br/>
-② <strong>早くサービスを世に出す</strong> ということも事業として大切である<br/>
-③ 挑戦が <strong>メンバーやチームを成長させる</strong></p>
-
-<p>①は技術者であれば割と受け入れやすい、わかりやすい理由ではないかと思います。<br/>
-②は技術への興味が強すぎると忘れ去られがちなこともありますが、<br/>
-これを軽視してしまうと『誰の/何のためにサービスを作っているのか』などのゴールを見失う可能性があると思っています。</p>
-
-<p>とは言え、③の観点は非常に重要だと思っています。<br/>
-ただし、既に開発プロセスや利用ツールや、何らかのルールなど多分に新しい挑戦が組み込まれている場合は注意が必要です。<br/>
-なぜなら、それらも <strong>異なる側面での挑戦である</strong> ことに他ならないからです。</p>
-
-<p>挑戦は楽しい一方で、それなりに負担でもあるため、一度に多くの挑戦を組み込むと、デスマーチに近づく可能性が高くなることでしょう。</p>
-
-<h3>チームメンバーのスキルセットの把握とマインドの統一</h3>
-
-<p>アーキテクチャを選考するにあたって切っても切り離せないのが、チームメンバーのスキルセットとマインドだと筆者は考えています。<br/>
-どういうことかと言うと、</p>
-
-<p>もし、納期の厳しいスピードを最優先とされるプロジェクトにアサインされたとして、<br/>
-誰も利用経験のないアーキテクチャを採用するかどうか</p>
-
-<p>ということです。</p>
-
-<p>基本的には、 <strong>チームを先導できるレベルの技術者がいない状況</strong> では、ハードルが高いなと思っています。<br/>
-ただし、『利用経験のない』とは必ずしも、業務での利用経験とイコールと捉えなくとも良い気はしています。</p>
-
-<p>なぜなら、これを許容しないと、誰も新しいことに挑戦できない世の中になるからです。<br/>
-(世の中から挑戦が一切なくなると、創造性もなくなり&hellip;みたいな話にもなるのかもしれませんね。)</p>
-
-<p>そして開発を始める前に必ずやらなければならないことが『マインドの統一』です。<br/>
-事前にこれをしておかないと、技術的な問題にぶつかった際に、チームが崩壊するリスクも備えています。</p>
-
-<p>筆者としては、チームメンバーに方針を納得してもらった上で一緒に開発を進めたいと思っています。<br/>
-最低でも <strong>『なぜ / 今回 / このアーキテクチャを採用するのか』</strong> は説明し、納得してもらう必要があるでしょう。<br/>
-欲を言えば、チームで意見交換をした上でアーキテクチャを選定したくはありますが、<br/>
-チームのスキルセットや外部要因に影響されることでもあるため、次のレベルかなと思ったりします。</p>
-
-<h3>QCDの優先順位</h3>
-
-<p>プロジェクトを進める上で業務上設定される <code>QCD</code> の優先順位が存在するかと思います。<br/>
-これはアーキテクチャを選定する上で最も影響のあるポイントと言っても過言ではないかもしれません。</p>
-
-<p>他のポイントを説明する際にも「納期の厳しいスピードを最優先とされる」といった形で引用しましたが、特に技術者が気にするポイントは<code>Delivery</code>(納期)ではないでしょうか。<br/>
-基本的に、サービスを世に送り出すことにおいて、<code>Delivery</code>が軽視されることは稀かと思います。<br/>
-大抵の場合、<code>Quality</code>(品質)と同等かそれ以上に優先度が設定されることがあります。</p>
-
-<p>また、<code>Quality</code> > <code>Delivery</code> > <code>Cost</code> の順番で優先度を設定したプロジェクトだったとしても、<br/>
-途中で <code>Quality</code> を優先するために <code>Delivery</code> を変更することは至難の業である場合が多いと思います。<br/>
-(何のための優先順位決めなのかと議論になることもありますが、ここでは論点がずれるため触れないこととします。)</p>
-
-<p>筆者も上記のような経験を何度かしてきました。<br/>
-その結果、アーキテクチャを決める上で厳しくシビアに判定しなければいけないポイントだと思うようになりました。</p>
-
-<p>つまり、誤解を恐れずに言えば、<br/>
-圧倒的に <code>Delivery</code> が優先される現場においては、他のポイントを考えるまでもなくアーキテクチャが決まると言うことです。</p>
-
-<p>しかしながら、この <code>Delivery</code> の <code>MUST</code> 性はもう少し分解することが可能です。</p>
-
-<p>極端な例で言えば、<br/>
-『毎年決まった時期にリリースしているサービス』で『特定の層のほとんどが認知して利用しているサービス』<br/>
-と<br/>
-『今回初めてリリースするため、リリース後に徐々に広告を増やしてアピールしていくサービス』<br/>
-では、<code>Delivery</code> 最優先と設定されたとしても、遅れた場合に生じる企業へのダメージは明らかに異なるでしょう。</p>
-
-<p>よって、 <code>Delivery</code> が優先度高であるとは言っても、 <strong>本当に最上なのか</strong> はきちんと判断すると良いかと思います。</p>
-
-<h3>まとめ</h3>
-
-<p>さて、今回は、筆者がアーキテクチャ選定する時に大事だと思う4つの観点について説明しました。<br/>
-文章で書くのは簡単ですが、実践は相当に難しいと思います。<br/>
-何が難しいかで言うと、多面的かつ複合的に考える必要がある上に経験に頼る部分も大きくなるからです。</p>
-
-<p>筆者も正直、上記4点から最良のアーキテクチャ選定ができたなと思える経験はなかなかありません。<br/>
-失敗の方が圧倒的に多いです。</p>
-
-<p>それでも、アーキテクチャ選定は今後も逃れることのできない、技術者が考えなくてはならない事柄だと思います。<br/>
-そして恐らく完璧な答えなどない世界なんだと思います。<br/>
-でも、だからこそ、責任のある重要な仕事であり、やりがいのある仕事なのではないでしょうか。</p>
-
-<p>筆者自身も今後の経験で考え方が変わる可能性も十分にありますし、<br/>
-この記事が最良だとも思っていませんが、<br/>
-自身がまたアーキテクチャ設計に関わる時に思い出したり、誰かの役に少しでも立つのであれば幸いかなと思います。</p>
-
-<p>と言ったところで本日はここまで。<br/>
-ポエムでした。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: lldb | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/lldb/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2019-09-07T21:47:43+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[LLDBの便利なp/po/ｖコマンドを覚えよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2019/09/07/po-v-command/"/>
+    <updated>2019-09-07T20:02:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/09/07/po-v-command</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>筆者はこれまでLLDBコマンドでは <code>po</code> を利用することが多かったのですが、<br/>
+WWDC2019のビデオである<a href="https://developer.apple.com/videos/play/wwdc2019/429/">LLDB: Beyond &ldquo;po&rdquo;</a>を視聴して改めて <code>v</code> コマンドの使いやすさを勉強しました。</p>
+
+<p>今回はその <code>v</code> コマンドについて実例を交えながら見ていきたいと思います。
+( <code>p</code> や <code>po</code> コマンドでなぜか変数の中身が見れない&hellip;と思っていた方、必見です。 )</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>p/po/vコマンドについて</h3>
+
+<p>まず、各種コマンドについて簡単に見ていきます。</p>
+
+<h4>poコマンドについて</h4>
+
+<p><code>po</code> は <code>print object</code> の略だそうです。 <br/>
+<code>po</code> は <code>expression</code> コマンドのエイリアス(ショートカット機能)であり、簡略化して書くことができます。</p>
+
+<p>具体的には、以下の通りです。</p>
+
+<p>```objective-c
+(lldb) expression &mdash;object-description &mdash; engineer</p>
+
+<p>(lldb) po engineer
+```</p>
+
+<p>また、 <code>po</code> は式を評価した結果のオブジェクトを返すため、非常に見やすい形式で出力されます。<br/>
+早速例を見てみましょう。</p>
+
+<p>下記のような構造体が定義されているとします。</p>
+
+<p><code>objective-c
+struct iOSEngineer {
+  var name: string
+  var age: Int
+  var specialty: [String]
+  var swiftLevel: Int
+  var obcLevel: Int
+}
+</code></p>
+
+<p>これを初期化した直後にブレークポイントで止めているとしましょう。</p>
+
+<p><code>objective-c
+let engineer = iOSEngineer(name: "Ichiro", age: 33, specialty: ["gps", "bluetooth", "animation"], swiftLevel: 3, obcLevel: 2)
+</code></p>
+
+<p>ブレークポイントで止めた状態で <code>po</code> コマンドを打ち出すと、</p>
+
+<p>```objective-c
+(lldb) po engineer
+▿ iOSEngineer
+  &ndash; name : &ldquo;Ichiro&rdquo;
+  &ndash; age : 33
+  ▿ specialty : 3 elements</p>
+
+<pre><code>- 0 : "gps"
+- 1 : "bluetooth"
+- 2 : "animation"
+</code></pre>
+
+<ul>
+<li>swiftLevel : 3</li>
+<li>obcLevel : 2
+```</li>
+</ul>
+
+
+<p>という出力結果が得られます。</p>
+
+<h4>pコマンドについて</h4>
+
+<p><code>p</code> は <code>print</code> の略だそうで、<code>po</code> と同じくコンパイルして式を評価します。<br/>
+<code>po</code> と異なるのは、出力結果の形式です。<br/>
+以下はその例です。</p>
+
+<p>```objective-c
+(lldb) p engineer
+(Sample.iOSEngineer) $R4 = {
+  name = &ldquo;Ichiro&rdquo;
+  age = 33
+  specialty = 3 values {</p>
+
+<pre><code>[0] = "gps"
+[1] = "bluetooth"
+[2] = "animation"
+</code></pre>
+
+<p>  }
+  swiftLevel = 3
+  obcLevel = 2
+}
+```</p>
+
+<p><code>po</code> と違って <code>$R4</code> のような名前がつけられていることがわかります。<br/>
+この <code>$R4</code> のような名前を引数に指定して <code>po</code> や <code>p</code> コマンドを実行することができます。</p>
+
+<p>```objective-c
+(lldb) p $R4.name
+(String) $R10 = &ldquo;Ichiro&rdquo;</p>
+
+<p>(lldb) po $R4.name
+&ldquo;Ichiro&rdquo;
+```</p>
+
+<p>このように以前の結果から更に値を取得するような場面で使い勝手が非常に良いです。</p>
+
+<p>もちろん <code>p</code> も <code>expression</code> コマンドのエイリアスになっています。</p>
+
+<p>```objective-c
+(lldb) expression &mdash; engineer
+(MeasurementSample.iOSEngineer) $R16 = {
+  name = &ldquo;Ichiro&rdquo;
+  age = 33
+  specialty = 3 values {</p>
+
+<pre><code>[0] = "gps"
+[1] = "bluetooth"
+[2] = "animation"
+</code></pre>
+
+<p>  }
+  swiftLevel = 3
+  obcLevel = 2
+}
+```</p>
+
+<h4>vコマンドについて</h4>
+
+<p><code>v</code> は <code>variable</code> の略のようです。<br/>
+出力形式自体は <code>p</code> コマンドと同じになっています。</p>
+
+<p>```objective-c
+(lldb) v engineer
+(MeasurementSample.iOSEngineer) engineer = {
+  name = &ldquo;Ichiro&rdquo;
+  age = 33
+  specialty = 3 values {</p>
+
+<pre><code>[0] = "gps"
+[1] = "bluetooth"
+[2] = "animation"
+</code></pre>
+
+<p>  }
+  swiftLevel = 3
+  obcLevel = 2
+}
+```</p>
+
+<p><code>po</code> や <code>p</code> と同じくエイリアスなのですが、 <code>expression</code> ではなく <code>frame variable</code> コマンドのエイリアスです。</p>
+
+<p>```objective-c
+(lldb) frame variable engineer
+(MeasurementSample.iOSEngineer) engineer = {
+  name = &ldquo;Ichiro&rdquo;
+  age = 33
+  specialty = 3 values {</p>
+
+<pre><code>[0] = "gps"
+[1] = "bluetooth"
+[2] = "animation"
+</code></pre>
+
+<p>  }
+  swiftLevel = 3
+  obcLevel = 2
+}
+```</p>
+
+<p>一見、 <code>p</code> コマンドを使えば良いのでは？と思われそうですが、 <code>v</code> コマンドは以下の特徴があります。</p>
+
+<ul>
+<li>コンパイルしないため、結果の出力が速い</li>
+<li>メモリから変数を読み込み、動的解決を複数回繰り返すことで、サブフィールドの読み込みが可能</li>
+</ul>
+
+
+<p>上記のどちらにも言えることですが、代わりに式の評価ができないので使い分けが必要です。</p>
+
+<h3>vコマンドの便利機能</h3>
+
+<p>もう少し具体的に <code>v</code> コマンドの良さを見ていきましょう。</p>
+
+<p>次のように定義された構造体があったとします。</p>
+
+<p>```objective-c
+protocol Engineer {</p>
+
+<pre><code>var name: String { get set }
+var age: Int { get set }
+var specialty: [String] { get set }
+</code></pre>
+
+<p>}</p>
+
+<p>struct iOSEngineer: Engineer {</p>
+
+<pre><code>var name: String
+var age: Int
+var specialty: [String]
+var swiftLevel: Int
+var obcLevel:Int
+</code></pre>
+
+<p>}
+```</p>
+
+<p>上記の通り、 <code>iOSEngineer</code> はプロトコル <code>Engineer</code> に準拠しています。<br/>
+加えて独自に <code>swiftLevel</code> と <code>obcLevel</code> という変数を持ちます。</p>
+
+<p>この構造体を下記のように初期化している場面があったとします。</p>
+
+<p><code>objective-c
+let engineer: Engineer = iOSEngineer(name: "Ichiro", age: 33, specialty: ["gps", "bluetooth", "animation"], swiftLevel: 3, obcLevel: 2)
+</code></p>
+
+<p>これを <code>p</code> や <code>po</code> コマンドで <code>iOSEngineer</code> 独自のフィールドである <code>swiftLevel</code> を出力させようとすると、</p>
+
+<p><code>objective-c
+(lldb) p engineer.swiftLevel
+error: &lt;EXPR&gt;:3:1: error: value of type 'Engineer' has no member 'swiftLevel'
+engineer.swiftLevel
+^~~~~~~~ ~~~~~~~~~~
+</code></p>
+
+<p>このようなエラーが表示されます。<br/>
+<code>p</code> や <code>po</code> コマンドは1回しか動的解決をしないため、<br/>
+<code>Engineer</code> 型として格納された <code>engineer</code> には <code>swiftLevel</code> はメンバ変数として持ち合わせていないと見なされてしまうのです。</p>
+
+<p>もちろん、<code>p</code> や <code>po</code> コマンドは式の評価が可能なので</p>
+
+<p><code>objective-c
+(lldb) p (engineer as! iOSEngineer).swiftLevel
+(Int) $R20 = 3
+</code></p>
+
+<p>のようにキャストすることで中身を見ることはできます。<br/>
+ですが、少々手間ではありますよね&hellip;<br/>
+(深い階層のサブフィールドを見ようとすればするほど&hellip;)</p>
+
+<p>これが <code>v</code> コマンドでは、</p>
+
+<p><code>objective-c
+(lldb) v engineer.swiftLevel
+(Int) engineer.swiftLevel = 3
+</code></p>
+
+<p>とキャストせずとも結果を得ることができます。</p>
+
+<h3>filter機能</h3>
+
+<p>もう一つ、LLDBコマンドを利用する上で役立つのが <code>filter</code> 機能です。<br/>
+折角なので使い方を見ていきましょう。</p>
+
+<h4>filter機能の紹介</h4>
+
+<p>フィールドの多い変数や、その変数と同じ型の要素を数十個持つ配列などを出力させる場合、とてもではないですが特定のフィールドを見つけることは困難です。</p>
+
+<p>そんな時には <code>filter</code> 機能を利用して、特定の型であれば、特定のフィールドのみを表示するといったことができます。<br/>
+指定の方法は簡単で、</p>
+
+<p><code>objective-c
+type filter add &lt;Xcodeのプロジェクト名&gt;.&lt;型の名前&gt; --child &lt;フィールド名&gt;
+</code></p>
+
+<p>のようにするだけです。<br/>
+筆者の例で言えば、</p>
+
+<p><code>objective-c
+type filter add Sample.iOSEngineer --child name
+</code></p>
+
+<p>のような感じです。</p>
+
+<p>これにより、</p>
+
+<p><code>objective-c
+(lldb) v engineer
+(MeasurementSample.iOSEngineer) engineer = (name = "Ichiro")
+</code></p>
+
+<p>のように今必要のないフィールドを省略して、結果を得ることができます。<br/>
+※便宜上、 <code>v</code> コマンドを使いましたが <code>p</code> コマンドでも同じ結果を得ることができます。</p>
+
+<p>因みに、機能利用後は忘れずに <code>filter</code> を解除しましょう。</p>
+
+<p><code>objective-c
+type filter delete &lt;Xcodeプロジェクト名&gt;.&lt;型の名前&gt;
+</code></p>
+
+<p>で解除できます。</p>
+
+<h4>filter機能の限界</h4>
+
+<p>因みに、 <code>filter</code> 機能も万能ではなく、場合によっては複数回 <code>filter</code> をセットすることで結果を得なければいけないこともあります。<br/>
+例えば、</p>
+
+<p>```objective-c
+protocol Engineer {</p>
+
+<pre><code>var name: String { get set }
+var age: Int { get set }
+var specialty: [String] { get set }
+</code></pre>
+
+<p>}</p>
+
+<p>struct iOSEngineer: Engineer {</p>
+
+<pre><code>var name: String
+var age: Int
+var specialty: [String]
+var swiftLevel: Int
+var obcLevel:Int
+</code></pre>
+
+<p>}</p>
+
+<p>struct WebEngineer: Engineer {</p>
+
+<pre><code>var name: String
+var age: Int
+var specialty: [String]
+var htmlLevel: Int
+var cssLevel: Int
+var jsLevel: Int
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のように新たに <code>Engineer</code> プロトコルに準拠した <code>WebEngineer</code> を定義し、以下のような配列を作成します。</p>
+
+<p>```objective-c
+let engineer1 = WebEngineer(name: &ldquo;Taro&rdquo;, age: 30, specialty: [&ldquo;react&rdquo;], htmlLevel: 2, cssLevel: 1, jsLevel: 1)
+let engineer2 = WebEngineer(name: &ldquo;Jiro&rdquo;, age: 35, specialty: [&ldquo;vue&rdquo;], htmlLevel: 3, cssLevel: 2, jsLevel: 4)
+let engineer3 = iOSEngineer(name: &ldquo;Saburo&rdquo;, age: 25, specialty: [&ldquo;gps&rdquo;, &ldquo;bluetooth&rdquo;], swiftLevel: 3, obcLevel: 2)
+let engineer4 = WebEngineer(name: &ldquo;Shiro&rdquo;, age: 28, specialty: [&ldquo;react&rdquo;, &ldquo;vue&rdquo;, &ldquo;angular&rdquo;], htmlLevel: 4, cssLevel: 4, jsLevel: 5)</p>
+
+<p>let engineers = [engineer1, engineer2, engineer3, engineer4]
+```</p>
+
+<p><code>engineers</code> をそのまま <code>v</code> コマンドで出力すると少し見えにくそうなので <code>filter</code> 機能が利用したいのですが、<br/>
+<code>Engineer</code> に準拠しているからと言って</p>
+
+<p><code>objective-c
+(lldb) type filter add Sample.Engineer --child name
+</code></p>
+
+<p>としても思ったようには動かず、全フィールドが出力されてしまいます。</p>
+
+<p>そこで、</p>
+
+<p><code>objective-c
+(lldb) type filter add Sample.iOSEngineer --child name
+(lldb) type filter add Sample.WebEngineer --child name
+</code></p>
+
+<p>としてやれば、</p>
+
+<p><code>objective-c
+(lldb) v engineers
+([Engineer]) engineers = 4 values {
+  [0] = (name = "Taro")
+  [1] = (name = "Jiro")
+  [2] = (name = "Saburo")
+  [3] = (name = "Shiro")
+</code></p>
+
+<p>このように期待した結果を得ることができます。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+<code>p</code> , <code>po</code> , <code>v</code> コマンドは各々用途がありそうですが、特に <code>v</code> コマンドの利便性を感じてもらえたら幸いです。<br/>
+筆者も積極的に <code>v</code> コマンドを使っていきたいと思います。</p>
+
+<p>といったところで本日はここまで。</p>
+
+<p>参考URL:</p>
+
+<ul>
+<li><a href="https://developer.apple.com/videos/play/wwdc2019/429/">LLDB: Beyond &ldquo;po&rdquo;</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
