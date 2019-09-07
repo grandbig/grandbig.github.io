@@ -1,0 +1,488 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>os.signpostで処理速度を計測しよう！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに これまでメソッドの処理時間を計測するには、
+Date 関数の timeIntervalSince メソッドを以下のように利用する場面が度々ありました。 1
+2
+3
+4
+5
+let beginDate = Date()
+sample()
+let endDate = Date()
+let &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2019/09/07/os-signpost/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">os.signpostで処理速度を計測しよう！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-09-07T16:22:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2019</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>これまでメソッドの処理時間を計測するには、<br/>
+<code>Date</code> 関数の <code>timeIntervalSince</code> メソッドを以下のように利用する場面が度々ありました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">let</span> <span class="n">beginDate</span> <span class="o">=</span> <span class="n">Date</span><span class="p">()</span>
+</span><span class='line'><span class="n">sample</span><span class="p">()</span>
+</span><span class='line'><span class="n">let</span> <span class="n">endDate</span> <span class="o">=</span> <span class="n">Date</span><span class="p">()</span>
+</span><span class='line'><span class="n">let</span> <span class="n">time</span> <span class="o">=</span> <span class="n">endDate</span><span class="p">.</span><span class="n">timeIntervalSince</span><span class="p">(</span><span class="n">beginDate</span><span class="p">)</span>
+</span><span class='line'><span class="n">print</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>しかし実は <code>iOS12</code> から <code>os.signpost</code> を利用してもっと便利に処理時間を計測することができるようになりました。<br/>
+本日は <code>os.signpost</code> を利用したことをメモとして記録しておきます。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>os.signpostのメリット・デメリット</h3>
+
+<p><code>os.signpost</code> を利用すると何が良いかと言うと、</p>
+
+<ul>
+<li>最小/最大/平均の処理時間が自動で計測できる</li>
+<li>CPU使用率など <code>Instruments</code> による他の計測結果と並行して状況を把握できる</li>
+</ul>
+
+
+<p>などが上げられます。</p>
+
+<p>一方でデメリットは <code>os.signpost</code> がiOS12以降でしか利用できないということです。<br/>
+よって、iOS11以下をサポートするアプリの場合、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="k">if</span> <span class="err">#</span><span class="n">available</span><span class="p">(</span><span class="n">iOS</span> <span class="mi">12</span><span class="p">,</span> <span class="o">*</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>の条件分岐をした上で <code>os.signpost</code> を利用する必要があります。<br/>
+しかし、これは時間が解決してくれるでしょう。<br/>
+(あまり気にするデメリットではないということです。)</p>
+
+<h3>os.signpostの使い方</h3>
+
+<p>それでは早速、 <code>os.signpost</code> を使ってみましょう。<br/>
+<code>os.signpost</code> は特にSDKを追加することなく、 <code>import</code> が可能です。</p>
+
+<p>① <code>import os.signpost</code> を追加する</p>
+
+<p>② OSLogオブジェクトを初期化する</p>
+
+<p><a href="https://developer.apple.com/documentation/os/oslog/2320726-init">Apple Developer Document: OSLog &ndash; init</a>に記載のある通り、初期化をします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">let</span> <span class="n">osLog</span> <span class="o">=</span> <span class="n">OSLog</span><span class="p">(</span><span class="nl">subsystem:</span> <span class="s">&quot;com.takahiro.MeasurementSample&quot;</span><span class="p">,</span> <span class="nl">category:</span> <span class="s">&quot;loop&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>subsystem</code> には <code>com.your_company.your_subsystem_name</code> の形で定義するようにと例として書かれています。<br/>
+<code>category</code> はログのカテゴリ分けに利用できるため、カテゴリ種別で命名すると良いでしょう。</p>
+
+<p>③ 計測開始時に <code>OSSignpostType</code> に <code>.begin</code> を指定した <code>os_signpost</code> メソッドを呼び出す</p>
+
+<p><a href="https://developer.apple.com/documentation/os/3019241-os_signpost">Apple Developer Document: os_signpost</a>に記載のあるメソッドを呼び出します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">os_signpost</span><span class="p">(.</span><span class="n">begin</span><span class="p">,</span> <span class="nl">log:</span> <span class="n">osLog</span><span class="p">,</span> <span class="nl">name:</span> <span class="s">&quot;sample&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>④ 計測完了時に <code>OSSignpostType</code> に <code>.end</code> を指定した <code>os_signpost</code> メソッドを呼び出す</p>
+
+<p>③と同じメソッドですが、計測完了時には <code>OSSignpostType</code> に <code>end</code> を指定します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">os_signpost</span><span class="p">(.</span><span class="n">end</span><span class="p">,</span> <span class="nl">log:</span> <span class="n">osLog</span><span class="p">,</span> <span class="nl">name:</span> <span class="s">&quot;sample&quot;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これで、後は <code>Instruments</code> を起動して、<code>os_signpost</code> を追加して計測すればOKです。</p>
+
+<p>今回は、下記のようなサンプルを用意して計測してみます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">os</span><span class="p">.</span><span class="n">signpost</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>        <span class="c1">// Do any additional setup after loading the view.</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">tapButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">osLog</span> <span class="o">=</span> <span class="n">OSLog</span><span class="p">(</span><span class="nl">subsystem:</span> <span class="s">&quot;com.takahiro.MeasurementSample&quot;</span><span class="p">,</span> <span class="nl">category:</span> <span class="s">&quot;loop&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">os_signpost</span><span class="p">(.</span><span class="n">begin</span><span class="p">,</span> <span class="nl">log:</span> <span class="n">osLog</span><span class="p">,</span> <span class="nl">name:</span> <span class="s">&quot;sample&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">sample</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">os_signpost</span><span class="p">(.</span><span class="n">end</span><span class="p">,</span> <span class="nl">log:</span> <span class="n">osLog</span><span class="p">,</span> <span class="nl">name:</span> <span class="s">&quot;sample&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">private</span> <span class="n">func</span> <span class="n">sample</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">0</span> <span class="p">..</span><span class="o">&lt;</span> <span class="mi">100000</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">print</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>os.signpostでの計測結果</h3>
+
+<p><code>Instruments</code> で計測した結果は下記のように見ることができます。</p>
+
+<p><img src="/images/os-signpost.png" alt="Instrumentsのos.signpostの計測結果" /></p>
+
+<p>上記結果から、計測処理が <code>平均88.97 [ms]</code> かかっていることがわかります。<br/>
+またこの処理の実行中はCPUが100%に張り付いていることも見て取れます。</p>
+
+<p>今回はサンプルなので <code>print</code> で1万回出力するメソッドを計測しました。<br/>
+本物のアプリではボトルネックとなる処理を見つけ、如何にして処理を改善できないか検討することになるでしょう。</p>
+
+<h3>まとめ</h3>
+
+<p>いかがでしたでしょうか。<br/>
+iOS13のリリースが近づいてきた(iOS12の普及が十分に達しつつある)今だからこそ改めて <code>signpost</code> を積極的に利用していきましょう。<br/>
+といったところで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-09-07T16:22:00+09:00" pubdate data-updated="true">Sep 7<span>th</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/swift/'>swift</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2019/09/07/os-signpost/" data-via="" data-counturl="http://grandbig.github.io/blog/2019/09/07/os-signpost/" >Tweet</a>
+  
+  <a href="http://b.hatena.ne.jp/entry/http://grandbig.github.io/blog/2019/09/07/os-signpost/" class="hatena-bookmark-button" 
+	  data-hatena-bookmark-layout="standard" title="このエントリーをはてなブックマークに追加">
+	  <img src="http://b.st-hatena.com/images/entry-button/button-only.gif" 
+	  alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;" />
+  </a>
+  <script type="text/javascript" src="http://b.st-hatena.com/js/bookmark_button.js" charset="utf-8" async="async"></script>
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/08/10/analyze-morphologic/" title="Previous Post: iOS形態素解析で見る幽白、海藤戦のタブー能力">&laquo; iOS形態素解析で見る幽白、海藤戦のタブー能力</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/09/07/os-signpost/">os.signpostで処理速度を計測しよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/08/10/analyze-morphologic/">iOS形態素解析で見る幽白、海藤戦のタブー能力</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/07/21/shellscript-1/">シェルスクリプトで特定フォルダ配下のファイル名をチェックしよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/07/15/xcode-env/">Xcodeの環境変数を有効に利用しよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/06/29/jazzy-2/">.jazzy.yamlを使ってコマンドを省略しよう！</a>
+      </li>
+    
+  </ul>
+</section>
+
+Included file 'asides/pinboard.html' not found in _includes directory
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (197)</a></li><li><a href='/blog/categories/swift'>swift (98)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/node'>node (9)</a></li><li><a href='/blog/categories/rx'>rx (9)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/xcode'>xcode (8)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/redux'>redux (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2019/09/07/os-signpost/';
+        var disqus_url = 'http://grandbig.github.io/blog/2019/09/07/os-signpost/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+Included file 'google_plus_one.html' not found in _includes directory
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
