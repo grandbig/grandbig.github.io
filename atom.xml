@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2019-09-07T21:46:33+09:00</updated>
+  <updated>2019-09-22T18:38:02+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,585 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS13から利用できるBackgroundTasksを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2019/09/22/backgroundtasks/"/>
+    <updated>2019-09-22T17:09:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/09/22/backgroundtasks</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回はiOS13で新たに追加された <code>BackgroundTasks Framework</code> について見ていきたいと思います。<br/>
+基本的には、 <a href="https://developer.apple.com/videos/play/wwdc2019/707/">WWDC2019動画の『Advances in App Background Execution』</a>を見ながら実践してみました。</p>
+
+<p>ですが、微妙に躓くところもあったのでメモとして残しておきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>BackgroundTasksとは</h3>
+
+<p>まず、 <code>BackgroundTasks</code> の説明です。<br/>
+<code>BackgroundTasks</code> はiOS13から利用できる新しいFrameworkになります。<br/>
+<code>BackgroundTasks</code> には大きく分けて下記2つのAPIが存在します。</p>
+
+<ol>
+<li>Background Processing Tasks</li>
+<li>Background App Refresh Tasks</li>
+</ol>
+
+
+<h4>Background Processing Tasks</h4>
+
+<p><code>Background Processing Tasks</code> は以下シーンでの利用が想定されています。</p>
+
+<ul>
+<li>(急を要しない)後々の実行で良いメンテナンス処理</li>
+<li>Core MLを利用した機械学習のトレーニング処理</li>
+</ul>
+
+
+<p>そのため、 <strong>数分間</strong> の処理実行が許されています。<br/>
+また、 <code>requiresExternalPower</code> というフラグを <code>true</code> にすることで、CPU消耗によるプロセスキルをさせないよう制御することができます。<br/>
+(iOSの世界でこれって結構スゴイ気がしますね。)</p>
+
+<h4>Background App Refresh Tasks</h4>
+
+<p><code>Background App Refresh Tasks</code> は以下シーンでの利用が想定されています。</p>
+
+<ul>
+<li>30秒以内で完了できる処理</li>
+<li>1日を通してアプリを最新に保つために必要な処理</li>
+</ul>
+
+
+<p>これまで上記のような対応をする際には <code>Background Fetch</code> を利用していたことと思いますが、<br/>
+今回の新APIの発表により、旧APIはdeprecatedになったそうです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// deprecated対象</span>
+</span><span class='line'><span class="n">UIApplication</span><span class="p">.</span><span class="n">setMinimumBackgroundFetchInterval</span><span class="p">(</span><span class="nl">_:</span><span class="p">)</span>
+</span><span class='line'><span class="n">UIApplicationDelegate</span><span class="p">.</span><span class="n">application</span><span class="p">(</span><span class="nl">_:performFetchWithCompletionHandler:</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>BackgroundTasksの使い方</h3>
+
+<p>続いて具体的な使い方を見ていきます。</p>
+
+<h4>ソースコードを書き始めるまでの下準備</h4>
+
+<p><strong>① Xccode上でCapabilityを追加します</strong><br/>
+バックグラウンド処理を利用する場合はこれまで通り <code>Capability</code> の <code>Background Modes</code> が必要になります。<br/>
+Xcode11で追加する方法が少々変わっているので気をつけましょう。</p>
+
+<p><img src="http://grandbig.github.io/images/backgroundtasks_1.png" alt="Background Modesを追加します" /></p>
+
+<p><strong>② Background Modesにチェックを入れます</strong><br/>
+今回は、 <code>Background Processing Tasks</code> と <code>Background App Refresh Tasks</code> なので下図の通りです。</p>
+
+<p><img src="http://grandbig.github.io/images/backgroundtasks_2.png" alt="必要なBackground Modesにチェックを入れます" /></p>
+
+<p><strong>③ Info.plistにIdentifierを登録します</strong><br/>
+<code>Info.plist</code> に <code>Permitted background task scheduler identifiers</code> を追加します。<br/>
+また、 <code>Background Processing Tasks</code> と <code>Background App Refresh Tasks</code> 用にそれぞれ <code>Identifier</code> を定義します。</p>
+
+<p>因みに、この <code>Identifier</code> は例によってユニークであることが求められるので、<br/>
+<code>com.xxxx.XXXXSample.process</code> , <code>com.xxxx.XXXXSample.refresh</code> といったDNSの逆書きが推奨されています。</p>
+
+<p><img src="http://grandbig.github.io/images/backgroundtasks_3.png" alt="Info.plistに必要なIdentifierを登録します" /></p>
+
+<h4>ソースコードの実装</h4>
+
+<p>ここまででソースコード以外の準備は完了です。<br/>
+続いて、ソースコードを書いていきましょう。</p>
+
+<p><code>Background Processing Tasks</code> と <code>Background App Refresh Tasks</code> それぞれ記載します。</p>
+
+<h5>Background Processing Tasks</h5>
+
+<p><strong>① BackgroundTasksをimportします</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">BackgroundTasks</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>② didFinishLaunchWithOptions内にバックグラウンドタスクを登録します</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span> <span class="n">didFinishLaunchingWithOptions</span> <span class="nl">launchOptions:</span> <span class="p">[</span><span class="n">UIApplication</span><span class="p">.</span><span class="nl">LaunchOptionsKey:</span> <span class="n">Any</span><span class="p">]</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// Override point for customization after application launch.</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 第一引数: Info.plistで定義したIdentifierを指定</span>
+</span><span class='line'>        <span class="c1">// 第二引数: タスクを実行するキューを指定。nilの場合は、デフォルトのバックグラウンドキューが利用されます。</span>
+</span><span class='line'>        <span class="c1">// 第三引数: 実行する処理</span>
+</span><span class='line'>        <span class="n">BGTaskScheduler</span><span class="p">.</span><span class="n">shared</span><span class="p">.</span><span class="k">register</span><span class="p">(</span><span class="nl">forTaskWithIdentifier:</span> <span class="s">&quot;com.MeasurementSample.refresh&quot;</span><span class="p">,</span> <span class="nl">using:</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span> <span class="n">task</span> <span class="k">in</span>
+</span><span class='line'>            <span class="c1">// バックグラウンド処理したい内容 ※後述します</span>
+</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">handleAppProcessing</span><span class="p">(</span><span class="nl">task:</span> <span class="n">task</span> <span class="n">as</span><span class="o">!</span> <span class="n">BGProcessingTask</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>③ バックグラウンドタスクにスケジューリングします</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">private</span> <span class="n">func</span> <span class="nf">scheduleAppProcessing</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// Info.plistで定義したIdentifierを指定</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">request</span> <span class="o">=</span> <span class="n">BGProcessingTaskRequest</span><span class="p">(</span><span class="nl">identifier:</span> <span class="s">&quot;com.MeasurementSample.refresh&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="c1">// 通信が発生するか否かを指定</span>
+</span><span class='line'>    <span class="n">request</span><span class="p">.</span><span class="n">requiresNetworkConnectivity</span> <span class="o">=</span> <span class="n">false</span>
+</span><span class='line'>    <span class="c1">// CPU監視の必要可否を設定</span>
+</span><span class='line'>    <span class="n">request</span><span class="p">.</span><span class="n">requiresExternalPower</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">do</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// スケジューラーに実行リクエストを登録</span>
+</span><span class='line'>        <span class="n">try</span> <span class="n">BGTaskScheduler</span><span class="p">.</span><span class="n">shared</span><span class="p">.</span><span class="n">submit</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span> <span class="n">catch</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;Could not schedule app processing: \(error)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">func</span> <span class="nf">applicationDidEnterBackground</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// バックグラウンド起動に移ったときにルケジューリング登録</span>
+</span><span class='line'>    <span class="n">scheduleAppProcessing</span><span class="p">()</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>④ 実際に実行する処理を定義します</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="c1">// サンプル用のOperation</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">PrintOperation:</span> <span class="n">Operation</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="kt">id</span><span class="o">:</span> <span class="n">Int</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="kt">id</span><span class="o">:</span> <span class="n">Int</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="kt">id</span> <span class="o">=</span> <span class="kt">id</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;this operation id is \(self.id)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="n">private</span> <span class="n">func</span> <span class="n">handleAppProcessing</span><span class="p">(</span><span class="nl">task:</span> <span class="n">BGProcessingTask</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 1日の間、何度も実行したい場合は、1回実行するごとに新たにスケジューリングに登録します</span>
+</span><span class='line'>      <span class="n">scheduleAppRefresh</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">let</span> <span class="n">queue</span> <span class="o">=</span> <span class="n">OperationQueue</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">queue</span><span class="p">.</span><span class="n">maxConcurrentOperationCount</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// 時間内に実行完了しなかった場合は、処理を解放します</span>
+</span><span class='line'>      <span class="c1">// バックグラウンドで実行する処理は、次回に回しても問題ない処理のはずなので、これでOK</span>
+</span><span class='line'>      <span class="n">task</span><span class="p">.</span><span class="n">expirationHandler</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">queue</span><span class="p">.</span><span class="n">cancelAllOperations</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// サンプルの処理をキューに詰めます</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">array</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+</span><span class='line'>      <span class="n">array</span><span class="p">.</span><span class="n">enumerated</span><span class="p">().</span><span class="n">forEach</span> <span class="p">{</span> <span class="n">arg</span> <span class="k">in</span>
+</span><span class='line'>          <span class="n">let</span> <span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="o">=</span> <span class="n">arg</span>
+</span><span class='line'>          <span class="n">let</span> <span class="n">operation</span> <span class="o">=</span> <span class="n">PrintOperation</span><span class="p">(</span><span class="kt">id</span><span class="o">:</span> <span class="n">value</span><span class="p">)</span>
+</span><span class='line'>          <span class="k">if</span> <span class="n">offset</span> <span class="o">==</span> <span class="n">array</span><span class="p">.</span><span class="n">count</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">operation</span><span class="p">.</span><span class="n">completionBlock</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>                  <span class="c1">// 最後の処理が完了したら、必ず完了したことを伝える必要があります</span>
+</span><span class='line'>                  <span class="n">task</span><span class="p">.</span><span class="n">setTaskCompleted</span><span class="p">(</span><span class="nl">success:</span> <span class="n">operation</span><span class="p">.</span><span class="n">isFinished</span><span class="p">)</span>
+</span><span class='line'>              <span class="p">}</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="n">queue</span><span class="p">.</span><span class="n">addOperation</span><span class="p">(</span><span class="n">operation</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h5>Background App Refresh Tasks</h5>
+
+<p><strong>① BackgroundTasksをimportします</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">BackgroundTasks</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>② didFinishLaunchWithOptions内にバックグラウンドタスクを登録します</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span> <span class="n">didFinishLaunchingWithOptions</span> <span class="nl">launchOptions:</span> <span class="p">[</span><span class="n">UIApplication</span><span class="p">.</span><span class="nl">LaunchOptionsKey:</span> <span class="n">Any</span><span class="p">]</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// Override point for customization after application launch.</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// 第一引数: Info.plistで定義したIdentifierを指定</span>
+</span><span class='line'>        <span class="c1">// 第二引数: タスクを実行するキューを指定。nilの場合は、デフォルトのバックグラウンドキューが利用されます。</span>
+</span><span class='line'>        <span class="c1">// 第三引数: 実行する処理</span>
+</span><span class='line'>        <span class="n">BGTaskScheduler</span><span class="p">.</span><span class="n">shared</span><span class="p">.</span><span class="k">register</span><span class="p">(</span><span class="nl">forTaskWithIdentifier:</span> <span class="s">&quot;com.MeasurementSample.refresh&quot;</span><span class="p">,</span> <span class="nl">using:</span> <span class="nb">nil</span><span class="p">)</span> <span class="p">{</span> <span class="n">task</span> <span class="k">in</span>
+</span><span class='line'>            <span class="c1">// バックグラウンド処理したい内容 ※後述します</span>
+</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">handleAppRefresh</span><span class="p">(</span><span class="nl">task:</span> <span class="n">task</span> <span class="n">as</span><span class="o">!</span> <span class="n">BGAppRefreshTask</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>③ バックグラウンドタスクにスケジューリングします</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">private</span> <span class="n">func</span> <span class="nf">scheduleAppRefresh</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// Info.plistで定義したIdentifierを指定</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">request</span> <span class="o">=</span> <span class="n">BGAppRefreshTaskRequest</span><span class="p">(</span><span class="nl">identifier:</span> <span class="s">&quot;com.MeasurementSample.refresh&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="c1">// 最低で、どの程度の期間を置いてから実行するか指定</span>
+</span><span class='line'>    <span class="n">request</span><span class="p">.</span><span class="n">earliestBeginDate</span> <span class="o">=</span> <span class="n">Date</span><span class="p">(</span><span class="nl">timeIntervalSinceNow:</span> <span class="mi">15</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">do</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// スケジューラーに実行リクエストを登録</span>
+</span><span class='line'>        <span class="n">try</span> <span class="n">BGTaskScheduler</span><span class="p">.</span><span class="n">shared</span><span class="p">.</span><span class="n">submit</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span> <span class="n">catch</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;Could not schedule app refresh: \(error)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">func</span> <span class="nf">applicationDidEnterBackground</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// バックグラウンド起動に移ったときにルケジューリング登録</span>
+</span><span class='line'>    <span class="n">scheduleAppRefresh</span><span class="p">()</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>④ 実際に実行する処理を定義します</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="c1">// サンプル用のOperation</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">PrintOperation:</span> <span class="n">Operation</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="kt">id</span><span class="o">:</span> <span class="n">Int</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="kt">id</span><span class="o">:</span> <span class="n">Int</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="kt">id</span> <span class="o">=</span> <span class="kt">id</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;this operation id is \(self.id)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="n">private</span> <span class="n">func</span> <span class="n">handleAppRefresh</span><span class="p">(</span><span class="nl">task:</span> <span class="n">BGAppRefreshTask</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// 1日の間、何度も実行したい場合は、1回実行するごとに新たにスケジューリングに登録します</span>
+</span><span class='line'>      <span class="n">scheduleAppRefresh</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">let</span> <span class="n">queue</span> <span class="o">=</span> <span class="n">OperationQueue</span><span class="p">()</span>
+</span><span class='line'>      <span class="n">queue</span><span class="p">.</span><span class="n">maxConcurrentOperationCount</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// 時間内に実行完了しなかった場合は、処理を解放します</span>
+</span><span class='line'>      <span class="c1">// バックグラウンドで実行する処理は、次回に回しても問題ない処理のはずなので、これでOK</span>
+</span><span class='line'>      <span class="n">task</span><span class="p">.</span><span class="n">expirationHandler</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">queue</span><span class="p">.</span><span class="n">cancelAllOperations</span><span class="p">()</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// サンプルの処理をキューに詰めます</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">array</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+</span><span class='line'>      <span class="n">array</span><span class="p">.</span><span class="n">enumerated</span><span class="p">().</span><span class="n">forEach</span> <span class="p">{</span> <span class="n">arg</span> <span class="k">in</span>
+</span><span class='line'>          <span class="n">let</span> <span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="o">=</span> <span class="n">arg</span>
+</span><span class='line'>          <span class="n">let</span> <span class="n">operation</span> <span class="o">=</span> <span class="n">PrintOperation</span><span class="p">(</span><span class="kt">id</span><span class="o">:</span> <span class="n">value</span><span class="p">)</span>
+</span><span class='line'>          <span class="k">if</span> <span class="n">offset</span> <span class="o">==</span> <span class="n">array</span><span class="p">.</span><span class="n">count</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">operation</span><span class="p">.</span><span class="n">completionBlock</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>                  <span class="c1">// 最後の処理が完了したら、必ず完了したことを伝える必要があります</span>
+</span><span class='line'>                  <span class="n">task</span><span class="p">.</span><span class="n">setTaskCompleted</span><span class="p">(</span><span class="nl">success:</span> <span class="n">operation</span><span class="p">.</span><span class="n">isFinished</span><span class="p">)</span>
+</span><span class='line'>              <span class="p">}</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="n">queue</span><span class="p">.</span><span class="n">addOperation</span><span class="p">(</span><span class="n">operation</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>BackgroundTasksのデバッグ方法</h3>
+
+<p>上記で実装が完了しました。<br/>
+実際に挙動を試すためには、特別な手順が必要になります。</p>
+
+<p>① アプリを起動します<br/>
+② アプリをバックグラウンドに移します(登録トリガーのためです)<br/>
+③ 再度アプリを起動します<br/>
+④ Xcodeで <code>Pause Program Execution</code> をタップします</p>
+
+<p><img src="http://grandbig.github.io/images/backgroundtasks_4.png" alt="Pause Program Executionをタップします" /></p>
+
+<p>⑤ LLDBに以下コマンドを入力して実行します</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Background Processing Tasksの場合</span>
+</span><span class='line'><span class="n">e</span> <span class="o">-</span><span class="n">l</span> <span class="n">objc</span> <span class="o">--</span> <span class="p">(</span><span class="kt">void</span><span class="p">)[[</span><span class="n">BGTaskScheduler</span> <span class="n">sharedScheduler</span><span class="p">]</span> <span class="nl">_simulateLaunchForTaskWithIdentifier:</span><span class="s">@&quot;com.MeasurementSample.process&quot;</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Background App Refresh Tasksの場合</span>
+</span><span class='line'><span class="n">e</span> <span class="o">-</span><span class="n">l</span> <span class="n">objc</span> <span class="o">--</span> <span class="p">(</span><span class="kt">void</span><span class="p">)[[</span><span class="n">BGTaskScheduler</span> <span class="n">sharedScheduler</span><span class="p">]</span> <span class="nl">_simulateLaunchForTaskWithIdentifier:</span><span class="s">@&quot;com.MeasurementSample.refresh&quot;</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>⑥ 再度、Xcodeで <code>Pause Program Execution</code> をタップします</p>
+
+<p>以上で実際の実行処理が見れるようになるはずです。</p>
+
+<p>因みに、実行処理の期限切れを試したい場合は、以下のように⑤のLLDBで以下を入力して実行します</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Background Processing Tasksの場合</span>
+</span><span class='line'><span class="n">e</span> <span class="o">-</span><span class="n">l</span> <span class="n">objc</span> <span class="o">--</span> <span class="p">(</span><span class="kt">void</span><span class="p">)[[</span><span class="n">BGTaskScheduler</span> <span class="n">sharedScheduler</span><span class="p">]</span> <span class="nl">_simulateExpirationForTaskWithIdentifier:</span><span class="s">@&quot;com.MeasurementSample.process&quot;</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Background App Refresh Tasksの場合</span>
+</span><span class='line'><span class="n">e</span> <span class="o">-</span><span class="n">l</span> <span class="n">objc</span> <span class="o">--</span> <span class="p">(</span><span class="kt">void</span><span class="p">)[[</span><span class="n">BGTaskScheduler</span> <span class="n">sharedScheduler</span><span class="p">]</span> <span class="nl">_simulateExpirationForTaskWithIdentifier:</span><span class="s">@&quot;com.MeasurementSample.refresh&quot;</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>ハマったところ</h3>
+
+<p>筆者が試しに実装してハマったところを参考までに載せておこうと思います。<br/>
+筆者の場合、なぜかシミュレータで実行しようとすると、以下のエラーが発生してしまいました。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">BGTaskSchedulerErrorDomain</span> <span class="n">Code</span><span class="o">=</span><span class="mi">1</span> <span class="s">&quot;(null)&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これは、<a href="https://developer.apple.com/documentation/backgroundtasks/refreshing_and_maintaining_your_app_using_background_tasks">サンプルコード</a>で試しても同様でした。<br/>
+ただ、実機で試したところ問題なく通ったんですよね&hellip;</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+iOS13で追加された新APIは旧バージョンサポートのため、
+すぐには利用されないかもしれませんが、iOS13の普及に伴い、利用シーンは確実に増えていくことでしょう。<br/>
+そのため、サンプル程度の実装でも、使い方を学んでおくことは今後の役に立つと思っています。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<ul>
+<li>参考URL:
+
+<ul>
+<li><a href="https://developer.apple.com/videos/play/wwdc2019/707/">WWDC2019 &ndash; Advances in App Background Execution</a></li>
+<li><a href="https://developer.apple.com/documentation/backgroundtasks">Apple Documentation &ndash; BackgroundTasks</a></li>
+</ul>
+</li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LLDBの便利なp/po/ｖコマンドを覚えよう！]]></title>
@@ -5700,738 +6279,6 @@ SPI的なテストが出題されることもありましたが、コーディ�
 
 <p>クラッシュ内容にだいぶ惑わされましたが、<br/>
 どうしてもわからない時は簡単なサンプルを作って試してみるのが良いなと改めて思いました。</p>
-
-<p>ということで本日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RxDataSourcesを使ってみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2018/12/28/rxdatasources/"/>
-    <updated>2018-12-28T18:41:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2018/12/28/rxdatasources</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>さて今回は <a href="https://github.com/RxSwiftCommunity/RxDataSources">RxDataSources</a> の使い方について見ていきたいと思います。</p>
-
-<p><code>RxDataSources</code> を利用することで、<br/>
-<code>Cell</code> の選択/移動/削除などの扱いが書きやすくなるとのことのようです。</p>
-
-<p>では早速見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>今回利用するライブラリをインストール</h3>
-
-<p>まずは、今回の紹介サンプルで利用するライブラリのインストールから始めましょう。<br/>
-<code>CocoaPods</code> を使いますので、下記のように <code>Podfile</code> を作成します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp"># Podfile</span>
-</span><span class='line'><span class="n">platform</span> <span class="o">:</span><span class="n">ios</span><span class="p">,</span> <span class="s">&quot;11.0&quot;</span>
-</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">target</span> <span class="s">&quot;RxDataSourcesSample&quot;</span> <span class="k">do</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxSwift</span><span class="err">&#39;</span><span class="p">,</span>    <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxCocoa</span><span class="err">&#39;</span><span class="p">,</span>    <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxDataSources</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">3.0</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">target</span> <span class="s">&quot;RxDataSourcesSampleTests&quot;</span> <span class="k">do</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RealmSwift</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxBlocking</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxTest</span><span class="err">&#39;</span><span class="p">,</span>     <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">end</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">target</span> <span class="s">&quot;RxDataSourcesSampleUITests&quot;</span> <span class="k">do</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RealmSwift</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxBlocking</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
-</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">RxTest</span><span class="err">&#39;</span><span class="p">,</span>     <span class="err">&#39;</span><span class="o">~&gt;</span> <span class="mf">4.0</span><span class="err">&#39;</span>
-</span><span class='line'><span class="n">end</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>RxDataSourcesを利用したサンプル</h3>
-
-<p>準備ができたので、実際に <code>ViewController</code> にサンプルを書いてみましょう。</p>
-
-<h4>プロジェクト構成</h4>
-
-<p>因みに、今回のプロジェクト構成は下記のようになっています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">RxDataSourcesSample</span>
-</span><span class='line'>  <span class="err">├──</span> <span class="n">Model</span>
-</span><span class='line'>  <span class="err">│</span>    <span class="err">└──</span> <span class="n">SectionModel</span>
-</span><span class='line'>  <span class="err">├──</span> <span class="n">AppDelegate</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'>  <span class="err">├──</span> <span class="n">ViewController</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'>  <span class="err">├──</span> <span class="n">Main</span><span class="p">.</span><span class="n">storyboard</span>
-</span><span class='line'>  <span class="p">...</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>SectionModelの実装</h4>
-
-<p>Model配下に配置した <code>SectionModel</code> を実装します。<br/>
-これは <code>RxDataSources</code> を利用するにあたって根幹をなす <code>Model</code> となるため非常に重要です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SectionModel.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxDataSources</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">struct</span> <span class="n">SectionModel</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">]</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="n">extension</span> <span class="nl">SectionModel:</span> <span class="n">SectionModelType</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">typealias</span> <span class="n">Item</span> <span class="o">=</span> <span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="nl">original:</span> <span class="n">SectionModel</span><span class="p">,</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">])</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">self</span> <span class="o">=</span> <span class="n">original</span>
-</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">items</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>今回のサンプルでは <code>Header</code> は特にセットしないため、 <code>cell</code> 内に表示するデータを持つために <code>items</code> のみ定義します。<br/>
-<code>SectionModel</code> は <code>struct</code> (構造体)で定義をし、<code>SectionModelType</code> を継承させます。</p>
-
-<p><code>SectionModelType</code> の中身を覗いてみると非常にシンプルな作りになっています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">public</span> <span class="n">protocol</span> <span class="n">SectionModelType</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">associatedtype</span> <span class="n">Item</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">]</span> <span class="p">{</span> <span class="n">get</span> <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="nl">original:</span> <span class="n">Self</span><span class="p">,</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">])</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Storyboardの実装</h3>
-
-<p><code>Main.storyboard</code> は下図のように実装します。</p>
-
-<p><img src="http://grandbig.github.io/images/rxdatasources.png" alt="Main.storyboardの実装" /></p>
-
-<h3>ViewControllerの実装</h3>
-
-<p>準備が整ったので <code>ViewController</code> を実装していきましょう。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxDataSources</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: - IBOutlets</span>
-</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">private</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">tableView:</span> <span class="n">UITableView</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// dataSourceをRxDataSourcesを利用して定義する</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">dataSource:</span> <span class="n">RxTableViewSectionedReloadDataSource</span><span class="o">&lt;</span><span class="n">SectionModel</span><span class="o">&gt;!</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// cellに設定するデータを保持する</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">sectionModels:</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">]</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// cellに表示するデータの変更を検知して、dataSourceに知らせる</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="n">dataRelay</span> <span class="o">=</span> <span class="n">BehaviorRelay</span><span class="o">&lt;</span><span class="p">[</span><span class="n">SectionModel</span><span class="p">]</span><span class="o">&gt;</span><span class="p">(</span><span class="nl">value:</span> <span class="p">[])</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: - Lifecycle methods</span>
-</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// Cellに設定するデータを格納</span>
-</span><span class='line'>        <span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="p">[(</span><span class="s">&quot;test1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test2&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test3&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)])]</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// RxDataSourcesを利用してCellを描画</span>
-</span><span class='line'>        <span class="n">dataSource</span> <span class="o">=</span> <span class="n">RxTableViewSectionedReloadDataSource</span><span class="o">&lt;</span><span class="n">SectionModel</span><span class="o">&gt;</span><span class="p">(</span>
-</span><span class='line'>            <span class="nl">configureCell:</span> <span class="p">{</span> <span class="n">_</span><span class="p">,</span> <span class="n">tableView</span><span class="p">,</span> <span class="n">indexPath</span><span class="p">,</span> <span class="n">item</span> <span class="k">in</span>
-</span><span class='line'>                <span class="c1">// 引数名通り、与えられたデータを利用してcellを生成する</span>
-</span><span class='line'>                <span class="n">let</span> <span class="n">cell</span> <span class="o">=</span> <span class="n">tableView</span><span class="p">.</span><span class="n">dequeueReusableCell</span><span class="p">(</span><span class="nl">withIdentifier:</span> <span class="s">&quot;Cell&quot;</span><span class="p">,</span>
-</span><span class='line'>                                                         <span class="k">for</span><span class="o">:</span> <span class="n">IndexPath</span><span class="p">(</span><span class="nl">row:</span> <span class="n">indexPath</span><span class="p">.</span><span class="n">row</span><span class="p">,</span> <span class="nl">section:</span> <span class="mi">0</span><span class="p">))</span>
-</span><span class='line'>                <span class="n">cell</span><span class="p">.</span><span class="n">textLabel</span><span class="o">?</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">item</span><span class="mf">.0</span>
-</span><span class='line'>                <span class="n">cell</span><span class="p">.</span><span class="n">accessoryType</span> <span class="o">=</span> <span class="p">.</span><span class="n">disclosureIndicator</span>
-</span><span class='line'>
-</span><span class='line'>                <span class="k">return</span> <span class="n">cell</span>
-</span><span class='line'>        <span class="p">},</span> <span class="nl">canEditRowAtIndexPath:</span> <span class="p">{</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="k">in</span>
-</span><span class='line'>            <span class="c1">// この引数を設定しないと、Cellの削除アクションができない</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">true</span>
-</span><span class='line'>        <span class="p">})</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// dataRelayの変更をキャッチしてdataSourceにデータを流す</span>
-</span><span class='line'>        <span class="n">dataRelay</span><span class="p">.</span><span class="n">asObservable</span><span class="p">()</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">tableView</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">items</span><span class="p">(</span><span class="nl">dataSource:</span> <span class="n">dataSource</span><span class="p">))</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// Cellを削除した場合にバインディングされる処理</span>
-</span><span class='line'>        <span class="n">tableView</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">itemDeleted</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="nl">onNext:</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">indexPath</span> <span class="k">in</span>
-</span><span class='line'>                <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span><span class="p">,</span> <span class="n">let</span> <span class="n">sectionModel</span> <span class="o">=</span> <span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">.</span><span class="n">first</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
-</span><span class='line'>                <span class="n">var</span> <span class="n">items</span> <span class="o">=</span> <span class="n">sectionModel</span><span class="p">.</span><span class="n">items</span>
-</span><span class='line'>                <span class="n">items</span><span class="p">.</span><span class="n">remove</span><span class="p">(</span><span class="nl">at:</span> <span class="n">indexPath</span><span class="p">.</span><span class="n">row</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>                              <span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">items</span><span class="p">)]</span>
-</span><span class='line'>                <span class="c1">// dataRelayにデータを流し込む</span>
-</span><span class='line'>                <span class="n">strongSelf</span><span class="p">.</span><span class="n">dataRelay</span><span class="p">.</span><span class="n">accept</span><span class="p">(</span><span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">})</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// 初期表示用のデータフェッチ</span>
-</span><span class='line'>        <span class="n">fetch</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// MARK: - Private methods</span>
-</span><span class='line'><span class="n">extension</span> <span class="n">ViewController</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 初期表示用のデータフェッチする処理</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">func</span> <span class="n">fetch</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="c1">// sectionModelsを利用して</span>
-</span><span class='line'>        <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">sectionModels</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="nl">onNext:</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">_</span> <span class="k">in</span>
-</span><span class='line'>                <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>                <span class="c1">// dataRelayにデータを流し込む</span>
-</span><span class='line'>                <span class="n">strongSelf</span><span class="p">.</span><span class="n">dataRelay</span><span class="p">.</span><span class="n">accept</span><span class="p">(</span><span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">})</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>因みに <code>Cell</code> を削除した場合に <code>deleteRow</code> を実行する必要はありません。<br/>
-理由は、 <code>RxTableViewSectionedReloadDataSource</code> を利用すると <code>reloadData</code> が実行されるようになっているためです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// RxTableViewSectionedReloadDataSource.swift</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#if os(iOS) || os(tvOS)</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="cp">#if !RX_NO_MODULE</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'><span class="cp">#endif</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Differentiator</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">open</span> <span class="n">class</span> <span class="n">RxTableViewSectionedReloadDataSource</span><span class="o">&lt;</span><span class="nl">S:</span> <span class="n">SectionModelType</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="o">:</span> <span class="n">TableViewSectionedDataSource</span><span class="o">&lt;</span><span class="n">S</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="p">,</span> <span class="n">RxTableViewDataSourceType</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">public</span> <span class="n">typealias</span> <span class="n">Element</span> <span class="o">=</span> <span class="p">[</span><span class="n">S</span><span class="p">]</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">open</span> <span class="n">func</span> <span class="n">tableView</span><span class="p">(</span><span class="n">_</span> <span class="nl">tableView:</span> <span class="n">UITableView</span><span class="p">,</span> <span class="nl">observedEvent:</span> <span class="n">Event</span><span class="o">&lt;</span><span class="n">Element</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">Binder</span><span class="p">(</span><span class="n">self</span><span class="p">)</span> <span class="p">{</span> <span class="n">dataSource</span><span class="p">,</span> <span class="n">element</span> <span class="k">in</span>
-</span><span class='line'>            <span class="err">#</span><span class="k">if</span> <span class="n">DEBUG</span>
-</span><span class='line'>                <span class="n">self</span><span class="p">.</span><span class="n">_dataSourceBound</span> <span class="o">=</span> <span class="n">true</span>
-</span><span class='line'>            <span class="err">#</span><span class="n">endif</span>
-</span><span class='line'>            <span class="n">dataSource</span><span class="p">.</span><span class="n">setSections</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
-</span><span class='line'>            <span class="n">tableView</span><span class="p">.</span><span class="n">reloadData</span><span class="p">()</span>  <span class="o">--&gt;</span> <span class="n">reloadData</span><span class="err">を実行するようになっている</span>
-</span><span class='line'>        <span class="p">}.</span><span class="n">on</span><span class="p">(</span><span class="n">observedEvent</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="cp">#endif</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>MVVMで実装してみよう</h3>
-
-<p>おまけとして、 <code>MVVM</code> での実装例も載せておきます。</p>
-
-<h4>プロジェクト構成</h4>
-
-<p>プロジェクト構成は下図の通りです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">RxDataSourcesSample</span>
-</span><span class='line'>  <span class="err">├──</span> <span class="n">Protocol</span>
-</span><span class='line'>  <span class="err">│</span>    <span class="err">└──</span> <span class="n">Injectable</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'>  <span class="err">├──</span> <span class="n">Model</span>
-</span><span class='line'>  <span class="err">│</span>    <span class="err">└──</span> <span class="n">SectionModel</span>
-</span><span class='line'>  <span class="err">├──</span> <span class="n">ViewModel</span>
-</span><span class='line'>  <span class="err">│</span>    <span class="err">└──</span> <span class="n">MainViewModel</span>
-</span><span class='line'>  <span class="err">├──</span> <span class="n">View</span>
-</span><span class='line'>  <span class="err">│</span>    <span class="err">├──</span> <span class="n">Parts</span>
-</span><span class='line'>  <span class="err">│</span>    <span class="err">│</span>    <span class="err">├──</span> <span class="n">CustomTableViewCell</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'>  <span class="err">│</span>    <span class="err">│</span>    <span class="err">└──</span> <span class="n">CustomTableViewCell</span><span class="p">.</span><span class="n">xib</span>
-</span><span class='line'>  <span class="err">│</span>    <span class="err">├──</span> <span class="n">MainViewController</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'>  <span class="err">│</span>    <span class="err">└──</span> <span class="n">MainViewController</span><span class="p">.</span><span class="n">xib</span>
-</span><span class='line'>  <span class="err">├──</span> <span class="n">AppDelegate</span><span class="p">.</span><span class="n">swift</span>
-</span><span class='line'>  <span class="p">...</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Viewの実装</h4>
-
-<p>今回、 <code>MVVM</code> で実装するに辺り、 <code>storyboard</code> から <code>xib</code> に変更しました。<br/>
-下図の通り単純に <code>xib</code> で <code>UITableView</code> を載せているだけです。</p>
-
-<p><img src="http://grandbig.github.io/images/rxdatasources_2.png" alt="xibにUITableViewを載せる" /></p>
-
-<p>また、 <code>xib</code> で <code>UITableViewCell</code> を用意します。</p>
-
-<p><img src="http://grandbig.github.io/images/rxdatasources_3.png" alt="xibでCustomTableViewCellを用意" /></p>
-
-<p><code>MVVM</code> で構成するために、 <code>Injectable</code> を定義します。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Injectable.swift</span>
-</span><span class='line'><span class="n">protocol</span> <span class="n">Injectable</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">associatedtype</span> <span class="n">Dependency</span>
-</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">extension</span> <span class="n">Injectable</span> <span class="n">where</span> <span class="n">Dependency</span> <span class="o">==</span> <span class="n">Void</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">with:</span> <span class="p">())</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>そして <code>MainViewController.swift</code> の実装です。<br/>
-一部の処理を <code>ViewModel</code> に移行しているだけで、ほぼ変更はありません。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// MainViewController.swift</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxDataSources</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Injectableを継承</span>
-</span><span class='line'><span class="n">class</span> <span class="nl">MainViewController:</span> <span class="n">UIViewController</span><span class="p">,</span> <span class="n">Injectable</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">typealias</span> <span class="n">Dependency</span> <span class="o">=</span> <span class="n">MainViewModel</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">private</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">tableView:</span> <span class="n">UITableView</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">dataSource:</span> <span class="n">RxTableViewSectionedReloadDataSource</span><span class="o">&lt;</span><span class="n">SectionModel</span><span class="o">&gt;!</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="nl">viewModel:</span> <span class="n">MainViewModel</span>
-</span><span class='line'>
-</span><span class='line'>      <span class="c1">// 初期化時にViewModelを設定できるようにする</span>
-</span><span class='line'>    <span class="n">required</span> <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">viewModel</span> <span class="o">=</span> <span class="n">dependency</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">nibName:</span> <span class="nb">nil</span><span class="p">,</span> <span class="nl">bundle:</span> <span class="nb">nil</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="err">@</span><span class="n">available</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">unavailable</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">required</span> <span class="n">init</span><span class="o">?</span><span class="p">(</span><span class="n">coder</span> <span class="nl">aDecoder:</span> <span class="n">NSCoder</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">fatalError</span><span class="p">(</span><span class="s">&quot;init(coder:) has not been implemented&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// Do any additional setup after loading the view.</span>
-</span><span class='line'>        <span class="n">tableView</span><span class="p">.</span><span class="k">register</span><span class="p">(</span><span class="n">CustomTableViewCell</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">forCellReuseIdentifier:</span> <span class="s">&quot;Cell&quot;</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">dataSource</span> <span class="o">=</span> <span class="n">RxTableViewSectionedReloadDataSource</span><span class="o">&lt;</span><span class="n">SectionModel</span><span class="o">&gt;</span><span class="p">(</span>
-</span><span class='line'>            <span class="nl">configureCell:</span> <span class="p">{</span> <span class="n">_</span><span class="p">,</span> <span class="n">tableView</span><span class="p">,</span> <span class="n">indexPath</span><span class="p">,</span> <span class="n">item</span> <span class="k">in</span>
-</span><span class='line'>                <span class="n">let</span> <span class="n">cell</span> <span class="o">=</span> <span class="n">tableView</span><span class="p">.</span><span class="n">dequeueReusableCell</span><span class="p">(</span><span class="nl">withIdentifier:</span> <span class="s">&quot;Cell&quot;</span><span class="p">,</span>
-</span><span class='line'>                                                         <span class="k">for</span><span class="o">:</span> <span class="n">IndexPath</span><span class="p">(</span><span class="nl">row:</span> <span class="n">indexPath</span><span class="p">.</span><span class="n">row</span><span class="p">,</span> <span class="nl">section:</span> <span class="mi">0</span><span class="p">))</span>
-</span><span class='line'>                <span class="n">cell</span><span class="p">.</span><span class="n">textLabel</span><span class="o">?</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">item</span><span class="mf">.0</span>
-</span><span class='line'>                <span class="n">cell</span><span class="p">.</span><span class="n">accessoryType</span> <span class="o">=</span> <span class="p">.</span><span class="n">disclosureIndicator</span>
-</span><span class='line'>
-</span><span class='line'>                <span class="k">return</span> <span class="n">cell</span>
-</span><span class='line'>        <span class="p">},</span> <span class="nl">canEditRowAtIndexPath:</span> <span class="p">{</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="k">in</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">true</span>
-</span><span class='line'>        <span class="p">})</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">viewModel</span><span class="p">.</span><span class="n">dataRelay</span><span class="p">.</span><span class="n">asObservable</span><span class="p">()</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">tableView</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">items</span><span class="p">(</span><span class="nl">dataSource:</span> <span class="n">dataSource</span><span class="p">))</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">tableView</span><span class="p">.</span><span class="n">rx</span><span class="p">.</span><span class="n">itemDeleted</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="nl">onNext:</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">indexPath</span> <span class="k">in</span>
-</span><span class='line'>                <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>                <span class="c1">// ViewModelにテーブルビューの行を削除操作を伝える</span>
-</span><span class='line'>                <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">indexPath</span><span class="p">)</span>
-</span><span class='line'>                    <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">strongSelf</span><span class="p">.</span><span class="n">viewModel</span><span class="p">.</span><span class="n">requestDeleteRecordStream</span><span class="p">)</span>
-</span><span class='line'>                    <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">strongSelf</span><span class="p">.</span><span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">})</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>ViewModelの実装</h4>
-
-<p>さて、 <code>ViewModel</code> の実装です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// MainViewModel.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'>
-</span><span class='line'><span class="c1">// Injectableを継承</span>
-</span><span class='line'><span class="n">final</span> <span class="n">class</span> <span class="nl">MainViewModel:</span> <span class="n">Injectable</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">struct</span> <span class="n">Dependency</span> <span class="p">{</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="nl">sectionModels:</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">]</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: PublishRelays</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">requestDeleteRecordStream</span> <span class="o">=</span> <span class="n">PublishRelay</span><span class="o">&lt;</span><span class="n">IndexPath</span><span class="o">&gt;</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: BehaviorRelays</span>
-</span><span class='line'>    <span class="n">var</span> <span class="n">dataRelay</span> <span class="o">=</span> <span class="n">BehaviorRelay</span><span class="o">&lt;</span><span class="p">[</span><span class="n">SectionModel</span><span class="p">]</span><span class="o">&gt;</span><span class="p">(</span><span class="nl">value:</span> <span class="p">[])</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: Initial method</span>
-</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="p">[(</span><span class="s">&quot;test1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test2&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test3&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)])]</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// 画面初期描画時に初期設定のsectionModelsを渡す</span>
-</span><span class='line'>        <span class="n">Observable</span><span class="p">.</span><span class="n">deferred</span> <span class="p">{()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[</span><span class="n">SectionModel</span><span class="p">]</span><span class="o">&gt;</span> <span class="k">in</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">}</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">dataRelay</span><span class="p">)</span>   <span class="c1">// dataRelayにデータを流し込む</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">requestDeleteRecordStream</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">subscribe</span><span class="p">(</span><span class="nl">onNext:</span> <span class="p">{</span> <span class="p">[</span><span class="n">weak</span> <span class="n">self</span><span class="p">]</span> <span class="n">indexPath</span> <span class="k">in</span>
-</span><span class='line'>                <span class="n">guard</span> <span class="n">let</span> <span class="n">strongSelf</span> <span class="o">=</span> <span class="n">self</span><span class="p">,</span> <span class="n">let</span> <span class="n">sectionModel</span> <span class="o">=</span> <span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">.</span><span class="n">first</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
-</span><span class='line'>                <span class="n">var</span> <span class="n">items</span> <span class="o">=</span> <span class="n">sectionModel</span><span class="p">.</span><span class="n">items</span>
-</span><span class='line'>                <span class="n">items</span><span class="p">.</span><span class="n">remove</span><span class="p">(</span><span class="nl">at:</span> <span class="n">indexPath</span><span class="p">.</span><span class="n">row</span><span class="p">)</span>
-</span><span class='line'>                <span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">items</span><span class="p">)]</span>
-</span><span class='line'>
-</span><span class='line'>                <span class="c1">// dataRelayにデータを流し込む</span>
-</span><span class='line'>                <span class="n">strongSelf</span><span class="p">.</span><span class="n">dataRelay</span><span class="p">.</span><span class="n">accept</span><span class="p">(</span><span class="n">strongSelf</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">})</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>まとめ</h3>
-
-<p>さて如何でしたでしょうか？<br/>
-書き方さえ慣れてしまえば案外簡単に利用できそうですよね。</p>
 
 <p>ということで本日はここまで。</p>
 

@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: ios13 | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/ios13/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2019-09-22T18:38:02+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iOS13から利用できるBackgroundTasksを使ってみよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2019/09/22/backgroundtasks/"/>
+    <updated>2019-09-22T17:09:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/09/22/backgroundtasks</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回はiOS13で新たに追加された <code>BackgroundTasks Framework</code> について見ていきたいと思います。<br/>
+基本的には、 <a href="https://developer.apple.com/videos/play/wwdc2019/707/">WWDC2019動画の『Advances in App Background Execution』</a>を見ながら実践してみました。</p>
+
+<p>ですが、微妙に躓くところもあったのでメモとして残しておきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>BackgroundTasksとは</h3>
+
+<p>まず、 <code>BackgroundTasks</code> の説明です。<br/>
+<code>BackgroundTasks</code> はiOS13から利用できる新しいFrameworkになります。<br/>
+<code>BackgroundTasks</code> には大きく分けて下記2つのAPIが存在します。</p>
+
+<ol>
+<li>Background Processing Tasks</li>
+<li>Background App Refresh Tasks</li>
+</ol>
+
+
+<h4>Background Processing Tasks</h4>
+
+<p><code>Background Processing Tasks</code> は以下シーンでの利用が想定されています。</p>
+
+<ul>
+<li>(急を要しない)後々の実行で良いメンテナンス処理</li>
+<li>Core MLを利用した機械学習のトレーニング処理</li>
+</ul>
+
+
+<p>そのため、 <strong>数分間</strong> の処理実行が許されています。<br/>
+また、 <code>requiresExternalPower</code> というフラグを <code>true</code> にすることで、CPU消耗によるプロセスキルをさせないよう制御することができます。<br/>
+(iOSの世界でこれって結構スゴイ気がしますね。)</p>
+
+<h4>Background App Refresh Tasks</h4>
+
+<p><code>Background App Refresh Tasks</code> は以下シーンでの利用が想定されています。</p>
+
+<ul>
+<li>30秒以内で完了できる処理</li>
+<li>1日を通してアプリを最新に保つために必要な処理</li>
+</ul>
+
+
+<p>これまで上記のような対応をする際には <code>Background Fetch</code> を利用していたことと思いますが、<br/>
+今回の新APIの発表により、旧APIはdeprecatedになったそうです。</p>
+
+<p><code>objective-c
+// deprecated対象
+UIApplication.setMinimumBackgroundFetchInterval(_:)
+UIApplicationDelegate.application(_:performFetchWithCompletionHandler:)
+</code></p>
+
+<h3>BackgroundTasksの使い方</h3>
+
+<p>続いて具体的な使い方を見ていきます。</p>
+
+<h4>ソースコードを書き始めるまでの下準備</h4>
+
+<p><strong>① Xccode上でCapabilityを追加します</strong><br/>
+バックグラウンド処理を利用する場合はこれまで通り <code>Capability</code> の <code>Background Modes</code> が必要になります。<br/>
+Xcode11で追加する方法が少々変わっているので気をつけましょう。</p>
+
+<p><img src="/images/backgroundtasks_1.png" alt="Background Modesを追加します" /></p>
+
+<p><strong>② Background Modesにチェックを入れます</strong><br/>
+今回は、 <code>Background Processing Tasks</code> と <code>Background App Refresh Tasks</code> なので下図の通りです。</p>
+
+<p><img src="/images/backgroundtasks_2.png" alt="必要なBackground Modesにチェックを入れます" /></p>
+
+<p><strong>③ Info.plistにIdentifierを登録します</strong><br/>
+<code>Info.plist</code> に <code>Permitted background task scheduler identifiers</code> を追加します。<br/>
+また、 <code>Background Processing Tasks</code> と <code>Background App Refresh Tasks</code> 用にそれぞれ <code>Identifier</code> を定義します。</p>
+
+<p>因みに、この <code>Identifier</code> は例によってユニークであることが求められるので、<br/>
+<code>com.xxxx.XXXXSample.process</code> , <code>com.xxxx.XXXXSample.refresh</code> といったDNSの逆書きが推奨されています。</p>
+
+<p><img src="/images/backgroundtasks_3.png" alt="Info.plistに必要なIdentifierを登録します" /></p>
+
+<h4>ソースコードの実装</h4>
+
+<p>ここまででソースコード以外の準備は完了です。<br/>
+続いて、ソースコードを書いていきましょう。</p>
+
+<p><code>Background Processing Tasks</code> と <code>Background App Refresh Tasks</code> それぞれ記載します。</p>
+
+<h5>Background Processing Tasks</h5>
+
+<p><strong>① BackgroundTasksをimportします</strong></p>
+
+<p><code>objective-c
+// AppDelegate.swift
+import UIKit
+import BackgroundTasks
+</code></p>
+
+<p><strong>② didFinishLaunchWithOptions内にバックグラウンドタスクを登録します</strong></p>
+
+<p>```objective-c
+// AppDelegate.swift
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {</p>
+
+<pre><code>...
+func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -&gt; Bool {
+    // Override point for customization after application launch.
+
+    // 第一引数: Info.plistで定義したIdentifierを指定
+    // 第二引数: タスクを実行するキューを指定。nilの場合は、デフォルトのバックグラウンドキューが利用されます。
+    // 第三引数: 実行する処理
+    BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.MeasurementSample.refresh", using: nil) { task in
+        // バックグラウンド処理したい内容 ※後述します
+        self.handleAppProcessing(task: task as! BGProcessingTask)
+    }
+    return true
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p><strong>③ バックグラウンドタスクにスケジューリングします</strong></p>
+
+<p>```objective-c
+private func scheduleAppProcessing() {</p>
+
+<pre><code>// Info.plistで定義したIdentifierを指定
+let request = BGProcessingTaskRequest(identifier: "com.MeasurementSample.refresh")
+// 通信が発生するか否かを指定
+request.requiresNetworkConnectivity = false
+// CPU監視の必要可否を設定
+request.requiresExternalPower = true
+
+do {
+    // スケジューラーに実行リクエストを登録
+    try BGTaskScheduler.shared.submit(request)
+} catch {
+    print("Could not schedule app processing: \(error)")
+}
+</code></pre>
+
+<p>}</p>
+
+<p>func applicationDidEnterBackground(_ application: UIApplication) {</p>
+
+<pre><code>// バックグラウンド起動に移ったときにルケジューリング登録
+scheduleAppProcessing()
+</code></pre>
+
+<p>}
+```</p>
+
+<p><strong>④ 実際に実行する処理を定義します</strong></p>
+
+<p>```objective-c
+// AppDelegate.swift
+// サンプル用のOperation
+class PrintOperation: Operation {</p>
+
+<pre><code>let id: Int
+
+init(id: Int) {
+    self.id = id
+}
+
+override func main() {
+    print("this operation id is \(self.id)")
+}
+</code></pre>
+
+<p>}</p>
+
+<p>@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+  &hellip;
+  private func handleAppProcessing(task: BGProcessingTask) {</p>
+
+<pre><code>  // 1日の間、何度も実行したい場合は、1回実行するごとに新たにスケジューリングに登録します
+  scheduleAppRefresh()
+
+  let queue = OperationQueue()
+  queue.maxConcurrentOperationCount = 1
+
+  // 時間内に実行完了しなかった場合は、処理を解放します
+  // バックグラウンドで実行する処理は、次回に回しても問題ない処理のはずなので、これでOK
+  task.expirationHandler = {
+      queue.cancelAllOperations()
+  }
+
+  // サンプルの処理をキューに詰めます
+  let array = [1, 2, 3, 4, 5]
+  array.enumerated().forEach { arg in
+      let (offset, value) = arg
+      let operation = PrintOperation(id: value)
+      if offset == array.count - 1 {
+          operation.completionBlock = {
+              // 最後の処理が完了したら、必ず完了したことを伝える必要があります
+              task.setTaskCompleted(success: operation.isFinished)
+          }
+      }
+      queue.addOperation(operation)
+  }
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h5>Background App Refresh Tasks</h5>
+
+<p><strong>① BackgroundTasksをimportします</strong></p>
+
+<p><code>objective-c
+// AppDelegate.swift
+import UIKit
+import BackgroundTasks
+</code></p>
+
+<p><strong>② didFinishLaunchWithOptions内にバックグラウンドタスクを登録します</strong></p>
+
+<p>```objective-c
+// AppDelegate.swift
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {</p>
+
+<pre><code>...
+func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -&gt; Bool {
+    // Override point for customization after application launch.
+
+    // 第一引数: Info.plistで定義したIdentifierを指定
+    // 第二引数: タスクを実行するキューを指定。nilの場合は、デフォルトのバックグラウンドキューが利用されます。
+    // 第三引数: 実行する処理
+    BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.MeasurementSample.refresh", using: nil) { task in
+        // バックグラウンド処理したい内容 ※後述します
+        self.handleAppRefresh(task: task as! BGAppRefreshTask)
+    }
+    return true
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p><strong>③ バックグラウンドタスクにスケジューリングします</strong></p>
+
+<p>```objective-c
+private func scheduleAppRefresh() {</p>
+
+<pre><code>// Info.plistで定義したIdentifierを指定
+let request = BGAppRefreshTaskRequest(identifier: "com.MeasurementSample.refresh")
+// 最低で、どの程度の期間を置いてから実行するか指定
+request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
+
+do {
+    // スケジューラーに実行リクエストを登録
+    try BGTaskScheduler.shared.submit(request)
+} catch {
+    print("Could not schedule app refresh: \(error)")
+}
+</code></pre>
+
+<p>}</p>
+
+<p>func applicationDidEnterBackground(_ application: UIApplication) {</p>
+
+<pre><code>// バックグラウンド起動に移ったときにルケジューリング登録
+scheduleAppRefresh()
+</code></pre>
+
+<p>}
+```</p>
+
+<p><strong>④ 実際に実行する処理を定義します</strong></p>
+
+<p>```objective-c
+// AppDelegate.swift
+// サンプル用のOperation
+class PrintOperation: Operation {</p>
+
+<pre><code>let id: Int
+
+init(id: Int) {
+    self.id = id
+}
+
+override func main() {
+    print("this operation id is \(self.id)")
+}
+</code></pre>
+
+<p>}</p>
+
+<p>@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+  &hellip;
+  private func handleAppRefresh(task: BGAppRefreshTask) {</p>
+
+<pre><code>  // 1日の間、何度も実行したい場合は、1回実行するごとに新たにスケジューリングに登録します
+  scheduleAppRefresh()
+
+  let queue = OperationQueue()
+  queue.maxConcurrentOperationCount = 1
+
+  // 時間内に実行完了しなかった場合は、処理を解放します
+  // バックグラウンドで実行する処理は、次回に回しても問題ない処理のはずなので、これでOK
+  task.expirationHandler = {
+      queue.cancelAllOperations()
+  }
+
+  // サンプルの処理をキューに詰めます
+  let array = [1, 2, 3, 4, 5]
+  array.enumerated().forEach { arg in
+      let (offset, value) = arg
+      let operation = PrintOperation(id: value)
+      if offset == array.count - 1 {
+          operation.completionBlock = {
+              // 最後の処理が完了したら、必ず完了したことを伝える必要があります
+              task.setTaskCompleted(success: operation.isFinished)
+          }
+      }
+      queue.addOperation(operation)
+  }
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h3>BackgroundTasksのデバッグ方法</h3>
+
+<p>上記で実装が完了しました。<br/>
+実際に挙動を試すためには、特別な手順が必要になります。</p>
+
+<p>① アプリを起動します<br/>
+② アプリをバックグラウンドに移します(登録トリガーのためです)<br/>
+③ 再度アプリを起動します<br/>
+④ Xcodeで <code>Pause Program Execution</code> をタップします</p>
+
+<p><img src="/images/backgroundtasks_4.png" alt="Pause Program Executionをタップします" /></p>
+
+<p>⑤ LLDBに以下コマンドを入力して実行します</p>
+
+<p>```objective-c
+// Background Processing Tasksの場合
+e -l objc &mdash; (void)[[BGTaskScheduler sharedScheduler] _simulateLaunchForTaskWithIdentifier:@&ldquo;com.MeasurementSample.process&rdquo;]</p>
+
+<p>// Background App Refresh Tasksの場合
+e -l objc &mdash; (void)[[BGTaskScheduler sharedScheduler] _simulateLaunchForTaskWithIdentifier:@&ldquo;com.MeasurementSample.refresh&rdquo;]
+```</p>
+
+<p>⑥ 再度、Xcodeで <code>Pause Program Execution</code> をタップします</p>
+
+<p>以上で実際の実行処理が見れるようになるはずです。</p>
+
+<p>因みに、実行処理の期限切れを試したい場合は、以下のように⑤のLLDBで以下を入力して実行します</p>
+
+<p>```objective-c
+// Background Processing Tasksの場合
+e -l objc &mdash; (void)[[BGTaskScheduler sharedScheduler] _simulateExpirationForTaskWithIdentifier:@&ldquo;com.MeasurementSample.process&rdquo;]</p>
+
+<p>// Background App Refresh Tasksの場合
+e -l objc &mdash; (void)[[BGTaskScheduler sharedScheduler] _simulateExpirationForTaskWithIdentifier:@&ldquo;com.MeasurementSample.refresh&rdquo;]
+```</p>
+
+<h3>ハマったところ</h3>
+
+<p>筆者が試しに実装してハマったところを参考までに載せておこうと思います。<br/>
+筆者の場合、なぜかシミュレータで実行しようとすると、以下のエラーが発生してしまいました。</p>
+
+<p><code>objective-c
+BGTaskSchedulerErrorDomain Code=1 "(null)"
+</code></p>
+
+<p>これは、<a href="https://developer.apple.com/documentation/backgroundtasks/refreshing_and_maintaining_your_app_using_background_tasks">サンプルコード</a>で試しても同様でした。<br/>
+ただ、実機で試したところ問題なく通ったんですよね&hellip;</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+iOS13で追加された新APIは旧バージョンサポートのため、
+すぐには利用されないかもしれませんが、iOS13の普及に伴い、利用シーンは確実に増えていくことでしょう。<br/>
+そのため、サンプル程度の実装でも、使い方を学んでおくことは今後の役に立つと思っています。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<ul>
+<li>参考URL:
+
+<ul>
+<li><a href="https://developer.apple.com/videos/play/wwdc2019/707/">WWDC2019 &ndash; Advances in App Background Execution</a></li>
+<li><a href="https://developer.apple.com/documentation/backgroundtasks">Apple Documentation &ndash; BackgroundTasks</a></li>
+</ul>
+</li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
