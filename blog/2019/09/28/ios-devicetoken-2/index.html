@@ -1,0 +1,522 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>iOS13におけるプッシュ通知に必要なデバイストークンの取得方法 - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに 今回はiOS13のプッシュ通知用デバイストークンについて見ていきたいと思います。
+Swift に関して言えば特に変更があったわけではないのですが、
+Objective-C において少々仕様の変更があったようです。 具体的には後述しますが、 description &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2019/09/28/ios-devicetoken-2/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">iOS13におけるプッシュ通知に必要なデバイストークンの取得方法</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-09-28T16:12:00+09:00" pubdate data-updated="true">Sep 28<span>th</span>, 2019</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>今回はiOS13のプッシュ通知用デバイストークンについて見ていきたいと思います。
+<code>Swift</code> に関して言えば特に変更があったわけではないのですが、<br/>
+<code>Objective-C</code> において少々仕様の変更があったようです。</p>
+
+<p>具体的には後述しますが、 <code>description</code> を利用してデバイストークンを取得する方式は <code>iOS13</code> から見直す必要がありそうです。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>プッシュ通知の受信処理の実装</h3>
+
+<p>折角なので、基本的な設定についても説明していきます。</p>
+
+<h4>Xcode11の設定</h4>
+
+<p>まずは、Xcode11上で下図の状態まで設定します。</p>
+
+<p><strong>▼確認観点</strong><br/>
+* <code>Team ID</code> が利用想定のものであること<br/>
+* <code>Bundle Identifier</code> が利用想定のものであること<br/>
+* <code>Signing Certificate</code> が利用想定のものであること<br/>
+* <code>Provisioning Profile</code> の <code>Capabilities</code> に <code>Push Notifications</code> が含まれている<br/>
+* <code>Capability</code> として <code>Push Notifications</code> が追加すること</p>
+
+<p><img src="/images/ios-devicetoken-2_1.png" alt="Signing &amp; Capabilities" /></p>
+
+<h4>AppDelegateの実装</h4>
+
+<p>続いて、 <code>AppDelegate.swift</code> 上の実装です。</p>
+
+<p>基本的なステップは4つです。</p>
+
+<p>① プッシュ通知の利用許可のリクエストを送信します<br/>
+② 利用許可を得た場合に、プッシュ通知の利用登録を実行します<br/>
+③ プッシュ通知の利用登録が成功したことをキャッチする <code>Delegate</code> メソッドを書きます<br/>
+④ プッシュ通知の利用登録が失敗したことをキャッチする <code>Delegate</code> メソッドを書きます</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UserNotifications</span>
+</span><span class='line'>
+</span><span class='line'><span class="err">@</span><span class="n">UIApplicationMain</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span> <span class="n">didFinishLaunchingWithOptions</span> <span class="nl">launchOptions:</span> <span class="p">[</span><span class="n">UIApplication</span><span class="p">.</span><span class="nl">LaunchOptionsKey:</span> <span class="n">Any</span><span class="p">]</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// Override point for customization after application launch.</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// ① プッシュ通知の利用許可のリクエスト送信</span>
+</span><span class='line'>        <span class="n">UNUserNotificationCenter</span><span class="p">.</span><span class="n">current</span><span class="p">().</span><span class="n">requestAuthorization</span><span class="p">(</span><span class="nl">options:</span> <span class="p">[.</span><span class="n">alert</span><span class="p">,</span> <span class="p">.</span><span class="n">sound</span><span class="p">,</span> <span class="p">.</span><span class="n">badge</span><span class="p">])</span> <span class="p">{</span> <span class="n">granted</span><span class="p">,</span> <span class="n">error</span> <span class="k">in</span>
+</span><span class='line'>            <span class="n">guard</span> <span class="n">granted</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">DispatchQueue</span><span class="p">.</span><span class="n">main</span><span class="p">.</span><span class="n">async</span> <span class="p">{</span>
+</span><span class='line'>                <span class="c1">// ② プッシュ通知利用の登録</span>
+</span><span class='line'>                <span class="n">UIApplication</span><span class="p">.</span><span class="n">shared</span><span class="p">.</span><span class="n">registerForRemoteNotifications</span><span class="p">()</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="n">AppDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// ③ プッシュ通知の利用登録が成功した場合</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span>
+</span><span class='line'>                     <span class="n">didRegisterForRemoteNotificationsWithDeviceToken</span> <span class="nl">deviceToken:</span> <span class="n">Data</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">token</span> <span class="o">=</span> <span class="n">deviceToken</span><span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">String</span><span class="p">(</span><span class="nl">format:</span> <span class="s">&quot;%.2hhx&quot;</span><span class="p">,</span> <span class="n">$0</span><span class="p">)</span> <span class="p">}.</span><span class="n">joined</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;Device token: \(token)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// ④ プッシュ通知の利用登録が失敗した場合</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span>
+</span><span class='line'>                     <span class="n">didFailToRegisterForRemoteNotificationsWithError</span> <span class="nl">error:</span> <span class="n">Error</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">print</span><span class="p">(</span><span class="s">&quot;Failed to register to APNs: \(error)&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>旧来のデバイストークンの取得方法</h3>
+
+<p>さて本題に入ります。<br/>
+<code>Objective-C</code> 時代に主流と言われていたデバイストークンの取得方法は、以下のような <code>description</code> を利用した手法でした。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">NSString</span> <span class="o">*</span><span class="n">token</span> <span class="o">=</span> <span class="p">[[[[</span><span class="n">deviceToken</span> <span class="n">description</span><span class="p">]</span> <span class="nl">stringByReplacingOccurrencesOfString:</span><span class="s">@&quot;&lt;&quot;</span><span class="nl">withString:</span><span class="s">@&quot;&quot;</span><span class="p">]</span>
+</span><span class='line'>                   <span class="nl">stringByReplacingOccurrencesOfString:</span><span class="s">@&quot;&gt;&quot;</span> <span class="nl">withString:</span><span class="s">@&quot;&quot;</span><span class="p">]</span>
+</span><span class='line'>                   <span class="nl">stringByReplacingOccurrencesOfString:</span> <span class="s">@&quot; &quot;</span> <span class="nl">withString:</span> <span class="s">@&quot;&quot;</span><span class="p">];</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これは、 <code>[deviceToken description]</code> で取得される値が、<br/>
+<code>&lt;7097978d 1e438923 ... 6fdbf111&gt;</code> というような先頭と末尾を <code>&lt;&gt;</code> で括られていたためです。<br/>
+そして、(見やすくはないですが)1文で書けるというのも当時から魅力的だったのかもしれません。</p>
+
+<p><code>Swift</code> に言語が変わってからも、しばらくは上記手法が多くの場面で使われてきたことと思います。<br/>
+しかし、 <code>Swift3</code> になったタイミングで、状況が変わりました。<br/>
+プッシュ通知の利用登録成功時の <code>Delegate</code> メソッドの <code>deviceToken</code> が <code>NSData</code> から <code>Data</code> になったことで、<br/>
+この手法が利用できなくなったのです。</p>
+
+<p>この時点で</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">let</span> <span class="n">token</span> <span class="o">=</span> <span class="n">deviceToken</span><span class="p">.</span><span class="n">map</span> <span class="p">{</span> <span class="n">String</span><span class="p">(</span><span class="nl">format:</span> <span class="s">&quot;%.2hhx&quot;</span><span class="p">,</span> <span class="n">$0</span><span class="p">)</span> <span class="p">}.</span><span class="n">joined</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>という書き方がデバイストークン取得の主流に完全に取って代わったと思います。<br/>
+しかし、あくまでもこれは <code>Swift</code> におけるデバイストークンの取得であって、 <code>Objective-C</code> は旧来の書き方が続いていました。</p>
+
+<p>最近、これがどうやら <code>iOS13</code> から <code>Objective-C</code> でも変更が出たようなんです。</p>
+
+<ul>
+<li><a href="https://forums.developer.apple.com/thread/117545">Apple Developer Forums: iOS13 PKPushCredentials broken</a></li>
+<li><a href="https://forums.developer.apple.com/thread/119111">Apple Developer Forums: NSData description and NSString stringWithFormat have different return results when compiled with Xcode 11 versus Xcode 10</a></li>
+</ul>
+
+
+<p>では、 <code>Objective-C</code> ではどう書いていくべきかと言うと、 <code>Facebook</code> が1つの解を示してくれています。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ↓ dataにDelegateメソッドに渡ってきたdeviceTokenを渡します</span>
+</span><span class='line'><span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nl">hexadecimalStringFromData:</span><span class="p">(</span><span class="n">NSData</span> <span class="o">*</span><span class="p">)</span><span class="n">data</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">NSUInteger</span> <span class="n">dataLength</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">length</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">dataLength</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="nb">nil</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">const</span> <span class="kt">unsigned</span> <span class="kt">char</span> <span class="o">*</span><span class="n">dataBuffer</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">bytes</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">NSMutableString</span> <span class="o">*</span><span class="n">hexString</span>  <span class="o">=</span> <span class="p">[</span><span class="n">NSMutableString</span> <span class="nl">stringWithCapacity:</span><span class="p">(</span><span class="n">dataLength</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)];</span>
+</span><span class='line'>    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">dataLength</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="p">[</span><span class="n">hexString</span> <span class="nl">appendFormat:</span><span class="s">@&quot;%02x&quot;</span><span class="p">,</span> <span class="n">dataBuffer</span><span class="p">[</span><span class="n">i</span><span class="p">]];</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="p">[</span><span class="n">hexString</span> <span class="n">copy</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>これで <code>Swift</code> と <code>Objective-C</code> 共に安定した書き方に変わったと言えるでしょう。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+iOS13は細かいところも含めて様々な変更が入っているため、日々最新情報をキャッチしつつ、自身でも積極的に使い倒していく必要がありますね。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-09-28T16:12:00+09:00" pubdate data-updated="true">Sep 28<span>th</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/devicetoken/'>devicetoken</a>, <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/notification/'>notification</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2019/09/28/ios-devicetoken-2/" data-via="" data-counturl="http://grandbig.github.io/blog/2019/09/28/ios-devicetoken-2/" >Tweet</a>
+  
+  <a href="http://b.hatena.ne.jp/entry/http://grandbig.github.io/blog/2019/09/28/ios-devicetoken-2/" class="hatena-bookmark-button" 
+	  data-hatena-bookmark-layout="standard" title="このエントリーをはてなブックマークに追加">
+	  <img src="http://b.st-hatena.com/images/entry-button/button-only.gif" 
+	  alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;" />
+  </a>
+  <script type="text/javascript" src="http://b.st-hatena.com/js/bookmark_button.js" charset="utf-8" async="async"></script>
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/09/22/backgroundtasks/" title="Previous Post: iOS13から利用できるBackgroundTasksを使ってみよう！">&laquo; iOS13から利用できるBackgroundTasksを使ってみよう！</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/09/28/ios-devicetoken-2/">iOS13におけるプッシュ通知に必要なデバイストークンの取得方法</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/22/backgroundtasks/">iOS13から利用できるBackgroundTasksを使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/07/po-v-command/">LLDBの便利なp/po/ｖコマンドを覚えよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/07/os-signpost/">os.signpostで処理速度を計測しよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/08/10/analyze-morphologic/">iOS形態素解析で見る幽白、海藤戦のタブー能力</a>
+      </li>
+    
+  </ul>
+</section>
+
+Included file 'asides/pinboard.html' not found in _includes directory
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (200)</a></li><li><a href='/blog/categories/swift'>swift (100)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/node'>node (9)</a></li><li><a href='/blog/categories/rx'>rx (9)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/xcode'>xcode (8)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/redux'>redux (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2019/09/28/ios-devicetoken-2/';
+        var disqus_url = 'http://grandbig.github.io/blog/2019/09/28/ios-devicetoken-2/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+Included file 'google_plus_one.html' not found in _includes directory
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
