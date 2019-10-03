@@ -3,7 +3,7 @@ layout: post
 title: "iOS13におけるプッシュ通知に必要なデバイストークンの取得方法"
 date: 2019-09-28 16:12
 comments: true
-categories: ios devicetoken notification
+categories: ios ios13 devicetoken notification
 ---
 
 ### はじめに

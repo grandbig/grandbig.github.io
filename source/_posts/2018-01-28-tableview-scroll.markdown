@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "UITableViewで任意のスクロール位置に移動させる方法"
+title: "UITableViewで指定のスクロール位置に移動させる方法"
 date: 2018-01-28 21:01
 comments: true
 categories: ios swift

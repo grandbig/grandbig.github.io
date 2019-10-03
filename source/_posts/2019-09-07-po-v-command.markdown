@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "LLDBの便利なp/po/ｖコマンドを覚えよう！"
+title: "iOSアプリ開発に便利なLLDBのp/po/ｖコマンドを覚えよう！"
 date: 2019-09-07 20:02
 comments: true
 categories: ios swift lldb

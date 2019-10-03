@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "GitHubとSlackを自作で連携させてみよう！"
+title: "GitHubとSlackを連携させて、効率の良いPullRequestのレビューを実行しよう！"
 date: 2019-05-26 11:47
 comments: true
 categories: github slack node

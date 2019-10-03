@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "os.signpostで処理速度を計測しよう！"
+title: "iOSアプリのパフォーマンス計測に『os.signpost』を活用しよう！"
 date: 2019-09-07 16:22
 comments: true
 categories: ios swift
