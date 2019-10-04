@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2019-09-30T23:12:21+09:00</updated>
+  <updated>2019-10-04T23:33:16+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -20,11 +20,12 @@
     <id>http://grandbig.github.io/blog/2019/09/28/ios-devicetoken-2</id>
     <content type="html"><![CDATA[<h3>はじめに</h3>
 
-<p>今回はiOS13のプッシュ通知用デバイストークンについて見ていきたいと思います。
-<code>Swift</code> に関して言えば特に変更があったわけではないのですが、<br/>
-<code>Objective-C</code> において少々仕様の変更があったようです。</p>
+<p>今回はiOS13のプッシュ通知用デバイストークンについて見ていきたいと思います。<br/>
+<code>Swift</code> に関して言えば、歴史的変遷から、問題のない現場が多いと思うのですが、<br/>
+<code>Objective-C</code> を中心に活用している現場では注意が必要かもしれません。</p>
 
-<p>具体的には後述しますが、 <code>description</code> を利用してデバイストークンを取得する方式は <code>iOS13</code> から見直す必要がありそうです。</p>
+<p>具体的には後述しますが、<br/>
+<code>description</code> を利用してデバイストークンを取得する方式は <code>iOS13</code> から見直す必要がありそうです。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
@@ -166,12 +167,12 @@
 
 <p>これは、 <code>[deviceToken description]</code> で取得される値が、<br/>
 <code>&lt;7097978d 1e438923 ... 6fdbf111&gt;</code> というような先頭と末尾を <code>&lt;&gt;</code> で括られていたためです。<br/>
-そして、(見やすくはないですが)1文で書けるというのも当時から魅力的だったのかもしれません。</p>
+そして、1文で書けるというのも当時から魅力的だったのかもしれません。</p>
 
-<p><code>Swift</code> に言語が変わってからも、しばらくは上記手法が多くの場面で使われてきたことと思います。<br/>
-しかし、 <code>Swift3</code> になったタイミングで、状況が変わりました。<br/>
-プッシュ通知の利用登録成功時の <code>Delegate</code> メソッドの <code>deviceToken</code> が <code>NSData</code> から <code>Data</code> になったことで、<br/>
-この手法が利用できなくなったのです。</p>
+<p><code>Swift</code> に言語が変わってからも、上記手法が多くの場面で使われてきたことと思います。<br/>
+しかし、 <code>Swift3</code> になったタイミングで、状況が変わりました。</p>
+
+<p>プッシュ通知の利用登録成功時の <code>Delegate</code> メソッドの <code>deviceToken</code> が <code>NSData</code> 型から <code>Data</code> 型に変わったことで、この手法が利用できなくなったのです。</p>
 
 <p>この時点で</p>
 
@@ -180,10 +181,26 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>という書き方がデバイストークン取得の主流に完全に取って代わったと思います。<br/>
-しかし、あくまでもこれは <code>Swift</code> におけるデバイストークンの取得であって、 <code>Objective-C</code> は旧来の書き方が続いていました。</p>
+<p>という書き方がデバイストークン取得の主流に完全に取って代わったと思います。</p>
 
-<p>最近、これがどうやら <code>iOS13</code> から <code>Objective-C</code> でも変更が出たようなんです。</p>
+<p>もしかしたら、 <code>Data</code> 型を <code>NSData</code> 型に変換することで、<br/>
+引き続き旧来の手法を利用している現場があるかもしれませんが、<br/>
+その場合は、即刻デバイストークンの取得方法を見直しましょう。</p>
+
+<p>これはあくまでも <code>Swift</code> におけるデバイストークンの取得の変遷であって、<br/>
+<code>Objective-C</code> は何ら変わることがなかったため、<br/>
+旧来の書き方が続いている現場がまだまだ多い気がしています。</p>
+
+<p>しかし、 <code>iOS13</code> からはどうやら見直しが必須になったようです。<br/>
+というのも、 <code>description</code> を利用すると</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="p">{</span> <span class="n">length</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">bytes</span> <span class="o">=</span> <span class="mi">7097978</span><span class="n">d</span> <span class="mf">1e438923</span> <span class="p">...</span> <span class="mf">6f</span><span class="n">dbf111</span> <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のような形で返ってきてしまうため、<br/>
+<code>&lt;&gt;</code> を除去することでデバイストークンを取得することができなくなったようなんです。</p>
 
 <ul>
 <li><a href="https://forums.developer.apple.com/thread/117545">Apple Developer Forums: iOS13 PKPushCredentials broken</a></li>
@@ -191,7 +208,9 @@
 </ul>
 
 
-<p>では、 <code>Objective-C</code> ではどう書いていくべきかと言うと、 <code>Facebook</code> が1つの解を示してくれています。</p>
+<p>では、 <code>Swift</code> は先程書いた通り1行で書けますが、<br/>
+<code>Objective-C</code> ではどう書いていくべきなのでしょうか。<br/>
+安心してください。 <code>Facebook</code> が1つの解を示してくれています。</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -226,7 +245,8 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>これで <code>Swift</code> と <code>Objective-C</code> 共に安定した書き方に変わったと言えるでしょう。</p>
+<p>流石に1行で済ませることは難しいですが、<br/>
+これで <code>Objective-C</code> でも正しくデバイストークンを取得できるようになりました。</p>
 
 <h3>まとめ</h3>
 

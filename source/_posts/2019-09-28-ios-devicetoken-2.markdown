@@ -7,11 +7,12 @@ categories: ios ios13 devicetoken notification
 ---
 
 ### はじめに
-今回はiOS13のプッシュ通知用デバイストークンについて見ていきたいと思います。
-`Swift` に関して言えば特に変更があったわけではないのですが、  
-`Objective-C` において少々仕様の変更があったようです。  
+今回はiOS13のプッシュ通知用デバイストークンについて見ていきたいと思います。  
+`Swift` に関して言えば、歴史的変遷から、問題のない現場が多いと思うのですが、  
+`Objective-C` を中心に活用している現場では注意が必要かもしれません。  
 
-具体的には後述しますが、 `description` を利用してデバイストークンを取得する方式は `iOS13` から見直す必要がありそうです。  
+具体的には後述しますが、  
+`description` を利用してデバイストークンを取得する方式は `iOS13` から見直す必要がありそうです。  
 
 <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
@@ -100,12 +101,12 @@ NSString *token = [[[[deviceToken description] stringByReplacingOccurrencesOfStr
 
 これは、 `[deviceToken description]` で取得される値が、  
 `<7097978d 1e438923 ... 6fdbf111>` というような先頭と末尾を `<>` で括られていたためです。  
-そして、(見やすくはないですが)1文で書けるというのも当時から魅力的だったのかもしれません。  
+そして、1文で書けるというのも当時から魅力的だったのかもしれません。  
 
-`Swift` に言語が変わってからも、しばらくは上記手法が多くの場面で使われてきたことと思います。  
+`Swift` に言語が変わってからも、上記手法が多くの場面で使われてきたことと思います。  
 しかし、 `Swift3` になったタイミングで、状況が変わりました。  
-プッシュ通知の利用登録成功時の `Delegate` メソッドの `deviceToken` が `NSData` から `Data` になったことで、  
-この手法が利用できなくなったのです。  
+
+プッシュ通知の利用登録成功時の `Delegate` メソッドの `deviceToken` が `NSData` 型から `Data` 型に変わったことで、この手法が利用できなくなったのです。  
 
 この時点で  
 
@@ -114,14 +115,31 @@ let token = deviceToken.map { String(format: "%.2hhx", $0) }.joined()
 ```
 
 という書き方がデバイストークン取得の主流に完全に取って代わったと思います。  
-しかし、あくまでもこれは `Swift` におけるデバイストークンの取得であって、 `Objective-C` は旧来の書き方が続いていました。  
 
-最近、これがどうやら `iOS13` から `Objective-C` でも変更が出たようなんです。  
+もしかしたら、 `Data` 型を `NSData` 型に変換することで、  
+引き続き旧来の手法を利用している現場があるかもしれませんが、  
+その場合は、即刻デバイストークンの取得方法を見直しましょう。  
+
+これはあくまでも `Swift` におけるデバイストークンの取得の変遷であって、  
+`Objective-C` は何ら変わることがなかったため、  
+旧来の書き方が続いている現場がまだまだ多い気がしています。  
+
+しかし、 `iOS13` からはどうやら見直しが必須になったようです。  
+というのも、 `description` を利用すると  
+
+```
+{ length = 32, bytes = 7097978d 1e438923 ... 6fdbf111 }
+```
+
+のような形で返ってきてしまうため、  
+`<>` を除去することでデバイストークンを取得することができなくなったようなんです。  
 
 * [Apple Developer Forums: iOS13 PKPushCredentials broken](https://forums.developer.apple.com/thread/117545)  
 * [Apple Developer Forums: NSData description and NSString stringWithFormat have different return results when compiled with Xcode 11 versus Xcode 10](https://forums.developer.apple.com/thread/119111)  
 
-では、 `Objective-C` ではどう書いていくべきかと言うと、 `Facebook` が1つの解を示してくれています。  
+では、 `Swift` は先程書いた通り1行で書けますが、  
+`Objective-C` ではどう書いていくべきなのでしょうか。  
+安心してください。 `Facebook` が1つの解を示してくれています。  
 
 ```objective-c
 // ↓ dataにDelegateメソッドに渡ってきたdeviceTokenを渡します
@@ -141,7 +159,8 @@ let token = deviceToken.map { String(format: "%.2hhx", $0) }.joined()
 }
 ```
 
-これで `Swift` と `Objective-C` 共に安定した書き方に変わったと言えるでしょう。  
+流石に1行で済ませることは難しいですが、  
+これで `Objective-C` でも正しくデバイストークンを取得できるようになりました。  
 
 ### まとめ
 さて如何でしたでしょうか。  
