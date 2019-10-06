@@ -1,0 +1,587 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>iOS13から対応する『Sign In with Apple』〜サードパーティアカウントでOAuth認証によるログインを備えたアプリで迷わないように。〜 - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに 今回はiOS13から導入された Sign In with Apple について見ていきたいと思います。 もし、 Facebook / Google / Twitter などのアカウントを用いたログインを可能とする機能をアプリが持っている場合、
+Appleが新たに提唱した Sign In &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2019/10/06/sign-in-with-apple/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">iOS13から対応する『Sign in With Apple』〜サードパーティアカウントでOAuth認証によるログインを備えたアプリで迷わないように。〜</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-10-06T17:05:00+09:00" pubdate data-updated="true">Oct 6<span>th</span>, 2019</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>今回はiOS13から導入された <code>Sign In with Apple</code> について見ていきたいと思います。</p>
+
+<p>もし、 <code>Facebook / Google / Twitter</code> などのアカウントを用いたログインを可能とする機能をアプリが持っている場合、<br/>
+Appleが新たに提唱した <code>Sign In with Apple</code> の機能を実装する必要性が出てきたようです。</p>
+
+<p>一方で <code>Facebook / Google / Twitter</code> などの本家のアプリでは恐らく実装する必要はないと思われます。<br/>
+(ログイン機能を実装するのであれば、 <code>Sign In with Apple</code> が必須という話ではなく、サードパーティ製のログイン機能を持つアプリに限るようです。 )</p>
+
+<p>とは言え、「急にそんなことを言われても対応工数がかかるし、他に実装したい機能もあるし&hellip;」と困るエンジニアもいるかもしれません。</p>
+
+<p>ですが、 <code>Apple</code> が要求する以上、 iOSアプリを開発し続ける上で避けては通れない問題ですので、簡単に対応方法を紹介したいと思います。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Apple Developer Programでの対応</h3>
+
+<p>まずは、コードを書く前に、 <code>Sign In with Apple</code> の機能を有効にした <code>App ID</code> を作成し、 <code>Provisioning Profile</code> に紐付ける必要があります。</p>
+
+<h4>App IDの作成</h4>
+
+<p>下記手順で <code>Sign In with Apple</code> 対応の <code>App ID</code> を作成します。</p>
+
+<p>まずは、 <a href="https://developer.apple.com/account/resources/identifiers/list">Apple Developer Program > Certificates, Identifiers &amp; Profiles > Identifiers</a> にアクセスします。</p>
+
+<p>追加するための「＋」ボタンを選択後に表示される下記の画面で <code>App IDs</code> を選択します。<br/>
+<img src="/images/sign-in-with-apple_1.png" alt="App IDsを選択" /></p>
+
+<p>必要事項を入力します。<br/>
+<img src="/images/sign-in-with-apple_2.png" alt="DescriptionとBundle IDを入力" /></p>
+
+<p>入力例)</p>
+
+<ul>
+<li>Description: <code>SignInWithAppleSample</code></li>
+<li>Bundle ID: <code>com.xxx.SignInWithAppleSample</code></li>
+</ul>
+
+
+<p>下にスクロールすると <code>Sign In with Apple</code> の項目が追加されているので、チェックをつけます。<br/>
+<img src="/images/sign-in-with-apple_3.png" alt="Sign In with Appleにチェック" /></p>
+
+<p>上記状態で次に進み、確認画面で問題ないことを確認すれば、 <code>Register</code> ボタンを選択するだけで作成完了です。<br/>
+<img src="/images/sign-in-with-apple_4.png" alt="確認完了後、Registerボタンを選択" /></p>
+
+<h4>Provisioning Profileへの紐付け</h4>
+
+<p>下記手順で <code>App ID</code> を紐付けて <code>Provisioning Profile</code> を作成します。</p>
+
+<p><a href="https://developer.apple.com/account/resources/profiles/list">Apple Developer Program > Certificates, Identifiers &amp; Profiles > Profiles</a>にアクセスします。</p>
+
+<p>追加するための「＋」ボタンを選択後に表示される下記の画面で <code>iOS App Development</code> を選択します。<br/>
+(開発時を想定しているため、リリース時であれば、 <code>App Store</code> など適切なものを選択してください。)<br/>
+<img src="/images/sign-in-with-apple_5.png" alt="iOS App Developmentを選択" /></p>
+
+<p>先程作成した <code>App ID</code> を選択します。<br/>
+<img src="/images/sign-in-with-apple_6.png" alt="App IDを選択" /></p>
+
+<p>必要な <code>Certificate</code> を選択します。<br/>
+<img src="/images/sign-in-with-apple_7.png" alt="Certificateを選択" /></p>
+
+<p>利用したいデバイスを選択します。<br/>
+<img src="/images/sign-in-with-apple_8.png" alt="Deviceを選択" /></p>
+
+<p><code>Provisioning Profile</code> の名前を決めます。<br/>
+<img src="/images/sign-in-with-apple_9.png" alt="Provisioning Profileの名前を入力" /></p>
+
+<p><code>Generate</code> ボタンを選択すれば作成完了です。</p>
+
+<h3>Xcode11の設定</h3>
+
+<p><code>Apple Developer Program</code> 上での準備が整ったら、 <code>Xcode11</code> で <code>Sign In with Apple</code> の <code>Capability</code> を追加しましょう。</p>
+
+<p>プロジェクトを選択し、 <code>Signing &amp; Capabilities</code> タブから追加します。<br/>
+<img src="/images/sign-in-with-apple_10.png" alt="Sign In with AppleのCapabilityを追加" /></p>
+
+<h3>ソースコードの実装</h3>
+
+<p>ソースコードを書いていきましょう。<br/>
+これは <code>Apple</code> が公開しているサンプルを一部抜粋して説明します。<br/>
+サンプルは<a href="https://developer.apple.com/documentation/authenticationservices/adding_the_sign_in_with_apple_flow_to_your_app">こちら</a>からダウンロードできます。</p>
+
+<p><code>Sign In with Apple</code> は <code>AuthenticationServices</code> の各種メソッドを利用するため、<br/>
+まずは <code>AuthenticationServices</code> をインポートします。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">AuthenticationServices</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">LoginViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、ログイン画面に <code>Sign In with Apple</code> のボタンを配置します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">class</span> <span class="nl">LoginViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// Sign In with Appleボタンを追加するためのUIStackView</span>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">loginProviderStackView:</span> <span class="n">UIStackView</span><span class="o">!</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// Sign In with Appleボタンを配置します</span>
+</span><span class='line'>        <span class="n">setupProviderLoginView</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// Sign In with Appleのボタンを配置</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">setupProviderLoginView</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">authorizationButton</span> <span class="o">=</span> <span class="n">ASAuthorizationAppleIDButton</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">authorizationButton</span><span class="p">.</span><span class="n">addTarget</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="nl">action:</span> <span class="err">#</span><span class="n">selector</span><span class="p">(</span><span class="n">handleAuthorizationAppleIDButtonPress</span><span class="p">),</span> <span class="k">for</span><span class="o">:</span> <span class="p">.</span><span class="n">touchUpInside</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">loginProviderStackView</span><span class="p">.</span><span class="n">addArrangedSubview</span><span class="p">(</span><span class="n">authorizationButton</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">/// Sign In with Appleボタンタップ後のアクション</span>
+</span><span class='line'>    <span class="err">@</span><span class="n">objc</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">handleAuthorizationAppleIDButtonPress</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">appleIDProvider</span> <span class="o">=</span> <span class="n">ASAuthorizationAppleIDProvider</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">request</span> <span class="o">=</span> <span class="n">appleIDProvider</span><span class="p">.</span><span class="n">createRequest</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">request</span><span class="p">.</span><span class="n">requestedScopes</span> <span class="o">=</span> <span class="p">[.</span><span class="n">fullName</span><span class="p">,</span> <span class="p">.</span><span class="n">email</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">let</span> <span class="n">authorizationController</span> <span class="o">=</span> <span class="n">ASAuthorizationController</span><span class="p">(</span><span class="nl">authorizationRequests:</span> <span class="p">[</span><span class="n">request</span><span class="p">])</span>
+</span><span class='line'>        <span class="n">authorizationController</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>        <span class="n">authorizationController</span><span class="p">.</span><span class="n">presentationContextProvider</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>        <span class="n">authorizationController</span><span class="p">.</span><span class="n">performRequests</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記を見てわかるように、タップ時に呼び出すメソッドを定義して、その中で必要なリクエストを生成し、実行しています。</p>
+
+<p><code>requestedScopes</code> は必要なアクセス情報の範囲を定義するようですが、<br/>
+今のところは <code>.fullName</code> と <code>.email</code> しか用意されていないようです。</p>
+
+<p>また、 <code>delegate</code> と <code>presentationContextProvider</code> を呼び出す必要があります。<br/>
+これは、</p>
+
+<ul>
+<li><code>ASAuthorizationControllerDelegate</code> の <code>authorizationController:didCompleteWithAuthorization:</code> で認証完了をキャッチする</li>
+<li><code>ASAuthorizationControllerPresentationContextProviding</code> の <code>presentationAnchorForAuthorizationController:</code> で認証画面に必要な画面の提示場所を設定する</li>
+</ul>
+
+
+<p>ためです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">extension</span> <span class="nl">LoginViewController:</span> <span class="n">ASAuthorizationControllerDelegate</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">authorizationController</span><span class="p">(</span><span class="nl">controller:</span> <span class="n">ASAuthorizationController</span><span class="p">,</span> <span class="n">didCompleteWithAuthorization</span> <span class="nl">authorization:</span> <span class="n">ASAuthorization</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="p">...</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="nl">LoginViewController:</span> <span class="n">ASAuthorizationControllerPresentationContextProviding</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">func</span> <span class="n">presentationAnchor</span><span class="p">(</span><span class="k">for</span> <span class="nl">controller:</span> <span class="n">ASAuthorizationController</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ASPresentationAnchor</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="n">view</span><span class="p">.</span><span class="n">window</span><span class="o">!</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>動作確認</h3>
+
+<p>ここまで実装した内容で、どんな動きになるのかを見てみます。</p>
+
+<h4>iPhone上でAppleIDでサインインしていない場合</h4>
+
+<p>あまりケースとして多くはないかもしれませんが、普通にありえるので実装時に考慮が必要です。<br/>
+この場合、 <code>performRequests()</code> を実行した時点で『設定アプリでAppleIDアカウントでサインインするかどうか』を聞かれます。</p>
+
+<p><img src="/images/sign-in-with-apple_11.png" alt="設定アプリでAppleIDアカウントでサインインするかどうか聞かれます" /></p>
+
+<p>サインイン後に、改めてアプリに戻りログインを実行することで先に進めるようになります。</p>
+
+<h4>iPhone上でAppleIDでサインイン済みの場合</h4>
+
+<p>改めて <code>Sign In with Apple</code> のボタンをタップすると、以下の画面が表示されます。</p>
+
+<p><img src="/images/sign-in-with-apple_12.png" alt="Sign In with Appleの画面" /></p>
+
+<p><code>Continue</code> ボタンのタップで先に進むと、以下の画面が表示されます。</p>
+
+<p><img src="/images/sign-in-with-apple_13.png" alt="Share My Email / Hide My Email選択画面" /></p>
+
+<p>ここで <code>Share My Email</code> または <code>Hide My Email</code> のどちらかを選択することになります。<br/>
+<code>Hide My Email</code> はよりユーザにとってセキュアな状態を保つために用意されており、以下の特徴があります。</p>
+
+<ul>
+<li>実際のメールアドレスとは異なるメールアドレスが発行される</li>
+<li>そのメールアドレスは、認証時に利用したAppleIDのメールアドレスとリンクしている</li>
+<li>アプリに実際のメールアドレスを渡さないで済む</li>
+</ul>
+
+
+<p>上記選択した上で <code>Continuer with Password</code> ボタンをタップして次に進むと、以下の画面が表示されます。</p>
+
+<p><img src="/images/sign-in-with-apple_14.png" alt="パスワード入力画面" /></p>
+
+<p>パスワード入力して次に進むと、二段階認証を求められます。</p>
+
+<p><img src="/images/sign-in-with-apple_15.png" alt="二段階認証画面" /></p>
+
+<p>二段階認証してやっと認証が完了となります。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+アプリの機能次第で対応必須な内容ですので、今からでも知っておいて損はないかなと思います。<br/>
+<code>SDK</code> 自体は非常に簡単に扱えますので、アプリ側の実装は早めに目処をつけておいて、データ構成など課題がある部分にフォーカスした方が良いでしょう。</p>
+
+<p>と言ったところで本日はここまで。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-10-06T17:05:00+09:00" pubdate data-updated="true">Oct 6<span>th</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/ios13/'>ios13</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2019/10/06/sign-in-with-apple/" data-via="" data-counturl="http://grandbig.github.io/blog/2019/10/06/sign-in-with-apple/" >Tweet</a>
+  
+  <a href="http://b.hatena.ne.jp/entry/http://grandbig.github.io/blog/2019/10/06/sign-in-with-apple/" class="hatena-bookmark-button" 
+	  data-hatena-bookmark-layout="standard" title="このエントリーをはてなブックマークに追加">
+	  <img src="http://b.st-hatena.com/images/entry-button/button-only.gif" 
+	  alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;" />
+  </a>
+  <script type="text/javascript" src="http://b.st-hatena.com/js/bookmark_button.js" charset="utf-8" async="async"></script>
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/09/28/ios-devicetoken-2/" title="Previous Post: iOS13におけるプッシュ通知に必要なデバイストークンの取得方法">&laquo; iOS13におけるプッシュ通知に必要なデバイストークンの取得方法</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/10/06/sign-in-with-apple/">iOS13から対応する『Sign In with Apple』〜サードパーティアカウントでOAuth認証によるログインを備えたアプリで迷わないように。〜</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/28/ios-devicetoken-2/">iOS13におけるプッシュ通知に必要なデバイストークンの取得方法</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/22/backgroundtasks/">iOS13から利用できるBackgroundTasksを使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/07/po-v-command/">iOSアプリ開発に便利なLLDBのp/po/ｖコマンドを覚えよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/07/os-signpost/">iOSアプリのパフォーマンス計測に『os.signpost』を活用しよう！</a>
+      </li>
+    
+  </ul>
+</section>
+
+Included file 'asides/pinboard.html' not found in _includes directory
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (201)</a></li><li><a href='/blog/categories/swift'>swift (100)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/node'>node (9)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/rx'>rx (9)</a></li><li><a href='/blog/categories/xcode'>xcode (8)</a></li><li><a href='/blog/categories/springboot'>springboot (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li><li><a href='/blog/categories/redux'>redux (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/web'>web (7)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2019/10/06/sign-in-with-apple/';
+        var disqus_url = 'http://grandbig.github.io/blog/2019/10/06/sign-in-with-apple/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+Included file 'google_plus_one.html' not found in _includes directory
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
