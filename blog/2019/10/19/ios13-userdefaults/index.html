@@ -1,0 +1,470 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>iOS13で密かに追加されたUserDefaultsへの保存制限 - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに 先日ふと調べ物をしていたところ、
+iOS 13 &ndash; Attempting to store >= 4194304 bytes of data in CFPreferences/NSUserDefaults on this platform is invalid &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2019/10/19/ios13-userdefaults/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">iOS13で密かに追加されたUserDefaultsへの保存制限</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-10-19T16:49:00+09:00" pubdate data-updated="true">Oct 19<span>th</span>, 2019</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p>先日ふと調べ物をしていたところ、<br/>
+<a href="https://forums.developer.apple.com/thread/121527">iOS 13 &ndash; Attempting to store >= 4194304 bytes of data in CFPreferences/NSUserDefaults on this platform is invalid</a>
+という何やら気になる話を見つけました。</p>
+
+<p>どうも <code>iOS13</code> からは、 <code>UserDefaults</code> に保存できる容量が <code>4194304 bytes</code> と制限が追加されたようだと言うのです。<br/>
+これは実際にやってみるっきゃない！ということで実験をしてみました。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>実験</h3>
+
+<p>実際に筆者が実行した実験内容は下記の通りです。</p>
+
+<ul>
+<li><code>iOS13.1.3</code> の端末を用いて、 <code>UserDefaults</code> への保存の合計容量が <code>4194304 bytes</code> を超過すると怒られるのか</li>
+</ul>
+
+
+<p>それでは実際に見ていきましょう。</p>
+
+<h4>実験に利用したソースコード</h4>
+
+<p>制限が <code>4194304 bytes</code> であるため、文字列を保存するのは手間がかかりそうだったので、<br/>
+<code>Assets.xcassets</code> に予め用意した画像を <code>Data</code> 型に変換後、 <code>UserDefaults</code> に保存することにしました。</p>
+
+<p>用意した画像は下記になります。</p>
+
+<ul>
+<li>サイズが <code>262KB</code> の画像</li>
+</ul>
+
+
+<p>実験に利用したソースコードは下記になります。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="err">@</span><span class="kt">IBAction</span> <span class="n">func</span> <span class="n">saveImage</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">image</span> <span class="o">=</span> <span class="n">UIImage</span><span class="p">(</span><span class="nl">named:</span> <span class="s">&quot;test1&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">data</span> <span class="o">=</span> <span class="n">image</span><span class="o">?</span><span class="p">.</span><span class="n">pngData</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">keyName</span> <span class="o">=</span> <span class="s">&quot;test\(Int.random(in: 1 ... 100))&quot;</span>
+</span><span class='line'>            <span class="n">print</span><span class="p">(</span><span class="s">&quot;\(data) , keyName: \(keyName)&quot;</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">UserDefaults</span><span class="p">.</span><span class="n">standard</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nl">forKey:</span> <span class="n">keyName</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">UserDefaults</span><span class="p">.</span><span class="n">standard</span><span class="p">.</span><span class="n">synchronize</span><span class="p">()</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>実験結果</h4>
+
+<p>早速、実験結果について見てみましょう。</p>
+
+<p>1回の保存サイズが <code>350129 bytes</code> だったため、12回で <code>4201548 bytes</code> となり、<br/>
+宣言である <code>4194304 bytes</code> を超えることになります。</p>
+
+<p>今回の実験では、 <code>print</code> 文で『ランダムなキー名とバイト数』を出力するように組み込み、<br/>
+端末の該当アプリに対して <code>Download Container...</code> から <code>UserDefaults</code> の中身を取得し比較してみました。</p>
+
+<p>出力結果は、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test59</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test50</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test51</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test7</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test58</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test7</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test91</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test83</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test54</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test90</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test80</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test71</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test25</span>
+</span><span class='line'><span class="mi">2019</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">19</span> <span class="mi">16</span><span class="o">:</span><span class="mi">47</span><span class="o">:</span><span class="mf">19.645111</span><span class="o">+</span><span class="mi">0900</span> <span class="n">AppSample</span><span class="p">[</span><span class="mi">1048</span><span class="o">:</span><span class="mi">193781</span><span class="p">]</span> <span class="p">[</span><span class="n">User</span> <span class="n">Defaults</span><span class="p">]</span> <span class="n">CFPrefsPlistSource</span><span class="o">&lt;</span><span class="mh">0x2821a5600</span><span class="o">&gt;</span> <span class="p">(</span><span class="nl">Domain:</span> <span class="n">com</span><span class="p">.</span><span class="n">xxx</span><span class="p">.</span><span class="n">AppSample</span><span class="p">,</span> <span class="nl">User:</span> <span class="n">kCFPreferencesCurrentUser</span><span class="p">,</span> <span class="nl">ByHost:</span> <span class="n">No</span><span class="p">,</span> <span class="nl">Container:</span> <span class="p">(</span><span class="n">null</span><span class="p">),</span> <span class="n">Contents</span> <span class="n">Need</span> <span class="nl">Refresh:</span> <span class="n">Yes</span><span class="p">)</span><span class="o">:</span> <span class="n">Attempting</span> <span class="n">to</span> <span class="n">store</span> <span class="o">&gt;=</span> <span class="mi">4194304</span> <span class="n">bytes</span> <span class="n">of</span> <span class="n">data</span> <span class="k">in</span> <span class="n">CFPreferences</span><span class="o">/</span><span class="n">NSUserDefaults</span> <span class="n">on</span> <span class="n">this</span> <span class="n">platform</span> <span class="n">is</span> <span class="n">invalid</span><span class="p">.</span> <span class="n">This</span> <span class="n">is</span> <span class="n">a</span> <span class="n">bug</span> <span class="k">in</span> <span class="n">NotificationSample</span> <span class="n">or</span> <span class="n">a</span> <span class="n">library</span> <span class="n">it</span> <span class="n">uses</span>
+</span><span class='line'><span class="mi">2019</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">19</span> <span class="mi">16</span><span class="o">:</span><span class="mi">47</span><span class="o">:</span><span class="mf">19.645273</span><span class="o">+</span><span class="mi">0900</span> <span class="n">AppSample</span><span class="p">[</span><span class="mi">1048</span><span class="o">:</span><span class="mi">193781</span><span class="p">]</span> <span class="p">[</span><span class="n">User</span> <span class="n">Defaults</span><span class="p">]</span> <span class="n">CFPrefsPlistSource</span><span class="o">&lt;</span><span class="mh">0x2821a5600</span><span class="o">&gt;</span> <span class="p">(</span><span class="nl">Domain:</span> <span class="n">com</span><span class="p">.</span><span class="n">xxx</span><span class="p">.</span><span class="n">AppSample</span><span class="p">,</span> <span class="nl">User:</span> <span class="n">kCFPreferencesCurrentUser</span><span class="p">,</span> <span class="nl">ByHost:</span> <span class="n">No</span><span class="p">,</span> <span class="nl">Container:</span> <span class="p">(</span><span class="n">null</span><span class="p">),</span> <span class="n">Contents</span> <span class="n">Need</span> <span class="nl">Refresh:</span> <span class="n">No</span><span class="p">)</span><span class="o">:</span> <span class="n">Transitioning</span> <span class="n">into</span> <span class="n">direct</span> <span class="n">mode</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test21</span>
+</span><span class='line'><span class="mi">350129</span> <span class="n">bytes</span> <span class="p">,</span> <span class="nl">keyName:</span> <span class="n">test32</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>となり、 <strong>13個目</strong> の保存時にエラーが出力されました。
+(途中キー名が被っており、上書きとなるため、その回数はスキップしています。)</p>
+
+<p><code>Download Container...</code> で取得した <code>UserDefaults</code> の中身はどうなっているかと言うと、</p>
+
+<p><img src="/images/ios13-userdefaults.png" alt="UserDefaultsに保存された内容" /></p>
+
+<p>となっており、12個目までは保存されているようでした。</p>
+
+<p>厳密には少々超える分には、許容されているように見えましたが、少なくとも、はっきりと超えた場合は保存されないことがわかりました。</p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+<code>UserDefaults</code> は大量の重要データを保存するのには不向きであることは、これまで通り自明であったと思いますが、<br/>
+それがより厳密化されたと言えるのではないでしょうか。</p>
+
+<p>今後に備えて、データの保存方法を今一度見直すにはいい機会かなと思います。<br/>
+と言ったところで本日はここまで。</p>
+
+<p>参考URL：</p>
+
+<ul>
+<li><a href="https://forums.developer.apple.com/thread/121527">Apple Developer Forums: iOS 13 &ndash; Attempting to store >= 4194304 bytes of data in CFPreferences/NSUserDefaults on this platform is invalid</a></li>
+</ul>
+
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-10-19T16:49:00+09:00" pubdate data-updated="true">Oct 19<span>th</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/ios13/'>ios13</a>, <a class='category' href='/blog/categories/userdefaults/'>userdefaults</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2019/10/19/ios13-userdefaults/" data-via="" data-counturl="http://grandbig.github.io/blog/2019/10/19/ios13-userdefaults/" >Tweet</a>
+  
+  <a href="http://b.hatena.ne.jp/entry/http://grandbig.github.io/blog/2019/10/19/ios13-userdefaults/" class="hatena-bookmark-button" 
+	  data-hatena-bookmark-layout="standard" title="このエントリーをはてなブックマークに追加">
+	  <img src="http://b.st-hatena.com/images/entry-button/button-only.gif" 
+	  alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;" />
+  </a>
+  <script type="text/javascript" src="http://b.st-hatena.com/js/bookmark_button.js" charset="utf-8" async="async"></script>
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/10/06/sign-in-with-apple/" title="Previous Post: iOS13から対応する『Sign In with Apple』〜サードパーティアカウントでOAuth認証によるログインを備えたアプリで迷わないように。〜">&laquo; iOS13から対応する『Sign In with Apple』〜サードパーティアカウントでOAuth認証によるログインを備えたアプリで迷わないように。〜</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/10/19/ios13-userdefaults/">iOS13で密かに追加されたUserDefaultsへの保存制限</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/10/06/sign-in-with-apple/">iOS13から対応する『Sign In with Apple』〜サードパーティアカウントでOAuth認証によるログインを備えたアプリで迷わないように。〜</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/28/ios-devicetoken-2/">iOS13におけるプッシュ通知に必要なデバイストークンの取得方法</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/22/backgroundtasks/">iOS13から利用できるBackgroundTasksを使ってみよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/07/po-v-command/">iOSアプリ開発に便利なLLDBのp/po/ｖコマンドを覚えよう！</a>
+      </li>
+    
+  </ul>
+</section>
+
+Included file 'asides/pinboard.html' not found in _includes directory
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (202)</a></li><li><a href='/blog/categories/swift'>swift (100)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/rx'>rx (9)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/node'>node (9)</a></li><li><a href='/blog/categories/xcode'>xcode (8)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/redux'>redux (7)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2019/10/19/ios13-userdefaults/';
+        var disqus_url = 'http://grandbig.github.io/blog/2019/10/19/ios13-userdefaults/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+Included file 'google_plus_one.html' not found in _includes directory
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
