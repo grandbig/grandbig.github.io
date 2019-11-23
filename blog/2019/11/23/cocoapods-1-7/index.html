@@ -1,0 +1,473 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Xcode10以降からは、CocoaPods v1.7.0以上を使ってInput/Output File Listsを活用しよう！ - Takahiro Octopress Blog</title>
+  <meta name="author" content="Takahiro">
+
+  
+  <meta name="description" content="はじめに CocoaPods はiOSアプリエンジニアであれば誰もが知るライブラリ管理ツールだと思いますが、
+v1.7.0 以降では xcfilelist を Input/Output File Lists で指定できるようになりました。
+( CocoaPods Blog &ndash; &hellip;">
+  
+  <meta name="google-site-verification" content="h2JWV1Gq5wVvtkoCC7o7IEPIVqaLWigK5aaxuRom6os" />
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://grandbig.github.io/blog/2019/11/23/cocoapods-1-7/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Takahiro Octopress Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-44313398-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Takahiro Octopress Blog</a></h1>
+  
+    <h2>-1から始める情弱プログラミング</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:grandbig.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Xcode10以降からは、CocoaPods v1.7.0以上を使ってInput/Output File Listsを活用しよう！</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-11-23T23:05:00+09:00" pubdate data-updated="true">Nov 23<span>rd</span>, 2019</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>はじめに</h3>
+
+<p><code>CocoaPods</code> はiOSアプリエンジニアであれば誰もが知るライブラリ管理ツールだと思いますが、<br/>
+<code>v1.7.0</code> 以降では <code>xcfilelist</code> を <code>Input/Output File Lists</code> で指定できるようになりました。<br/>
+( <a href="http://blog.cocoapods.org/CocoaPods-1.7.0-beta/#.xcfilelist-support">CocoaPods Blog &ndash; CocoaPods 1.7.0 Beta!</a> )</p>
+
+<p><code>Input/Output File Lists</code> とはXcode10で追加された <code>Input / Output Files</code> に代わる、<br/>
+<code>xcfilelist</code> をパスとして指定できる新たな枠組みです。</p>
+
+<p>既に <code>v1.8.4</code> までリリースされており、Xcodeも11まで上がっているので今更感はありますが、気になったので少し具体的に差分を見てみました。</p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>CocoaPodsのバージョン比較のためにPodfileを用意</h3>
+
+<p><code>CocoaPods</code> の『 <code>v1.7.0</code> 未満のバージョン』と『 <code>v1.7.0</code> 以上のバージョン』で比較するため、 <code>Podfile</code> を用意します。<br/>
+因みに、今回の比較で利用したそれぞれのバージョンは下記の通りです。</p>
+
+<ul>
+<li><code>v1.7.0</code> 未満のバージョン： <code>v1.6.1</code></li>
+<li><code>v1.7.0</code> 以上のバージョン： <code>v1.8.4</code></li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="cp"># Podfile</span>
+</span><span class='line'><span class="n">use_frameworks</span><span class="o">!</span>
+</span><span class='line'><span class="n">platform</span> <span class="o">:</span><span class="n">ios</span><span class="p">,</span> <span class="err">&#39;</span><span class="mf">13.0</span><span class="err">&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="s">&quot;HogeHogeSample&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="err">#</span> <span class="n">Normal</span> <span class="n">libraries</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">Moya</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">ReSwift</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">ReSwiftThunk</span><span class="err">&#39;</span>
+</span><span class='line'>  <span class="n">pod</span> <span class="err">&#39;</span><span class="n">PromiseKit</span><span class="err">&#39;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">abstract_target</span> <span class="err">&#39;</span><span class="n">Tests</span><span class="err">&#39;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;HogeHogeSampleTests&quot;</span>
+</span><span class='line'>    <span class="n">target</span> <span class="s">&quot;HogeHogeSampleUITests&quot;</span>
+</span><span class='line'>  <span class="n">end</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>それでは早速比較をしてみましょう。</p>
+
+<h3>v1.6.1の場合</h3>
+
+<p>まずは <code>v1.6.1</code> の方で <code>pod install</code> を実行してみます。<br/>
+インストール完了後、 <code>Xcode</code> の対象ターゲットから <code>Build Phases</code> > <code>[CP] Embed Pods Frameworks</code> を開いてみましょう。</p>
+
+<p><img src="/images/cocoapods_1.png" alt="対象ターゲットのBuild Phases(v1.6.1)" /></p>
+
+<p>設定状態は、</p>
+
+<ul>
+<li>実行シェルスクリプトとして、 <code>"${PODS_ROOT}/Target Support Files/Pods-HogeHogeSample/Pods-HogeHogeSample-frameworks.sh"</code> が指定されている</li>
+<li><code>Input Files</code> と <code>Output Files</code> にそれぞれパスが指定されている</li>
+</ul>
+
+
+<p>となっています。</p>
+
+<h3>v1.8.4の場合</h3>
+
+<p>次に <code>v1.8.4</code> の方で <code>pod install</code> を実行してみます。<br/>
+同じく <code>Build Phases</code> > <code>[CP] Embed Pods Frameworks</code> を開いてみましょう。</p>
+
+<p><img src="/images/cocoapods_2.png" alt="対象ターゲットのBuild Phases(v1.8.4)" /></p>
+
+<p>設定状態は、</p>
+
+<ul>
+<li>実行シェルスクリプトとして、 <code>"${PODS_ROOT}/Target Support Files/Pods-HogeHogeSample/Pods-HogeHogeSample-frameworks.sh"</code> が指定されている</li>
+<li><code>Input File Lists</code> と <code>Output File Lists</code> にそれぞれパスが指定されている</li>
+</ul>
+
+
+<p>となっています。</p>
+
+<h3>比較結果</h3>
+
+<p>比較してみると、<br/>
+<code>v1.6.1</code> で利用していた <code>Input / Output Files</code> から <code>v1.8.4</code> では <code>Input / Output File Lists</code> に変わっていることがわかると思います。</p>
+
+<p>この <code>Input / Output File Lists</code> で指定されているファイルの中身を見てみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Input File Listsに指定されたファイルの中身</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">PODS_ROOT</span><span class="p">}</span><span class="o">/</span><span class="n">Target</span> <span class="n">Support</span> <span class="n">Files</span><span class="o">/</span><span class="n">Pods</span><span class="o">-</span><span class="n">HogeHogeSample</span><span class="o">/</span><span class="n">Pods</span><span class="o">-</span><span class="n">HogeHogeSample</span><span class="o">-</span><span class="n">frameworks</span><span class="p">.</span><span class="n">sh</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">BUILT_PRODUCTS_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">Alamofire</span><span class="o">/</span><span class="n">Alamofire</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">BUILT_PRODUCTS_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">Moya</span><span class="o">/</span><span class="n">Moya</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">BUILT_PRODUCTS_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">PromiseKit</span><span class="o">/</span><span class="n">PromiseKit</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">BUILT_PRODUCTS_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">ReSwift</span><span class="o">/</span><span class="n">ReSwift</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">BUILT_PRODUCTS_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">ReSwiftThunk</span><span class="o">/</span><span class="n">ReSwiftThunk</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">BUILT_PRODUCTS_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">Result</span><span class="o">/</span><span class="n">Result</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Output File Listsに指定されたファイルの中身</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">TARGET_BUILD_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">$</span><span class="p">{</span><span class="n">FRAMEWORKS_FOLDER_PATH</span><span class="p">}</span><span class="o">/</span><span class="n">Alamofire</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">TARGET_BUILD_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">$</span><span class="p">{</span><span class="n">FRAMEWORKS_FOLDER_PATH</span><span class="p">}</span><span class="o">/</span><span class="n">Moya</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">TARGET_BUILD_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">$</span><span class="p">{</span><span class="n">FRAMEWORKS_FOLDER_PATH</span><span class="p">}</span><span class="o">/</span><span class="n">PromiseKit</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">TARGET_BUILD_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">$</span><span class="p">{</span><span class="n">FRAMEWORKS_FOLDER_PATH</span><span class="p">}</span><span class="o">/</span><span class="n">ReSwift</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">TARGET_BUILD_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">$</span><span class="p">{</span><span class="n">FRAMEWORKS_FOLDER_PATH</span><span class="p">}</span><span class="o">/</span><span class="n">ReSwiftThunk</span><span class="p">.</span><span class="n">framework</span>
+</span><span class='line'><span class="n">$</span><span class="p">{</span><span class="n">TARGET_BUILD_DIR</span><span class="p">}</span><span class="o">/</span><span class="n">$</span><span class="p">{</span><span class="n">FRAMEWORKS_FOLDER_PATH</span><span class="p">}</span><span class="o">/</span><span class="n">Result</span><span class="p">.</span><span class="n">framework</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>結果、これまで <code>Input / Output Files</code> にベタッと指定していたパスと同じであることがわかると思います。<br/>
+因みに、上記中身が記載された <code>xcfilelist</code> はプロジェクト自体には組み込まれていません。<br/>
+ファイルからパスが読み取れさえすれば問題ないので、そのままなのでしょう。</p>
+
+<p>ただし、 <code>Git</code> で <code>xcworkspace</code> も管理する場合は、<br/>
+この <code>xcfilelist</code> も <code>Git</code> にアップロードする必要がありますので注意しましょう。<br/>
+(プロジェクト内でファイル指定されているので、存在しないとビルドが通らなくなります。)</p>
+
+<h3>まとめ</h3>
+
+<p><code>CocoaPods</code> 自体が優秀なため、バージョンアップして <code>pod install</code> を実行することで、<br/>
+自動的に整合性を取ってくれるはずなので、意識する必要はそんなにないかもしれません。</p>
+
+<p>しかし、こうした変更を理解しておくことで、開発中の想定外の差分に気づけたりすることもあります。<br/>
+知っておいて損はないことなので、細かいところも注視していけると良いな〜というところで本日はここまで。</p>
+
+<p>参考： <a href="http://blog.cocoapods.org/CocoaPods-1.7.0-beta/">CocoaPods Blog &ndash; CocoaPods 1.7.0 Beta!</a></p>
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Takahiro</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-11-23T23:05:00+09:00" pubdate data-updated="true">Nov 23<span>rd</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/xcode/'>xcode</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://grandbig.github.io/blog/2019/11/23/cocoapods-1-7/" data-via="" data-counturl="http://grandbig.github.io/blog/2019/11/23/cocoapods-1-7/" >Tweet</a>
+  
+  <a href="http://b.hatena.ne.jp/entry/http://grandbig.github.io/blog/2019/11/23/cocoapods-1-7/" class="hatena-bookmark-button" 
+	  data-hatena-bookmark-layout="standard" title="このエントリーをはてなブックマークに追加">
+	  <img src="http://b.st-hatena.com/images/entry-button/button-only.gif" 
+	  alt="このエントリーをはてなブックマークに追加" width="20" height="20" style="border: none;" />
+  </a>
+  <script type="text/javascript" src="http://b.st-hatena.com/js/bookmark_button.js" charset="utf-8" async="async"></script>
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/10/19/ios13-userdefaults/" title="Previous Post: iOS13で密かに追加されたUserDefaultsへの保存制限">&laquo; iOS13で密かに追加されたUserDefaultsへの保存制限</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/11/23/cocoapods-1-7/">Xcode10以降からは、CocoaPods v1.7.0以上を使ってInput/Output File Listsを活用しよう！</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/10/19/ios13-userdefaults/">iOS13で密かに追加されたUserDefaultsへの保存制限</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/10/06/sign-in-with-apple/">iOS13から対応する『Sign In with Apple』〜サードパーティアカウントでOAuth認証によるログインを備えたアプリで迷わないように。〜</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/28/ios-devicetoken-2/">iOS13におけるプッシュ通知に必要なデバイストークンの取得方法</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/22/backgroundtasks/">iOS13から利用できるBackgroundTasksを使ってみよう！</a>
+      </li>
+    
+  </ul>
+</section>
+
+Included file 'asides/pinboard.html' not found in _includes directory
+
+<section>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<!-- 広告１ -->
+<ins class="adsbygoogle"style="display:inline-block;width:300px;height:250px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="4255355169"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({
+	google_ad_client: "ca-pub-2881241309408290",
+	enable_page_level_ads: true
+});
+</script>
+</section>
+<section>
+	<h1>Top Categories</h1>
+		<ul id="top-category-list"><li><a href='/blog/categories/ios'>ios (203)</a></li><li><a href='/blog/categories/swift'>swift (100)</a></li><li><a href='/blog/categories/android'>android (20)</a></li><li><a href='/blog/categories/java'>java (20)</a></li><li><a href='/blog/categories/ibeacon'>iBeacon (19)</a></li><li><a href='/blog/categories/webview'>webview (10)</a></li><li><a href='/blog/categories/xcode'>xcode (9)</a></li><li><a href='/blog/categories/ios8'>ios8 (9)</a></li><li><a href='/blog/categories/rx'>rx (9)</a></li><li><a href='/blog/categories/node'>node (9)</a></li><li><a href='/blog/categories/map'>map (7)</a></li><li><a href='/blog/categories/redux'>redux (7)</a></li><li><a href='/blog/categories/docker'>docker (7)</a></li><li><a href='/blog/categories/web'>web (7)</a></li><li><a href='/blog/categories/javascript'>javascript (7)</a></li></ul>
+</section>
+<aside>
+	<h3>
+		About Takahiro
+	</h3>
+	<div>
+		<div>メカ出身のプログラマー</div>
+		<div>故にLevelは-1</div>
+		<div>主にiOSアプリケーションの開発を担当しています(たまにWeb, Android, サーバサイドもやります)</div>
+		<a class="button" href="mailto:takahiro.kato.blog15@gmail.com">MAILはこちらから</a>
+	</div>
+</aside>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - Takahiro -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+  - <span class="credit">Theme by <a href="http://www.gehaxelt.in">Gehaxelt</a></span>
+  <span class="credit">and <a href="http://www.it-solutions-neef.de">IT Solutions Neef</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'takahirooctopressblog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://grandbig.github.io/blog/2019/11/23/cocoapods-1-7/';
+        var disqus_url = 'http://grandbig.github.io/blog/2019/11/23/cocoapods-1-7/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+Included file 'google_plus_one.html' not found in _includes directory
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
