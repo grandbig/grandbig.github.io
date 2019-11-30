@@ -4,7 +4,7 @@
   <title><![CDATA[Category: xcode | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/xcode/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2019-10-19T20:30:06+09:00</updated>
+  <updated>2019-11-24T01:10:38+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,164 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Xcode10以降からは、CocoaPods v1.7.0以上を使ってInput/Output File Listsを活用しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2019/11/23/cocoapods-1-7/"/>
+    <updated>2019-11-23T23:05:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/11/23/cocoapods-1-7</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p><code>CocoaPods</code> はiOSアプリエンジニアであれば誰もが知るライブラリ管理ツールだと思いますが、<br/>
+<code>v1.7.0</code> 以降では <code>xcfilelist</code> を <code>Input/Output File Lists</code> で指定できるようになりました。<br/>
+( <a href="http://blog.cocoapods.org/CocoaPods-1.7.0-beta/#.xcfilelist-support">CocoaPods Blog &ndash; CocoaPods 1.7.0 Beta!</a> )</p>
+
+<p><code>Input/Output File Lists</code> とはXcode10で追加された <code>Input / Output Files</code> に代わる、<br/>
+<code>xcfilelist</code> をパスとして指定できる新たな枠組みです。</p>
+
+<p>既に <code>v1.8.4</code> までリリースされており、Xcodeも11まで上がっているので今更感はありますが、気になったので少し具体的に差分を見てみました。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>CocoaPodsのバージョン比較のためにPodfileを用意</h3>
+
+<p><code>CocoaPods</code> の『 <code>v1.7.0</code> 未満のバージョン』と『 <code>v1.7.0</code> 以上のバージョン』で比較するため、 <code>Podfile</code> を用意します。<br/>
+因みに、今回の比較で利用したそれぞれのバージョンは下記の通りです。</p>
+
+<ul>
+<li><code>v1.7.0</code> 未満のバージョン： <code>v1.6.1</code></li>
+<li><code>v1.7.0</code> 以上のバージョン： <code>v1.8.4</code></li>
+</ul>
+
+
+<p>```objective-c</p>
+
+<h1>Podfile</h1>
+
+<p>use_frameworks!
+platform :ios, &lsquo;13.0&rsquo;</p>
+
+<p>target &ldquo;HogeHogeSample&rdquo; do
+  # Normal libraries
+  pod &lsquo;Moya&rsquo;
+  pod &lsquo;ReSwift&rsquo;
+  pod &lsquo;ReSwiftThunk&rsquo;
+  pod &lsquo;PromiseKit&rsquo;</p>
+
+<p>  abstract_target &lsquo;Tests&rsquo; do</p>
+
+<pre><code>target "HogeHogeSampleTests"
+target "HogeHogeSampleUITests"
+</code></pre>
+
+<p>  end
+end
+```</p>
+
+<p>それでは早速比較をしてみましょう。</p>
+
+<h3>v1.6.1の場合</h3>
+
+<p>まずは <code>v1.6.1</code> の方で <code>pod install</code> を実行してみます。<br/>
+インストール完了後、 <code>Xcode</code> の対象ターゲットから <code>Build Phases</code> > <code>[CP] Embed Pods Frameworks</code> を開いてみましょう。</p>
+
+<p><img src="/images/cocoapods_1.png" alt="対象ターゲットのBuild Phases(v1.6.1)" /></p>
+
+<p>設定状態は、</p>
+
+<ul>
+<li>実行シェルスクリプトとして、 <code>"${PODS_ROOT}/Target Support Files/Pods-HogeHogeSample/Pods-HogeHogeSample-frameworks.sh"</code> が指定されている</li>
+<li><code>Input Files</code> と <code>Output Files</code> にそれぞれパスが指定されている</li>
+</ul>
+
+
+<p>となっています。</p>
+
+<h3>v1.8.4の場合</h3>
+
+<p>次に <code>v1.8.4</code> の方で <code>pod install</code> を実行してみます。<br/>
+同じく <code>Build Phases</code> > <code>[CP] Embed Pods Frameworks</code> を開いてみましょう。</p>
+
+<p><img src="/images/cocoapods_2.png" alt="対象ターゲットのBuild Phases(v1.8.4)" /></p>
+
+<p>設定状態は、</p>
+
+<ul>
+<li>実行シェルスクリプトとして、 <code>"${PODS_ROOT}/Target Support Files/Pods-HogeHogeSample/Pods-HogeHogeSample-frameworks.sh"</code> が指定されている</li>
+<li><code>Input File Lists</code> と <code>Output File Lists</code> にそれぞれパスが指定されている</li>
+</ul>
+
+
+<p>となっています。</p>
+
+<h3>比較結果</h3>
+
+<p>比較してみると、<br/>
+<code>v1.6.1</code> で利用していた <code>Input / Output Files</code> から <code>v1.8.4</code> では <code>Input / Output File Lists</code> に変わっていることがわかると思います。</p>
+
+<p>この <code>Input / Output File Lists</code> で指定されているファイルの中身を見てみましょう。</p>
+
+<p>```objective-c
+// Input File Listsに指定されたファイルの中身
+${PODS_ROOT}/Target Support Files/Pods-HogeHogeSample/Pods-HogeHogeSample-frameworks.sh
+${BUILT_PRODUCTS_DIR}/Alamofire/Alamofire.framework
+${BUILT_PRODUCTS_DIR}/Moya/Moya.framework
+${BUILT_PRODUCTS_DIR}/PromiseKit/PromiseKit.framework
+${BUILT_PRODUCTS_DIR}/ReSwift/ReSwift.framework
+${BUILT_PRODUCTS_DIR}/ReSwiftThunk/ReSwiftThunk.framework
+${BUILT_PRODUCTS_DIR}/Result/Result.framework</p>
+
+<p>// Output File Listsに指定されたファイルの中身
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Alamofire.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Moya.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/PromiseKit.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReSwift.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReSwiftThunk.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Result.framework
+```</p>
+
+<p>結果、これまで <code>Input / Output Files</code> にベタッと指定していたパスと同じであることがわかると思います。<br/>
+因みに、上記中身が記載された <code>xcfilelist</code> はプロジェクト自体には組み込まれていません。<br/>
+ファイルからパスが読み取れさえすれば問題ないので、そのままなのでしょう。</p>
+
+<p>ただし、 <code>Git</code> で <code>xcworkspace</code> も管理する場合は、<br/>
+この <code>xcfilelist</code> も <code>Git</code> にアップロードする必要がありますので注意しましょう。<br/>
+(プロジェクト内でファイル指定されているので、存在しないとビルドが通らなくなります。)</p>
+
+<h3>まとめ</h3>
+
+<p><code>CocoaPods</code> 自体が優秀なため、バージョンアップして <code>pod install</code> を実行することで、<br/>
+自動的に整合性を取ってくれるはずなので、意識する必要はそんなにないかもしれません。</p>
+
+<p>しかし、こうした変更を理解しておくことで、開発中の想定外の差分に気づけたりすることもあります。<br/>
+知っておいて損はないことなので、細かいところも注視していけると良いな〜というところで本日はここまで。</p>
+
+<p>参考： <a href="http://blog.cocoapods.org/CocoaPods-1.7.0-beta/">CocoaPods Blog &ndash; CocoaPods 1.7.0 Beta!</a></p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Xcodeの環境変数を有効に利用しよう！]]></title>
@@ -492,111 +650,6 @@ Second Itemに<strong>Relative to margin</strong>が紐付けられています�
 </script>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Xcode6でSingle View Applicationにチャレンジ]]></title>
-    <link href="http://grandbig.github.io/blog/2014/09/20/xcode6-storyboard/"/>
-    <updated>2014-09-20T23:18:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2014/09/20/xcode6-storyboard</id>
-    <content type="html"><![CDATA[<h3>Xcode6でプロジェクトを作成しよう</h3>
-
-<p>さて、先日、一般ユーザ向けにXcode6のバージョンアップが解放されました。<br/>
-それに合わせて、今回はXcode6の基本的な使い方を確認していきたいと思います。</p>
-
-<p>それでは早速、Xcode6を起動してみましょう。<br/>
-<img src="/images/xcode6_1.png" alt="Xcode6起動後の初期ウィンドウ" /></p>
-
-<!--more-->
-
-
-<p>さて、 <strong>Get started with a playground</strong> が先頭に来ている以外はあまり気になりませんね。<br/>
-SwiftやPlaygroundの話は別の機会にということで、 <strong>Create a new Xcode project</strong> を選択してみましょう。</p>
-
-<p>すると、次のようなウィンドウが表示されます。<br/>
-<img src="/images/xcode6_2.png" alt="Xcode6でCreate a new Xcode projectを選択後に表示されるウィンドウ" /></p>
-
-<p>筆者はここで、『あれ！？いつも使っていた <strong>Empty Application</strong> がない&hellip;.』と気づきました。<br/>
-まさかと思い、あれやこれやと探し、『OtherにEmptyってのがある。これって前からあったっけ？』と思いつつEmptyでプロジェクトを作成してみると&hellip;.<br/>
-<img src="/images/xcode6_3.png" alt="OtherにEmpty..." /><br/>
-<img src="/images/xcode6_4.png" alt="超Empty...何もないよ..." /><br/>
-TARGETもなければ、ソースも何もない。超Empty&hellip;..(泣)</p>
-
-<p>この瞬間、時代は次に進んでいるのだと諦めて、筆者はこれまで使ってこなかったSingle View Applicationに手を伸ばすことにしました。<br/>
-最大の障壁となるのが、今更ながら <strong>Storyboardを使ったことがない</strong> ということでした。<br/>
-これを機に覚えよう＆Xcode6でも基本操作は変わっていないよ(たぶん)と証明するために先に進み始めました。</p>
-
-<p>下記の手順でプロジェクトを作成します。<br/>
-1. Single View Applicationを選択<br/>
-2. ProductNameにStoryboardExampleと入力<br/>
-3. DevicesはiPhoneを選択</p>
-
-<p>そうして作成されたプロジェクトが下記になります。<br/>
-<img src="/images/xcode6_5.png" alt="StoryboardExample" /></p>
-
-<p>Main.storyboardを見てみると、『何の画面サイズ？？』といったViewControllerが表示されています。<br/>
-今回はiPhoneのみに対応したアプリということで、サイズを変更したいと思います。<br/>
-サイズは下記の手順で変更ができます。</p>
-
-<ol>
-<li>左ウィンドウでView Controllerを選択</li>
-<li>右ウィンドウのメニューの右から3つ目の項目を選択</li>
-<li>Simulated MetricksのSizeから変更したいiPhoneのサイズを選択</li>
-</ol>
-
-
-<p><img src="/images/xcode6_6.png" alt="サイズ変更方法" /></p>
-
-<p>筆者の場合はせっかくなので、iPhone6のサイズである <strong>iPhone 4.7-inch</strong> に変更しました。<br/>
-<img src="/images/xcode6_7.png" alt="4.7inchのViewController" /></p>
-
-<h3>StoryboardでUINavigationControllerを使おう</h3>
-
-<p>筆者がよく使っていたUINavigationControllerを使ってみようと思います。先ほどのView ControllerにはNavigationBarらしきものが見当たりません。これはUINavigationControllerが付与されていないためです。では、UINavigationControllerを付与しましょう。</p>
-
-<p>XcodeメニューバーのEditor > Embed in > Navigation Controllerを選択してください。<br/>
-<img src="/images/xcode6_8.png" alt="Navigation Controllerを追加する" /></p>
-
-<p>すると、下記のようにNavigation Controllerが追加されます。(下図は見やすさのため表示倍率を変更しています。表示倍率はViewが配置されているウィンドウで右クリックするとサイズを選択可能なウィンドウが表示されます。)<br/>
-<img src="/images/xcode6_9.png" alt="Navigation Controllerを追加した" /><br/>
-また、初めからStoryboard上に表示されていたView ControllerにNavigationBarが表示されたことがわかります。<br/>
-Navigation Controllerの大きさも先ほどと同じ手順で変えてしまいましょう。(変えなくてもコーディング上は問題ありませんが&hellip;.)</p>
-
-<p>NavigationBarの良い所は画面遷移後に前の画面に戻るボタンを作らなくて良いということですね。</p>
-
-<p>続いて、Storyboard上での画面遷移の実装方法について見て行きましょう。<br/>
-画面遷移をするためには当然ながら画面が必要となるので、View Controllerを追加しましょう。また、画面遷移のアクションを起こすボタンを追加しましょう。<br/>
-<img src="/images/xcode6_10.png" alt="View Controllerとボタンを追加" /></p>
-
-<p>そして、画面遷移の実装は、<br/>
-1. NEXTボタンを右クリックして遷移後の画面にドラッグ＆ドロップ<br/>
-2. 表示されるウィンドウから <strong>show</strong> を選択<br/>
-と超簡単にできます。<br/>
-その証拠に遷移後の画面にも先ほどまでなかったNavigationBarが付与されています。</p>
-
-<p><img src="/images/xcode6_11.png" alt="NEXTボタンからドラッグ＆ドロップ" /><br/>
-<img src="/images/xcode6_12.png" alt="showを選択" /><br/>
-<img src="/images/xcode6_13.png" alt="画面遷移が実装完了" /></p>
-
-<p>さて、ここまで対応が完了したら、シミュレータで表示してみましょう。<br/>
-利用するシミュレータはもちろんiPhone6です。<br/>
-<img src="/images/xcode6_14.png" alt="シミュレータで表示" /></p>
-
-<p>上記のような表示ができましたでしょうか？<br/>
-Storyboardの使い方は案外簡単ですね！まだまだ触り程度の話ですが、これから使い込んでいこうかと思います。</p>
-
-<p>今日はここまで。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
 
 ]]></content>
   </entry>
