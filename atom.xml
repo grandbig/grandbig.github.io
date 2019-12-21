@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2019-11-24T01:05:38+09:00</updated>
+  <updated>2019-12-22T01:13:33+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,677 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS13におけるCoreLocationの変更点〜常に許可/使用中のみ許可/一時的に許可〜]]></title>
+    <link href="http://grandbig.github.io/blog/2019/12/22/ios13-core-location/"/>
+    <updated>2019-12-22T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/12/22/ios13-core-location</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>「<a href="https://qiita.com/advent-calendar/2019/ios-2">iOS #2 Advent Calendar 2019</a>」の22日目の記事です。</p>
+
+<p>筆者がiOSアプリの開発を始めたのは、約8年ほど前でしょうか。<br/>
+iOS史上でも初期から強力な機能だったこともあってか、当時はiOSアプリに位置情報の機能を載せることが流行っており、<br/>
+筆者も漏れなく位置情報に関する調査や機能実装を永遠とこなしていた気がします。</p>
+
+<p>今年でiOSもバージョン <code>13</code> となり、昔はなかった機能がたくさん登場しています。<br/>
+新しい機能は当然、開発者の意欲を掻き立て、未知の世界をユーザに届けることに寄与することでしょう。<br/>
+ただ、位置情報に人一倍強い思いがあることを自負している筆者ですから、<br/>
+iOS13が出た今でも位置情報に関する仕様変更があることには感動もひとしおです。</p>
+
+<p>今日は、iOS13からの位置情報に関する仕様変更を『<a href="https://developer.apple.com/videos/play/wwdc2019/705/">WWDC2019 &ndash; What&rsquo;s New in Core Location</a>』を元に紹介して1年を締めくくりたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>位置情報とプライバシーについて</h3>
+
+<p>約8年前は位置情報に関する様々な国内での取り決め事がまだまだ調整途中だったかと思います。<br/>
+ただし、当時から「電池の消耗が激しいこと」と同じくらい「自身の位置情報を知られたくない」というプライバシーに対する強い意識があった気がします。<br/>
+(もちろん現在の方がプライバシー意識は劇的に高まっていると思います。)</p>
+
+<p>一方で、企業側としては、位置情報を利用した新しい便利な体験をユーザに提供するために、<br/>
+位置情報を積極的に許可してほしい気持ちがあったかと思います。</p>
+
+<p>これまでiOSはそんなユーザとアプリ提供者側の双方の立場を考慮して改善を進めてきました。<br/>
+例えば、初め「常に許可」「許可しない」の2つの選択肢しかなかったところに、<br/>
+「使用中のみ許可」が加わったりといった取り組みです。</p>
+
+<p>iOS13では、この取り組みが更に一歩進んだ形になります。</p>
+
+<h3>位置情報の利用確認ダイアログに「常に許可」の選択肢がない</h3>
+
+<p>iOS12までは、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">var</span> <span class="n">locationManager</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">locationManager</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">locationManager</span><span class="p">.</span><span class="n">requestAlwaysAuthorization</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>とした際に、</p>
+
+<ul>
+<li>「常に許可」</li>
+<li>「使用中のみ許可」</li>
+<li>「許可しない」</li>
+</ul>
+
+
+<p>の3つの選択肢を持つ確認ダイアログが表示されていました。</p>
+
+<p>これがiOS13では、</p>
+
+<ul>
+<li>「使用中のみ許可」</li>
+<li>「一時的に許可」</li>
+<li>「許可しない」</li>
+</ul>
+
+
+<p>の3つの選択肢に変更となりました。<br/>
+一見すると、アプリ開発者にとって辛い仕様に思えるのですが、「常に許可」がなくなったわけではありません。</p>
+
+<p><strong>「常に許可」を求めるタイミングが変更になった</strong></p>
+
+<p>というのが正しい解釈となります。</p>
+
+<p>因みに、ここで「使用中のみ許可」を選択した場合、<br/>
+<code>CLAuthorizationStatus</code> は実は <code>.authorizedAlways</code> になります。</p>
+
+<h3>「常に許可」に変更するタイミング</h3>
+
+<p>どういうことなのか詳しく説明しましょう。</p>
+
+<p>先程の「使用中のみ許可 / 一時的に許可 / 許可しない」の3つの選択肢から <strong>「使用中のみ許可」</strong> を選択した場合、OSがユーザが忙しくない時を自動的に狙って、</p>
+
+<ul>
+<li>「使用中のみ許可のままにする」</li>
+<li>「常に許可に変更する」</li>
+</ul>
+
+
+<p>かを問いかけてくれます。</p>
+
+<p><img src="http://grandbig.github.io/images/ios13-core-location_1.jpg" alt="常に許可に変更する確認ダイアログ" /></p>
+
+<p>ここで「常に許可に変更する」を選択して初めて、「常に許可」状態に設定することができます。</p>
+
+<p>この仕様がアプリ提供元の企業やアプリ開発者に対して、何を問うているのでしょうか。</p>
+
+<p>筆者は、</p>
+
+<ul>
+<li>ユーザに「アプリの利用価値を伝え、位置情報を利用することの有用性を体感してもらう」ことが必要</li>
+<li>ユーザに「アプリで利用する位置情報は、プライバシーが守られていることを伝える」ことが必要</li>
+</ul>
+
+
+<p>という大前提に加えて、</p>
+
+<ul>
+<li>アプリが最大価値を発揮するのは、Foreground起動中であるべき</li>
+<li>ユーザがアプリを初めて利用する場面は、必ずForeground起動であるはず</li>
+</ul>
+
+
+<p>という釘を差しているようにも捉えています。</p>
+
+<p>後者は、OSや純正アプリによって担保されていますが、前者はAppleの審査やそもそもの規約があるものの、作り手の仕組みにも依存する側面は完璧には拭えないでしょう。</p>
+
+<p>因みに、<br/>
+「使用中のみ許可のままにする / 常に許可に変更する」かの確認は1度のみであるため、<br/>
+これを逃すと、ユーザが自主的に設定画面から設定を変更しない限り「常に許可」に変更する導線がなくなります。</p>
+
+<h3>「使用中のみ許可」の変更点</h3>
+
+<p>iOS12ではユーザが「使用中のみ許可」を選択した場合、下記のようにできることが限られていました。</p>
+
+<ul>
+<li>位置情報を取得すること</li>
+<li>iBeaconを監視すること</li>
+<li>Backgroundで位置情報を継続して取得すること</li>
+</ul>
+
+
+<p>もし、ユーザが「常に許可」を選択すれば、上記に加えて下記も利用することができるようになります。</p>
+
+<ul>
+<li>位置情報の取得の「開始」</li>
+<li>大幅変更位置情報サービスを利用すること</li>
+<li>領域監視を利用すること</li>
+<li>滞在情報監視を利用すること</li>
+</ul>
+
+
+<p><img src="http://grandbig.github.io/images/ios13-core-location_2.png" alt="iOS12: 常に許可/使用中のみ許可の違い表" /><br/>
+※WWDC2019の資料から該当箇所を抜粋して紹介させて頂いています。
+<a href="https://developer.apple.com/videos/play/wwdc2019/705/">https://developer.apple.com/videos/play/wwdc2019/705/</a></p>
+
+<p>このため、アプリ開発者は、『どんな機能をアプリに持たせたいか』次第で「常に許可」「使用中のみ許可」のどちらをユーザに求めるべきかを決めていました。</p>
+
+<p>これがiOS13では非常にシンプルになりました。</p>
+
+<p><img src="http://grandbig.github.io/images/ios13-core-location_3.png" alt="iOS13: 常に許可/使用中のみ許可の違い表" /><br/>
+※WWDC2019の資料から該当箇所を抜粋して紹介させて頂いています。
+<a href="https://developer.apple.com/videos/play/wwdc2019/705/">https://developer.apple.com/videos/play/wwdc2019/705/</a></p>
+
+<p>つまり、機能間の差異をなくして、『ユーザに求めた許可状態に即したタイミングで機能を提供する』ことが可能になったということです。</p>
+
+<p>「常に許可」な状態はアプリがForeground/Background起動に関わらず、常に機能を利用できる状態であることがわかるかと思いますが、<br/>
+「使用中のみ許可」な状態とは具体的にどんな状態を指すのでしょうか。</p>
+
+<p>ここで簡単なサンプルアプリを作成して説明してみます。</p>
+
+<h3>「使用中のみ許可」の「使用中」の状態とは</h3>
+
+<p>下記のような簡単なサンプルアプリを作成してみました。</p>
+
+<h4>機能</h4>
+
+<p>実験のためのアプリなので、機能は下記のみです。</p>
+
+<ul>
+<li>「常に許可」設定をユーザに求める</li>
+<li>「使用中のみ許可」設定をユーザに求める</li>
+<li>BackgroundモードはOFFで位置情報取得を開始する</li>
+<li>BackgroundモードはOFFで位置情報取得を終了する</li>
+<li>BackgroundモードはONで位置情報取得を開始する</li>
+<li>BackgroundモードはONで位置情報取得を終了する</li>
+</ul>
+
+
+<h4>画面キャプチャ</h4>
+
+<p>実際の画面は下記の通りです。</p>
+
+<p><img src="http://grandbig.github.io/images/ios13-core-location_1.jpg" alt="サンプルアプリの画面" /></p>
+
+<h4>ソースコード</h4>
+
+<p>実際のソースコードは下記の通りです。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// MARK: - Properties</span>
+</span><span class='line'>  <span class="n">var</span> <span class="n">locationManager</span> <span class="o">=</span> <span class="n">CLLocationManager</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// MARK: - Lifecycle</span>
+</span><span class='line'>  <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">configureLocationManager</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// MARK: - Configure</span>
+</span><span class='line'>  <span class="n">private</span> <span class="n">func</span> <span class="n">configureLocationManager</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">desiredAccuracy</span> <span class="o">=</span> <span class="n">kCLLocationAccuracyBestForNavigation</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">activityType</span> <span class="o">=</span> <span class="n">CLActivityType</span><span class="p">.</span><span class="n">fitness</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">pausesLocationUpdatesAutomatically</span> <span class="o">=</span> <span class="n">false</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// MARK: - IBActions</span>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">private</span> <span class="n">func</span> <span class="n">didTapRequestAlwaysAuthorizationButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">requestAlwaysAuthorization</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">private</span> <span class="n">func</span> <span class="n">didTapRequestWhenInUseAuthorizationButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">requestWhenInUseAuthorization</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">private</span> <span class="n">func</span> <span class="n">didTapStartUpdatingLocationButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">startUpdatingLocation</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">private</span> <span class="n">func</span> <span class="n">didTapStopUpdatingLocationButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">stopUpdatingLocation</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">private</span> <span class="n">func</span> <span class="n">didTapStartUpdatingLocationAllowsBackgroundButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">allowsBackgroundLocationUpdates</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">startUpdatingLocation</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="err">@</span><span class="kt">IBAction</span> <span class="n">private</span> <span class="n">func</span> <span class="n">didTapStopUpdatingLocationAllowsBackgroundButton</span><span class="p">(</span><span class="n">_</span> <span class="nl">sender:</span> <span class="n">Any</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">allowsBackgroundLocationUpdates</span> <span class="o">=</span> <span class="n">false</span>
+</span><span class='line'>    <span class="n">locationManager</span><span class="p">.</span><span class="n">stopUpdatingLocation</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// MARK: - CLLocationManagerDelegate</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">ViewController:</span> <span class="n">CLLocationManagerDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didChangeAuthorization</span> <span class="nl">status:</span> <span class="n">CLAuthorizationStatus</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">switch</span> <span class="n">status</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="p">.</span><span class="nl">notDetermined:</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;未決定の場合&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="p">.</span><span class="nl">authorizedAlways:</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;常に許可した場合&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="p">.</span><span class="nl">authorizedWhenInUse:</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;使用中のみ許可した場合&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="p">.</span><span class="nl">denied:</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;許可しない場合&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="p">.</span><span class="k">restricted</span><span class="o">:</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;位置情報を利用できない制限がある場合&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="err">@</span><span class="n">unknown</span> <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>      <span class="n">fatalError</span><span class="p">(</span><span class="s">&quot;CLAuthorizationStatusの種類が増えているので、条件を見直す必要があります。&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didUpdateLocations</span> <span class="nl">locations:</span> <span class="p">[</span><span class="n">CLLocation</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">guard</span> <span class="n">let</span> <span class="n">location</span> <span class="o">=</span> <span class="n">locations</span><span class="p">.</span><span class="n">first</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="p">}</span>
+</span><span class='line'>    <span class="n">print</span><span class="p">(</span><span class="s">&quot;location: \(location.coordinate)&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>実験</h4>
+
+<p>では、具体的に「使用中」状態を見るための実験をしてきましょう。</p>
+
+<h5>実験１：BackgroundモードOFFの位置情報取得</h5>
+
+<p>まずは、「使用中のみ許可」設定をしてから、 <strong>BackgroundモードOFFの位置情報取得開始</strong> を実行してみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 使用中のみ許可を求める</span>
+</span><span class='line'><span class="n">locationManager</span><span class="p">.</span><span class="n">requestWhenInUseAuthorization</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// 位置情報の取得を開始する</span>
+</span><span class='line'><span class="n">locationManager</span><span class="p">.</span><span class="n">startUpdatingLocation</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>この結果、アプリがForeground起動の場合、 <code>didUpdateLocations</code> が呼び出され、最新の位置情報を取得できます。<br/>
+しかし、アプリをBackground起動にした場合、 <code>didUpdateLocations</code> が呼び出されることはなくなりました。</p>
+
+<p>※タイミングによっては呼び出されることがありますが、それはアプリはBackgroundで数秒Foregroundと同じ扱いになるOS仕様のためです。</p>
+
+<p>上記の例では、この <strong>Foreground起動中が「使用中」</strong> に当たります。</p>
+
+<p>そのため、再び、Foreground起動にアプリを戻すと「使用中」状態に戻るため、 <code>didUpdateLocations</code> が呼び出されるようになります。</p>
+
+<h5>実験２：BackgroundモードONの位置情報取得</h5>
+
+<p>続いて、 <strong>BackgroundモードONの位置情報取得開始</strong> を実行してみましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// 使用中のみ許可を求める</span>
+</span><span class='line'><span class="n">locationManager</span><span class="p">.</span><span class="n">requestWhenInUseAuthorization</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Backgroundでの位置情報の更新を許可する</span>
+</span><span class='line'><span class="n">locationManager</span><span class="p">.</span><span class="n">allowsBackgroundLocationUpdates</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'><span class="c1">// 位置情報の取得を開始する</span>
+</span><span class='line'><span class="n">locationManager</span><span class="p">.</span><span class="n">startUpdatingLocation</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>このとき、アプリがForeground起動の場合、 <code>didUpdateLocations</code> が呼び出され、最新の位置情報を取得できます。<br/>
+それに加えて、アプリをBackground起動にした場合でも、 <code>didUpdateLocations</code> が呼び出され続けます。</p>
+
+<p>この場合の例では、 <strong>ForegroundおよびBackgroundともに「使用中」</strong> に当たります。</p>
+
+<p>Backgroundで位置情報を利用していることが、ユーザにも伝わるように、ステータスバーの左側に青色で囲まれた矢印マークが表示されます。</p>
+
+<p><img src="http://grandbig.github.io/images/ios13-core-location_5.jpg" alt="Backgroundで位置情報を利用している状態" /></p>
+
+<h3>「使用中のみ許可」ユーザが使用中でない場合へのアプローチ</h3>
+
+<p>これで <strong>使用中</strong> とはどういった状態を指すのか、おわかり頂けたかと思います。</p>
+
+<p>基本的にはアプリはユーザが利用したい時に利用することになると思いますが、<br/>
+アプリ提供元がアプリを利用する最適な場面を知らせたいといったこともあるでしょう。</p>
+
+<p>そういった時には、 <code>UNLocationNotificationTrigger</code> を使ったジオフェンスによるローカルプッシュが役に立つかもしれません。</p>
+
+<p>特定の場所にジオフェンスを仕掛けておくことで、<br/>
+領域侵入 or 領域退出時にローカルプッシュでユーザを気づかせ、<br/>
+アプリを起動してもらうことで <strong>使用中</strong> 状態に誘導し、更なる価値提供を狙えることでしょう。</p>
+
+<p>参考までに <code>UNLocationNotificationTrigger</code> の利用方法も記載しておきます。</p>
+
+<p>まずは、 <code>AppDelegate.swift</code> で最低限の準備をしておきましょう。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// AppDelegate.swift</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">AppDelegate:</span> <span class="n">UIResponder</span><span class="p">,</span> <span class="n">UIApplicationDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">application</span><span class="p">(</span><span class="n">_</span> <span class="nl">application:</span> <span class="n">UIApplication</span><span class="p">,</span> <span class="n">didFinishLaunchingWithOptions</span> <span class="nl">launchOptions:</span> <span class="p">[</span><span class="n">UIApplication</span><span class="p">.</span><span class="nl">LaunchOptionsKey:</span> <span class="n">Any</span><span class="p">]</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Bool</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">let</span> <span class="n">center</span> <span class="o">=</span> <span class="n">UNUserNotificationCenter</span><span class="p">.</span><span class="n">current</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">center</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="n">self</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// 通知の許可を求める</span>
+</span><span class='line'>    <span class="n">center</span><span class="p">.</span><span class="n">requestAuthorization</span><span class="p">(</span><span class="nl">options:</span> <span class="p">[.</span><span class="n">sound</span><span class="p">,</span> <span class="p">.</span><span class="n">alert</span><span class="p">,</span> <span class="p">.</span><span class="n">badge</span><span class="p">])</span> <span class="p">{</span> <span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span> <span class="k">in</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">true</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// MARK: - UNUserNotificationCenterDelegate</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">AppDelegate:</span> <span class="n">UNUserNotificationCenterDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 未起動 or Background起動時にローカルプッシュを受信した場合</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">userNotificationCenter</span><span class="p">(</span><span class="n">_</span> <span class="nl">center:</span> <span class="n">UNUserNotificationCenter</span><span class="p">,</span> <span class="n">didReceive</span> <span class="nl">response:</span> <span class="n">UNNotificationResponse</span><span class="p">,</span> <span class="n">withCompletionHandler</span> <span class="nl">completionHandler:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">completionHandler</span><span class="p">()</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// Foreground起動時にローカルプッシュを受信した場合</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">userNotificationCenter</span><span class="p">(</span><span class="n">_</span> <span class="nl">center:</span> <span class="n">UNUserNotificationCenter</span><span class="p">,</span> <span class="n">willPresent</span> <span class="nl">notification:</span> <span class="n">UNNotification</span><span class="p">,</span> <span class="n">withCompletionHandler</span> <span class="nl">completionHandler:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">(</span><span class="n">UNNotificationPresentationOptions</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">completionHandler</span><span class="p">(.</span><span class="n">alert</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>続いて、ジオフェンスを設定します。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// ViewController.swift</span>
+</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'>    <span class="n">private</span> <span class="n">func</span> <span class="n">configureLocationNotificationTrigger</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">content</span> <span class="o">=</span> <span class="n">UNMutableNotificationContent</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">content</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="s">&quot;お知らせ！&quot;</span>
+</span><span class='line'>        <span class="n">content</span><span class="p">.</span><span class="n">body</span> <span class="o">=</span> <span class="s">&quot;今、アプリを利用するとお得な情報をGETできます！&quot;</span>
+</span><span class='line'>        <span class="n">content</span><span class="p">.</span><span class="n">sound</span> <span class="o">=</span> <span class="n">UNNotificationSound</span><span class="p">.</span><span class="k">default</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">let</span> <span class="n">center</span> <span class="o">=</span> <span class="n">CLLocationCoordinate2D</span><span class="p">(</span><span class="nl">latitude:</span> <span class="mf">35.0</span><span class="p">,</span> <span class="nl">longitude:</span> <span class="mf">139.7</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">region</span> <span class="o">=</span> <span class="n">CLCircularRegion</span><span class="p">(</span><span class="nl">center:</span> <span class="n">center</span><span class="p">,</span> <span class="nl">radius:</span> <span class="mi">200</span><span class="p">,</span> <span class="nl">identifier:</span> <span class="s">&quot;特定の場所&quot;</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">region</span><span class="p">.</span><span class="n">notifyOnEntry</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>        <span class="n">region</span><span class="p">.</span><span class="n">notifyOnExit</span> <span class="o">=</span> <span class="n">true</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">trigger</span> <span class="o">=</span> <span class="n">UNLocationNotificationTrigger</span><span class="p">(</span><span class="nl">region:</span> <span class="n">region</span><span class="p">,</span> <span class="nl">repeats:</span> <span class="n">true</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">request</span> <span class="o">=</span> <span class="n">UNNotificationRequest</span><span class="p">(</span><span class="nl">identifier:</span> <span class="s">&quot;ジオフェンス&quot;</span><span class="p">,</span> <span class="nl">content:</span> <span class="n">content</span><span class="p">,</span> <span class="nl">trigger:</span> <span class="n">trigger</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">let</span> <span class="n">notificationCenter</span> <span class="o">=</span> <span class="n">UNUserNotificationCenter</span><span class="p">.</span><span class="n">current</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">notificationCenter</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// MARK: - CLLocationManagerDelegate</span>
+</span><span class='line'><span class="n">extension</span> <span class="nl">ViewController:</span> <span class="n">CLLocationManagerDelegate</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">func</span> <span class="n">locationManager</span><span class="p">(</span><span class="n">_</span> <span class="nl">manager:</span> <span class="n">CLLocationManager</span><span class="p">,</span> <span class="n">didChangeAuthorization</span> <span class="nl">status:</span> <span class="n">CLAuthorizationStatus</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">switch</span> <span class="n">status</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">case</span> <span class="p">.</span><span class="nl">notDetermined:</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;未決定の場合&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="p">.</span><span class="nl">authorizedAlways:</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;常に許可した場合&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="p">.</span><span class="nl">authorizedWhenInUse:</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;使用中のみ許可した場合&quot;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">configureLocationNotificationTrigger</span><span class="p">()</span>
+</span><span class='line'>    <span class="k">case</span> <span class="p">.</span><span class="nl">denied:</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;許可しない場合&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">case</span> <span class="p">.</span><span class="k">restricted</span><span class="o">:</span>
+</span><span class='line'>      <span class="n">print</span><span class="p">(</span><span class="s">&quot;位置情報を利用できない制限がある場合&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="err">@</span><span class="n">unknown</span> <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>      <span class="n">fatalError</span><span class="p">(</span><span class="s">&quot;CLAuthorizationStatusの種類が増えているので、条件を見直す必要があります。&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上記のように、「使用中のみ許可」の場合にのみ <code>UNLocationNotificationTrigger</code> を仕掛けておくことも一つの手です。</p>
+
+<p>「常に許可」は既にユーザから最大限の承諾を得ているため、更なる価値を届けるためのプッシュ通知という意味では特に意味を持たないためです。</p>
+
+<h3>「一時的に許可」とは</h3>
+
+<p>さて、ここまで「常に許可」「使用中のみ許可」について説明してきましたが、<br/>
+iOS13からは「一時的に許可」という選択肢が新たに追加になりました。</p>
+
+<p>「一時的に許可」とは文字通り、 <strong>その時の使用中の間のみ許可をする</strong> ということです。<br/>
+よって、 <code>CLAuthorizationStatus</code> も <code>.authorizedWhenInUse</code> になります。</p>
+
+<p>また、 <strong>その時の使用中の間のみ許可する</strong> の「使用中のみ」は、「使用中のみ許可」と同じ定義になります。</p>
+
+<p>つまり、</p>
+
+<ul>
+<li><code>allowsBackgroundLocationUpdates=false</code> で <code>locationManager.startUpdatingLocation()</code> するとForeground起動中が「使用中」に当たります</li>
+<li><code>allowsBackgroundLocationUpdates=true</code> で <code>locationManager.startUpdatingLocation()</code> するとBackground起動中も「使用中」に当たります</li>
+</ul>
+
+
+<p>ということです。</p>
+
+<p><strong>その時の使用中の間のみ許可する</strong> ため、「使用中」状態が終了したタイミングで <strong>「未設定」状態に戻ります</strong> 。<br/>
+実際に、 <code>CLAuthorizationStatus</code> も <code>.notDetermined</code> に戻ります。</p>
+
+<p>一度「未設定」状態に戻ると、改めて位置情報の利用許可を求めなければ、位置情報サービスを利用することができません。</p>
+
+<p>この「改めて位置情報の利用許可を求めるタイミング」ですが、アプリのフローに密接に結びつくため、非常に重要です。<br/>
+全く関係のないタイミングで位置情報の利用許可を求めると、ユーザに不信感を持たれたり、煩わしさから離れていってしまう可能性もあるでしょう。</p>
+
+<p>では、最適なタイミングとはいつになるのでしょうか？<br/>
+それは、ユーザが再び「位置情報を利用する機能を使いたい」と思ったタイミングになります。</p>
+
+<p>例えば、レストランの検索アプリの場合、「検索開始ボタンをタップしたタイミング」となるでしょう。</p>
+
+<p>大事なことは、<br/>
+<strong>『適切なタイミングで、ユーザが位置情報サービスを承諾するまで問いかける導線を用意しておく』</strong><br/>
+ということになります。</p>
+
+<p>因みに、「一時的に許可」を選択した後で、『設定アプリ > プライバシー > 位置情報サービス』を見ると、 <strong>『次回確認』</strong> が設定されています。</p>
+
+<p><img src="http://grandbig.github.io/images/ios13-core-location_6.jpg" alt="設定 &gt; プライバシー &gt; 位置情報サービスの設定状態" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+iOS13で仕様がシンプルになったからこそ、「位置情報サービスの利用許可を求める最適なタイミング」をしっかりと考える必要が出てきました。<br/>
+また、この仕様変更は、アプリ提供元だけでなくユーザにとっても、わかりやすい仕様になったと言えるのではないでしょうか。</p>
+
+<p>昔からある機能で慣れ親しみがあるものの、その機能全てがユーザに受け入れられているわけではありません。<br/>
+少なからず、デメリットを感じてしまう側面もあることでしょう。<br/>
+でも、だからこそ、継続して安心安全な機能提供をブラッシュアップしていくことは非常に大切なのでしょう。</p>
+
+<p>我々、アプリ開発者もそういったことを十分に理解した上で、より良い形でユーザに価値を提供し続けていけると良いですね。</p>
+
+<p>といったところで本日はここまで。</p>
+
+<h3>参考</h3>
+
+<ul>
+<li><a href="https://developer.apple.com/videos/play/wwdc2019/705/">WWDC2019 &ndash; What&rsquo;s New in Core Location</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Xcode10以降からは、CocoaPods v1.7.0以上を使ってInput/Output File Listsを活用しよう！]]></title>
@@ -4890,1031 +5561,6 @@ iOSの <code>Lifecycleメソッド</code> や <code>Delegateメソッド</code> 
 
 
 <p></p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[XCTestでViewModelのテストを書いてみよう！]]></title>
-    <link href="http://grandbig.github.io/blog/2019/01/30/xctest-2/"/>
-    <updated>2019-01-30T11:57:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2019/01/30/xctest-2</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>今回は、 <code>MVVM</code> アーキテクチャでiOSアプリを書いた場合の <code>Unit Test</code> について記事を書こうと思います。</p>
-
-<p>だいぶ<a href="http://grandbig.github.io/blog/2016/01/11/xctest/">以前</a>に <code>XCTest</code> と <code>XCUITest</code> の初歩について紹介しましたが、<br/>
-本記事では特に <code>XCTest</code> を用いた <code>Unit Test</code> に焦点をあてます。</p>
-
-<p>では、早速見ていきましょう。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>前提</h3>
-
-<p>まずは、 <code>Unit Test</code> を書くにあたっての前提について確認しておきたいと思います。</p>
-
-<h4>利用するソースコード</h4>
-
-<p>今回説明に利用するソースコードは<a href="https://github.com/grandbig/footStepMeter">足跡計 v1.0.4</a>にします。</p>
-
-<p>主な機能は下記の通りです。</p>
-
-<ul>
-<li>様々な精度で歩行ルートを記録可能</li>
-<li>複数の歩行ルートを記録可能</li>
-<li>歩行ルート履歴をいつでも閲覧可能</li>
-<li>歩行ルート記録をメールで送信可能</li>
-<li>不要になった歩行ルート記録は削除可能</li>
-</ul>
-
-
-<p>また、実際のアプリ画面は下記の通りです。</p>
-
-<p><img src="http://grandbig.github.io/images/xctest-2_1.png" alt="足跡計 v1.0.4の画面キャプチャ" /></p>
-
-<h4>利用しているOSSライブラリ</h4>
-
-<p>このアプリで利用しているOSSライブラリは下記の通りです。</p>
-
-<ul>
-<li><a href="https://github.com/ReactiveX/RxSwift">RxSwift</a>
-
-<ul>
-<li><code>MVVM</code> アーキテクチャでアプリを構成するために利用しています。</li>
-<li><code>RxCocoa</code> は <code>RxSwift</code> と基本的にはセットで利用します。</li>
-<li><code>RxTest</code> はテストコードを書く時に利用します。</li>
-</ul>
-</li>
-<li><a href="https://github.com/RxSwiftCommunity/RxDataSources">RxDataSources</a>
-
-<ul>
-<li><code>UITableView</code> 関連の処理を <code>Rx</code> 書く時のサポートとなるため利用しています。</li>
-</ul>
-</li>
-<li><a href="https://github.com/realm/realm-cocoa">RealmSwift</a>
-
-<ul>
-<li>位置情報をアプリローカルに保存するために利用しています。</li>
-</ul>
-</li>
-<li><a href="https://github.com/mac-cain13/R.swift">R.swift</a>
-
-<ul>
-<li>文字列のベタ書きやそれに寄るスペルミス等を防ぐために利用しています。</li>
-</ul>
-</li>
-<li><a href="https://github.com/mono0926/LicensePlist">LicensePlist</a>
-
-<ul>
-<li>ライセンスページをアプリ外に配置するために利用しています。</li>
-</ul>
-</li>
-</ul>
-
-
-<h3>テストコードのサンプル1</h3>
-
-<p>それでは実際にテストコードを見ていきましょう。</p>
-
-<p>まず1つ目のサンプルとしては、下記画面のテストを取り上げて説明します。</p>
-
-<p><img src="http://grandbig.github.io/images/xctest-2_2.png" alt="設定画面" /></p>
-
-<p>この画面は、</p>
-
-<ul>
-<li>メイン画面の <code>UITabBar</code> の4項目目をタップして画面遷移した先の設定画面</li>
-<li>この設定画面は <code>UITableView</code> で構成されたテーブルビューの画面</li>
-<li>表示されている2項目は文言固定</li>
-</ul>
-
-
-<p>という仕様になっています。</p>
-
-<h4>ViewModelのソースコード</h4>
-
-<p>テストを書く前にそもそもの実装を紹介します。</p>
-
-<h5>SettingView.strings</h5>
-
-<p>文字列べた書きを避けるために <code>R.swift</code> を利用しているので、</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SettingView.strings</span>
-</span><span class='line'><span class="s">&quot;title&quot;</span> <span class="o">=</span> <span class="s">&quot;SETTINGS&quot;</span><span class="p">;</span>
-</span><span class='line'><span class="s">&quot;footprintHistory&quot;</span> <span class="o">=</span> <span class="s">&quot;FOOTPRINT HISTORY&quot;</span><span class="p">;</span>
-</span><span class='line'><span class="s">&quot;aboutApp&quot;</span> <span class="o">=</span> <span class="s">&quot;ABOUT APP&quot;</span><span class="p">;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>のように定義しています。</p>
-
-<h5>Injectable.swift</h5>
-
-<p>ここは <code>ViewModel</code> クラスの <code>DI</code> 化をするために用意した <code>Protocol</code> になります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// Injectable.swift</span>
-</span><span class='line'><span class="n">protocol</span> <span class="n">Injectable</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">associatedtype</span> <span class="n">Dependency</span>
-</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">extension</span> <span class="n">Injectable</span> <span class="n">where</span> <span class="n">Dependency</span> <span class="o">==</span> <span class="n">Void</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">init</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="nl">with:</span> <span class="p">())</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>SettingSectionModel.swift</h5>
-
-<p>本画面ではテーブルビューの描画時に <code>RxDataSources</code> を利用しているため、その準備が必要です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SettingSectionModel.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxDataSources</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">struct</span> <span class="n">SettingSectionModel</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">]</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="n">extension</span> <span class="nl">SettingSectionModel:</span> <span class="n">SectionModelType</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">typealias</span> <span class="n">Item</span> <span class="o">=</span> <span class="n">String</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="nl">original:</span> <span class="n">SettingSectionModel</span><span class="p">,</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">])</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">self</span> <span class="o">=</span> <span class="n">original</span>
-</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">items</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>SettingViewModel.swift</h5>
-
-<p>そして、 <code>ViewModel</code> のクラスです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SettingViewModel.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">final</span> <span class="n">class</span> <span class="nl">SettingViewModel:</span> <span class="n">Injectable</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">struct</span> <span class="n">Dependency</span> <span class="p">{</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SettingSectionModel</span><span class="p">]()</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: BehaviorRelays</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">viewDidLoadStream</span> <span class="o">=</span> <span class="n">BehaviorRelay</span><span class="o">&lt;</span><span class="p">[</span><span class="n">SettingSectionModel</span><span class="p">]</span><span class="o">&gt;</span><span class="p">(</span><span class="nl">value:</span> <span class="p">[])</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: Initial method</span>
-</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">Observable</span><span class="p">.</span><span class="n">deferred</span> <span class="p">{()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[</span><span class="n">SettingSectionModel</span><span class="p">]</span><span class="o">&gt;</span> <span class="k">in</span>
-</span><span class='line'>            <span class="n">let</span> <span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">settingView</span><span class="p">.</span><span class="n">footprintHistory</span><span class="p">(),</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">settingView</span><span class="p">.</span><span class="n">aboutApp</span><span class="p">()]</span>
-</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">SettingSectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">items</span><span class="p">)]</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">}</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">viewDidLoadStream</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>初期ロード時に、固定文言をセットしたテーブルビューを表示する必要があるため、<br/>
-画面初期化時に即時に <code>Subscribe</code> するようにしており、<br/>
-それを <code>Observable.deferred</code> で捕捉して、必要な値を <code>viewDidLoadStream</code> にバインディングする形で <code>View</code> に返しています。</p>
-
-<h4>ViewModelのテストコード</h4>
-
-<p>ではテストを書いていきます。</p>
-
-<p>ここで書きたいテストは、</p>
-
-<ul>
-<li>When: 初期ロード時に</li>
-<li>What: <code>RxDataSources</code> で処理可能な <code>SettingSectionModel</code> の形をした2つの固定文言を</li>
-<li>How: <code>viewDidLoadStream</code> 経由で</li>
-</ul>
-
-
-<p>渡ってくることになります。</p>
-
-<p>それを表したテストコードが下記の通りです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// SettingViewModelTests.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">XCTest</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxTest</span>
-</span><span class='line'><span class="err">@</span><span class="n">testable</span> <span class="n">import</span> <span class="n">footStepMeter</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">SettingViewModelTests:</span> <span class="n">XCTestCase</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 説明(1)</span>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">viewModel:</span> <span class="n">SettingViewModel</span><span class="o">!</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">scheduler</span> <span class="o">=</span> <span class="n">TestScheduler</span><span class="p">(</span><span class="nl">initialClock:</span> <span class="mi">0</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 説明(2)</span>
-</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">setUp</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">setUp</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">let</span> <span class="n">dependency</span> <span class="o">=</span> <span class="n">SettingViewModel</span><span class="p">.</span><span class="n">Dependency</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">viewModel</span> <span class="o">=</span> <span class="n">SettingViewModel</span><span class="p">(</span><span class="nl">with:</span> <span class="n">dependency</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">tearDown</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">tearDown</span><span class="p">()</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 説明(3)</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">testViewDidLoadStream</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">settingSectionModels</span> <span class="o">=</span> <span class="n">scheduler</span><span class="p">.</span><span class="n">createObserver</span><span class="p">([</span><span class="n">SettingSectionModel</span><span class="p">].</span><span class="n">self</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">viewModel</span><span class="p">.</span><span class="n">viewDidLoadStream</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">settingSectionModels</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">scheduler</span><span class="p">.</span><span class="n">start</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// 想定されるテスト結果の定義</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">settingView</span><span class="p">.</span><span class="n">footprintHistory</span><span class="p">(),</span> <span class="n">R</span><span class="p">.</span><span class="n">string</span><span class="p">.</span><span class="n">settingView</span><span class="p">.</span><span class="n">aboutApp</span><span class="p">()]</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">mock</span> <span class="o">=</span> <span class="p">[</span><span class="n">SettingSectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">items</span><span class="p">)]</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">expectedItems</span> <span class="o">=</span> <span class="p">[</span><span class="n">Recorded</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">mock</span><span class="p">)]</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// 実際の実行結果</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">element</span> <span class="o">=</span> <span class="n">settingSectionModels</span><span class="p">.</span><span class="n">events</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// 想定結果と実行結果を比較</span>
-</span><span class='line'>        <span class="n">XCTAssertEqual</span><span class="p">(</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">,</span> <span class="n">expectedItems</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>説明(1)</h5>
-
-<p>テスト対象となる <code>SettingViewModel</code> とテストの実行タイミングを測る上で必要な <code>TestScheduler</code> を定義しています。</p>
-
-<h5>説明(2)</h5>
-
-<p>テスト実施前のセットアップとして、 <code>SettingViewModel</code> を初期化しています。</p>
-
-<h5>説明(3)</h5>
-
-<p>ここで具体的にテストを書いています。</p>
-
-<ul>
-<li>ストリームを捕捉する <code>Observer</code> として <code>settingSectionModels</code> を定義</li>
-<li>それを <code>viewDidLoadStream</code> に流れた時のバインディング先として設定</li>
-<li>固定文言2つが <code>RxDataSources</code> 用の形で流れてくるため、そのモックデータを定義</li>
-<li>初期ロード時に流れるはずなので <code>[Recorded.next(0, mock)]</code> と設定</li>
-<li>想定結果と実行結果を <code>XCTAssertEqual</code> を用いて比較</li>
-</ul>
-
-
-<h3>テストコードのサンプル2</h3>
-
-<p>続いて、2つ目のサンプルですが、下記のテストの一部を紹介します。</p>
-
-<p><img src="http://grandbig.github.io/images/xctest-2_3.png" alt="足跡履歴一覧画面" /></p>
-
-<p>この画面は、</p>
-
-<ul>
-<li>設定画面の <code>FOOTPRINT HISTORY</code> をタップした時に画面遷移した先の足跡履歴一覧画面</li>
-<li>この足跡履歴一覧画面は <code>UITableView</code> で構成されたテーブルビューの画面</li>
-<li>各項目はアプリローカルに保存された情報から取得して表示している</li>
-</ul>
-
-
-<p>という仕様になっています。</p>
-
-<p>幾つか他にも機能があるため、サンプル1よりもテスト項目数は多くなるのですが、説明のため上記1つに絞ります。</p>
-
-<h4>ViewModelのソースコード</h4>
-
-<p>さて、そもそものソースコードですが、 <code>Injectable.swift</code> は先程と同じなので省略します。</p>
-
-<h5>FootprintRecordSectionModel.swift</h5>
-
-<p>サンプル1と同じく、本画面ではテーブルビューの描画時に <code>RxDataSources</code> を利用しているため、その準備が必要です。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// FootprintRecordSectionModel.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxDataSources</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">struct</span> <span class="n">FootprintRecordSectionModel</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">]</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="n">extension</span> <span class="nl">FootprintRecordSectionModel:</span> <span class="n">SectionModelType</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">typealias</span> <span class="n">Item</span> <span class="o">=</span> <span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="nl">original:</span> <span class="n">FootprintRecordSectionModel</span><span class="p">,</span> <span class="nl">items:</span> <span class="p">[</span><span class="n">Item</span><span class="p">])</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">self</span> <span class="o">=</span> <span class="n">original</span>
-</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">items</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>各行に表示する内容が、</p>
-
-<ul>
-<li>保存データのタイトル</li>
-<li>その足跡数</li>
-</ul>
-
-
-<p>となっていて、対にしてデータを返却するために <code>(String, Int)</code> とタプルで書いています。</p>
-
-<h5>RealmManager.swift</h5>
-
-<p>今回のテストでは、アプリ内部に保存したデータを取得する処理を扱うため、その処理を実装する必要があります。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// RealmManager.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">protocol</span> <span class="n">RealmManagerClient</span> <span class="p">{</span>
-</span><span class='line'>    <span class="c1">// MARK: - Protocol Properties</span>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">title:</span> <span class="n">String</span> <span class="p">{</span> <span class="n">get</span> <span class="n">set</span> <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: - Protocol Methods</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">setSaveTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">title:</span> <span class="n">String</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">createFootprint</span><span class="p">(</span><span class="nl">location:</span> <span class="n">CLLocation</span><span class="p">)</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">fetchFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">fetchFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?&gt;</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">fetchFootprintsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?&gt;</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">existsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Bool</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">countFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Int</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">countFootprintsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Int</span><span class="o">&gt;</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">delete</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Error</span><span class="o">?&gt;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">final</span> <span class="n">class</span> <span class="nl">RealmManager:</span> <span class="n">NSObject</span><span class="p">,</span> <span class="n">RealmManagerClient</span> <span class="p">{</span>
-</span><span class='line'>    <span class="p">...</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">do</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span> <span class="n">Realm</span><span class="p">()</span>
-</span><span class='line'>            <span class="k">if</span> <span class="n">let</span> <span class="n">titles</span> <span class="o">=</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Footprint</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">sorted</span><span class="p">(</span><span class="nl">byKeyPath:</span> <span class="s">&quot;id&quot;</span><span class="p">,</span> <span class="nl">ascending:</span> <span class="n">false</span><span class="p">)</span>
-</span><span class='line'>                <span class="p">.</span><span class="n">value</span><span class="p">(</span><span class="nl">forKey:</span> <span class="s">&quot;title&quot;</span><span class="p">)</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="n">String</span><span class="p">],</span> <span class="n">let</span> <span class="n">distinctTitles</span> <span class="o">=</span> <span class="n">NSOrderedSet</span><span class="p">(</span><span class="nl">array:</span> <span class="n">titles</span><span class="p">).</span><span class="n">array</span> <span class="n">as</span><span class="o">?</span> <span class="p">[</span><span class="n">String</span><span class="p">]</span> <span class="p">{</span>
-</span><span class='line'>                <span class="n">var</span> <span class="n">distinctFootprints</span> <span class="o">=</span> <span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]()</span>
-</span><span class='line'>                <span class="k">for</span> <span class="n">title</span> <span class="k">in</span> <span class="n">distinctTitles</span> <span class="p">{</span>
-</span><span class='line'>                    <span class="n">let</span> <span class="n">count</span> <span class="o">=</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Footprint</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">filter</span><span class="p">(</span><span class="s">&quot;title == &#39;\(title)&#39;&quot;</span><span class="p">).</span><span class="n">count</span>
-</span><span class='line'>                    <span class="n">distinctFootprints</span><span class="p">.</span><span class="n">append</span><span class="p">((</span><span class="n">title</span><span class="p">,</span> <span class="n">count</span><span class="p">))</span>
-</span><span class='line'>                <span class="p">}</span>
-</span><span class='line'>                <span class="k">return</span> <span class="n">distinctFootprints</span>
-</span><span class='line'>            <span class="p">}</span>
-</span><span class='line'>            <span class="k">return</span> <span class="p">[]</span>
-</span><span class='line'>        <span class="p">}</span> <span class="n">catch</span> <span class="n">_</span> <span class="n">as</span> <span class="n">NSError</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="p">[]</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="p">...</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>今回直接扱う処理以外は省略して書きました。<br/>
-基本的な <code>CRUD</code> の処理に加えて、本アプリ固有のビジネスロジックが存在します。<br/>
-※ <code>protocol</code> 部分を書いたのは、後のテストコードに関わるためです。</p>
-
-<h5>FootprintRecordViewModel</h5>
-
-<p>冒頭に説明した通り、混乱を避けるため、今回のテストコードで利用しない部分はあえてコードを省略しています。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// FootprintRecordViewModel.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">Foundation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">final</span> <span class="n">class</span> <span class="nl">FootprintRecordViewModel:</span> <span class="n">Injectable</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">struct</span> <span class="n">Dependency</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">let</span> <span class="nl">realmManager:</span> <span class="n">RealmManagerClient</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: - Properties</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
-</span><span class='line'>    <span class="n">private</span> <span class="n">var</span> <span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">FootprintRecordSectionModel</span><span class="p">]()</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: BehaviorRelays</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">savedRecordStream</span> <span class="o">=</span> <span class="n">BehaviorRelay</span><span class="o">&lt;</span><span class="p">[</span><span class="n">FootprintRecordSectionModel</span><span class="p">]</span><span class="o">&gt;</span><span class="p">(</span><span class="nl">value:</span> <span class="p">[])</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// MARK: Initial method</span>
-</span><span class='line'>    <span class="n">init</span><span class="p">(</span><span class="n">with</span> <span class="nl">dependency:</span> <span class="n">Dependency</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">realmManager</span> <span class="o">=</span> <span class="n">dependency</span><span class="p">.</span><span class="n">realmManager</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">Observable</span><span class="p">.</span><span class="n">deferred</span> <span class="p">{()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[</span><span class="n">FootprintRecordSectionModel</span><span class="p">]</span><span class="o">&gt;</span> <span class="k">in</span>
-</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">sectionModels</span> <span class="o">=</span> <span class="p">[</span><span class="n">FootprintRecordSectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">realmManager</span><span class="p">.</span><span class="n">distinctByTitle</span><span class="p">())]</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">sectionModels</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">}</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">savedRecordStream</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>サンプル1と基本的には同じです。<br/>
-返却値をアプリ内部に保存したデータにする必要があるため、<br/>
-<code>realmManager.distinctByTitle()</code> を利用しています。</p>
-
-<h4>ViewModelのテストコード</h4>
-
-<p>ではテストを書いていきます。</p>
-
-<p>ここで書きたいテストは、</p>
-
-<ul>
-<li>When: 初期ロード時に</li>
-<li>What: <code>RxDataSources</code> で処理可能な <code>FootprintRecordSectionModel</code> の形をした保存済み足跡情報を</li>
-<li>How: <code>savedRecordStream</code> 経由で</li>
-</ul>
-
-
-<p>渡ってくることになります。</p>
-
-<p>それを表したテストコードが下記の通りです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-<span class='line-number'>110</span>
-<span class='line-number'>111</span>
-<span class='line-number'>112</span>
-<span class='line-number'>113</span>
-<span class='line-number'>114</span>
-<span class='line-number'>115</span>
-<span class='line-number'>116</span>
-<span class='line-number'>117</span>
-<span class='line-number'>118</span>
-<span class='line-number'>119</span>
-<span class='line-number'>120</span>
-<span class='line-number'>121</span>
-<span class='line-number'>122</span>
-<span class='line-number'>123</span>
-<span class='line-number'>124</span>
-<span class='line-number'>125</span>
-<span class='line-number'>126</span>
-<span class='line-number'>127</span>
-<span class='line-number'>128</span>
-<span class='line-number'>129</span>
-<span class='line-number'>130</span>
-<span class='line-number'>131</span>
-<span class='line-number'>132</span>
-<span class='line-number'>133</span>
-<span class='line-number'>134</span>
-<span class='line-number'>135</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="c1">// FootprintRecordViewModelTests.swift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">XCTest</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxSwift</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxCocoa</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RxTest</span>
-</span><span class='line'><span class="n">import</span> <span class="n">CoreLocation</span>
-</span><span class='line'><span class="n">import</span> <span class="n">RealmSwift</span>
-</span><span class='line'>
-</span><span class='line'><span class="err">@</span><span class="n">testable</span> <span class="n">import</span> <span class="n">footStepMeter</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">FootprintRecordViewModelTests:</span> <span class="n">XCTestCase</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 説明(1)</span>
-</span><span class='line'>    <span class="n">var</span> <span class="nl">viewModel:</span> <span class="n">FootprintRecordViewModel</span><span class="o">!</span>
-</span><span class='line'>    <span class="n">let</span> <span class="n">scheduler</span> <span class="o">=</span> <span class="n">TestScheduler</span><span class="p">(</span><span class="nl">initialClock:</span> <span class="mi">0</span><span class="p">)</span>
-</span><span class='line'>    <span class="k">static</span> <span class="n">let</span> <span class="n">realm</span> <span class="o">=</span> <span class="n">try</span><span class="o">!</span> <span class="n">Realm</span><span class="p">(</span><span class="nl">configuration:</span> <span class="n">Realm</span><span class="p">.</span><span class="n">Configuration</span><span class="p">(</span><span class="nl">inMemoryIdentifier:</span> <span class="s">&quot;inMemory&quot;</span><span class="p">))</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 説明(2)</span>
-</span><span class='line'>    <span class="c1">/// テスト用のモックRealmManagerClient</span>
-</span><span class='line'>    <span class="n">final</span> <span class="n">class</span> <span class="nl">MockRealmManagerClient:</span> <span class="n">RealmManagerClient</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">var</span> <span class="nl">title:</span> <span class="n">String</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">setSaveTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">title:</span> <span class="n">String</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">createFootprint</span><span class="p">(</span><span class="nl">location:</span> <span class="n">CLLocation</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">fetchFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="nb">nil</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">fetchFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?&gt;</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">mockFootprints</span><span class="p">())</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">fetchFootprintsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?&gt;</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">mockFootprints</span><span class="p">())</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">existsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Bool</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">false</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">mockDistinctData</span><span class="p">()</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">distinctByTitle</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">mockDistinctData</span><span class="p">())</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">countFootprints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Int</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">countFootprintsByTitle</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Int</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">func</span> <span class="n">delete</span><span class="p">(</span><span class="n">_</span> <span class="nl">text:</span> <span class="n">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">Error</span><span class="o">?&gt;</span> <span class="p">{</span>
-</span><span class='line'>            <span class="k">return</span> <span class="n">Observable</span><span class="p">.</span><span class="n">just</span><span class="p">(</span><span class="nb">nil</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">static</span> <span class="n">let</span> <span class="n">mockFootprints</span> <span class="o">=</span> <span class="p">{</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Results</span><span class="o">&lt;</span><span class="n">Footprint</span><span class="o">&gt;?</span> <span class="k">in</span>
-</span><span class='line'>        <span class="k">return</span> <span class="n">realm</span><span class="p">.</span><span class="n">objects</span><span class="p">(</span><span class="n">Footprint</span><span class="p">.</span><span class="n">self</span><span class="p">).</span><span class="n">sorted</span><span class="p">(</span><span class="nl">byKeyPath:</span> <span class="s">&quot;id&quot;</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="k">static</span> <span class="n">let</span> <span class="n">mockDistinctData</span> <span class="o">=</span> <span class="p">{</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="p">[(</span><span class="n">String</span><span class="p">,</span> <span class="n">Int</span><span class="p">)]</span> <span class="k">in</span>
-</span><span class='line'>        <span class="k">return</span> <span class="p">[(</span><span class="s">&quot;test1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test2&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">private</span> <span class="n">func</span> <span class="n">setUpInitialFootprint</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">footprint</span> <span class="o">=</span> <span class="n">Footprint</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="kt">id</span> <span class="o">=</span> <span class="mi">1</span>
-</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">String</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">latitude</span> <span class="o">=</span> <span class="mf">35.0</span>
-</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">longitude</span> <span class="o">=</span> <span class="mf">137.0</span>
-</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">accuracy</span> <span class="o">=</span> <span class="mf">65.0</span>
-</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">speed</span> <span class="o">=</span> <span class="mf">1.0</span>
-</span><span class='line'>        <span class="n">footprint</span><span class="p">.</span><span class="n">direction</span> <span class="o">=</span> <span class="mf">0.0</span>
-</span><span class='line'>        <span class="n">try</span><span class="o">!</span> <span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">realm</span><span class="p">.</span><span class="n">create</span><span class="p">(</span><span class="n">Footprint</span><span class="p">.</span><span class="n">self</span><span class="p">,</span> <span class="nl">value:</span> <span class="n">footprint</span><span class="p">,</span> <span class="nl">update:</span> <span class="n">false</span><span class="p">)</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 説明(3)</span>
-</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">setUp</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">setUp</span><span class="p">()</span>
-</span><span class='line'>        <span class="c1">// 初めにinMemoryに保存するデータを構築</span>
-</span><span class='line'>        <span class="n">setUpInitialFootprint</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">let</span> <span class="n">dependency</span> <span class="o">=</span> <span class="n">FootprintRecordViewModel</span><span class="p">.</span><span class="n">Dependency</span><span class="p">(</span><span class="nl">realmManager:</span> <span class="n">MockRealmManagerClient</span><span class="p">())</span>
-</span><span class='line'>        <span class="n">viewModel</span> <span class="o">=</span> <span class="n">FootprintRecordViewModel</span><span class="p">(</span><span class="nl">with:</span> <span class="n">dependency</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 説明(4)</span>
-</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">tearDown</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">tearDown</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// inMemoryのデータは全て削除</span>
-</span><span class='line'>        <span class="n">try</span><span class="o">!</span> <span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">realm</span><span class="p">.</span><span class="n">write</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">FootprintRecordViewModelTests</span><span class="p">.</span><span class="n">realm</span><span class="p">.</span><span class="n">deleteAll</span><span class="p">()</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="c1">// 説明(5)</span>
-</span><span class='line'>    <span class="c1">/// 初期ロード時に指定したデータが正しい順番&amp;内容でデータバインディングできることの確認</span>
-</span><span class='line'>    <span class="n">func</span> <span class="n">testSavedRecordStream</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">disposeBag</span> <span class="o">=</span> <span class="n">DisposeBag</span><span class="p">()</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">footprintSectionModels</span> <span class="o">=</span> <span class="n">scheduler</span><span class="p">.</span><span class="n">createObserver</span><span class="p">([</span><span class="n">FootprintRecordSectionModel</span><span class="p">].</span><span class="n">self</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">viewModel</span><span class="p">.</span><span class="n">savedRecordStream</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">bind</span><span class="p">(</span><span class="nl">to:</span> <span class="n">footprintSectionModels</span><span class="p">)</span>
-</span><span class='line'>            <span class="p">.</span><span class="n">disposed</span><span class="p">(</span><span class="nl">by:</span> <span class="n">disposeBag</span><span class="p">)</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">scheduler</span><span class="p">.</span><span class="n">start</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// 想定されるテスト結果の定義</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">items</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&quot;test1&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s">&quot;test2&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">mock</span> <span class="o">=</span> <span class="p">[</span><span class="n">FootprintRecordSectionModel</span><span class="p">(</span><span class="nl">items:</span> <span class="n">items</span><span class="p">)]</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">expectedItems</span> <span class="o">=</span> <span class="p">[</span><span class="n">Recorded</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">mock</span><span class="p">)]</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// 実際の実行結果</span>
-</span><span class='line'>        <span class="n">let</span> <span class="n">element</span> <span class="o">=</span> <span class="n">footprintSectionModels</span><span class="p">.</span><span class="n">events</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="c1">// 想定結果と実行結果の比較</span>
-</span><span class='line'>        <span class="n">XCTAssertEqual</span><span class="p">(</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="mf">.0</span><span class="p">,</span> <span class="n">expectedItems</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="mf">.0</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">XCTAssertEqual</span><span class="p">(</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="mf">.1</span><span class="p">,</span> <span class="n">expectedItems</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="mf">.1</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">XCTAssertEqual</span><span class="p">(</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="mf">.0</span><span class="p">,</span> <span class="n">expectedItems</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="mf">.0</span><span class="p">)</span>
-</span><span class='line'>        <span class="n">XCTAssertEqual</span><span class="p">(</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="mf">.1</span><span class="p">,</span> <span class="n">expectedItems</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">value</span><span class="p">.</span><span class="n">element</span><span class="o">!</span><span class="p">.</span><span class="n">first</span><span class="o">!</span><span class="p">.</span><span class="n">items</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="mf">.1</span><span class="p">)</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="p">...</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h5>説明(1)</h5>
-
-<p><code>viewModel</code> と <code>scheduler</code> はサンプル1と同じです。<br/>
- 今回、ここで下記定義を追加しています。</p>
-
-<p> <code>objective-c
-static let realm = try! Realm(configuration: Realm.Configuration(inMemoryIdentifier: "inMemory"))
-</code></p>
-
-<p>これは、このテスト対象が『 <code>RealmSwift</code> に保存したデータを利用する処理であること』が理由です。<br/>
-<code>RealmSwift</code> では特にモックデータを返却するような仕組みはないため、自身で実装する必要があります。</p>
-
-<p>最も簡単な方法が <strong>インメモリで一時保存したモックデータを利用する</strong> といったものになります。</p>
-
-<h5>説明(2)</h5>
-
-<p><code>RealmSwift</code> に保存したデータを取得するために <code>FootprintRecordViewModel</code> 内では <code>RealmManagerClient</code> を利用しています。</p>
-
-<p>下記より、</p>
-
-<ul>
-<li><code>FootprintRecordViewModel</code> の初期化時に <code>RealmManagerClient</code> 型のオブジェクトを渡す</li>
-<li><code>RealmManagerClient</code> は <code>protocol</code> として定義している</li>
-</ul>
-
-
-<p>各メソッドの返却値をテスト用に自由にカスタマイズ可能です。<br/>
-ここでは <code>RealmManagerClient</code> に準拠した <code>MockRealmManagerClient</code> を 定義して、<br/>
-<code>FootprintRecordViewModel</code> の初期化時の引数に渡しています。</p>
-
-<h5>説明(3)</h5>
-
-<p>セットアップで <code>RealmSwift</code> に、計測した足跡履歴が保存されている状態とします。</p>
-
-<h5>説明(4)</h5>
-
-<p>一応、今回は <strong>インメモリで保存している</strong> ので、アプリが終了したタイミングでメモリから解放されるはずではあるのですが、<br/>
-テスト終了時に必ず実行する処理として <code>tearDown</code> メソッド内に <strong>インメモリで保存したデータの削除</strong> を仕込んでいます。</p>
-
-<h5>説明(5)</h5>
-
-<p>ここはサンプル1と同じですね。</p>
-
-<ul>
-<li>ストリームを捕捉する <code>Observer</code> として <code>footprintSectionModels</code> を定義</li>
-<li>それを <code>savedRecordStream</code> に流れた時のバインディング先として設定</li>
-<li>固定文言2つが <code>RxDataSources</code> 用の形で流れてくるため、そのモックデータを定義</li>
-<li>初期ロード時に流れるはずなので <code>[Recorded.next(0, mock)]</code> と設定</li>
-<li>想定結果と実行結果を <code>XCTAssertEqual</code> を用いて比較
-
-<ul>
-<li>モックデータとして2つのデータを用意しているので、両方比較して想定通りであることを確認します</li>
-<li>これはデータの並び順まで想定通りであることを確認したいためです</li>
-</ul>
-</li>
-</ul>
-
-
-<h3>まとめ</h3>
-
-<p>さて、如何でしたでしょうか？<br/>
-以上が <code>Unit Test</code> の書き方の事例紹介になります。<br/>
-iOSの <code>Unit Test</code> では、</p>
-
-<ul>
-<li><code>protocol</code> 準拠してマニュアルモックを実装する</li>
-<li>初期化時に、上記を渡すことでテストデータとして利用できる</li>
-</ul>
-
-
-<p>ことが重要だと思っています。</p>
-
-<p>ここを始めから念頭に置きつつ実装しないと、テストコードが書けずに苦労することになるでしょう。<br/>
-(もしくはテストコードを書くために、元々の実装を見直すことになりかねません。)</p>
-
-<p>と言ったところで本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 

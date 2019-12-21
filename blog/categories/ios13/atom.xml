@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios13 | Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/blog/categories/ios13/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2019-11-24T01:10:38+09:00</updated>
+  <updated>2019-12-22T01:13:33+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,557 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS13におけるCoreLocationの変更点〜常に許可/使用中のみ許可/一時的に許可〜]]></title>
+    <link href="http://grandbig.github.io/blog/2019/12/22/ios13-core-location/"/>
+    <updated>2019-12-22T00:00:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2019/12/22/ios13-core-location</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>「<a href="https://qiita.com/advent-calendar/2019/ios-2">iOS #2 Advent Calendar 2019</a>」の22日目の記事です。</p>
+
+<p>筆者がiOSアプリの開発を始めたのは、約8年ほど前でしょうか。<br/>
+iOS史上でも初期から強力な機能だったこともあってか、当時はiOSアプリに位置情報の機能を載せることが流行っており、<br/>
+筆者も漏れなく位置情報に関する調査や機能実装を永遠とこなしていた気がします。</p>
+
+<p>今年でiOSもバージョン <code>13</code> となり、昔はなかった機能がたくさん登場しています。<br/>
+新しい機能は当然、開発者の意欲を掻き立て、未知の世界をユーザに届けることに寄与することでしょう。<br/>
+ただ、位置情報に人一倍強い思いがあることを自負している筆者ですから、<br/>
+iOS13が出た今でも位置情報に関する仕様変更があることには感動もひとしおです。</p>
+
+<p>今日は、iOS13からの位置情報に関する仕様変更を『<a href="https://developer.apple.com/videos/play/wwdc2019/705/">WWDC2019 &ndash; What&rsquo;s New in Core Location</a>』を元に紹介して1年を締めくくりたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>位置情報とプライバシーについて</h3>
+
+<p>約8年前は位置情報に関する様々な国内での取り決め事がまだまだ調整途中だったかと思います。<br/>
+ただし、当時から「電池の消耗が激しいこと」と同じくらい「自身の位置情報を知られたくない」というプライバシーに対する強い意識があった気がします。<br/>
+(もちろん現在の方がプライバシー意識は劇的に高まっていると思います。)</p>
+
+<p>一方で、企業側としては、位置情報を利用した新しい便利な体験をユーザに提供するために、<br/>
+位置情報を積極的に許可してほしい気持ちがあったかと思います。</p>
+
+<p>これまでiOSはそんなユーザとアプリ提供者側の双方の立場を考慮して改善を進めてきました。<br/>
+例えば、初め「常に許可」「許可しない」の2つの選択肢しかなかったところに、<br/>
+「使用中のみ許可」が加わったりといった取り組みです。</p>
+
+<p>iOS13では、この取り組みが更に一歩進んだ形になります。</p>
+
+<h3>位置情報の利用確認ダイアログに「常に許可」の選択肢がない</h3>
+
+<p>iOS12までは、</p>
+
+<p>```objective-c
+var locationManager = CLLocationManager()</p>
+
+<p>locationManager.delegate = self</p>
+
+<p>locationManager.requestAlwaysAuthorization()
+```</p>
+
+<p>とした際に、</p>
+
+<ul>
+<li>「常に許可」</li>
+<li>「使用中のみ許可」</li>
+<li>「許可しない」</li>
+</ul>
+
+
+<p>の3つの選択肢を持つ確認ダイアログが表示されていました。</p>
+
+<p>これがiOS13では、</p>
+
+<ul>
+<li>「使用中のみ許可」</li>
+<li>「一時的に許可」</li>
+<li>「許可しない」</li>
+</ul>
+
+
+<p>の3つの選択肢に変更となりました。<br/>
+一見すると、アプリ開発者にとって辛い仕様に思えるのですが、「常に許可」がなくなったわけではありません。</p>
+
+<p><strong>「常に許可」を求めるタイミングが変更になった</strong></p>
+
+<p>というのが正しい解釈となります。</p>
+
+<p>因みに、ここで「使用中のみ許可」を選択した場合、<br/>
+<code>CLAuthorizationStatus</code> は実は <code>.authorizedAlways</code> になります。</p>
+
+<h3>「常に許可」に変更するタイミング</h3>
+
+<p>どういうことなのか詳しく説明しましょう。</p>
+
+<p>先程の「使用中のみ許可 / 一時的に許可 / 許可しない」の3つの選択肢から <strong>「使用中のみ許可」</strong> を選択した場合、OSがユーザが忙しくない時を自動的に狙って、</p>
+
+<ul>
+<li>「使用中のみ許可のままにする」</li>
+<li>「常に許可に変更する」</li>
+</ul>
+
+
+<p>かを問いかけてくれます。</p>
+
+<p><img src="/images/ios13-core-location_1.jpg" alt="常に許可に変更する確認ダイアログ" /></p>
+
+<p>ここで「常に許可に変更する」を選択して初めて、「常に許可」状態に設定することができます。</p>
+
+<p>この仕様がアプリ提供元の企業やアプリ開発者に対して、何を問うているのでしょうか。</p>
+
+<p>筆者は、</p>
+
+<ul>
+<li>ユーザに「アプリの利用価値を伝え、位置情報を利用することの有用性を体感してもらう」ことが必要</li>
+<li>ユーザに「アプリで利用する位置情報は、プライバシーが守られていることを伝える」ことが必要</li>
+</ul>
+
+
+<p>という大前提に加えて、</p>
+
+<ul>
+<li>アプリが最大価値を発揮するのは、Foreground起動中であるべき</li>
+<li>ユーザがアプリを初めて利用する場面は、必ずForeground起動であるはず</li>
+</ul>
+
+
+<p>という釘を差しているようにも捉えています。</p>
+
+<p>後者は、OSや純正アプリによって担保されていますが、前者はAppleの審査やそもそもの規約があるものの、作り手の仕組みにも依存する側面は完璧には拭えないでしょう。</p>
+
+<p>因みに、<br/>
+「使用中のみ許可のままにする / 常に許可に変更する」かの確認は1度のみであるため、<br/>
+これを逃すと、ユーザが自主的に設定画面から設定を変更しない限り「常に許可」に変更する導線がなくなります。</p>
+
+<h3>「使用中のみ許可」の変更点</h3>
+
+<p>iOS12ではユーザが「使用中のみ許可」を選択した場合、下記のようにできることが限られていました。</p>
+
+<ul>
+<li>位置情報を取得すること</li>
+<li>iBeaconを監視すること</li>
+<li>Backgroundで位置情報を継続して取得すること</li>
+</ul>
+
+
+<p>もし、ユーザが「常に許可」を選択すれば、上記に加えて下記も利用することができるようになります。</p>
+
+<ul>
+<li>位置情報の取得の「開始」</li>
+<li>大幅変更位置情報サービスを利用すること</li>
+<li>領域監視を利用すること</li>
+<li>滞在情報監視を利用すること</li>
+</ul>
+
+
+<p><img src="/images/ios13-core-location_2.png" alt="iOS12: 常に許可/使用中のみ許可の違い表" /><br/>
+※WWDC2019の資料から該当箇所を抜粋して紹介させて頂いています。
+<a href="https://developer.apple.com/videos/play/wwdc2019/705/">https://developer.apple.com/videos/play/wwdc2019/705/</a></p>
+
+<p>このため、アプリ開発者は、『どんな機能をアプリに持たせたいか』次第で「常に許可」「使用中のみ許可」のどちらをユーザに求めるべきかを決めていました。</p>
+
+<p>これがiOS13では非常にシンプルになりました。</p>
+
+<p><img src="/images/ios13-core-location_3.png" alt="iOS13: 常に許可/使用中のみ許可の違い表" /><br/>
+※WWDC2019の資料から該当箇所を抜粋して紹介させて頂いています。
+<a href="https://developer.apple.com/videos/play/wwdc2019/705/">https://developer.apple.com/videos/play/wwdc2019/705/</a></p>
+
+<p>つまり、機能間の差異をなくして、『ユーザに求めた許可状態に即したタイミングで機能を提供する』ことが可能になったということです。</p>
+
+<p>「常に許可」な状態はアプリがForeground/Background起動に関わらず、常に機能を利用できる状態であることがわかるかと思いますが、<br/>
+「使用中のみ許可」な状態とは具体的にどんな状態を指すのでしょうか。</p>
+
+<p>ここで簡単なサンプルアプリを作成して説明してみます。</p>
+
+<h3>「使用中のみ許可」の「使用中」の状態とは</h3>
+
+<p>下記のような簡単なサンプルアプリを作成してみました。</p>
+
+<h4>機能</h4>
+
+<p>実験のためのアプリなので、機能は下記のみです。</p>
+
+<ul>
+<li>「常に許可」設定をユーザに求める</li>
+<li>「使用中のみ許可」設定をユーザに求める</li>
+<li>BackgroundモードはOFFで位置情報取得を開始する</li>
+<li>BackgroundモードはOFFで位置情報取得を終了する</li>
+<li>BackgroundモードはONで位置情報取得を開始する</li>
+<li>BackgroundモードはONで位置情報取得を終了する</li>
+</ul>
+
+
+<h4>画面キャプチャ</h4>
+
+<p>実際の画面は下記の通りです。</p>
+
+<p><img src="/images/ios13-core-location_1.jpg" alt="サンプルアプリの画面" /></p>
+
+<h4>ソースコード</h4>
+
+<p>実際のソースコードは下記の通りです。</p>
+
+<p>```objective-c
+import UIKit
+import CoreLocation</p>
+
+<p>class ViewController: UIViewController {
+  // MARK: &ndash; Properties
+  var locationManager = CLLocationManager()</p>
+
+<p>  // MARK: &ndash; Lifecycle
+  override func viewDidLoad() {</p>
+
+<pre><code>super.viewDidLoad()
+
+configureLocationManager()
+</code></pre>
+
+<p>  }</p>
+
+<p>  // MARK: &ndash; Configure
+  private func configureLocationManager() {</p>
+
+<pre><code>locationManager.delegate = self
+locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+locationManager.activityType = CLActivityType.fitness
+locationManager.pausesLocationUpdatesAutomatically = false
+</code></pre>
+
+<p>  }</p>
+
+<p>  // MARK: &ndash; IBActions
+  @IBAction private func didTapRequestAlwaysAuthorizationButton(_ sender: Any) {</p>
+
+<pre><code>locationManager.requestAlwaysAuthorization()
+</code></pre>
+
+<p>  }</p>
+
+<p>  @IBAction private func didTapRequestWhenInUseAuthorizationButton(_ sender: Any) {</p>
+
+<pre><code>locationManager.requestWhenInUseAuthorization()
+</code></pre>
+
+<p>  }</p>
+
+<p>  @IBAction private func didTapStartUpdatingLocationButton(_ sender: Any) {</p>
+
+<pre><code>locationManager.startUpdatingLocation()
+</code></pre>
+
+<p>  }</p>
+
+<p>  @IBAction private func didTapStopUpdatingLocationButton(_ sender: Any) {</p>
+
+<pre><code>locationManager.stopUpdatingLocation()
+</code></pre>
+
+<p>  }</p>
+
+<p>  @IBAction private func didTapStartUpdatingLocationAllowsBackgroundButton(_ sender: Any) {</p>
+
+<pre><code>locationManager.allowsBackgroundLocationUpdates = true
+locationManager.startUpdatingLocation()
+</code></pre>
+
+<p>  }</p>
+
+<p>  @IBAction private func didTapStopUpdatingLocationAllowsBackgroundButton(_ sender: Any) {</p>
+
+<pre><code>locationManager.allowsBackgroundLocationUpdates = false
+locationManager.stopUpdatingLocation()
+</code></pre>
+
+<p>  }
+}</p>
+
+<p>// MARK: &ndash; CLLocationManagerDelegate
+extension ViewController: CLLocationManagerDelegate {</p>
+
+<p>  func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {</p>
+
+<pre><code>switch status {
+case .notDetermined:
+  print("未決定の場合")
+case .authorizedAlways:
+  print("常に許可した場合")
+case .authorizedWhenInUse:
+  print("使用中のみ許可した場合")
+case .denied:
+  print("許可しない場合")
+case .restricted:
+  print("位置情報を利用できない制限がある場合")
+@unknown default:
+  fatalError("CLAuthorizationStatusの種類が増えているので、条件を見直す必要があります。")
+}
+</code></pre>
+
+<p>  }</p>
+
+<p>  func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {</p>
+
+<pre><code>guard let location = locations.first else { return }
+print("location: \(location.coordinate)")
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<h4>実験</h4>
+
+<p>では、具体的に「使用中」状態を見るための実験をしてきましょう。</p>
+
+<h5>実験１：BackgroundモードOFFの位置情報取得</h5>
+
+<p>まずは、「使用中のみ許可」設定をしてから、 <strong>BackgroundモードOFFの位置情報取得開始</strong> を実行してみましょう。</p>
+
+<p>```objective-c
+// 使用中のみ許可を求める
+locationManager.requestWhenInUseAuthorization()</p>
+
+<p>// 位置情報の取得を開始する
+locationManager.startUpdatingLocation()
+```</p>
+
+<p>この結果、アプリがForeground起動の場合、 <code>didUpdateLocations</code> が呼び出され、最新の位置情報を取得できます。<br/>
+しかし、アプリをBackground起動にした場合、 <code>didUpdateLocations</code> が呼び出されることはなくなりました。</p>
+
+<p>※タイミングによっては呼び出されることがありますが、それはアプリはBackgroundで数秒Foregroundと同じ扱いになるOS仕様のためです。</p>
+
+<p>上記の例では、この <strong>Foreground起動中が「使用中」</strong> に当たります。</p>
+
+<p>そのため、再び、Foreground起動にアプリを戻すと「使用中」状態に戻るため、 <code>didUpdateLocations</code> が呼び出されるようになります。</p>
+
+<h5>実験２：BackgroundモードONの位置情報取得</h5>
+
+<p>続いて、 <strong>BackgroundモードONの位置情報取得開始</strong> を実行してみましょう。</p>
+
+<p>```objective-c
+// 使用中のみ許可を求める
+locationManager.requestWhenInUseAuthorization()</p>
+
+<p>// Backgroundでの位置情報の更新を許可する
+locationManager.allowsBackgroundLocationUpdates = true
+// 位置情報の取得を開始する
+locationManager.startUpdatingLocation()
+```</p>
+
+<p>このとき、アプリがForeground起動の場合、 <code>didUpdateLocations</code> が呼び出され、最新の位置情報を取得できます。<br/>
+それに加えて、アプリをBackground起動にした場合でも、 <code>didUpdateLocations</code> が呼び出され続けます。</p>
+
+<p>この場合の例では、 <strong>ForegroundおよびBackgroundともに「使用中」</strong> に当たります。</p>
+
+<p>Backgroundで位置情報を利用していることが、ユーザにも伝わるように、ステータスバーの左側に青色で囲まれた矢印マークが表示されます。</p>
+
+<p><img src="/images/ios13-core-location_5.jpg" alt="Backgroundで位置情報を利用している状態" /></p>
+
+<h3>「使用中のみ許可」ユーザが使用中でない場合へのアプローチ</h3>
+
+<p>これで <strong>使用中</strong> とはどういった状態を指すのか、おわかり頂けたかと思います。</p>
+
+<p>基本的にはアプリはユーザが利用したい時に利用することになると思いますが、<br/>
+アプリ提供元がアプリを利用する最適な場面を知らせたいといったこともあるでしょう。</p>
+
+<p>そういった時には、 <code>UNLocationNotificationTrigger</code> を使ったジオフェンスによるローカルプッシュが役に立つかもしれません。</p>
+
+<p>特定の場所にジオフェンスを仕掛けておくことで、<br/>
+領域侵入 or 領域退出時にローカルプッシュでユーザを気づかせ、<br/>
+アプリを起動してもらうことで <strong>使用中</strong> 状態に誘導し、更なる価値提供を狙えることでしょう。</p>
+
+<p>参考までに <code>UNLocationNotificationTrigger</code> の利用方法も記載しておきます。</p>
+
+<p>まずは、 <code>AppDelegate.swift</code> で最低限の準備をしておきましょう。</p>
+
+<p>```objective-c
+// AppDelegate.swift
+class AppDelegate: UIResponder, UIApplicationDelegate {</p>
+
+<p>  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) &ndash;> Bool {</p>
+
+<pre><code>let center = UNUserNotificationCenter.current()
+center.delegate = self
+
+// 通知の許可を求める
+center.requestAuthorization(options: [.sound, .alert, .badge]) { (result, error) in
+  print(result)
+}
+return true
+</code></pre>
+
+<p>  }</p>
+
+<p>  &hellip;</p>
+
+<p>}</p>
+
+<p>// MARK: &ndash; UNUserNotificationCenterDelegate
+extension AppDelegate: UNUserNotificationCenterDelegate {</p>
+
+<p>  // 未起動 or Background起動時にローカルプッシュを受信した場合
+  func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () &ndash;> Void) {</p>
+
+<pre><code>completionHandler()
+</code></pre>
+
+<p>  }</p>
+
+<p>  // Foreground起動時にローカルプッシュを受信した場合
+  func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) &ndash;> Void) {</p>
+
+<pre><code>completionHandler(.alert)
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>続いて、ジオフェンスを設定します。</p>
+
+<p>```objective-c
+// ViewController.swift
+class ViewController: UIViewController {</p>
+
+<pre><code>...
+private func configureLocationNotificationTrigger() {
+    let content = UNMutableNotificationContent()
+    content.title = "お知らせ！"
+    content.body = "今、アプリを利用するとお得な情報をGETできます！"
+    content.sound = UNNotificationSound.default
+
+    let center = CLLocationCoordinate2D(latitude: 35.0, longitude: 139.7)
+    let region = CLCircularRegion(center: center, radius: 200, identifier: "特定の場所")
+    region.notifyOnEntry = true
+    region.notifyOnExit = true
+    let trigger = UNLocationNotificationTrigger(region: region, repeats: true)
+    let request = UNNotificationRequest(identifier: "ジオフェンス", content: content, trigger: trigger)
+    let notificationCenter = UNUserNotificationCenter.current()
+    notificationCenter.add(request)
+}
+</code></pre>
+
+<p>}</p>
+
+<p>// MARK: &ndash; CLLocationManagerDelegate
+extension ViewController: CLLocationManagerDelegate {</p>
+
+<p>  func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {</p>
+
+<pre><code>switch status {
+case .notDetermined:
+  print("未決定の場合")
+case .authorizedAlways:
+  print("常に許可した場合")
+case .authorizedWhenInUse:
+  print("使用中のみ許可した場合")
+  configureLocationNotificationTrigger()
+case .denied:
+  print("許可しない場合")
+case .restricted:
+  print("位置情報を利用できない制限がある場合")
+@unknown default:
+  fatalError("CLAuthorizationStatusの種類が増えているので、条件を見直す必要があります。")
+}
+</code></pre>
+
+<p>  }
+  &hellip;
+}
+```</p>
+
+<p>上記のように、「使用中のみ許可」の場合にのみ <code>UNLocationNotificationTrigger</code> を仕掛けておくことも一つの手です。</p>
+
+<p>「常に許可」は既にユーザから最大限の承諾を得ているため、更なる価値を届けるためのプッシュ通知という意味では特に意味を持たないためです。</p>
+
+<h3>「一時的に許可」とは</h3>
+
+<p>さて、ここまで「常に許可」「使用中のみ許可」について説明してきましたが、<br/>
+iOS13からは「一時的に許可」という選択肢が新たに追加になりました。</p>
+
+<p>「一時的に許可」とは文字通り、 <strong>その時の使用中の間のみ許可をする</strong> ということです。<br/>
+よって、 <code>CLAuthorizationStatus</code> も <code>.authorizedWhenInUse</code> になります。</p>
+
+<p>また、 <strong>その時の使用中の間のみ許可する</strong> の「使用中のみ」は、「使用中のみ許可」と同じ定義になります。</p>
+
+<p>つまり、</p>
+
+<ul>
+<li><code>allowsBackgroundLocationUpdates=false</code> で <code>locationManager.startUpdatingLocation()</code> するとForeground起動中が「使用中」に当たります</li>
+<li><code>allowsBackgroundLocationUpdates=true</code> で <code>locationManager.startUpdatingLocation()</code> するとBackground起動中も「使用中」に当たります</li>
+</ul>
+
+
+<p>ということです。</p>
+
+<p><strong>その時の使用中の間のみ許可する</strong> ため、「使用中」状態が終了したタイミングで <strong>「未設定」状態に戻ります</strong> 。<br/>
+実際に、 <code>CLAuthorizationStatus</code> も <code>.notDetermined</code> に戻ります。</p>
+
+<p>一度「未設定」状態に戻ると、改めて位置情報の利用許可を求めなければ、位置情報サービスを利用することができません。</p>
+
+<p>この「改めて位置情報の利用許可を求めるタイミング」ですが、アプリのフローに密接に結びつくため、非常に重要です。<br/>
+全く関係のないタイミングで位置情報の利用許可を求めると、ユーザに不信感を持たれたり、煩わしさから離れていってしまう可能性もあるでしょう。</p>
+
+<p>では、最適なタイミングとはいつになるのでしょうか？<br/>
+それは、ユーザが再び「位置情報を利用する機能を使いたい」と思ったタイミングになります。</p>
+
+<p>例えば、レストランの検索アプリの場合、「検索開始ボタンをタップしたタイミング」となるでしょう。</p>
+
+<p>大事なことは、<br/>
+<strong>『適切なタイミングで、ユーザが位置情報サービスを承諾するまで問いかける導線を用意しておく』</strong><br/>
+ということになります。</p>
+
+<p>因みに、「一時的に許可」を選択した後で、『設定アプリ > プライバシー > 位置情報サービス』を見ると、 <strong>『次回確認』</strong> が設定されています。</p>
+
+<p><img src="/images/ios13-core-location_6.jpg" alt="設定 &gt; プライバシー &gt; 位置情報サービスの設定状態" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか。<br/>
+iOS13で仕様がシンプルになったからこそ、「位置情報サービスの利用許可を求める最適なタイミング」をしっかりと考える必要が出てきました。<br/>
+また、この仕様変更は、アプリ提供元だけでなくユーザにとっても、わかりやすい仕様になったと言えるのではないでしょうか。</p>
+
+<p>昔からある機能で慣れ親しみがあるものの、その機能全てがユーザに受け入れられているわけではありません。<br/>
+少なからず、デメリットを感じてしまう側面もあることでしょう。<br/>
+でも、だからこそ、継続して安心安全な機能提供をブラッシュアップしていくことは非常に大切なのでしょう。</p>
+
+<p>我々、アプリ開発者もそういったことを十分に理解した上で、より良い形でユーザに価値を提供し続けていけると良いですね。</p>
+
+<p>といったところで本日はここまで。</p>
+
+<h3>参考</h3>
+
+<ul>
+<li><a href="https://developer.apple.com/videos/play/wwdc2019/705/">WWDC2019 &ndash; What&rsquo;s New in Core Location</a></li>
+</ul>
+
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOS13で密かに追加されたUserDefaultsへの保存制限]]></title>
