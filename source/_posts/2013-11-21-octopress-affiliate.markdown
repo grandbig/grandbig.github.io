@@ -43,7 +43,7 @@ categories: octopress アフィリエイト
 
 そして、octopress/_config.ymlを編集します。default_asidesの配列内に自作したhtmlを追記する。  
 ```
-default_asides: [asides/recent_posts.html, asides/github.html, asides/delicious.html, asides/pinboard.html, asides/googleplus.html, custom/asides/googleAdsense.html]
+default_asides: [asides/recent_posts.html, asides/github.html, asides/delicious.html, custom/asides/googleAdsense.html]
 
 ```
 
@@ -76,4 +76,3 @@ iTunesアフィリエイトでも下記のようにソースコードを取得�
 (筆者は過去のアプリ紹介ページにリンクを貼ってみました。)
 
 他にもいろんなアフィリエイトを試してみようかな！ということで本日はここまで。
-
