@@ -1,0 +1,121 @@
+---
+layout: post
+title: "Color AssetとコードでiOS13の色のダークモード対応"
+date: 2020-04-18 10:38
+comments: true
+categories: ios swift
+---
+
+### はじめに
+iOS13からダークモードがiPhoneにも追加され、ユーザニーズからアプリ側でもダークモード対応を必要とされる場面が増えてきました。  
+一方でiOS12以前のOSをサポートする必要がある場合がほとんどかと思います。   
+
+「iOS12ではダークモードが利用できないので、ダークモードが導入できないのでは？」  
+
+と思う方がいる可能性を踏まえて、  
+本日は、今更ではありますが、旧OSをサポートしながらダークモード対応するための `Color` 定義について見ていきたいと思います。  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+<!-- more -->
+
+### Color Assetでダークモード時の色を定義
+Xcode9より `Color Asset` 機能が追加されています。  
+エンジニアだけでなく、デザイナーさんがXcodeを触って色を確認する可能性も踏まえると、  
+`Color Asset` を使わない手はないでしょう。  
+( `Color Asset` が利用できる状況なら、恐らく最も手軽にダークモード対応が可能です。 )  
+
+Xcode11より、 `Color Asset` でダークモード対応できる機能が追加されました。  
+方法は簡単で下図のように、右メニュー > `Appearances` の設定を `Any,Dark` に変更するだけです。  
+( `Light` , `Dark` 以外にモードを設ける場合は `Any,Light,Dark` を選択してください。 )  
+
+![Color Assetの定義](/images/darkmode_1.png)  
+
+これでダークモードの対応は完了です。  
+下記のように、 `Color Asset` で設定した名称で呼び出せば、端末のモードに従って色を設定できます。  
+
+```objective-c
+view.backgroundColor = UIColor(named: "mainBackgroundColor")
+```
+
+iOS12以前の旧OSではダークモードがありませんので、  
+`UIColor(named: "mainBackgroundColor")` を利用すると自動的に `Any` が採用されます。  
+
+### コードでダークモード時の色を定義
+さて、 `Color Asset` が利用できない場合は、どうすれば良いでしょうか。  
+この場合、ゴリゴリにコードで記述するしかないでしょう。  
+
+iOS13以上のアプリであれば、 `UIColor` に、  
+
+```objective-c
+init(dynamicProvider: @escaping (UITraitCollection) -> UIColor)
+```
+
+というイニシャライザーが追加されているため、  
+
+```objective-c
+extension UIColor {
+  class var mainBackgroundColor: UIColor {
+    return .init(dynamicProvider: { traitCollection -> UIColor in
+      switch traitCollection.userInterfaceStyle {
+      case .dark:
+        return .black
+      case .unspecified, .light:
+        return .white
+      @unknown default:
+        return .white
+      }
+    })
+  }
+}
+```
+
+といった形で定義ができるでしょう。  
+
+これがiOS12以前も対応するとなると、  
+
+```objective-c
+extension UIColor {
+  class var mainBackgroundColor: UIColor {
+    if #available(iOS 13.0, *) {
+      return UIColor { traitCollection -> UIColor in
+        switch traitCollection.userInterfaceStyle {
+        case .dark:
+          return .black
+        case .unspecified, .light:
+          return .white
+        @unknown default:
+          return .white
+        }
+      }
+    } else {
+      return .white
+    }
+  }
+}
+```
+
+のように条件分岐が必要になります。  
+
+### まとめ
+さて、如何でしたでしょうか？  
+案外、簡単にダークモード対応ができることがわかります。  
+
+ただし、コードで定義する場合は、色定義ファイルが膨大になることが予想されるため、  
+もう少し工夫が必要になることでしょう。  
+
+と言ったところで本日はここまで。  
+
+参考URL:  
+
+- [Apple Document - init(dynamicProvider:)](https://developer.apple.com/documentation/uikit/uicolor/3238041-init)  
+
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
