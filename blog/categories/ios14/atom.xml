@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: ios14 | Takahiro Octopress Blog]]></title>
+  <link href="http://grandbig.github.io/blog/categories/ios14/atom.xml" rel="self"/>
+  <link href="http://grandbig.github.io/"/>
+  <updated>2020-06-28T02:10:54+09:00</updated>
+  <id>http://grandbig.github.io/</id>
+  <author>
+    <name><![CDATA[Takahiro]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iOS14からの新機能：NearbyInteraction Framework]]></title>
+    <link href="http://grandbig.github.io/blog/2020/06/27/nearby-interaction/"/>
+    <updated>2020-06-27T23:39:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2020/06/27/nearby-interaction</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>先日の<a href="https://developer.apple.com/wwdc20/">WWDC2020</a>で <code>NearbyInteraction Framework</code> というものが発表されました。<br/>
+これは複数端末間の距離や方角を計測するために利用できる <code>Framework</code> だそうです。</p>
+
+<p>今年はコロナの影響で、ソーシャルディスタンスという言葉が叫ばれるようになったこともあり、意識せざるを得ないような内容に感じられたため、<br/>
+WWDC2020で行われた『<a href="https://developer.apple.com/videos/play/wwdc2020/10668/">Meet Nearby Interaction</a>』セッション動画を元に勉強していきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>NearbyInteraction Frameworkの機能を利用できる端末</h3>
+
+<p>iPhone11以降でU1チップを備えている端末に限られます。</p>
+
+<p>現段階では、</p>
+
+<ul>
+<li>iPhone11</li>
+<li>iPhone11 Pro</li>
+<li>iPhone11 Pro Max</li>
+</ul>
+
+
+<p>の3端末に限られています。</p>
+
+<p>※シミュレータが対応しているため、上記実機が手元になくても試すことができます。</p>
+
+<h3>NearbyInteraction Frameworkで測定できるもの</h3>
+
+<p>まず、 <code>NearbyInteraction Framework</code> で測定可能なものですが、</p>
+
+<ul>
+<li>距離</li>
+<li>方角</li>
+</ul>
+
+
+<p>の2つになっています。</p>
+
+<p>上記2つは <a href="https://developer.apple.com/documentation/nearbyinteraction/ninearbyobject">NINearbyObject</a> に格納された状態で取得します。<br/>
+それぞれ</p>
+
+<p>```objective-c
+@available(iOS 14.0, *)
+extension NINearbyObject {</p>
+
+<pre><code>public var distance: Float? { get }
+
+public var direction: simd_float3? { get }
+</code></pre>
+
+<p>}
+```</p>
+
+<p>と定義されています。</p>
+
+<h3>NearbyInteraction Frameworkの利用方法</h3>
+
+<p>ここからは詳細について見ていきましょう。</p>
+
+<h4>discoveryTokenとは</h4>
+
+<p>端末間の距離や方角を計測するとなると、互いの端末を検知し、ペアリングする必要がありそうな気がします。<br/>
+これを可能にするために、 <code>NearbyInteraction Framework</code> では <code>NISession</code> オブジェクトを生成し、<br/>
+その <code>NISession</code> が提供する <code>discoveryToken</code> を利用する必要があります。</p>
+
+<p>下記のように <code>discoveryToken</code> が <code>NISession</code> 内に定義されています。</p>
+
+<p><code>objective-c
+@available(iOS 14.0, *)
+open class NISession : NSObject {
+  ....
+  @NSCopying open var discoveryToken: NIDiscoveryToken? { get }
+}
+</code></p>
+
+<p>因みに、この <code>discoveryToken</code> は</p>
+
+<ul>
+<li>ランダムな識別番号として生成される</li>
+<li><code>session</code> と同等の有効期限が存在する</li>
+<li><code>session</code> の無効にしたり、アプリを終了すると <code>discoveryToken</code> も無効になる</li>
+</ul>
+
+
+<p>という性質があります。</p>
+
+<p>この <code>discoveryToken</code> を端末間で共有し合うことで、距離や方角を計測する端末を認識することができるわけです。</p>
+
+<h4>discoveryTokenの共有方法</h4>
+
+<p>では、 <code>discoveryToken</code> の端末間での共有方法は何があるかというと、<br/>
+WWDC2020のセッションでは、 <code>Multiple Connectivity Framework</code> が紹介されていました。</p>
+
+<p>また、 <code>discoveryToken</code> は <code>NIDiscoveryToken</code> 型であり、</p>
+
+<p><code>objective-c
+@available(iOS 14.0, *)
+open class NIDiscoveryToken : NSObject, NSCopying, NSSecureCoding {
+}
+</code></p>
+
+<p>のように <code>NSSecureCoding</code> に準拠しているため、下記のように簡単にエンコードすることができます。</p>
+
+<p>```objective-c
+let session = NISession()
+session.delegate = self</p>
+
+<p>let token = session.discoveryToken
+let encodedData = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
+```</p>
+
+<p><code>Multiple Connectivity Framework</code> を利用する場合は、下記のように送信します。</p>
+
+<p>```objective-c
+private var mcSession: MCSession!</p>
+
+<p>do {</p>
+
+<pre><code>try mcSession.send(data, toPeers: mcSession.connectedPeers, with: .reliable)
+</code></pre>
+
+<p>} catch let error {</p>
+
+<pre><code>NSLog("Error sending data: \(error)")
+</code></pre>
+
+<p>}
+```</p>
+
+<p>逆に他端末から送信されたエンコードされたデータを受信したら、</p>
+
+<p>```objective-c
+guard let discoveryToken = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) else {</p>
+
+<pre><code>fatalError("Unexpectedly failed to encode discovery token.")
+</code></pre>
+
+<p>}
+```</p>
+
+<p>のようにデコードし、 <code>discoveryToken</code> を取り出します。<br/>
+これで互いに計測対象端末の <code>discoveryToken</code> が共有できました。</p>
+
+<h4>計測値の取得方法</h4>
+
+<p>あとは、受信した <code>discoveryToken</code> を元に生成した <code>config</code> を利用してセッションを開始します。</p>
+
+<p><code>objective-c
+let config = NINearbyPeerConfiguration(peerToken: discoveryToken)
+session?.run(config)
+</code></p>
+
+<p>対象端末との距離や方角の値は <code>NISessionDelegate</code> を通じて取得します。<br/>
+下記の <code>didUpdate</code> メソッドにて、最新の <code>NINearbyObject</code> 情報が取得できます。</p>
+
+<p><code>objective-c
+@available(iOS 14.0, *)
+public protocol NISessionDelegate : NSObjectProtocol {
+  // This is called when new updates about nearby objects are available.
+  optional func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject])
+  ...
+}
+</code></p>
+
+<p><code>NISessionDelegate</code> には他にも幾つかメソッドが用意されています。</p>
+
+<p>例えば、 <code>didRemove</code> メソッドは、</p>
+
+<p><code>objective-c
+@available(iOS 14.0, *)
+public protocol NISessionDelegate : NSObjectProtocol {
+  ...
+  // This is called when the system is no longer attempting to interact with some nearby objects.
+  optional func session(_ session: NISession, didRemove nearbyObjects: [NINearbyObject], reason: NINearbyObject.RemovalReason)
+  ...
+}
+</code></p>
+
+<p>ペアリングしたはずの計測対象端末から情報が取得できない場合に呼び出されます。<br/>
+これが呼び出されるパターンは主に次の2つになります。</p>
+
+<ul>
+<li>計測対象端末が遠く離れてしまい、情報取得可能な期間をタイムアウトした場合</li>
+<li>計測対象端末がセッションを終了した場合</li>
+</ul>
+
+
+<p>上記理由も、メソッド引数の <code>reason</code> に格納されているため、識別することができます。</p>
+
+<p>```objective-c
+extension NINearbyObject {</p>
+
+<pre><code>@available(iOS 14.0, *)
+public enum RemovalReason : Int {
+    case timeout = 0
+    case peerEnded = 1
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>また、アプリの状態に関わるメソッドも用意されています。</p>
+
+<p>```objective-c
+@available(iOS 14.0, *)
+public protocol NISessionDelegate : NSObjectProtocol {</p>
+
+<pre><code>...
+// This is called when a session is suspended.
+optional func sessionWasSuspended(_ session: NISession)
+
+// This is called when a session may be resumed.
+optional func sessionSuspensionEnded(_ session: NISession)
+...
+</code></pre>
+
+<p>}
+```</p>
+
+<p><code>sessionWasSuspended</code> はアプリがFG起動を終了し、サスペンド状態になった際に呼び出され、<br/>
+<code>sessionSuspensionEnded</code> はアプリが再びFG起動に戻し、サスペンド状態が終了した際に呼び出されます。</p>
+
+<p>因みに、セッションは一度停止すると自動的に再開はされないため、 <code>sessionSuspensionEnded</code> 内で再度セッションを開始する必要があります。</p>
+
+<p>```objective-c
+func sessionSuspensionEnded(_ session: NISession) {</p>
+
+<pre><code>if let config = self.session?.configuration {
+    session.run(config)
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>最後の <code>Delegate</code> メソッドとして <code>didInvalidateWith</code> が用意されています。<br/>
+これはセッションが無効になった場合に呼び出されます。</p>
+
+<p>```objective-c
+@available(iOS 14.0, *)
+public protocol NISessionDelegate : NSObjectProtocol {</p>
+
+<pre><code>...
+// This is called when a session is invalidated.
+optional func session(_ session: NISession, didInvalidateWith error: Error)
+</code></pre>
+
+<p>}
+```</p>
+
+<p>セッションが無効になると、 <code>run</code> メソッドを使っても再開することができないため、<br/>
+セッションの生成からやり直す必要があります。<br/>
+(セッションを生成し、 <code>discoveryToken</code> を交換し、セッションを開始する一連の流れを頭からやり直します。 )</p>
+
+<h3>NearbyInteraction Frameworkで計測する上での制約</h3>
+
+<p><code>NearbyInteraction Framework</code> は非常に強力な計測ができますが、<br/>
+その精度を高めるためには幾つかユーザに制約を課さざるを得ないようです。</p>
+
+<p>その制約とは、</p>
+
+<ol>
+<li>方角の測定可能フィールド上に両端末が存在していること</li>
+<li>両端末ともに <code>Portrait</code> の向きで端末を持っていること</li>
+<li>両端末間に壁や人などの障害物がないこと</li>
+</ol>
+
+
+<p>が上げられています。</p>
+
+<p>以下、セッションの資料がわかりやすかったため、引用させて頂きます。</p>
+
+<p><strong>方角の測定可能フィールド上に両端末が存在していること</strong></p>
+
+<p><img src="/images/nearbyinteraction_1.png" alt="方角の測定可能フィールド上に両端末が存在していること" /></p>
+
+<p><strong>両端末ともにPortraitの向きで端末を持っていること</strong><br/>
+<img src="/images/nearbyinteraction_2.png" alt="両端末ともにPortraitの向きで端末を持っていること" /></p>
+
+<p><strong>両端末間に壁や人などの障害物がないこと</strong><br/>
+<img src="/images/nearbyinteraction_3.png" alt="両端末間に壁や人などの障害物がないこと" /></p>
+
+<h3>まとめ</h3>
+
+<p>さて、如何でしたでしょうか。<br/>
+利用上の制約があることで万能ではないと感じる方もいるかもしれませんが、<br/>
+cm単位の精度で端末間の距離や方角がわかるという機能は、<br/>
+これからの新生活で大活躍する可能性も秘めているかもしれません。</p>
+
+<p>個人的には、<br/>
+何か世の中の役に立つようなサービスを考えるきっかけになったかなと思いました。</p>
+
+<p>最後に、今回説明させて頂いた内容は、冒頭に書きました通り<a href="https://developer.apple.com/videos/play/wwdc2020/10668/">Meet Nearby Interaction</a>動画で確認できますし、<br/>
+<a href="https://developer.apple.com/documentation/nearbyinteraction/implementing_interactions_between_users_in_close_proximity">Implementing Interactions Between Users in Close Proximit</a>にてサンプルコードも公開されています。</p>
+
+<p>より詳細を見る場合は当然ですが、上記を見ることをオススメいたします。</p>
+
+<p>といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>
