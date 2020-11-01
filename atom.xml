@@ -4,7 +4,7 @@
   <title><![CDATA[Takahiro Octopress Blog]]></title>
   <link href="http://grandbig.github.io/atom.xml" rel="self"/>
   <link href="http://grandbig.github.io/"/>
-  <updated>2020-06-28T02:10:54+09:00</updated>
+  <updated>2020-11-01T14:30:47+09:00</updated>
   <id>http://grandbig.github.io/</id>
   <author>
     <name><![CDATA[Takahiro]]></name>
@@ -12,6 +12,234 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Push通知の受信起因でWidgetを更新しよう！]]></title>
+    <link href="http://grandbig.github.io/blog/2020/11/01/widget-and-push/"/>
+    <updated>2020-11-01T13:59:00+09:00</updated>
+    <id>http://grandbig.github.io/blog/2020/11/01/widget-and-push</id>
+    <content type="html"><![CDATA[<h3>はじめに</h3>
+
+<p>今回は、iOS14から導入された<a href="https://developer.apple.com/jp/widgets/">Widget</a>を題材として扱いたいと思います。</p>
+
+<p>既に様々なところで <code>Widget</code> の導入について説明されていますが、筆者が気になったのは、
+『プッシュ通知の受信起因で <code>Widget</code> を更新することができるかどうか 』<br/>
+です。</p>
+
+<p>簡単にサンプルを作成して試してみた結果を備忘録として載せておきたいと思います。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+
+
+
+<!-- more -->
+
+
+<h3>Widgetの更新方法</h3>
+
+<p>まず、 <code>Widget</code> の更新方法ですが、これは大きく分けて2種類あります。</p>
+
+<ul>
+<li><code>Widget</code> 自体に定義した更新タイミングで更新する</li>
+<li>アプリなどから任意のタイミングで更新する</li>
+</ul>
+
+
+<p>前者の『 <code>Widget</code> 自体に定義した更新タイミングで更新する』は、<br/>
+<code>Widget</code> ソース内の <code>getTimeline</code> メソッドが該当します。</p>
+
+<p>例えば、1時間ごとに更新したいと思った場合には、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">WidgetKit</span>
+</span><span class='line'><span class="n">import</span> <span class="n">SwiftUI</span>
+</span><span class='line'><span class="n">import</span> <span class="n">Intents</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">Provider:</span> <span class="n">IntentTimelineProvider</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="n">func</span> <span class="n">getTimeline</span><span class="p">(</span><span class="k">for</span> <span class="nl">configuration:</span> <span class="n">ConfigurationIntent</span><span class="p">,</span> <span class="k">in</span> <span class="nl">context:</span> <span class="n">Context</span><span class="p">,</span> <span class="nl">completion:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">(</span><span class="n">Timeline</span><span class="o">&lt;</span><span class="n">Entry</span><span class="o">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">var</span> <span class="nl">entries:</span> <span class="p">[</span><span class="n">SimpleEntry</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// Generate a timeline consisting of five entries an hour apart, starting from the current date.</span>
+</span><span class='line'>      <span class="n">let</span> <span class="n">currentDate</span> <span class="o">=</span> <span class="n">Date</span><span class="p">()</span>
+</span><span class='line'>      <span class="k">for</span> <span class="n">hourOffset</span> <span class="k">in</span> <span class="mi">0</span> <span class="p">..</span><span class="o">&lt;</span> <span class="mi">5</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">let</span> <span class="n">entryDate</span> <span class="o">=</span> <span class="n">Calendar</span><span class="p">.</span><span class="n">current</span><span class="p">.</span><span class="n">date</span><span class="p">(</span><span class="nl">byAdding:</span> <span class="p">.</span><span class="n">hour</span><span class="p">,</span> <span class="nl">value:</span> <span class="n">hourOffset</span><span class="p">,</span> <span class="nl">to:</span> <span class="n">currentDate</span><span class="p">)</span><span class="o">!</span>
+</span><span class='line'>          <span class="n">let</span> <span class="n">entry</span> <span class="o">=</span> <span class="n">SimpleEntry</span><span class="p">(</span><span class="nl">date:</span> <span class="n">entryDate</span><span class="p">,</span> <span class="nl">randomNumber:</span> <span class="n">Int</span><span class="p">.</span><span class="n">random</span><span class="p">(</span><span class="k">in</span><span class="o">:</span> <span class="mi">1</span> <span class="p">...</span> <span class="mi">10</span><span class="p">),</span> <span class="nl">configuration:</span> <span class="n">configuration</span><span class="p">)</span>
+</span><span class='line'>          <span class="n">entries</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">let</span> <span class="n">timeline</span> <span class="o">=</span> <span class="n">Timeline</span><span class="p">(</span><span class="nl">entries:</span> <span class="n">entries</span><span class="p">,</span> <span class="nl">policy:</span> <span class="p">.</span><span class="n">atEnd</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">completion</span><span class="p">(</span><span class="n">timeline</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">SimpleEntry:</span> <span class="n">TimelineEntry</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">date:</span> <span class="n">Date</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">randomNumber:</span> <span class="n">Int</span>
+</span><span class='line'>  <span class="n">let</span> <span class="nl">configuration:</span> <span class="n">ConfigurationIntent</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>のように定義することで実現できます。</p>
+
+<p>続いて後者の『アプリなどから任意のタイミングで更新する』は、<br/>
+任意のタイミングで、</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">WidgetCenter</span><span class="p">.</span><span class="n">shared</span><span class="p">.</span><span class="n">reloadAllTimelines</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>を呼び出してやれば良いだけです。</p>
+
+<p>では、プッシュ通知の受信起因で <code>Widget</code> を更新するためには、どうすれば良いのでしょうか？</p>
+
+<h3>プッシュ受信契機でWidgetを更新する</h3>
+
+<p>答えは、 <code>NotificationService Extension</code> を利用する方法です。</p>
+
+<p><code>NotificationService Extension</code> はプッシュ通知受信時に条件次第で通知内容を変更したい場合などに利用されます。</p>
+
+<p><code>NotificationService Extension</code> は下記のようにプッシュ通知の受信を検知してロジックを組み込むことができます。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UserNotifications</span>
+</span><span class='line'><span class="n">import</span> <span class="n">WidgetKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">class</span> <span class="nl">NotificationService:</span> <span class="n">UNNotificationServiceExtension</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">contentHandler:</span> <span class="p">((</span><span class="n">UNNotificationContent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">)</span><span class="o">?</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">bestAttemptContent:</span> <span class="n">UNMutableNotificationContent</span><span class="o">?</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// プッシュ通知を受信したら、ココを通ります。</span>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">didReceive</span><span class="p">(</span><span class="n">_</span> <span class="nl">request:</span> <span class="n">UNNotificationRequest</span><span class="p">,</span> <span class="n">withContentHandler</span> <span class="nl">contentHandler:</span> <span class="err">@</span><span class="n">escaping</span> <span class="p">(</span><span class="n">UNNotificationContent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">self</span><span class="p">.</span><span class="n">contentHandler</span> <span class="o">=</span> <span class="n">contentHandler</span>
+</span><span class='line'>        <span class="n">bestAttemptContent</span> <span class="o">=</span> <span class="p">(</span><span class="n">request</span><span class="p">.</span><span class="n">content</span><span class="p">.</span><span class="n">mutableCopy</span><span class="p">()</span> <span class="n">as</span><span class="o">?</span> <span class="n">UNMutableNotificationContent</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">bestAttemptContent</span> <span class="o">=</span> <span class="n">bestAttemptContent</span> <span class="p">{</span>
+</span><span class='line'>            <span class="c1">// Modify the notification content here...</span>
+</span><span class='line'>            <span class="n">bestAttemptContent</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="s">&quot;\(bestAttemptContent.title) [modified]&quot;</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">contentHandler</span><span class="p">(</span><span class="n">bestAttemptContent</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">serviceExtensionTimeWillExpire</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">contentHandler</span> <span class="o">=</span> <span class="n">contentHandler</span><span class="p">,</span> <span class="n">let</span> <span class="n">bestAttemptContent</span> <span class="o">=</span>  <span class="n">bestAttemptContent</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">contentHandler</span><span class="p">(</span><span class="n">bestAttemptContent</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>この <code>didReceive(_:withContentHandler:)</code> 内で <code>WidgetCenter.shared.reloadAllTimelines()</code> を実行してやれば <code>Widget</code> が更新できます。</p>
+
+<h3>(補足)プッシュ通知を簡単に検証する方法について</h3>
+
+<p>今回の検証では、<a href="https://github.com/node-apn/node-apn">node-apn</a>を利用しました。<br/>
+<code>node-apn</code> を使えば、プッシュ通知に必要な <code>AuthKey</code> を用意し、多少の実装をするだけ簡単にプッシュ通知を検証できるのでオススメです。</p>
+
+<p>実装は、<a href="https://grandbig.github.io/blog/2017/09/18/node-apn/">プッシュ通知をnode-apnで送ってみよう！</a>で詳しく説明していますので、ご参照ください。<br/>
+※ <code>NotificationService Extension</code> を利用するので、ペイロードに <code>"mutable-content": 1</code> が必要になることだけ注意してください。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">note</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">apn</span><span class="p">.</span><span class="nx">Notification</span><span class="p">();</span>
+</span><span class='line'><span class="nx">note</span><span class="p">.</span><span class="nx">badge</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+</span><span class='line'><span class="nx">note</span><span class="p">.</span><span class="nx">sound</span> <span class="o">=</span> <span class="s2">&quot;ping.aiff&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="nx">note</span><span class="p">.</span><span class="nx">alert</span> <span class="o">=</span> <span class="s2">&quot;プッシュ通知が届きましたよ！&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="nx">note</span><span class="p">.</span><span class="nx">topic</span> <span class="o">=</span> <span class="s2">&quot;com.xxxx.WidgetSample&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="nx">note</span><span class="p">.</span><span class="nx">mutableContent</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1">// ココで &quot;mutable-content&quot;: 1 を指定しています。</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>まとめ</h3>
+
+<p>さて如何でしたでしょうか？<br/>
+<code>Widget</code> はiOS14から導入され、ホーム画面に多大な影響を与える期待の新機能ですので、<br/>
+ユーザに更なる利便性を与えるためにも積極的に導入していきたいですね。</p>
+
+<p>といったところで本日はここまで。</p>
+
+<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+
+
+<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
+
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOS14からの新機能：NearbyInteraction Framework]]></title>
@@ -5597,141 +5825,6 @@ AWSでもGCPでも良いかと思います。</p>
 
 <p>さて、割と手軽に実装できることがわかったところで本日はここまで。<br/>
 今後、もっと様々なイベントをキャッチして<code>Slack</code>に流す必要性が出てきたら、どんどん足していこうかな。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[UIStackViewとConstraintで変わるアニメーション]]></title>
-    <link href="http://grandbig.github.io/blog/2019/05/19/stackview-animation/"/>
-    <updated>2019-05-19T17:07:00+09:00</updated>
-    <id>http://grandbig.github.io/blog/2019/05/19/stackview-animation</id>
-    <content type="html"><![CDATA[<h3>はじめに</h3>
-
-<p>今日は<code>UIStackView</code>とアニメーションに関するメモです。<br/>
-通常、<code>UIStackView</code>を利用すれば、ラッピングされた内部の<code>View</code>間の距離は、<br/>
-<code>Spacing</code>で指定することができます。<br/>
-逆に言えば、<code>NSLayoutCostraint</code>を指定する必要はありません。</p>
-
-<p>ですが、もしアニメーションで工夫を加えた場合はその限りではないという話をしたいと思います。</p>
-
-<script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-
-
-<p><ins class="adsbygoogle"style="display:inline-block;width:320px;height:100px"data-ad-client="ca-pub-2881241309408290"data-ad-slot="6603059167"></ins></p>
-
-<script>
-(adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
-
-
-
-<!-- more -->
-
-
-<h3>UIStackViewを利用したアニメーションサンプル１</h3>
-
-<p>まずは、今回実装するサンプルを説明します。<br/>
-最終Viewは、</p>
-
-<p><img src="http://grandbig.github.io/images/uistackview_animation_1.png" alt="サンプルView" /></p>
-
-<p>です。</p>
-
-<p>下記アニメーションに従って、この最終Viewになります。</p>
-
-<ol>
-<li>赤色Viewが徐々に表示される</li>
-<li>青色Viewが徐々に表示される</li>
-<li>最終Viewになる</li>
-</ol>
-
-
-<p><code>Storyboard</code>では下図のように実装しています。</p>
-
-<p><img src="http://grandbig.github.io/images/uistackview_animation_2.png" alt="Storyboardの設定" /></p>
-
-<p><code>UIStackView</code>だけで、うまく実装できているかがわかります。<br/>
-アニメーションの実装は下図の通りです。</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class='objective-c'><span class='line'><span class="n">import</span> <span class="n">UIKit</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">class</span> <span class="nl">ViewController:</span> <span class="n">UIViewController</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">redView:</span> <span class="n">UIView</span><span class="o">!</span>
-</span><span class='line'>    <span class="err">@</span><span class="kt">IBOutlet</span> <span class="n">weak</span> <span class="n">var</span> <span class="nl">blueView:</span> <span class="n">UIView</span><span class="o">!</span>
-</span><span class='line'>
-</span><span class='line'>    <span class="n">override</span> <span class="n">func</span> <span class="n">viewDidLoad</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>        <span class="n">super</span><span class="p">.</span><span class="n">viewDidLoad</span><span class="p">()</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">UIView</span><span class="p">.</span><span class="n">animate</span><span class="p">(</span><span class="nl">withDuration:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="nl">animations:</span> <span class="p">{</span>
-</span><span class='line'>            <span class="c1">// 赤色Viewが徐々に表示される</span>
-</span><span class='line'>            <span class="n">self</span><span class="p">.</span><span class="n">redView</span><span class="p">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="mi">1</span>
-</span><span class='line'>        <span class="p">})</span> <span class="p">{</span> <span class="n">_</span> <span class="k">in</span>
-</span><span class='line'>            <span class="n">UIView</span><span class="p">.</span><span class="n">animate</span><span class="p">(</span><span class="nl">withDuration:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="nl">animations:</span> <span class="p">{</span>
-</span><span class='line'>                <span class="c1">// 青色Viewが徐々に表示される</span>
-</span><span class='line'>                <span class="n">self</span><span class="p">.</span><span class="n">blueView</span><span class="p">.</span><span class="n">isHidden</span> <span class="o">=</span> <span class="n">false</span>
-</span><span class='line'>                <span class="n">self</span><span class="p">.</span><span class="n">blueView</span><span class="p">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="mi">1</span>
-</span><span class='line'>            <span class="p">})</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>この実装によって実現されるアニメーションは下記の通りです。</p>
-
-<p><img src="http://grandbig.github.io/images/uistackview_animation_4.gif" alt="サンプル１のアニメーション" /></p>
-
-<h3>UIStackViewを利用したアニメーションサンプル２</h3>
-
-<p>サンプル１では赤色Viewと青色Viewが中央から上下に離れる形で表示されたかと思います。<br/>
-もしこれを、赤色Viewについていく形で青色Viewを表示したい場合は工夫が必要になります。</p>
-
-<p>その工夫とは、<code>Storyboard</code>上で<code>UIStackView</code>にラッピングされた2つのViewに<code>NSLayoutCostraint</code>を与えてやります。</p>
-
-<p><img src="http://grandbig.github.io/images/uistackview_animation_3.png" alt="StoryboatdでNSLayoutConstraintの制約を追加" /></p>
-
-<p>これによりアニメーションは下記のようになりました。</p>
-
-<p><img src="http://grandbig.github.io/images/uistackview_animation_5.gif" alt="サンプル２のアニメーション" /></p>
-
-<h3>まとめ</h3>
-
-<p>手軽にアニメーションを実現しようとすると少々の工夫が必要なことがわかりました。<br/>
-本日はここまで。</p>
 
 <script async src="http://grandbig.github.io//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 
